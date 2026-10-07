@@ -437,8 +437,10 @@ export function izracunajValueBet(id: IndikatorId, ulaz: RadarUlaz, zamka?: Zamk
       fairGlavni = fne!;
       fairSuprotni = fda!;
     } else if (kvotaGlavni) {
+      // Bez stvarne kvote za "Kazneni udarac: DA" procjenu izvodimo iz impliciranog 0:0,
+      // uz zdrave granice vjerojatnosti (0.01-0.99) umjesto proizvoljnog fiksnog raspona.
       const z = broj(odds["0:0"]);
-      fairGlavni = z ? Math.min(0.85, Math.max(0.65, 1 - 1 / z)) : 0.75;
+      fairGlavni = z ? Math.min(0.99, Math.max(0.01, 1 - 1 / z)) : 0.75;
     }
   }
 
