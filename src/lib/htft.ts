@@ -195,7 +195,7 @@ export function computeHtFt(p: HtFtPrefs): HtFtResult {
   const under25 = r1(100 - over25);
 
   const scores = Object.entries(scoreP)
-    .map(([score, v]) => ({ score, p: Math.min(p.maxScoreProb, pct(v)) }))
+    .map(([score, v]) => ({ score, p: pct(v) }))
     .sort((a, b) => b.p - a.p)
     .slice(0, p.topScoresCount);
 
@@ -203,7 +203,7 @@ export function computeHtFt(p: HtFtPrefs): HtFtResult {
   const best = combos[0]!;
 
   const bestOutcome = Math.max(p1, pX, p2);
-  const outcomeConfidence = r1(bestOutcome * 0.85 + 33.3 * 0.15);
+  const outcomeConfidence = r1(bestOutcome);
 
   const candidates = [
     { label: "1X", p: r1(p1 + pX) },

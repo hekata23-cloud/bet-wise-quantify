@@ -164,6 +164,21 @@ export interface MarketProbs {
   htDist: { g0: number; g1: number; g2: number; g3plus: number };
 }
 
+/** P(HT 1 i FT 1): HT matrica × nezavisni Poisson za 2. poluvrijeme. */
+function htftHomeHome(htm: number[][], l2h: number, l2a: number): number {
+  let p = 0, tot = 0;
+  for (let i = 0; i < htm.length; i++)
+    for (let j = 0; j < htm.length; j++) {
+      for (let x = 0; x <= 8; x++)
+        for (let y = 0; y <= 8; y++) {
+          const q = htm[i][j] * pois(l2h, x) * pois(l2a, y);
+          tot += q;
+          if (i > j && i + x > j + y) p += q;
+        }
+    }
+  return p / (tot || 1);
+}
+
 export function marketProbs(sm: ScoreMatrix, tau = 0.08, rho = -0.03): MarketProbs {
   const { m, lh, la } = sm;
   const n = m.length - 1;
@@ -202,7 +217,7 @@ export function marketProbs(sm: ScoreMatrix, tau = 0.08, rho = -0.03): MarketPro
     htOver05: 1 - g0,
     htOver15: 1 - g0 - g1,
     htDraw: htD, htHome: htH, htAway: htA,
-    htftHH: htH * (home / Math.max(0.01, home + draw + away)) * 1.18,
+    htftHH: htftHomeHome(htm, 0.56 * lh, 0.56 * la),
     cleanSheetHome: csH,
     cleanSheetAway: csA,
     topScores: scores.sort((a, b) => b.p - a.p).slice(0, 6),
@@ -233,29 +248,27 @@ export function devigProportional(o1: number, o2: number): [number, number] {
 /** Power de-vig — točniji za neuravnotežene kvote. */
 export function devigPower(o1: number, o2: number): [number, number] {
   const a = 1 / o1, b = 1 / o2;
-  let k = 1;
-  for (let i = 0; i < 60; i++) {
-    const s = Math.pow(a, k) + Math.pow(b, k);
-    if (Math.abs(s - 1) < 1e-9) break;
-    k *= s > 1 ? 1.002 : 0.998;
+  let lo = 0.5, hi = 5;
+  for (let i = 0; i < 80; i++) {
+    const k = (lo + hi) / 2;
+    if (Math.pow(a, k) + Math.pow(b, k) > 1) lo = k; else hi = k;
   }
+  const k = (lo + hi) / 2;
   const s = Math.pow(a, k) + Math.pow(b, k);
   return [Math.pow(a, k) / s, Math.pow(b, k) / s];
 }
 /** Shin de-vig — modelira udio informiranih igrača (najbolji za value). */
 export function devigShin(o1: number, o2: number): [number, number] {
   const a = 1 / o1, b = 1 / o2, s = a + b;
-  let z = 0;
+  const f = (x: number, z: number) => (Math.sqrt(z * z + 4 * (1 - z) * (x * x) / s) - z) / (2 * (1 - z));
+  let lo = 0, hi = 0.5;
   for (let i = 0; i < 80; i++) {
-    const f = (x: number) => (Math.sqrt(z * z + 4 * (1 - z) * (x * x) / s) - z) / (2 * (1 - z));
-    const tot = f(a) + f(b);
-    if (Math.abs(tot - 1) < 1e-10) break;
-    z += tot > 1 ? 0.0008 : -0.0008;
-    z = Math.min(Math.max(z, 0), 0.35);
+    const z = (lo + hi) / 2;
+    if (f(a, z) + f(b, z) > 1) lo = z; else hi = z;
   }
-  const f = (x: number) => (Math.sqrt(z * z + 4 * (1 - z) * (x * x) / s) - z) / (2 * (1 - z));
-  const t = f(a) + f(b);
-  return [f(a) / t, f(b) / t];
+  const z = (lo + hi) / 2;
+  const t = f(a, z) + f(b, z);
+  return [f(a, z) / t, f(b, z) / t];
 }
 /** Konsenzus triju metoda de-viga. */
 export function devig(o1: number, o2: number): number {

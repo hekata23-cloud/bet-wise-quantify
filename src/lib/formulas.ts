@@ -159,16 +159,19 @@ export function devigMultiplicative(odds: number[]): number[] {
 /** Power de-vig: rješava Σ p_i^(1/α) = 1 — točniji za favorit/autsajder bias. */
 export function devigPower(odds: number[]): number[] {
   const raw = odds.map((o) => 1 / Math.max(1.01, o));
+  // Σ r_i^k = 1, k ≥ 1 (veći k → manja suma). Bisekcija po k.
   let lo = 0.5;
-  let hi = 2;
-  for (let i = 0; i < 60; i++) {
-    const a = (lo + hi) / 2;
-    const s = raw.reduce((acc, r) => acc + Math.pow(r, 1 / a), 0);
-    if (s > 1) lo = a;
-    else hi = a;
+  let hi = 5;
+  for (let i = 0; i < 80; i++) {
+    const k = (lo + hi) / 2;
+    const s = raw.reduce((acc, r) => acc + Math.pow(r, k), 0);
+    if (s > 1) lo = k;
+    else hi = k;
   }
-  const a = (lo + hi) / 2;
-  return raw.map((r) => Math.pow(r, 1 / a));
+  const k = (lo + hi) / 2;
+  const p = raw.map((r) => Math.pow(r, k));
+  const t = p.reduce((a, b) => a + b, 0);
+  return p.map((x) => x / t);
 }
 
 /** Shin de-vig — modelira udio "insajderskog" novca z. */
@@ -224,12 +227,15 @@ export function bayesLambda(priorMean: number, priorStrength: number, obsGoals: 
 
 /** Glicko-lite: rating pomak s obzirom na nesigurnost (RD). */
 export function glickoShift(rating: number, rd: number, expected: number, actual: number): number {
+  // Glicko-1 ažuriranje za jednu utakmicu (protivnik s RD≈rd).
   const q = Math.log(10) / 400;
   const g = 1 / Math.sqrt(1 + (3 * q * q * rd * rd) / (Math.PI * Math.PI));
-  return rating + q * g * (actual - expected) * (rd * rd) * 0.01;
+  const e = Math.min(0.999, Math.max(0.001, expected));
+  const d2 = 1 / (q * q * g * g * e * (1 - e));
+  return rating + (q / (1 / (rd * rd) + 1 / d2)) * g * (actual - e);
 }
 
-/** Utjecaj rane crvene karte na λ (prosječno: −22% za igrača manje). */
+/** Utjecaj crvene karte na λ: kažnjeni tim ≈ −35%, protivnik ≈ +22% (skalirano preostalim vremenom). */
 export function redCardAdjust(lh: number, la: number, minute: number, onHome: boolean): [number, number] {
   const remaining = Math.max(0, (90 - Math.min(90, minute)) / 90);
   const drop = 0.35 * remaining;
@@ -268,13 +274,19 @@ export function mathPackBriefing(inp: MathPackBriefingInput): string {
   const o = ouGameStateHazard(inp.lh, inp.la, inp.ouBeta);
   const h1 = skellam(inp.lh, inp.la, 1);
   const h0 = skellam(inp.lh, inp.la, 0);
-  const ent = entropy([0.4, 0.28, 0.32]);
+  let pDraw = 0, pHome = 0;
+  for (let d = -12; d <= 12; d++) {
+    const v = skellam(inp.lh, inp.la, d);
+    if (d === 0) pDraw += v; else if (d > 0) pHome += v;
+  }
+  const pAway = Math.max(0, 1 - pHome - pDraw);
+  const ent = entropy([pHome, pDraw, pAway]);
   return [
     "═══ PROŠIRENI MATEMATIČKI PAKET v8 (izračunato lokalno) ═══",
     `BTTS kopula (ρ=${inp.bttsRho}): GG ${pct(c.gg)} · NG ${pct(c.ng)} · P(0:0) ${pct(c.p00)} · korelacijski pomak ${c.shiftPb.toFixed(1)} pb u odnosu na neovisni Poisson (${pct(c.ggIndependent)}).`,
     `O/U game-state hazard (β=${inp.ouBeta}): λ_eff ${o.lambdaEff.toFixed(2)} (baza ${(inp.lh + inp.la).toFixed(2)}) · Over 1.5 ${pct(o.over15)} · Over 2.5 ${pct(o.over25)} · Under 2.5 ${pct(o.under25)} · Over 3.5 ${pct(o.over35)} · pomak ${o.shiftPb.toFixed(1)} pb.`,
     `Golovi po trećinama: 0-30' ${o.thirds[0].toFixed(2)} · 30-60' ${o.thirds[1].toFixed(2)} · 60-90' ${o.thirds[2].toFixed(2)}.`,
     `Skellam: P(razlika = 0) ${pct(h0)} · P(dom +1) ${pct(h1)} — koristi za DNB, hendikep i točan rezultat.`,
-    `Indeks slučajnosti (Shannon, referentni 1X2 profil): ${ent.toFixed(2)} — iznad 0.90 smanji ulog ili preskoči.`,
+    `Indeks slučajnosti (Shannon, 1X2 iz λ: 1 ${pct(pHome)} · X ${pct(pDraw)} · 2 ${pct(pAway)}): ${ent.toFixed(2)} — iznad 0.90 smanji ulog ili preskoči.`,
   ].join("\n");
 }

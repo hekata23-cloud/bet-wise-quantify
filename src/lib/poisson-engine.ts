@@ -25,7 +25,7 @@ export type PoissonMatrixResult = {
   lambdaHome: number;
   lambdaAway: number;
   lambdaTotal: number;
-  matrix: number[][]; // 0-5 x 0-5
+  matrix: number[][]; // 0-6 x 0-6
   topScores: ScoreProbability[];
   brackets: GoalBrackets;
   lines: OverUnderLines;
@@ -96,6 +96,8 @@ export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number)
   let over25 = 0;
   let over35 = 0;
   let btts = 0;
+  let csHome = 0;
+  let csAway = 0;
 
   let sum = 0;
 
@@ -103,7 +105,7 @@ export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number)
     const row: number[] = [];
     for (let a = 0; a <= maxGoals; a++) {
       const pBasic = poissonProb(lambdaHome, h) * poissonProb(lambdaAway, a);
-      const adj = Math.max(0.0001, pBasic * tauFactor(h, a, lambdaHome, lambdaAway));
+      const adj = Math.max(0, pBasic * tauFactor(h, a, lambdaHome, lambdaAway));
       row[a] = adj;
       sum += adj;
     }
@@ -132,6 +134,8 @@ export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number)
       if (total > 3) over35 += p;
 
       if (h > 0 && a > 0) btts += p;
+      if (a === 0) csHome += p;
+      if (h === 0) csAway += p;
     }
   }
 
@@ -155,7 +159,7 @@ export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number)
       over35: Number((over35 * 100).toFixed(1)),
     },
     bttsProb: Number((btts * 100).toFixed(1)),
-    cleanSheetHome: Number((poissonProb(lambdaAway, 0) * 100).toFixed(1)),
-    cleanSheetAway: Number((poissonProb(lambdaHome, 0) * 100).toFixed(1)),
+    cleanSheetHome: Number((csHome * 100).toFixed(1)),
+    cleanSheetAway: Number((csAway * 100).toFixed(1)),
   };
 }
