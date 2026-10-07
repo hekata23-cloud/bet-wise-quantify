@@ -478,7 +478,7 @@ export function calculateHtDraw(i: Inputs, sharps = false): HtDrawResult | { err
   const valueDraw = marketDraw ? pDraw * marketDraw - 1 : null;
   const valueNotDraw = marketNotDraw ? pNotDraw * marketNotDraw - 1 : null;
 
-  const isDrawPick = pDraw >= 0.43;
+  const isDrawPick = pDraw >= pNotDraw;
   const pick = isDrawPick ? "DA (Neriješeno na poluvremenu)" : "NE (Barem jedna ekipa vodi)";
   const prob = isDrawPick ? pDraw : pNotDraw;
   const fair = 1 / prob;

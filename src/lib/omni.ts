@@ -444,7 +444,7 @@ export function omniBriefing(o: OmniResult | null): string {
   if (!o) return "";
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
   const p = o.prefs;
-  const k = o.verdict.edge !== null && o.verdict.edge > 0 ? kelly(o.verdict.p, 1 / o.verdict.p + 0.01, p.kellyFraction) : null;
+  // Nema fiktivnog Kellyja: bez stvarne tržišne kvote ne izmišljamo "1/p + 0.01" kvotu.
   return `═══ OMNI GOL MOTOR — BTTS & OVER/UNDER 2.5 (AKTIVIRAN RUČNO) ═══
 Mozgovi u igri: ${o.brainsUsed.map((b) => OMNI_BRAIN_LABEL[b]).join(", ")} · modela: ${o.estimates.length} · prolaza po modelu: ${p.passes}
 Primijenjene metode: ${o.methods.join(" · ")}
@@ -460,7 +460,7 @@ Skellam P(remi) = ${pct(o.skellamDraw)} · entropija 1X2 = ${o.entropy3.toFixed(
 ${o.pMarket !== null ? `Tržište (de-vig): ${pct(o.pMarket)} · fer kvota modela ${fairOdds(o.pMain).toFixed(2)}` : "Kvota nije zadana — nema edge računa."}
 KONAČNI TIP (OMNI): ${o.verdict.pick} · sigurnost ${pct(o.verdict.p)} · min. isplativa kvota ${o.verdict.fairOdds.toFixed(2)}${
     o.verdict.edge !== null ? ` · edge ${o.verdict.edge.toFixed(1)}%` : ""
-  }${o.verdict.kelly !== null ? ` · Kelly ${o.verdict.kelly.toFixed(1)}%` : k !== null ? ` · Kelly ${k.toFixed(1)}%` : ""} · ocjena ${"★".repeat(o.verdict.stars)}${"☆".repeat(5 - o.verdict.stars)}
+  }${o.verdict.kelly !== null ? ` · Kelly ${o.verdict.kelly.toFixed(1)}%` : ""} · ocjena ${"★".repeat(o.verdict.stars)}${"☆".repeat(5 - o.verdict.stars)}
 Filtar vrijednosti: ${o.verdict.valueOk ? "PROLAZI" : "NE PROLAZI"} — ${o.verdict.advice}
 Slaganje mozgova: ${(o.agreement * 100).toFixed(0)}% (raspon ${(o.spread * 100).toFixed(0)} pb; prag ${(p.minAgreement * 100).toFixed(0)}%)
 

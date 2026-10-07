@@ -49,10 +49,19 @@ export function simulateMatch(lh: number, la: number) {
     }
   }
 
+  // Normalizacija na stvarnu masu matrice (0-6 x 0-6 ne pokriva točno 100%)
+  const ftTotal = p1 + pX + p2;
+  if (ftTotal > 0) { p1 /= ftTotal; pX /= ftTotal; p2 /= ftTotal; }
+  const htTotal = ht1 + htX + ht2;
+  if (htTotal > 0) { ht1 /= htTotal; htX /= htTotal; ht2 /= htTotal; }
+
+  // Sigurnost = vjerojatnost najvjerojatnijeg ISHODA (1/X/2), ne vjerojatnost jednog točnog rezultata
+  const confidence = Math.max(p1, pX, p2) * 100;
+
   return {
     fullTime: { p1: p1 * 100, pX: pX * 100, p2: p2 * 100 },
     halfTime: { p1: ht1 * 100, pX: htX * 100, p2: ht2 * 100 },
     bestScore,
-    confidence: maxP * 100
+    confidence
   };
 }

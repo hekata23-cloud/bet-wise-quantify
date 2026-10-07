@@ -68,7 +68,9 @@ export function devig(odds: number[]): number[] {
     if (t > 1) lo = k; else hi = k;
   }
   const k = (lo + hi) / 2;
-  return inv.map((x) => x ** k);
+  const powered = inv.map((x) => x ** k);
+  const t = powered.reduce((a, b) => a + b, 0);
+  return powered.map((x) => x / t);
 }
 
 // ---------- čitanje bet365 tržišta ----------

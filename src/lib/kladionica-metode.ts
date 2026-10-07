@@ -108,6 +108,19 @@ export function negBinomZbrojGolova(lambdaTotal: number, uvjet: (golovi: number)
   return Math.min(1, Math.max(0, suma));
 }
 
+/** Rješava očekivani broj golova (λ) tako da P(ukupno golova > 2.5) iz NB raspodjele odgovara zadanoj tržišnoj vjerojatnosti (bisekcija, bez proizvoljnih "kanti"). */
+export function negBinomLambdaIzOver25(pOver25: number): number {
+  const target = Math.min(0.95, Math.max(0.05, pOver25));
+  let lo = 0.3;
+  let hi = 6.5;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const pOver = negBinomZbrojGolova(mid, (g) => g >= 3);
+    if (pOver < target) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 export function provjeriKonzistentnost(
   fairBttsTrziste: number | null,
   modelBttsIzRezultata: number | null,
@@ -187,7 +200,7 @@ export function primijeniMetodeKladionica(id: IndikatorId, ulaz: RadarUlaz): Kla
   const o25 = broj(odds["o25"]), u25 = broj(odds["u25"]);
   if (o25 && u25 && ispravnaKvota(o25) && ispravnaKvota(u25)) {
     const probOver = 1 / o25 / (1 / o25 + 1 / u25);
-    const lambdaProcjena = probOver > 0.55 ? 2.9 : probOver < 0.45 ? 2.2 : 2.55;
+    const lambdaProcjena = negBinomLambdaIzOver25(probOver);
 
     if (id === "1") {
       const pNulaA = negBinomnaVjerojatnostGola(0, lambdaProcjena * 0.53);

@@ -96,16 +96,21 @@ export function computeGoalFormula(p: GoalFormulaPrefs): GoalFormulaResult {
   let pBtts = 0;
   let pUnder = 0;
   let pClean = 0;
+  let pTotal = 0;
   for (let x = 0; x <= MAX; x++) {
     for (let y = 0; y <= MAX; y++) {
       const pr = pois(lh, x) * pois(la, y) * dc(x, y, lh, la, p.rho);
+      pTotal += pr;
       if (x > 0 && y > 0) pBtts += pr;
       if (x + y <= 2) pUnder += pr;
       if (x === 0 || y === 0) pClean += pr;
     }
   }
-  const norm = pUnder + (1 - pUnder);
-  const pOver = Math.min(0.999, Math.max(0.001, 1 - pUnder / norm));
+  // Normalizacija na stvarnu ukupnu masu matrice (0..MAX po osi nije točno 1 zbog odsijecanja i DC korekcije)
+  pBtts = pTotal > 0 ? pBtts / pTotal : pBtts;
+  pUnder = pTotal > 0 ? pUnder / pTotal : pUnder;
+  pClean = pTotal > 0 ? pClean / pTotal : pClean;
+  const pOver = Math.min(0.999, Math.max(0.001, 1 - pUnder));
   pBtts = Math.min(0.999, Math.max(0.001, pBtts));
 
   const cands = [

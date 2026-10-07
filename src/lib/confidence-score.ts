@@ -36,25 +36,27 @@ export function evaluateMatchConfidence(
   let primaryMarket: UltimateVerdict["primaryMarket"] = "PRESKOČI";
   let alt = "Nema jasne alternative";
 
+  // Bonus je proporcionalan stvarnoj udaljenosti vjerojatnosti od 50% (jača brojka = veći bonus),
+  // a ne fiksan iznos koji bi lažno izjednačio 57% i 90% slučaj.
   if (isStrongOver) {
-    score += 24;
+    score += Math.min(30, (adjOverProb - 50) * 0.8);
     primaryMarket = "2.5 VIŠE";
     alt = isStrongBttsYes ? "BTTS DA (ili 2-3 gola)" : "1X i Over 1.5";
     reasons.push(`Poisson model daje ${adjOverProb.toFixed(1)}% šanse za 3+ gola.`);
     reasons.push(`Kvota 2:2 (${k22.toFixed(2)}) potvrđuje visok napadački potencijal.`);
   } else if (isStrongUnder) {
-    score += 24;
+    score += Math.min(30, (50 - adjOverProb) * 0.8);
     primaryMarket = "2.5 MANJE";
     alt = isStrongBttsNo ? "BTTS NE (ili 0-2 gola)" : "Manje 3.5 zicer";
     reasons.push(`Vjerojatnost za 3+ gola je tek ${adjOverProb.toFixed(1)}%.`);
     reasons.push(`Kvota 2:2 (${k22.toFixed(2)}) odbacuje mogućnost remija s puno golova.`);
   } else if (isStrongBttsYes) {
-    score += 18;
+    score += Math.min(22, (adjBttsProb - 50) * 0.7);
     primaryMarket = "BTTS DA";
     alt = "Over 2.5 golova";
     reasons.push(`Dixon-Coles matrica daje ${adjBttsProb.toFixed(1)}% za golove s obje strane.`);
   } else if (isStrongBttsNo) {
-    score += 18;
+    score += Math.min(22, (50 - adjBttsProb) * 0.7);
     primaryMarket = "BTTS NE";
     alt = "2.5 MANJE";
     reasons.push(`Samo ${adjBttsProb.toFixed(1)}% vjerojatnosti da oba tima zabiju.`);
