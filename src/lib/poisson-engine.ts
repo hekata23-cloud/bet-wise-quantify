@@ -80,7 +80,19 @@ export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number)
 
   // 2. Raspodjela na domaćina i gosta iz GG kvote i 2:2
   const pGgClean = Math.min(0.8, Math.max(0.2, 1 / (Math.max(1.05, kGg) * 1.05)));
-  const homeRatio = 0.55 - (pGgClean - 0.5) * 0.1;
+  // GG = (1 − e^−λh)(1 − e^−λa). Za zadani λ_total tražimo udio domaćina r ≥ 0.5
+  // (GG pada kako se λ odvaja). Bisekcija; ako je GG viši od maksimuma, r = 0.5.
+  const ggAt = (r: number) => (1 - Math.exp(-lambdaTotal * r)) * (1 - Math.exp(-lambdaTotal * (1 - r)));
+  let homeRatio = 0.5;
+  if (pGgClean < ggAt(0.5)) {
+    let lo = 0.5, hi = 0.85;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (ggAt(mid) > pGgClean) lo = mid; else hi = mid;
+    }
+    homeRatio = (lo + hi) / 2;
+  }
+  void k22;
   const lambdaHome = Math.max(0.4, lambdaTotal * homeRatio);
   const lambdaAway = Math.max(0.4, lambdaTotal * (1 - homeRatio));
 

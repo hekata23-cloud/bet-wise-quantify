@@ -558,7 +558,7 @@ function Index() {
     kUnderEstimated,
     shown.kGg,
     kNgEstimated,
-    shown.pThree / 100,
+    shown.pThree,
     bttsCalc.p
   );
 
