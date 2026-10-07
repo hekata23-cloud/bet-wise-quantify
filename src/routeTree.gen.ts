@@ -10,33 +10,189 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatRouteImport } from './routes/chat'
+import { Route as KalkulatorRouteImport } from './routes/kalkulator'
+import { Route as OverUnderRouteImport } from './routes/over-under'
+import { Route as PostavkeRouteImport } from './routes/postavke'
+import { Route as PrediktorRouteImport } from './routes/prediktor'
+import { Route as RadarRouteImport } from './routes/radar'
+import { Route as UzivoRouteImport } from './routes/uzivo'
+import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
+import { Route as OverUnderIndexRouteImport } from './routes/over-under.index'
+import { Route as OverUnderPostavkeRouteImport } from './routes/over-under.postavke'
+import { Route as ApiPublicFootballDataRouteImport } from './routes/api/public/football-data'
+import { Route as ApiPublicNvidiaRouteImport } from './routes/api/public/nvidia'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KalkulatorRoute = KalkulatorRouteImport.update({
+  id: '/kalkulator',
+  path: '/kalkulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OverUnderRoute = OverUnderRouteImport.update({
+  id: '/over-under',
+  path: '/over-under',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostavkeRoute = PostavkeRouteImport.update({
+  id: '/postavke',
+  path: '/postavke',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrediktorRoute = PrediktorRouteImport.update({
+  id: '/prediktor',
+  path: '/prediktor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RadarRoute = RadarRouteImport.update({
+  id: '/radar',
+  path: '/radar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UzivoRoute = UzivoRouteImport.update({
+  id: '/uzivo',
+  path: '/uzivo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZlatniTipRoute = ZlatniTipRouteImport.update({
+  id: '/zlatni-tip',
+  path: '/zlatni-tip',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OverUnderIndexRoute = OverUnderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OverUnderRoute,
+} as any)
+const OverUnderPostavkeRoute = OverUnderPostavkeRouteImport.update({
+  id: '/postavke',
+  path: '/postavke',
+  getParentRoute: () => OverUnderRoute,
+} as any)
+const ApiPublicFootballDataRoute = ApiPublicFootballDataRouteImport.update({
+  id: '/api/public/football-data',
+  path: '/api/public/football-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicNvidiaRoute = ApiPublicNvidiaRouteImport.update({
+  id: '/api/public/nvidia',
+  path: '/api/public/nvidia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
+  '/kalkulator': typeof KalkulatorRoute
+  '/over-under': typeof OverUnderRouteWithChildren
+  '/postavke': typeof PostavkeRoute
+  '/prediktor': typeof PrediktorRoute
+  '/radar': typeof RadarRoute
+  '/uzivo': typeof UzivoRoute
+  '/zlatni-tip': typeof ZlatniTipRoute
+  '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/over-under/': typeof OverUnderIndexRoute
+  '/api/public/football-data': typeof ApiPublicFootballDataRoute
+  '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
+  '/kalkulator': typeof KalkulatorRoute
+  '/postavke': typeof PostavkeRoute
+  '/prediktor': typeof PrediktorRoute
+  '/radar': typeof RadarRoute
+  '/uzivo': typeof UzivoRoute
+  '/zlatni-tip': typeof ZlatniTipRoute
+  '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/over-under': typeof OverUnderIndexRoute
+  '/api/public/football-data': typeof ApiPublicFootballDataRoute
+  '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
+  '/kalkulator': typeof KalkulatorRoute
+  '/over-under': typeof OverUnderRouteWithChildren
+  '/postavke': typeof PostavkeRoute
+  '/prediktor': typeof PrediktorRoute
+  '/radar': typeof RadarRoute
+  '/uzivo': typeof UzivoRoute
+  '/zlatni-tip': typeof ZlatniTipRoute
+  '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/over-under/': typeof OverUnderIndexRoute
+  '/api/public/football-data': typeof ApiPublicFootballDataRoute
+  '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/chat'
+    | '/kalkulator'
+    | '/over-under'
+    | '/postavke'
+    | '/prediktor'
+    | '/radar'
+    | '/uzivo'
+    | '/zlatni-tip'
+    | '/over-under/postavke'
+    | '/over-under/'
+    | '/api/public/football-data'
+    | '/api/public/nvidia'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/chat'
+    | '/kalkulator'
+    | '/postavke'
+    | '/prediktor'
+    | '/radar'
+    | '/uzivo'
+    | '/zlatni-tip'
+    | '/over-under/postavke'
+    | '/over-under'
+    | '/api/public/football-data'
+    | '/api/public/nvidia'
+  id:
+    | '__root__'
+    | '/'
+    | '/chat'
+    | '/kalkulator'
+    | '/over-under'
+    | '/postavke'
+    | '/prediktor'
+    | '/radar'
+    | '/uzivo'
+    | '/zlatni-tip'
+    | '/over-under/postavke'
+    | '/over-under/'
+    | '/api/public/football-data'
+    | '/api/public/nvidia'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatRoute: typeof ChatRoute
+  KalkulatorRoute: typeof KalkulatorRoute
+  OverUnderRoute: typeof OverUnderRouteWithChildren
+  PostavkeRoute: typeof PostavkeRoute
+  PrediktorRoute: typeof PrediktorRoute
+  RadarRoute: typeof RadarRoute
+  UzivoRoute: typeof UzivoRoute
+  ZlatniTipRoute: typeof ZlatniTipRoute
+  ApiPublicFootballDataRoute: typeof ApiPublicFootballDataRoute
+  ApiPublicNvidiaRoute: typeof ApiPublicNvidiaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +204,119 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kalkulator': {
+      id: '/kalkulator'
+      path: '/kalkulator'
+      fullPath: '/kalkulator'
+      preLoaderRoute: typeof KalkulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/over-under': {
+      id: '/over-under'
+      path: '/over-under'
+      fullPath: '/over-under'
+      preLoaderRoute: typeof OverUnderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/postavke': {
+      id: '/postavke'
+      path: '/postavke'
+      fullPath: '/postavke'
+      preLoaderRoute: typeof PostavkeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prediktor': {
+      id: '/prediktor'
+      path: '/prediktor'
+      fullPath: '/prediktor'
+      preLoaderRoute: typeof PrediktorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/radar': {
+      id: '/radar'
+      path: '/radar'
+      fullPath: '/radar'
+      preLoaderRoute: typeof RadarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uzivo': {
+      id: '/uzivo'
+      path: '/uzivo'
+      fullPath: '/uzivo'
+      preLoaderRoute: typeof UzivoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zlatni-tip': {
+      id: '/zlatni-tip'
+      path: '/zlatni-tip'
+      fullPath: '/zlatni-tip'
+      preLoaderRoute: typeof ZlatniTipRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/over-under/': {
+      id: '/over-under/'
+      path: '/'
+      fullPath: '/over-under/'
+      preLoaderRoute: typeof OverUnderIndexRouteImport
+      parentRoute: typeof OverUnderRoute
+    }
+    '/over-under/postavke': {
+      id: '/over-under/postavke'
+      path: '/postavke'
+      fullPath: '/over-under/postavke'
+      preLoaderRoute: typeof OverUnderPostavkeRouteImport
+      parentRoute: typeof OverUnderRoute
+    }
+    '/api/public/football-data': {
+      id: '/api/public/football-data'
+      path: '/api/public/football-data'
+      fullPath: '/api/public/football-data'
+      preLoaderRoute: typeof ApiPublicFootballDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/nvidia': {
+      id: '/api/public/nvidia'
+      path: '/api/public/nvidia'
+      fullPath: '/api/public/nvidia'
+      preLoaderRoute: typeof ApiPublicNvidiaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface OverUnderRouteChildren {
+  OverUnderPostavkeRoute: typeof OverUnderPostavkeRoute
+  OverUnderIndexRoute: typeof OverUnderIndexRoute
+}
+
+const OverUnderRouteChildren: OverUnderRouteChildren = {
+  OverUnderPostavkeRoute: OverUnderPostavkeRoute,
+  OverUnderIndexRoute: OverUnderIndexRoute,
+}
+
+const OverUnderRouteWithChildren = OverUnderRoute._addFileChildren(
+  OverUnderRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatRoute: ChatRoute,
+  KalkulatorRoute: KalkulatorRoute,
+  OverUnderRoute: OverUnderRouteWithChildren,
+  PostavkeRoute: PostavkeRoute,
+  PrediktorRoute: PrediktorRoute,
+  RadarRoute: RadarRoute,
+  UzivoRoute: UzivoRoute,
+  ZlatniTipRoute: ZlatniTipRoute,
+  ApiPublicFootballDataRoute: ApiPublicFootballDataRoute,
+  ApiPublicNvidiaRoute: ApiPublicNvidiaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
