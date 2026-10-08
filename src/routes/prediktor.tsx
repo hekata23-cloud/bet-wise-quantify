@@ -550,8 +550,8 @@ function PrediktorPage() {
                 </div>
                 <div className="mt-3 rounded-md border border-border bg-muted/40 p-2 text-left font-mono text-[10px] text-muted-foreground">
                   {ou15Res.breakdown}
-                  {ou15Res.lowOddsShift && <div>• Nizak tečaj (&lt; 7.50) na niskom rezultatu → težina pomaknuta prema Manje 1.5</div>}
-                  {ou15Res.sharpsBuffer && <div>• Sharps derbi: +5% volatilnosti na Manje 1.5</div>}
+                  {ou15Res.lowOddsShift && <div>• Kvote niskih rezultata (0:0, 1:0, 0:1, 1:1) uključene u model</div>}
+                  {ou15Res.sharpsBuffer && <div>• Sharps derbi: pojačana korelacija niskih rezultata (izjednačena utakmica)</div>}
                 </div>
               </>
             ) : (
