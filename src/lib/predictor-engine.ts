@@ -56,6 +56,29 @@ export function devig(odds: number[]) {
 
   return { p, margin };
 }
+
+export type ConfidenceLevel = "VISOKA SIGURNOST" | "UMJERENA SIGURNOST" | "SPEKULATIVNO (VALUE)";
+
+export type ConcreteTip = {
+  market: string;
+  pick: string;
+  confidenceScore: number;
+  confidenceLevel: ConfidenceLevel;
+  fairOdds: number;
+  marketOdds: number | null;
+  valueEdge: number | null;
+  reason: string;
+};
+
+export type Row = { outcome: Outcome; prob: number; fair: number; market: number | null; value: number | null; hasValue: boolean };
+export type Result = {
+  rows: Row[];
+  ftMargin: number;
+  htMargin: number;
+  goalsMargin: number | null;
+  concretePick: ConcreteTip;
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // JEDINSTVENI MODEL — sve kartice čitaju iz JEDNE matrice rezultata.
 // λ domaćina/gosta fitaju se na SVE unesene kvote (1X2, O/U 1.5/2.5/3.5, GG/NG,
