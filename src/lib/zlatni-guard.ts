@@ -1,17 +1,15 @@
 /**
- * Pametna zaštita od suspenzije API-Football računa (samo za Zlatni tip).
- * 1. Stvarni dnevni limit iz zaglavlja API-ja + rezerva (nikad do nule).
- * 2. Klizni prozor po minuti (max 8/min, free plan dopušta 10) + min. razmak 7 s.
- * 3. 429 / rate-limit greška → automatsko hlađenje (eksponencijalno: 65 s, 130 s, ...).
- * 4. Greška računa (suspend/key) → potpuna blokada do sutra, bez ponovnih pokušaja.
- * 5. Strujni prekidač: 3 uzastopne greške → pauza 5 min.
- * 6. Cache po danu i deduplikacija: ista utakmica se nikad ne povlači dvaput.
+ * Pametna zaštita od suspenzije API-Football računa (Zlatni tip & Pro Sharp).
+ * 1. Stvarni dnevni limit iz zaglavlja API-ja + minimalna rezerva.
+ * 2. Brzo hlađenje: 10-15s na rate-limit, nikad 5 ili 30 minuta blokade.
+ * 3. Minimalni razmak smanjen na 2.5s (umjesto 7s).
+ * 4. Automatski pronalazi ključ u svim postavkama aplikacije.
  */
 const KEY = "zt.guard.v2";
 const CACHE = "zt.cache.v2.";
-export const PER_MIN = 8;
-export const MIN_GAP = 7000;
-export const RESERVE = 5;
+export const PER_MIN = 10;
+export const MIN_GAP = 2500;
+export const RESERVE = 2;
 
 type State = {
   day: string;
@@ -29,13 +27,28 @@ type State = {
 export const zagrebDay = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Zagreb" });
 
 export function readState(): State {
-  const fresh: State = { day: zagrebDay(), used: 0, dayRemaining: -1, dayLimit: -1, stamps: [], cooldownUntil: 0, strikes429: 0, errorStreak: 0, blockedDay: null, blockedReason: null };
+  const fresh: State = {
+    day: zagrebDay(),
+    used: 0,
+    dayRemaining: -1,
+    dayLimit: -1,
+    stamps: [],
+    cooldownUntil: 0,
+    strikes429: 0,
+    errorStreak: 0,
+    blockedDay: null,
+    blockedReason: null,
+  };
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null") as State | null;
     if (!s) return fresh;
-    if (s.day !== zagrebDay()) return { ...fresh, cooldownUntil: s.cooldownUntil };
-    // Stare blokade iz prijašnjih verzija (3×429, token/key greške) više ne vrijede —
-    // dnevna blokada ostaje samo uz izričitu suspenziju računa.
+    if (s.day !== zagrebDay()) return { ...fresh };
+    
+    // Ukloni stare zaostale blokade duže od 30 sekundi
+    const now = Date.now();
+    if (s.cooldownUntil > now + 30_000) {
+      s.cooldownUntil = now + 10_000;
+    }
     if (s.blockedDay && !/suspend/i.test(s.blockedReason ?? "")) {
       s.blockedDay = null;
       s.blockedReason = null;
@@ -45,20 +58,35 @@ export function readState(): State {
     return fresh;
   }
 }
-const write = (s: State) => localStorage.setItem(KEY, JSON.stringify(s));
 
-/** Vraća null ako je poziv dopušten, inače razlog + koliko ms čekati (0 = ne čekati, blokirano). */
+const write = (s: State) => {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s));
+  } catch {}
+};
+
 export function check(cost: number): { reason: string; waitMs: number } | null {
   const s = readState();
   const now = Date.now();
-  if (s.blockedDay === s.day) return { reason: `Račun zaštićen do sutra: ${s.blockedReason}`, waitMs: 0 };
-  if (s.dayRemaining >= 0 && s.dayRemaining - cost < RESERVE)
-    return { reason: `Preostalo ${s.dayRemaining} kredita — čuvam rezervu od ${RESERVE} da račun ne bude suspendiran.`, waitMs: 0 };
-  if (s.cooldownUntil > now) return { reason: "Hlađenje nakon upozorenja API-ja", waitMs: s.cooldownUntil - now };
+  if (s.blockedDay === s.day) {
+    return { reason: `Račun zaštićen: ${s.blockedReason}`, waitMs: 0 };
+  }
+  if (s.dayRemaining >= 0 && s.dayRemaining - cost < RESERVE) {
+    return { reason: `Preostalo ${s.dayRemaining} kredita — čuvam rezervu od ${RESERVE} kredita.`, waitMs: 0 };
+  }
+  if (s.cooldownUntil > now) {
+    const wait = Math.min(s.cooldownUntil - now, 15_000);
+    return { reason: "Kratka pauza (hlađenje API-ja)", waitMs: wait };
+  }
   const recent = s.stamps.filter((t) => now - t < 60_000);
-  if (recent.length + cost > PER_MIN) return { reason: "Limit po minuti", waitMs: 60_000 - (now - recent[0]!) + 500 };
+  if (recent.length + cost > PER_MIN) {
+    const wait = Math.min(60_000 - (now - recent[0]!) + 500, 15_000);
+    return { reason: "Limit po minuti", waitMs: wait };
+  }
   const last = recent[recent.length - 1] ?? 0;
-  if (now - last < MIN_GAP) return { reason: "Razmak između poziva", waitMs: MIN_GAP - (now - last) };
+  if (now - last < MIN_GAP) {
+    return { reason: "Razmak između poziva", waitMs: MIN_GAP - (now - last) };
+  }
   return null;
 }
 
@@ -69,33 +97,33 @@ export function record(cost: number, rate: { dayRemaining: number; dayLimit: num
   s.stamps = [...s.stamps.filter((t) => now - t < 60_000), ...Array(cost).fill(now)];
   if (rate.dayRemaining >= 0) s.dayRemaining = rate.dayRemaining;
   if (rate.dayLimit > 0) s.dayLimit = rate.dayLimit;
-  if (rate.minuteRemaining >= 0 && rate.minuteRemaining <= 1) s.cooldownUntil = Math.max(s.cooldownUntil, now + 61_000);
+
   if (error === "RATE_LIMIT") {
     s.strikes429 += 1;
-    s.cooldownUntil = now + 65_000 * 2 ** (s.strikes429 - 1);
-    // Nakon 3 uzastopna 429: pauza 30 min (NE cijeli dan) — minutni limit se sam resetira.
-    if (s.strikes429 >= 3) { s.cooldownUntil = now + 30 * 60_000; s.strikes429 = 0; }
+    s.cooldownUntil = now + 15_000; // maksimalno 15 sekundi pauze
   } else if (error?.startsWith("ACCOUNT")) {
-    // Potpuna dnevna blokada samo kad API izričito javi suspenziju računa.
     if (/suspend/i.test(error)) {
       s.blockedDay = s.day;
       s.blockedReason = error.replace("ACCOUNT: ", "");
     } else {
-      s.cooldownUntil = Math.max(s.cooldownUntil, now + 5 * 60_000);
+      s.cooldownUntil = now + 10_000;
     }
   } else if (error && !/bet365/.test(error)) {
     s.errorStreak += 1;
-    if (s.errorStreak >= 3) { s.cooldownUntil = now + 5 * 60_000; s.errorStreak = 0; }
+    if (s.errorStreak >= 5) {
+      s.cooldownUntil = now + 10_000;
+      s.errorStreak = 0;
+    }
   } else {
     s.errorStreak = 0;
     s.strikes429 = 0;
+    s.cooldownUntil = 0;
   }
   write(s);
 }
 
 const inflight = new Map<string, Promise<unknown>>();
 
-/** Izvrši zaštićeni poziv: cache → dedupe → čekanje u redu → poziv → evidencija. */
 export async function guarded<T extends { error: string | null; rate: any }>(
   cacheId: string,
   cost: number,
@@ -110,10 +138,12 @@ export async function guarded<T extends { error: string | null; rate: any }>(
   }
   if (inflight.has(ck)) return inflight.get(ck) as Promise<T>;
   const job = (async () => {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       const g = check(cost);
       if (!g) break;
-      if (g.waitMs === 0 || g.waitMs > 5 * 60_000) throw new Error(g.reason);
+      if (g.waitMs === 0 || g.waitMs > 20_000) {
+        throw new Error(g.reason);
+      }
       onWait?.(g.waitMs, g.reason);
       await new Promise((r) => setTimeout(r, g.waitMs));
     }
@@ -128,7 +158,6 @@ export async function guarded<T extends { error: string | null; rate: any }>(
   try { return await job; } finally { inflight.delete(ck); }
 }
 
-/** Ručno poništi blokadu/hlađenje (npr. korisnik je siguran da je limit prošao). */
 export function resetGuard() {
   const s = readState();
   s.blockedDay = null;
@@ -149,9 +178,35 @@ export function pruneCache() {
 }
 
 export function getApiKey(): string | undefined {
-  const a = localStorage.getItem("kr-football-api-key");
-  if (a?.trim()) return a.trim();
+  if (typeof window === "undefined") return undefined;
+
+  // 1. Postavke (/postavke)
+  const mainKey = localStorage.getItem("tm.key.apiFootball");
+  if (mainKey && mainKey.trim()) return mainKey.trim().replace(/^["']|["']$/g, "");
+
+  // 2. Termometar / Over-Under (/over-under/postavke)
   const b = localStorage.getItem("termometar.apifootball");
-  if (!b) return undefined;
-  try { const j = JSON.parse(b); return typeof j?.key === "string" ? j.key : undefined; } catch { return b.trim() || undefined; }
+  if (b) {
+    try {
+      const j = JSON.parse(b);
+      if (typeof j?.key === "string" && j.key.trim()) return j.key.trim().replace(/^["']|["']$/g, "");
+    } catch {
+      if (b.trim()) return b.trim().replace(/^["']|["']$/g, "");
+    }
+  }
+
+  // 3. Prediktor (/prediktor)
+  const h = localStorage.getItem("htft:keys");
+  if (h) {
+    try {
+      const j = JSON.parse(h);
+      if (typeof j?.football === "string" && j.football.trim()) return j.football.trim().replace(/^["']|["']$/g, "");
+    } catch {}
+  }
+
+  // 4. Stari ključ
+  const a = localStorage.getItem("kr-football-api-key");
+  if (a && a.trim()) return a.trim().replace(/^["']|["']$/g, "");
+
+  return undefined;
 }
