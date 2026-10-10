@@ -141,12 +141,18 @@ function PrediktorPage() {
   const [dB, setDB] = useState<Outcome>("X/1");
 
   useEffect(() => {
-    try {
+        try {
       const k = localStorage.getItem("htft:keys");
-      if (k) setKeys(JSON.parse(k));
+      if (k) {
+        setKeys(JSON.parse(k));
+      } else {
+        const alt = localStorage.getItem("tm.key.apiFootball") || "";
+        if (alt) setKeys((prev) => ({ ...prev, football: alt }));
+      }
     } catch {
       /* ignore */
     }
+
 
     // Učitaj zadnje unesene podatke iz memorije ako postoje
     const last = loadLastPredictorInputs();
