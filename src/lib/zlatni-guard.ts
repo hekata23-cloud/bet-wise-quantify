@@ -122,6 +122,18 @@ export async function guarded<T extends { error: string | null; rate: any }>(
   try { return await job; } finally { inflight.delete(ck); }
 }
 
+/** Ručno poništi blokadu/hlađenje (npr. korisnik je siguran da je limit prošao). */
+export function resetGuard() {
+  const s = readState();
+  s.blockedDay = null;
+  s.blockedReason = null;
+  s.cooldownUntil = 0;
+  s.strikes429 = 0;
+  s.errorStreak = 0;
+  s.stamps = [];
+  write(s);
+}
+
 export function pruneCache() {
   const today = zagrebDay();
   for (let i = localStorage.length - 1; i >= 0; i--) {
