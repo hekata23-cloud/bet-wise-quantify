@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
-import { getApiKey, guarded, pruneCache, readState, zagrebDay, RESERVE } from "@/lib/zlatni-guard";
+import { getApiKey, guarded, pruneCache, readState, resetGuard, zagrebDay, RESERVE } from "@/lib/zlatni-guard";
 import { SettingsModal } from "@/components/SettingsModal";
 
 export const Route = createFileRoute("/zlatni-tip")({
