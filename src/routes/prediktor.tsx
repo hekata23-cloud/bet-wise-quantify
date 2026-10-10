@@ -59,7 +59,7 @@ export const Route = createFileRoute("/prediktor")({
   ),
 });
 
-const COOLDOWN_SECONDS = 30;
+const COOLDOWN_SECONDS = 5;
 const pct = (x: number) => (x * 100).toFixed(1) + "%";
 
 function Polje({
