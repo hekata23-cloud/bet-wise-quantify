@@ -10,6 +10,7 @@ const NAV = [
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
   { to: "/zlatni-tip", label: "Zlatni tip", icon: Trophy },
   { to: "/prediktor", label: "Prediktor 3.5 & CS", icon: Target },
+  { to: "/pro", label: "Pro Sharp", icon: Target },
   { to: "/chat", label: "AI Chat", icon: MessageCircle },
   { to: "/uzivo", label: "Uživo", icon: Radio },
   { to: "/postavke", label: "Postavke", icon: Settings },

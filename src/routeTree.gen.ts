@@ -15,6 +15,7 @@ import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as OverUnderRouteImport } from './routes/over-under'
 import { Route as PostavkeRouteImport } from './routes/postavke'
 import { Route as PrediktorRouteImport } from './routes/prediktor'
+import { Route as ProRouteImport } from './routes/pro'
 import { Route as RadarRouteImport } from './routes/radar'
 import { Route as UzivoRouteImport } from './routes/uzivo'
 import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
@@ -51,6 +52,11 @@ const PostavkeRoute = PostavkeRouteImport.update({
 const PrediktorRoute = PrediktorRouteImport.update({
   id: '/prediktor',
   path: '/prediktor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProRoute = ProRouteImport.update({
+  id: '/pro',
+  path: '/pro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RadarRoute = RadarRouteImport.update({
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
+  '/pro': typeof ProRoute
   '/radar': typeof RadarRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/kalkulator': typeof KalkulatorRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
+  '/pro': typeof ProRoute
   '/radar': typeof RadarRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
+  '/pro': typeof ProRoute
   '/radar': typeof RadarRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/over-under'
     | '/postavke'
     | '/prediktor'
+    | '/pro'
     | '/radar'
     | '/uzivo'
     | '/zlatni-tip'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/kalkulator'
     | '/postavke'
     | '/prediktor'
+    | '/pro'
     | '/radar'
     | '/uzivo'
     | '/zlatni-tip'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/over-under'
     | '/postavke'
     | '/prediktor'
+    | '/pro'
     | '/radar'
     | '/uzivo'
     | '/zlatni-tip'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   OverUnderRoute: typeof OverUnderRouteWithChildren
   PostavkeRoute: typeof PostavkeRoute
   PrediktorRoute: typeof PrediktorRoute
+  ProRoute: typeof ProRoute
   RadarRoute: typeof RadarRoute
   UzivoRoute: typeof UzivoRoute
   ZlatniTipRoute: typeof ZlatniTipRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       path: '/prediktor'
       fullPath: '/prediktor'
       preLoaderRoute: typeof PrediktorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pro': {
+      id: '/pro'
+      path: '/pro'
+      fullPath: '/pro'
+      preLoaderRoute: typeof ProRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/radar': {
@@ -312,6 +332,7 @@ const rootRouteChildren: RootRouteChildren = {
   OverUnderRoute: OverUnderRouteWithChildren,
   PostavkeRoute: PostavkeRoute,
   PrediktorRoute: PrediktorRoute,
+  ProRoute: ProRoute,
   RadarRoute: RadarRoute,
   UzivoRoute: UzivoRoute,
   ZlatniTipRoute: ZlatniTipRoute,
