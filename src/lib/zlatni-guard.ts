@@ -67,10 +67,16 @@ export function record(cost: number, rate: { dayRemaining: number; dayLimit: num
   if (error === "RATE_LIMIT") {
     s.strikes429 += 1;
     s.cooldownUntil = now + 65_000 * 2 ** (s.strikes429 - 1);
-    if (s.strikes429 >= 3) { s.blockedDay = s.day; s.blockedReason = "API je 3× javio prekoračenje limita."; }
+    // Nakon 3 uzastopna 429: pauza 30 min (NE cijeli dan) — minutni limit se sam resetira.
+    if (s.strikes429 >= 3) { s.cooldownUntil = now + 30 * 60_000; s.strikes429 = 0; }
   } else if (error?.startsWith("ACCOUNT")) {
-    s.blockedDay = s.day;
-    s.blockedReason = error.replace("ACCOUNT: ", "");
+    // Potpuna dnevna blokada samo kad API izričito javi suspenziju računa.
+    if (/suspend/i.test(error)) {
+      s.blockedDay = s.day;
+      s.blockedReason = error.replace("ACCOUNT: ", "");
+    } else {
+      s.cooldownUntil = Math.max(s.cooldownUntil, now + 5 * 60_000);
+    }
   } else if (error && !/bet365/.test(error)) {
     s.errorStreak += 1;
     if (s.errorStreak >= 3) { s.cooldownUntil = now + 5 * 60_000; s.errorStreak = 0; }
@@ -114,6 +120,18 @@ export async function guarded<T extends { error: string | null; rate: any }>(
   })();
   inflight.set(ck, job);
   try { return await job; } finally { inflight.delete(ck); }
+}
+
+/** Ručno poništi blokadu/hlađenje (npr. korisnik je siguran da je limit prošao). */
+export function resetGuard() {
+  const s = readState();
+  s.blockedDay = null;
+  s.blockedReason = null;
+  s.cooldownUntil = 0;
+  s.strikes429 = 0;
+  s.errorStreak = 0;
+  s.stamps = [];
+  write(s);
 }
 
 export function pruneCache() {

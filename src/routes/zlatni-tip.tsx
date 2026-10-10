@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
-import { getApiKey, guarded, pruneCache, readState, zagrebDay, RESERVE } from "@/lib/zlatni-guard";
+import { getApiKey, guarded, pruneCache, readState, resetGuard, zagrebDay, RESERVE } from "@/lib/zlatni-guard";
 import { SettingsModal } from "@/components/SettingsModal";
 
 export const Route = createFileRoute("/zlatni-tip")({
@@ -101,7 +101,15 @@ function ZlatniTip() {
           </div>
         </div>
         {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
-        <p className="mt-1 text-[11px] text-muted-foreground">🛡️ Zaštita od suspenzije: {credits}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <p className="text-[11px] text-muted-foreground">🛡️ Zaštita od suspenzije: {credits}</p>
+          <button
+            onClick={() => { resetGuard(); refreshCredits(); setMsg("Zaštita resetirana — pokušaj ponovno kliknuti utakmicu."); }}
+            className="rounded border border-input bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground"
+          >
+            Poništi blokadu
+          </button>
+        </div>
         {list.length > 0 && (
           <>
             <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="🔍 Tim ili liga…" className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground" />
