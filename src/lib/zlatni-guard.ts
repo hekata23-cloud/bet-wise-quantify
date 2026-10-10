@@ -34,6 +34,12 @@ export function readState(): State {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null") as State | null;
     if (!s) return fresh;
     if (s.day !== zagrebDay()) return { ...fresh, cooldownUntil: s.cooldownUntil };
+    // Stare blokade iz prijašnjih verzija (3×429, token/key greške) više ne vrijede —
+    // dnevna blokada ostaje samo uz izričitu suspenziju računa.
+    if (s.blockedDay && !/suspend/i.test(s.blockedReason ?? "")) {
+      s.blockedDay = null;
+      s.blockedReason = null;
+    }
     return s;
   } catch {
     return fresh;
