@@ -1,47 +1,60 @@
-import { Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { CalendarDays, Download, Filter, Loader2, Search, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
+import { useServerFn } from "@tanstack/react-start";
+import { Calendar, Download, Filter, Loader2, RotateCcw, Search, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadKey } from "@/lib/api-football-storage";
 import { getFixtureOdds, getFixtures, type FixtureItem, type OddsResult } from "@/lib/api-football-data.functions";
-import { canCall, DAILY_LIMIT, getCache, readGuard, recordCall, setCache } from "@/lib/api-guard";
+import { canCall, DAILY_LIMIT, getCache, readGuard, recordCall, resetGuard, setCache } from "@/lib/api-guard";
+import { getApiKey } from "@/lib/zlatni-guard";
 
-export type LoadedOdds = {
-  k22?: number | undefined;
-  over?: number | undefined;
-  gg?: number | undefined;
-  exact?: Record<string, number> | undefined;
+export interface LoadedMatchOdds {
+  k22?: number;
+  over?: number;
+  gg?: number;
+  exact?: Record<string, number>;
   label: string;
-  bookmaker?: string | undefined;
-};
+  bookmaker?: string;
+}
+
+interface Props {
+  onLoaded: (odds: LoadedMatchOdds) => void;
+}
 
 function localDate() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void }) {
-  const fetchFixtures = useServerFn(getFixtures);
-  const fetchOdds = useServerFn(getFixtureOdds);
+export function MatchPicker({ onLoaded }: Props) {
   const [key, setKey] = useState<string | null>(null);
   const [date, setDate] = useState("");
-  const [fixtures, setFixtures] = useState<FixtureItem[]>([]);
-  const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [fixtures, setFixtures] = useState<FixtureItem[]>([]);
+  const [query, setQuery] = useState("");
   const [used, setUsed] = useState(0);
+
+  const fetchFixtures = useServerFn(getFixtures);
+  const fetchOdds = useServerFn(getFixtureOdds);
 
   useEffect(() => {
     const k = loadKey();
-    setKey(k?.active ? k.key : null);
+    const primary = k?.active ? k.key : null;
+    const universal = getApiKey();
+    setKey(primary || universal || null);
     setDate(localDate());
     setUsed(readGuard().count);
   }, []);
 
   async function loadFixtures() {
-    if (!key) return;
+    const activeKey = key || getApiKey();
+    if (!activeKey) {
+      setMsg("API ključ nije pronađen. Unesi ga u Postavkama.");
+      return;
+    }
     const cacheKey = `fx.all.${date}`;
     const cached = getCache<FixtureItem[]>(cacheKey, 24 * 60 * 60 * 1000);
     if (cached) {
@@ -56,7 +69,7 @@ export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void
     setBusy(true);
     setMsg(null);
     try {
-      const res = await fetchFixtures({ data: { key, date } });
+      const res = await fetchFixtures({ data: { key: activeKey, date } });
       recordCall(res.remaining);
       setUsed(readGuard().count);
 
@@ -72,7 +85,8 @@ export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void
   }
 
   async function pick(f: FixtureItem) {
-    if (!key) return;
+    const activeKey = key || getApiKey();
+    if (!activeKey) return;
     const label = `${f.home} – ${f.away}`;
 
     const apply = (o: OddsResult, fromCache: boolean) => {
@@ -86,8 +100,8 @@ export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void
         bookmaker: o.bookmaker,
       });
 
-      const note = o.k22Estimated ? " (2:2 precizno procijenjen iz modela)" : "";
-      setMsg(`Kvote upisane za: ${label} (${o.bookmaker ?? "Kladionica"})${fromCache ? " [iz memorije]" : ""}${note}.`);
+      const note = o.k22Estimated ? " (2:2 procijenjen iz modela)" : "";
+      setMsg(`Kvote upisane: ${label} (${o.bookmaker ?? "Kladionica"})${fromCache ? " [memorija]" : ""}${note}.`);
     };
 
     const cacheKey = `odds.${f.id}`;
@@ -99,7 +113,7 @@ export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void
 
     setBusy(true);
     try {
-      const res = await fetchOdds({ data: { key, fixture: f.id } });
+      const res = await fetchOdds({ data: { key: activeKey, fixture: f.id } });
       recordCall(res.remaining);
       setUsed(readGuard().count);
 
@@ -120,20 +134,39 @@ export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void
     return list.slice(0, 100);
   }, [fixtures, query]);
 
-  if (!key) {
-    return (
-      <p className="mt-3 rounded-md border border-line bg-surface/40 p-3 text-sm text-ink/80">
-        Želiš automatsko učitavanje svih liga? Unesi i aktiviraj API-Football ključ u{" "}
-        <Link to="/over-under/postavke" className="font-semibold text-cyan underline">Postavkama</Link>.
-      </p>
-    );
-  }
-
   return (
-    <div className="mt-3 space-y-3">
-      <div className="flex gap-2">
-        <label className="relative flex-1">
-          <CalendarDays className="pointer-events-none absolute left-3 top-3 size-5 text-muted" />
+    <div className="space-y-4 rounded-xl border border-line bg-surface/30 p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 pb-3">
+        <div>
+          <h3 className="font-display text-base font-bold text-ink">API-Football · Birač utakmica dana</h3>
+          <p className="text-xs text-muted">
+            1 klik = sve utakmice dana u keš · klik na par = povlači stvarne kvote
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-muted">
+            Danas: <strong className="text-cyan">{used}</strong>/{DAILY_LIMIT}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              resetGuard();
+              setUsed(0);
+              setMsg("Zaštita poništena — možeš ponovno učitavati.");
+            }}
+            className="h-7 px-2 text-xs text-muted hover:text-ink"
+            title="Poništi limit ili hlađenje"
+          >
+            <RotateCcw className="mr-1 size-3" /> Poništi zaštitu
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+        <label className="relative block">
+          <Calendar className="pointer-events-none absolute left-3 top-3 size-5 text-muted" />
           <input
             type="date"
             value={date}
@@ -194,11 +227,6 @@ export function MatchPicker({ onLoaded }: { onLoaded: (odds: LoadedOdds) => void
           {msg}
         </p>
       )}
-
-      <div className="flex items-center justify-between rounded border border-line/50 bg-surface/30 px-2.5 py-1.5 text-[11px] text-muted">
-        <span>Iskorišteno danas: <strong>{used} / {DAILY_LIMIT}</strong> zahtjeva</span>
-        <span className="text-win font-semibold">Zaštita od suspenzije: AKTIVNA</span>
-      </div>
     </div>
   );
 }
