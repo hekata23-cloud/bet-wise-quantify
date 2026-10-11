@@ -3,25 +3,28 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   Brain,
   Calculator,
+  Clock,
+  Flame,
+  Goal,
   MessageCircle,
+  Radar,
   Radio,
   Settings,
   Sparkles,
   Target,
-  Radar,
   Thermometer,
+  Ticket,
   Trophy,
   Wrench,
-  Goal,
-  Ticket,
-  Flame,
 } from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
 
 const NAV = [
   { to: "/", label: "Početna", icon: Sparkles },
-  { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
+  { to: "/ht-ft", label: "HT/FT Sharp", icon: Clock },
   { to: "/btts-over", label: "2.5 & BTTS Sharp", icon: Flame },
+  { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
+  { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
@@ -29,7 +32,6 @@ const NAV = [
   { to: "/prediktor", label: "Prediktor 3.5 & CS", icon: Target },
   { to: "/pro", label: "Pro Sharp", icon: Target },
   { to: "/pro-alati", label: "Pro Alati", icon: Wrench },
-  { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/ai-prognoza", label: "AI Prognoza", icon: Brain },
   { to: "/chat", label: "AI Chat", icon: MessageCircle },
   { to: "/uzivo", label: "Uživo", icon: Radio },
@@ -118,6 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 
 
 
