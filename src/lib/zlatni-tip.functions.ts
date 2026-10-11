@@ -154,3 +154,36 @@ export const getZtMatch = createServerFn({ method: "POST" })
       calls,
     };
   });
+
+export type PaExtra = {
+  minute: number; status: string; goalsH: number; goalsA: number;
+  shotsOnH: number; shotsOnA: number; shotsH: number; shotsA: number;
+  cornersH: number; cornersA: number; yellowH: number; yellowA: number;
+  lineupsReady: boolean;
+  injuries: { team: "home" | "away"; player: string; reason: string }[];
+};
+
+/** Pro Alati: 2 poziva — /fixtures?id (status, statistika, postave) + /injuries?fixture. */
+export const getPaExtra = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ id: z.number().int().positive(), homeId: z.number().int(), apiKey: z.string().optional() }).parse(d))
+  .handler(async ({ data }) => {
+    const f = await call(`/fixtures?id=${data.id}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
+    if (f.error === "RATE_LIMIT" || f.error?.startsWith("ACCOUNT")) return { error: f.error, rate: f.rate, extra: null as PaExtra | null };
+    const fx = ((f.data as any[]) ?? [])[0];
+    const st = (side: number, type: string) => num(((fx?.statistics?.[side]?.statistics ?? []) as any[]).find((s) => s.type === type)?.value);
+    const i = await call(`/injuries?fixture=${data.id}`, data.apiKey);
+    const extra: PaExtra = {
+      minute: num(fx?.fixture?.status?.elapsed), status: fx?.fixture?.status?.short ?? "NS",
+      goalsH: num(fx?.goals?.home), goalsA: num(fx?.goals?.away),
+      shotsOnH: st(0, "Shots on Goal"), shotsOnA: st(1, "Shots on Goal"),
+      shotsH: st(0, "Total Shots"), shotsA: st(1, "Total Shots"),
+      cornersH: st(0, "Corner Kicks"), cornersA: st(1, "Corner Kicks"),
+      yellowH: st(0, "Yellow Cards"), yellowA: st(1, "Yellow Cards"),
+      lineupsReady: ((fx?.lineups as any[]) ?? []).length > 0,
+      injuries: ((i.data as any[]) ?? []).map((x) => ({
+        team: Number(x?.team?.id) === data.homeId ? "home" as const : "away" as const,
+        player: String(x?.player?.name ?? "?"), reason: String(x?.player?.reason ?? x?.player?.type ?? ""),
+      })),
+    };
+    return { error: f.error, rate: i.rate.dayRemaining >= 0 ? i.rate : f.rate, extra };
+  });
