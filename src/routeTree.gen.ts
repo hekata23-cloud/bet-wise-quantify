@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiPrognozaRouteImport } from './routes/ai-prognoza'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as OverUnderRouteImport } from './routes/over-under'
 import { Route as PostavkeRouteImport } from './routes/postavke'
@@ -39,6 +40,11 @@ const AiPrognozaRoute = AiPrognozaRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoloviRoute = GoloviRouteImport.update({
+  id: '/golovi',
+  path: '/golovi',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KalkulatorRoute = KalkulatorRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/chat': typeof ChatRoute
+  '/golovi': typeof GoloviRoute
   '/kalkulator': typeof KalkulatorRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/chat': typeof ChatRoute
+  '/golovi': typeof GoloviRoute
   '/kalkulator': typeof KalkulatorRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/chat': typeof ChatRoute
+  '/golovi': typeof GoloviRoute
   '/kalkulator': typeof KalkulatorRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/chat'
+    | '/golovi'
     | '/kalkulator'
     | '/over-under'
     | '/postavke'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/chat'
+    | '/golovi'
     | '/kalkulator'
     | '/postavke'
     | '/prediktor'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/chat'
+    | '/golovi'
     | '/kalkulator'
     | '/over-under'
     | '/postavke'
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiPrognozaRoute: typeof AiPrognozaRoute
   ChatRoute: typeof ChatRoute
+  GoloviRoute: typeof GoloviRoute
   KalkulatorRoute: typeof KalkulatorRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
   PostavkeRoute: typeof PostavkeRoute
@@ -255,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/golovi': {
+      id: '/golovi'
+      path: '/golovi'
+      fullPath: '/golovi'
+      preLoaderRoute: typeof GoloviRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kalkulator': {
@@ -369,6 +389,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiPrognozaRoute: AiPrognozaRoute,
   ChatRoute: ChatRoute,
+  GoloviRoute: GoloviRoute,
   KalkulatorRoute: KalkulatorRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
   PostavkeRoute: PostavkeRoute,
