@@ -1,11 +1,27 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Brain, Calculator, MessageCircle, Radio, Settings, Sparkles, Target, Radar, Thermometer, Trophy, Wrench, Goal, Ticket } from "lucide-react";
+import {
+  Brain,
+  Calculator,
+  MessageCircle,
+  Radio,
+  Settings,
+  Sparkles,
+  Target,
+  Radar,
+  Thermometer,
+  Trophy,
+  Wrench,
+  Goal,
+  Ticket,
+  Flame,
+} from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
 
 const NAV = [
   { to: "/", label: "Početna", icon: Sparkles },
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
+  { to: "/btts-over", label: "2.5 & BTTS Sharp", icon: Flame },
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
@@ -61,7 +77,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={n.to}
                   to={n.to}
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${active ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    active
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
                 >
                   <Icon className="h-4 w-4" />
                   {n.label}
@@ -79,7 +99,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={n.to}
                 to={n.to}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs whitespace-nowrap ${active ? "bg-primary/15 text-primary" : "text-muted-foreground"}`}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs whitespace-nowrap ${
+                  active ? "bg-primary/15 text-primary" : "text-muted-foreground"
+                }`}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {n.label}
@@ -96,5 +118,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 
 
