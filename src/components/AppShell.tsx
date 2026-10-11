@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Brain, Calculator, MessageCircle, Radio, Settings, Sparkles, Target, Radar, Thermometer, Trophy, Wrench } from "lucide-react";
+import { Brain, Calculator, MessageCircle, Radio, Settings, Sparkles, Target, Radar, Thermometer, Trophy, Wrench, Goal } from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
 
 const NAV = [
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/prediktor", label: "Prediktor 3.5 & CS", icon: Target },
   { to: "/pro", label: "Pro Sharp", icon: Target },
   { to: "/pro-alati", label: "Pro Alati", icon: Wrench },
+  { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/ai-prognoza", label: "AI Prognoza", icon: Brain },
   { to: "/chat", label: "AI Chat", icon: MessageCircle },
   { to: "/uzivo", label: "Uživo", icon: Radio },
