@@ -1,10 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Brain, Calculator, MessageCircle, Radio, Settings, Sparkles, Target, Radar, Thermometer, Trophy, Wrench, Goal } from "lucide-react";
+import { Brain, Calculator, MessageCircle, Radio, Settings, Sparkles, Target, Radar, Thermometer, Trophy, Wrench, Goal, Ticket } from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
 
 const NAV = [
   { to: "/", label: "Početna", icon: Sparkles },
+  { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
@@ -95,3 +96,5 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+
