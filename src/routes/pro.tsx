@@ -125,18 +125,18 @@ export function ProSharpHubPage() {
     setMsg(`Učitavam bet365 kvote i model za: ${f.home} — ${f.away}…`);
     try {
       const r = await guarded(
-        `match.${f.id}`,
-        2,
-        () => getZtMatch({ data: { id: f.id, apiKey } }),
+        `lite.${f.id}`,
+        1,
+        () => getZtMatch({ data: { id: f.id, apiKey, lite: true } }),
         (ms, why) => setMsg(`🛡️ ${why} — čekam ${Math.ceil(ms / 1000)} s…`)
       );
       if (r.error === "RATE_LIMIT" || r.error?.startsWith("ACCOUNT")) {
-        setMsg(`🛡️ Zaštita aktivna: ${r.error}`);
+        setMsg(r.error === "RATE_LIMIT" ? "🛡️ API traži kratku pauzu (10 poziva/min). Pričekaj 15 s i klikni ponovno." : `🛡️ ${r.error}`);
         return;
       }
       const a = analyze(r.markets, r.home, r.away);
       setRes(a);
-      setMsg(r.bookmaker ? `✅ ${Object.keys(r.markets).length} bet365 tržišta automatski učitano i modelirano!` : "⚠️ Kvote nisu dostupne.");
+      setMsg(r.bookmaker ? `✅ ${Object.keys(r.markets).length} tržišta (${r.bookmaker}) učitano i modelirano — 1 kredit.` : "⚠️ Kvote još nisu objavljene za ovu utakmicu.");
     } catch (e: any) {
       setMsg(`🛡️ ${e.message}`);
     } finally {

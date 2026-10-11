@@ -110,40 +110,47 @@ function teamStats(t: any): TeamStats | null {
 }
 
 export const getZtMatch = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d))
+  .inputValidator((d) =>
+    z.object({ id: z.number().int().positive(), apiKey: z.string().optional(), lite: z.boolean().optional() }).parse(d),
+  )
   .handler(async ({ data }) => {
-    // Sekvencijalno (ne paralelno) — nikad dva udarca u istoj milisekundi.
-    const o = await call(`/odds?fixture=${data.id}&bookmaker=${BET365}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
+    // Jedan poziv za SVE kladionice: prednost bet365, inače kladionica s najviše tržišta.
+    const o = await call(`/odds?fixture=${data.id}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
     if (o.error === "RATE_LIMIT" || o.error?.startsWith("ACCOUNT")) {
-      return { error: o.error, rate: o.rate, markets: {} as Bet365Markets, bookmaker: null, home: null, away: null, calls: 1 };
+      return { error: o.error, statsError: null as string | null, rate: o.rate, markets: {} as Bet365Markets, bookmaker: null as string | null, home: null as TeamStats | null, away: null as TeamStats | null, calls: 1 };
     }
+    const books: any[] = ((o.data as any[]) ?? []).flatMap((it) => it?.bookmakers ?? []);
+    const chosen =
+      books.find((b) => Number(b.id) === BET365) ??
+      [...books].sort((a, b) => (b.bets?.length ?? 0) - (a.bets?.length ?? 0))[0];
     const markets: Bet365Markets = {};
-    let bookmaker: string | null = null;
-    for (const item of (o.data as any[]) ?? []) {
-      for (const bm of item?.bookmakers ?? []) {
-        if (Number(bm.id) !== BET365) continue;
-        bookmaker = bm.name;
-        for (const bet of bm.bets ?? []) {
-          const m: Record<string, number> = {};
-          for (const v of bet.values ?? []) {
-            const k = Number(v.odd);
-            if (Number.isFinite(k) && k > 1) m[String(v.value).trim()] = k;
-          }
-          if (Object.keys(m).length) markets[String(bet.name).trim()] = m;
-        }
+    const bookmaker: string | null = chosen?.name ?? null;
+    for (const bet of chosen?.bets ?? []) {
+      const m: Record<string, number> = {};
+      for (const v of bet.values ?? []) {
+        const k = Number(v.odd);
+        if (Number.isFinite(k) && k > 1) m[String(v.value).trim()] = k;
       }
+      if (Object.keys(m).length) markets[String(bet.name).trim()] = m;
     }
-    const p = await call(`/predictions?fixture=${data.id}`, data.apiKey);
-    const pr = ((p.data as any[]) ?? [])[0];
-    const rate = p.rate.dayRemaining >= 0 ? p.rate : o.rate;
+    let home: TeamStats | null = null, away: TeamStats | null = null, statsError: string | null = null, rate = o.rate, calls = 1;
+    if (!data.lite) {
+      const p = await call(`/predictions?fixture=${data.id}`, data.apiKey);
+      const pr = ((p.data as any[]) ?? [])[0];
+      home = teamStats(pr?.teams?.home);
+      away = teamStats(pr?.teams?.away);
+      statsError = p.error;
+      if (p.rate.dayRemaining >= 0) rate = p.rate;
+      calls = 2;
+    }
     return {
-      error: o.error ?? (Object.keys(markets).length ? null : "bet365 još nije objavio kvote za ovu utakmicu."),
-      statsError: p.error,
+      error: o.error ?? (Object.keys(markets).length ? null : "Nijedna kladionica (ni bet365) još nije objavila kvote za ovu utakmicu."),
+      statsError,
       rate,
       markets,
       bookmaker,
-      home: teamStats(pr?.teams?.home),
-      away: teamStats(pr?.teams?.away),
-      calls: 2,
+      home,
+      away,
+      calls,
     };
   });
