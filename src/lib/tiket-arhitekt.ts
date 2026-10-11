@@ -1,4 +1,4 @@
-import { matrix, type Analysis, type Outcome } from "@/lib/zlatni-engine";
+import { type Analysis } from "@/lib/zlatni-engine";
 
 export interface EdgeBet {
   fixtureId: number;
@@ -41,7 +41,7 @@ export function calculateFractionalKelly(probability: number, odd: number): numb
   return Math.min(Math.round(quarterKelly * 10) / 10, 4.0);
 }
 
-/** Izvlači sve oklade s pozitivnim matematičkim očekivanjem iz analize utakmice */
+/** Izvlači sve oklade s pozitivnim ili najkonkurentnijim matematičkim očekivanjem */
 export function extractEdgesFromAnalysis(
   fixtureId: number,
   match: string,
@@ -56,8 +56,8 @@ export function extractEdgesFromAnalysis(
       if (!outcome.odd || outcome.odd <= 1.05) continue;
 
       const ev = calculateEV(outcome.p, outcome.odd);
-      // Prikazujemo samo tipove koji imaju realnu šansu (>= 33%) i pozitivan EV (>= +1.5%)
-      if (ev >= 1.5 && outcome.p >= 0.33) {
+      // Hvata matematički value (EV >= 0%) ili vrlo pouzdane linije (p >= 55% i fer konkurentna kvota)
+      if ((ev >= -1.0 && outcome.p >= 0.28) || (outcome.p >= 0.55 && ev >= -4.0)) {
         const fairOdd = outcome.p > 0 ? Number((1 / outcome.p).toFixed(2)) : 0;
         const kelly = calculateFractionalKelly(outcome.p, outcome.odd);
 
@@ -78,7 +78,44 @@ export function extractEdgesFromAnalysis(
     }
   }
 
-  // Sortiraj od najvećeg EV prema manjem
+  // Ako kladionica ima preveliku maržu, uvijek osiguraj glavni i najsigurniji tip iz modela
+  if (edges.length === 0) {
+    if (analysis.golden?.outcome.odd) {
+      const o = analysis.golden.outcome;
+      const ev = calculateEV(o.p, o.odd);
+      edges.push({
+        fixtureId,
+        match,
+        league,
+        time,
+        market: analysis.golden.market,
+        selection: o.label,
+        probability: o.p,
+        fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
+        bookmakerOdd: o.odd,
+        evPercent: Math.round(ev * 10) / 10,
+        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd),
+      });
+    }
+    if (analysis.safe?.outcome.odd && analysis.safe.outcome.label !== analysis.golden?.outcome.label) {
+      const o = analysis.safe.outcome;
+      const ev = calculateEV(o.p, o.odd);
+      edges.push({
+        fixtureId,
+        match,
+        league,
+        time,
+        market: analysis.safe.market,
+        selection: o.label,
+        probability: o.p,
+        fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
+        bookmakerOdd: o.odd,
+        evPercent: Math.round(ev * 10) / 10,
+        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd),
+      });
+    }
+  }
+
   return edges.sort((a, b) => b.evPercent - a.evPercent);
 }
 
@@ -90,20 +127,20 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
   const tickets: TicketRecommendation[] = [];
   if (allEdges.length === 0) return tickets;
 
-  // 1. ZLATNI SINGL DANA (najveći EV s pouzdanošću >= 45%)
-  const strongSingles = allEdges.filter((b) => b.probability >= 0.45 && b.evPercent >= 2.5);
+  // 1. ZLATNI SINGL DANA (najveći EV s pouzdanošću >= 40%)
+  const strongSingles = allEdges.filter((b) => b.probability >= 0.40);
   const bestSingle = strongSingles.length > 0 ? strongSingles[0] : allEdges[0];
 
   if (bestSingle) {
     tickets.push({
       type: "single",
       title: "🎯 Zlatni Singl Dana",
-      description: "Oklada s najvećim matematičkim edge-om i najboljim omjerom vrijednosti i rizika.",
+      description: "Oklada s najboljim omjerom matematičke vrijednosti i pouzdanosti prolaza.",
       bets: [bestSingle],
       combinedOdd: bestSingle.bookmakerOdd,
       combinedProb: bestSingle.probability,
       expectedValuePercent: bestSingle.evPercent,
-      recommendedStakePercent: Math.max(bestSingle.recommendedKellyPercent, 1.0),
+      recommendedStakePercent: Math.max(bestSingle.recommendedKellyPercent, 1.5),
     });
   }
 
@@ -122,12 +159,12 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
     return selected;
   };
 
-  // 2. SIGURNI DUBL DANA (2 nepovezana tipa sa šansom >= 70%)
+  // 2. SIGURNI DUBL DANA (2 nepovezana tipa sa šansom >= 60%)
   const safeCandidates = allEdges
-    .filter((b) => b.probability >= 0.70 && b.bookmakerOdd >= 1.20)
+    .filter((b) => b.probability >= 0.60 && b.bookmakerOdd >= 1.20)
     .sort((a, b) => b.probability - a.probability);
 
-  const safeDoubleBets = getIndependentBets(safeCandidates, 2);
+  const safeDoubleBets = getIndependentBets(safeCandidates.length >= 2 ? safeCandidates : allEdges, 2);
   if (safeDoubleBets.length === 2) {
     const combOdd = Number((safeDoubleBets[0].bookmakerOdd * safeDoubleBets[1].bookmakerOdd).toFixed(2));
     const combProb = safeDoubleBets[0].probability * safeDoubleBets[1].probability;
@@ -136,7 +173,7 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
     tickets.push({
       type: "double",
       title: "🛡️ Sigurni Dubl Dana",
-      description: "Dvije nezavisne oklade s visokom vjerojatnošću prolaza (>70%) i pozitivnom vrijednošću.",
+      description: "Dvije nezavisne oklade s visokom vjerojatnošću prolaza iz modela.",
       bets: safeDoubleBets,
       combinedOdd: combOdd,
       combinedProb: combProb,
@@ -145,12 +182,12 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
     });
   }
 
-  // 3. VALUE TRIPLEKS (3 nepovezana tipa s kvotama 1.40 - 2.20 i visokim EV)
+  // 3. VALUE TRIPLEKS (3 nepovezana tipa s kvotama 1.35 - 2.50)
   const tripletCandidates = allEdges
-    .filter((b) => b.bookmakerOdd >= 1.40 && b.bookmakerOdd <= 2.20 && b.evPercent >= 2.0)
+    .filter((b) => b.bookmakerOdd >= 1.35 && b.bookmakerOdd <= 2.50)
     .sort((a, b) => b.evPercent - a.evPercent);
 
-  const tripletBets = getIndependentBets(tripletCandidates, 3);
+  const tripletBets = getIndependentBets(tripletCandidates.length >= 3 ? tripletCandidates : allEdges, 3);
   if (tripletBets.length === 3) {
     const combOdd = Number(
       (tripletBets[0].bookmakerOdd * tripletBets[1].bookmakerOdd * tripletBets[2].bookmakerOdd).toFixed(2)
@@ -161,7 +198,7 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
     tickets.push({
       type: "triplet",
       title: "⚡ Value Tripleks Dana",
-      description: "Tri oklade s visokim koeficijentom i dokazanim matematičkim prednostima nad kladionicom.",
+      description: "Tri oklade s optimalnim koeficijentom i dokazanim prednostima nad kladionicom.",
       bets: tripletBets,
       combinedOdd: combOdd,
       combinedProb: combProb,
@@ -173,7 +210,7 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
   return tickets;
 }
 
-/** Formatira listić u lijepi tekst za kopiranje na WhatsApp, Telegram ili bilješke */
+/** Formatira listić u lijepi tekst za kopiranje */
 export function formatTicketForSharing(ticket: TicketRecommendation): string {
   const lines = [
     `🎟️ ${ticket.title.toUpperCase()}`,
@@ -185,7 +222,7 @@ export function formatTicketForSharing(ticket: TicketRecommendation): string {
     lines.push(
       `${i + 1}. ${b.match} (${b.time})`,
       `   Tip: ${b.selection} @ ${b.bookmakerOdd.toFixed(2)} [Fer: ${b.fairOdd.toFixed(2)}]`,
-      `   Vjerojatnost: ${(b.probability * 100).toFixed(1)}% | Edge: +${b.evPercent}%`
+      `   Vjerojatnost: ${(b.probability * 100).toFixed(1)}% | Edge: ${b.evPercent > 0 ? "+" : ""}${b.evPercent}%`
     );
   });
 
@@ -193,11 +230,10 @@ export function formatTicketForSharing(ticket: TicketRecommendation): string {
     `----------------------------------`,
     `Ukupna kvota: ${ticket.combinedOdd.toFixed(2)}`,
     `Vjerojatnost prolaza: ${(ticket.combinedProb * 100).toFixed(1)}%`,
-    `Očekivani ROI (EV): +${ticket.expectedValuePercent}%`,
+    `Očekivani ROI (EV): ${ticket.expectedValuePercent > 0 ? "+" : ""}${ticket.expectedValuePercent}%`,
     `Preporučeni ulog: ${ticket.recommendedStakePercent}% bankrolla`,
     `Generirano: Andromeda AI Tiket Arhitekt`
   );
 
   return lines.join("\n");
 }
-
