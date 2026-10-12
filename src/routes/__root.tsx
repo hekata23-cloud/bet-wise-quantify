@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "sonner";
 import { AppShell } from "../components/AppShell";
+import { TrapGuard } from "../components/TrapGuard";
 
 function NotFoundComponent() {
   return (
@@ -143,6 +144,7 @@ function RootComponent() {
       <AppShell>
         <Outlet />
       </AppShell>
+      <TrapGuard />
       <Toaster theme="dark" position="top-right" richColors />
     </QueryClientProvider>
   );

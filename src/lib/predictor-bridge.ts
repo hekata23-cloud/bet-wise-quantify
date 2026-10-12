@@ -26,6 +26,7 @@ export function saveLastPredictorInputs(data: Inputs): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem("prediktor:last_inputs", JSON.stringify(data));
+    window.dispatchEvent(new Event("andromeda:trap-inputs"));
   } catch {
     /* ignore */
   }

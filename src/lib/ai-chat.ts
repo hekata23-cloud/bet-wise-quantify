@@ -15,6 +15,8 @@ import { attachmentsContextText, type ChatAttachment } from "./attachments";
 import { matchDataBrief } from "./matchdata";
 import { predictorBriefing } from "./predictor-bridge";
 import { proDirectives } from "./pro-sloj";
+import { trapBriefing } from "./trap-detector";
+import { loadLastPredictorInputs } from "./predictor-bridge";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -106,6 +108,7 @@ export async function askAi(
   const briefings = [
     live ?? "",
     proDirectives(),
+    trapBriefing(loadLastPredictorInputs()),
     predictorBriefing(), // <-- NOVI KORAK: Povezan Prediktor
     consensusBriefing(consensus),
     omniBriefing(omniBtts),
