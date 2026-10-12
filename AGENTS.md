@@ -15,3 +15,4 @@
 - Zlatni tip is a prebuilt bundle served from public/zlatni-tip/ and shown in an iframe on /zlatni-tip — its global CSS would otherwise break the main app.
 
 - Zlatni tip is a native React page (src/routes/zlatni-tip.tsx + src/lib/zlatni-engine.ts); all API-Football calls go through src/lib/zlatni-guard.ts — why: the old prebuilt iframe could not be fixed and unguarded calls risk account suspension.
+- Basketball (/kosarka) uses API-Basketball via src/lib/kosarka.functions.ts and its own guard src/lib/kosarka-guard.ts — separate daily quota from API-Football.
