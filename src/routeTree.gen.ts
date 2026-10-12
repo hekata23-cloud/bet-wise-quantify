@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiPrognozaRouteImport } from './routes/ai-prognoza'
+import { Route as BttsOverRouteImport } from './routes/btts-over'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as GoloviRouteImport } from './routes/golovi'
+import { Route as HtFtRouteImport } from './routes/ht-ft'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as OverUnderRouteImport } from './routes/over-under'
 import { Route as PostavkeRouteImport } from './routes/postavke'
@@ -20,6 +22,7 @@ import { Route as PrediktorRouteImport } from './routes/prediktor'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as ProAlatiRouteImport } from './routes/pro-alati'
 import { Route as RadarRouteImport } from './routes/radar'
+import { Route as TiketArhitektRouteImport } from './routes/tiket-arhitekt'
 import { Route as UzivoRouteImport } from './routes/uzivo'
 import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
 import { Route as OverUnderIndexRouteImport } from './routes/over-under.index'
@@ -37,6 +40,11 @@ const AiPrognozaRoute = AiPrognozaRouteImport.update({
   path: '/ai-prognoza',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BttsOverRoute = BttsOverRouteImport.update({
+  id: '/btts-over',
+  path: '/btts-over',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -45,6 +53,11 @@ const ChatRoute = ChatRouteImport.update({
 const GoloviRoute = GoloviRouteImport.update({
   id: '/golovi',
   path: '/golovi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HtFtRoute = HtFtRouteImport.update({
+  id: '/ht-ft',
+  path: '/ht-ft',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KalkulatorRoute = KalkulatorRouteImport.update({
@@ -82,6 +95,11 @@ const RadarRoute = RadarRouteImport.update({
   path: '/radar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TiketArhitektRoute = TiketArhitektRouteImport.update({
+  id: '/tiket-arhitekt',
+  path: '/tiket-arhitekt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UzivoRoute = UzivoRouteImport.update({
   id: '/uzivo',
   path: '/uzivo',
@@ -116,8 +134,10 @@ const ApiPublicNvidiaRoute = ApiPublicNvidiaRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
+  '/btts-over': typeof BttsOverRoute
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
+  '/ht-ft': typeof HtFtRoute
   '/kalkulator': typeof KalkulatorRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
@@ -125,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
@@ -135,14 +156,17 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
+  '/btts-over': typeof BttsOverRoute
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
+  '/ht-ft': typeof HtFtRoute
   '/kalkulator': typeof KalkulatorRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
@@ -154,8 +178,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
+  '/btts-over': typeof BttsOverRoute
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
+  '/ht-ft': typeof HtFtRoute
   '/kalkulator': typeof KalkulatorRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
@@ -163,6 +189,7 @@ export interface FileRoutesById {
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
@@ -175,8 +202,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/ai-prognoza'
+    | '/btts-over'
     | '/chat'
     | '/golovi'
+    | '/ht-ft'
     | '/kalkulator'
     | '/over-under'
     | '/postavke'
@@ -184,6 +213,7 @@ export interface FileRouteTypes {
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
     | '/over-under/postavke'
@@ -194,14 +224,17 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/ai-prognoza'
+    | '/btts-over'
     | '/chat'
     | '/golovi'
+    | '/ht-ft'
     | '/kalkulator'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
     | '/over-under/postavke'
@@ -212,8 +245,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/ai-prognoza'
+    | '/btts-over'
     | '/chat'
     | '/golovi'
+    | '/ht-ft'
     | '/kalkulator'
     | '/over-under'
     | '/postavke'
@@ -221,6 +256,7 @@ export interface FileRouteTypes {
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
     | '/over-under/postavke'
@@ -232,8 +268,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiPrognozaRoute: typeof AiPrognozaRoute
+  BttsOverRoute: typeof BttsOverRoute
   ChatRoute: typeof ChatRoute
   GoloviRoute: typeof GoloviRoute
+  HtFtRoute: typeof HtFtRoute
   KalkulatorRoute: typeof KalkulatorRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
   PostavkeRoute: typeof PostavkeRoute
@@ -241,6 +279,7 @@ export interface RootRouteChildren {
   ProRoute: typeof ProRoute
   ProAlatiRoute: typeof ProAlatiRoute
   RadarRoute: typeof RadarRoute
+  TiketArhitektRoute: typeof TiketArhitektRoute
   UzivoRoute: typeof UzivoRoute
   ZlatniTipRoute: typeof ZlatniTipRoute
   ApiPublicFootballDataRoute: typeof ApiPublicFootballDataRoute
@@ -263,6 +302,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiPrognozaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/btts-over': {
+      id: '/btts-over'
+      path: '/btts-over'
+      fullPath: '/btts-over'
+      preLoaderRoute: typeof BttsOverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -275,6 +321,13 @@ declare module '@tanstack/react-router' {
       path: '/golovi'
       fullPath: '/golovi'
       preLoaderRoute: typeof GoloviRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ht-ft': {
+      id: '/ht-ft'
+      path: '/ht-ft'
+      fullPath: '/ht-ft'
+      preLoaderRoute: typeof HtFtRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kalkulator': {
@@ -324,6 +377,13 @@ declare module '@tanstack/react-router' {
       path: '/radar'
       fullPath: '/radar'
       preLoaderRoute: typeof RadarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tiket-arhitekt': {
+      id: '/tiket-arhitekt'
+      path: '/tiket-arhitekt'
+      fullPath: '/tiket-arhitekt'
+      preLoaderRoute: typeof TiketArhitektRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/uzivo': {
@@ -388,8 +448,10 @@ const OverUnderRouteWithChildren = OverUnderRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiPrognozaRoute: AiPrognozaRoute,
+  BttsOverRoute: BttsOverRoute,
   ChatRoute: ChatRoute,
   GoloviRoute: GoloviRoute,
+  HtFtRoute: HtFtRoute,
   KalkulatorRoute: KalkulatorRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
   PostavkeRoute: PostavkeRoute,
@@ -397,6 +459,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProRoute: ProRoute,
   ProAlatiRoute: ProAlatiRoute,
   RadarRoute: RadarRoute,
+  TiketArhitektRoute: TiketArhitektRoute,
   UzivoRoute: UzivoRoute,
   ZlatniTipRoute: ZlatniTipRoute,
   ApiPublicFootballDataRoute: ApiPublicFootballDataRoute,
