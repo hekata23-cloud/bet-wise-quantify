@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Brain,
+  Dribbble,
   Calculator,
   Clock,
   Flame,
@@ -25,6 +26,7 @@ const NAV = [
   { to: "/btts-over", label: "2.5 & BTTS Sharp", icon: Flame },
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/golovi", label: "Golovi Pro", icon: Goal },
+  { to: "/kosarka", label: "Košarka Sharp", icon: Dribbble },
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
