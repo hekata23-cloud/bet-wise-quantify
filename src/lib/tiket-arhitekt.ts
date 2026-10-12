@@ -82,7 +82,7 @@ export function extractEdgesFromAnalysis(
   if (edges.length === 0) {
     if (analysis.golden?.outcome.odd) {
       const o = analysis.golden.outcome;
-      const ev = calculateEV(o.p, o.odd);
+      const ev = calculateEV(o.p, o.odd ?? 0);
       edges.push({
         fixtureId,
         match,
@@ -92,14 +92,14 @@ export function extractEdgesFromAnalysis(
         selection: o.label,
         probability: o.p,
         fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
-        bookmakerOdd: o.odd,
+        bookmakerOdd: o.odd ?? 0,
         evPercent: Math.round(ev * 10) / 10,
-        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd),
+        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd ?? 0),
       });
     }
     if (analysis.safe?.outcome.odd && analysis.safe.outcome.label !== analysis.golden?.outcome.label) {
       const o = analysis.safe.outcome;
-      const ev = calculateEV(o.p, o.odd);
+      const ev = calculateEV(o.p, o.odd ?? 0);
       edges.push({
         fixtureId,
         match,
@@ -109,9 +109,9 @@ export function extractEdgesFromAnalysis(
         selection: o.label,
         probability: o.p,
         fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
-        bookmakerOdd: o.odd,
+        bookmakerOdd: o.odd ?? 0,
         evPercent: Math.round(ev * 10) / 10,
-        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd),
+        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd ?? 0),
       });
     }
   }
