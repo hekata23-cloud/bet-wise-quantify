@@ -5,13 +5,12 @@ import {
   RefreshCw,
   Search,
   Settings,
-  ShieldAlert,
-  ShieldCheck,
   Clock,
   Layers,
-  TrendingUp,
-  AlertTriangle,
   Award,
+  TrendingUp,
+  ShieldCheck,
+  Percent,
 } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
 import {
@@ -57,15 +56,18 @@ export const Route = createFileRoute("/ht-ft-predikcija")({
   component: QuantumHtFtPage,
 });
 
-function formatMatchTime(isoString: string) {
+function formatMatchTime(isoString?: string) {
+  if (!isoString) return "--:--";
   try {
-    return new Date(isoString).toLocaleTimeString("hr-HR", {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    return d.toLocaleTimeString("hr-HR", {
       timeZone: "Europe/Zagreb",
       hour: "2-digit",
       minute: "2-digit",
     });
   } catch {
-    return isoString;
+    return isoString || "--:--";
   }
 }
 
@@ -114,9 +116,12 @@ export function QuantumHtFtPage() {
       );
 
       if (res && res.fixtures) {
-        setFixtures(res.fixtures);
+        const playable = res.fixtures.filter((f) =>
+          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status)
+        );
+        setFixtures(playable);
         setStatusMsg(
-          `Učitano ${res.fixtures.length} utakmica. Odaberite utakmicu za egzaktnu HT/FT analizu.`
+          `Učitano ${playable.length} utakmica. Odaberite utakmicu za egzaktnu HT/FT analizu.`
         );
       } else {
         setStatusMsg("Nema dostupnih utakmica za danas ili je došlo do zastoja.");
@@ -161,11 +166,11 @@ export function QuantumHtFtPage() {
       // Pokretanje internog modeliranja
       const basicAnalysis = analyze(res.markets, res.home ?? null, res.away ?? null);
       const matchName = `${f.home} – ${f.away}`;
-      const timeStr = formatMatchTime(f.date);
+      const timeStr = formatMatchTime(f.time);
 
       const qResult = computeQuantumHtFt(basicAnalysis, matchName, f.league, timeStr);
       setPrediction(qResult);
-      setStatusMsg("Analiza uspješno dovršena s 4 posebne metode.");
+      setStatusMsg(`Analiza dovršena.${res.bookmaker ? ` Kvote: ${res.bookmaker}.` : ""}`);
     } catch (err: any) {
       setStatusMsg(`Greška analize: ${err?.message || "Provjerite vezu s API-jem"}`);
     } finally {
@@ -198,7 +203,7 @@ export function QuantumHtFtPage() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Egzaktan i točan tip poluvrijeme/kraj izračunat pomoću 4 posebne interne metode (Dixon-Coles, Markovljevi lanci, Shannonova entropija i Bayesov model).
+            Egzaktan i točan tip poluvrijeme/kraj izračunat pomoću 4 posebne metode (Dixon-Coles, Markovljevi lanci, Shannonova entropija i Bayesov model).
           </p>
         </div>
 
@@ -275,7 +280,7 @@ export function QuantumHtFtPage() {
                 >
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                     <span className="font-medium truncate max-w-[170px]">{f.league}</span>
-                    <span className="font-mono text-emerald-400">{formatMatchTime(f.date)}</span>
+                    <span className="font-mono text-emerald-400">{formatMatchTime(f.time)}</span>
                   </div>
                   <div className="text-sm font-bold text-foreground truncate">
                     {f.home} <span className="text-muted-foreground font-normal">vs</span> {f.away}
@@ -307,7 +312,7 @@ export function QuantumHtFtPage() {
                   {prediction.match}
                 </h2>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  {prediction.league} · Početak: {prediction.time}
+                  {prediction.league} · Početak: {prediction.time} (Zagreb)
                 </p>
               </div>
 
@@ -339,180 +344,142 @@ export function QuantumHtFtPage() {
                     {prediction.concreteTip.label}
                   </div>
                 </div>
-
-                <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed bg-background/60 p-3.5 rounded-xl border border-border/50">
-                  <strong className="text-emerald-400">Taktičko-matematičko obrazloženje:</strong>{" "}
+                <p className="text-xs sm:text-sm text-emerald-100/80 bg-emerald-950/30 p-3 rounded-xl border border-emerald-500/20">
+                  💡 <strong className="text-emerald-300">Taktičko obrazloženje:</strong>{" "}
                   {prediction.concreteTip.tacticalReason}
                 </p>
               </div>
 
-              {/* Kvote i vjerojatnost */}
-              <div className="p-4 rounded-2xl bg-card border border-border/70 flex flex-col justify-center space-y-3">
+              {/* Kvote i matematički omjeri */}
+              <div className="rounded-2xl border border-border/80 bg-background/60 p-4 space-y-3">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Matematička Vjerojatnost:</span>
-                  <span className="font-bold text-foreground text-sm font-mono">
+                  <span className="text-muted-foreground">Izračunata šansa:</span>
+                  <span className="font-bold text-emerald-400 font-mono text-sm">
                     {prediction.concreteTip.probPercent}%
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Fer Tečaj (bez marže):</span>
-                  <span className="font-bold text-emerald-400 text-sm font-mono">
+                  <span className="text-muted-foreground">Fer tečaj (bez marže):</span>
+                  <span className="font-bold font-mono text-sm">
                     {prediction.concreteTip.fairOdd.toFixed(2)}
                   </span>
                 </div>
                 {prediction.concreteTip.bookieOdd && (
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">Kladioničarski Tečaj:</span>
-                    <span className="font-bold text-foreground text-sm font-mono">
+                  <div className="flex justify-between items-center text-xs pt-1 border-t border-border/40">
+                    <span className="text-muted-foreground">Kladionica nudi:</span>
+                    <span className="font-bold font-mono text-sm text-amber-400">
                       {prediction.concreteTip.bookieOdd.toFixed(2)}
                     </span>
                   </div>
                 )}
-                {prediction.concreteTip.ev != null && (
-                  <div className="flex justify-between items-center text-xs pt-1 border-t border-border/40">
-                    <span className="text-muted-foreground">Value Prednost (EV%):</span>
+                {prediction.concreteTip.ev !== undefined && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Value Prednost (EV):</span>
                     <span
                       className={`font-bold font-mono ${
                         prediction.concreteTip.ev > 0 ? "text-emerald-400" : "text-muted-foreground"
                       }`}
                     >
-                      {prediction.concreteTip.ev > 0 ? "+" : ""}
-                      {prediction.concreteTip.ev}%
+                      {prediction.concreteTip.ev > 0 ? `+${prediction.concreteTip.ev}%` : `${prediction.concreteTip.ev}%`}
                     </span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Sigurnosni dupli tip (Zaštitna oklada) */}
-            <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
+            {/* Sigurnosna zaštita (Hedge) */}
+            <div className="rounded-xl border border-blue-500/30 bg-blue-950/20 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-blue-400 shrink-0" />
                 <div>
-                  <div className="text-xs text-emerald-300 font-semibold">
-                    Alternativni Sigurnosni Tip (Hedge oklada):
-                  </div>
-                  <div className="text-sm font-bold text-foreground">
-                    {prediction.safeHedge.pick} — {prediction.safeHedge.description}
-                  </div>
+                  <span className="font-bold text-blue-200">
+                    Sigurnosna Zaštita (Hedge linija): {prediction.safeHedge.pick}
+                  </span>
+                  <span className="text-muted-foreground ml-2">
+                    ({prediction.safeHedge.description})
+                  </span>
                 </div>
               </div>
-              <div className="text-right shrink-0">
-                <span className="text-xs text-muted-foreground">Sigurnost: </span>
-                <span className="text-sm font-bold font-mono text-emerald-400">
-                  {prediction.safeHedge.probPercent}% (kvota {prediction.safeHedge.fairOdd.toFixed(2)})
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-muted-foreground">Šansa: {prediction.safeHedge.probPercent}%</span>
+                <span className="font-mono font-bold text-blue-300">
+                  Fer kvota: {prediction.safeHedge.fairOdd.toFixed(2)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 4 POSEBNE METODE — DETALJNI PREGLED */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          {/* 4 SPECIJALNE METODE KOJE SU ODLUČILE */}
+          <div>
+            <h3 className="text-base font-bold text-foreground mb-3 flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-400" />
-              Rezultati 4 Specijalne Kvantne Metode
+              Sinteza 4 Specijalne Metode Analize
             </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {prediction.methods.map((m, idx) => (
                 <div
                   key={idx}
-                  className="p-4 rounded-2xl border border-border bg-card/60 space-y-2 flex flex-col justify-between"
+                  className="rounded-2xl border border-border bg-card/60 p-4 space-y-2"
                 >
-                  <div>
-                    <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-muted-foreground">
                       {m.name}
                     </span>
-                    <div className="flex items-baseline justify-between mt-2">
-                      <span className="text-2xl font-black font-mono text-foreground">
-                        {m.pickedCode}
-                      </span>
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        {m.certaintyPercent}%
-                      </span>
-                    </div>
+                    <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300">
+                      Tip: {m.pickedCode}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground pt-2 border-t border-border/40">
-                    {m.description}
-                  </p>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm font-bold text-foreground">
+                      Izvjesnost metode: {m.certaintyPercent}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{m.description}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* TABLICA SVIH 9 HT/FT ISHODA S KVOTAMA I VJEROJATNOSTIMA */}
-          <div className="rounded-2xl border border-border bg-card/40 p-4 space-y-3 backdrop-blur-md">
+          {/* SVIH 9 ISHODA — PREGLED POLUVRIJEME / KRAJ */}
+          <div className="rounded-2xl border border-border bg-card/40 p-4 space-y-3">
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Layers className="h-4 w-4 text-emerald-400" />
-              Distribucija svih 9 ishoda (HT/FT Matrica)
+              <Percent className="h-4 w-4 text-emerald-400" />
+              Kompletna Matrica Svih 9 Ishoda Poluvrijeme / Kraj
             </h3>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs sm:text-sm text-left">
-                <thead>
-                  <tr className="border-b border-border/60 text-muted-foreground">
-                    <th className="py-2.5 px-3">Ishod</th>
-                    <th className="py-2.5 px-3">Opis</th>
-                    <th className="py-2.5 px-3 text-right">Vjerojatnost</th>
-                    <th className="py-2.5 px-3 text-right">Fer Kvota</th>
-                    <th className="py-2.5 px-3 text-right">Kladionica</th>
-                    <th className="py-2.5 px-3 text-right">Value (EV)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40 font-mono">
-                  {prediction.allOutcomes.map((o) => {
-                    const isConcrete = o.code === prediction.concreteTip.code;
-
-                    return (
-                      <tr
-                        key={o.code}
-                        className={`transition ${
-                          isConcrete
-                            ? "bg-emerald-950/30 font-bold text-emerald-300"
-                            : "hover:bg-card/80 text-foreground"
-                        }`}
-                      >
-                        <td className="py-2.5 px-3 flex items-center gap-1.5">
-                          {isConcrete && <Sparkles className="h-3.5 w-3.5 text-emerald-400" />}
-                          {o.code}
-                        </td>
-                        <td className="py-2.5 px-3 font-sans text-xs text-muted-foreground">
-                          {o.label}
-                        </td>
-                        <td className="py-2.5 px-3 text-right">{o.probPercent}%</td>
-                        <td className="py-2.5 px-3 text-right">{o.fairOdd.toFixed(2)}</td>
-                        <td className="py-2.5 px-3 text-right">
-                          {o.bookieOdd ? o.bookieOdd.toFixed(2) : "—"}
-                        </td>
-                        <td
-                          className={`py-2.5 px-3 text-right ${
-                            o.ev != null && o.ev > 0
-                              ? "text-emerald-400 font-bold"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {o.ev != null ? `${o.ev > 0 ? "+" : ""}${o.ev}%` : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              {prediction.allOutcomes.map((o) => {
+                const isSelected = o.code === prediction.concreteTip.code;
+                return (
+                  <div
+                    key={o.code}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between ${
+                      isSelected
+                        ? "border-emerald-500 bg-emerald-950/40 text-emerald-200 font-bold"
+                        : "border-border/60 bg-background/40 text-muted-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-foreground">{o.code}</span>
+                      <span className="truncate max-w-[110px] text-[11px]">{o.label.split("(")[0]}</span>
+                    </div>
+                    <div className="text-right font-mono">
+                      <span className="text-foreground">{o.probPercent}%</span>
+                      <span className="ml-2 text-muted-foreground">@{o.fairOdd.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Postavke prozor */}
+      {/* Modal za postavke API ključa */}
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onSaved={() => {
-          setStatusMsg("Postavke spremljene. Možete učitati utakmice.");
-          setSettingsOpen(false);
-        }}
+        onSaved={() => setSettingsOpen(false)}
       />
     </div>
   );
 }
-
