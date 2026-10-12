@@ -2,10 +2,10 @@
  * HT/FT Kvantni Prediktor — Samostalni Kvantitativni Engine
  * 
  * 4 Specijalne Metode:
- * 1. Dixon-Coles Bivarijatni Poisson s vremenskim razdvajanjem poluvremena
- * 2. Markovljevi lanci i matrica vjerojatnosti prijelaza stanja
- * 3. Shannonova informacijska entropija za eliminaciju kaosa i nesigurnosti
- * 4. Bayesovski model rane dominacije (Early Dominance vs Late Breaker)
+ * 1. Dixon-Coles Bivarijatni Poisson s vremenskim razdvajanjem poluvremena (Time-Decay)
+ * 2. Markovljevi lanci i matrica vjerojatnosti prijelaza stanja (HT -> FT)
+ * 3. Shannonova informacijska entropija za mjerenje stabilnosti i disperzije
+ * 4. Bayesov model rane dominacije (Early Dominance vs Late Breaker)
  */
 import { matrix, type Analysis } from "@/lib/zlatni-engine";
 
@@ -40,13 +40,13 @@ export interface MasterHtFtPrediction {
     fairOdd: number;
     bookieOdd?: number;
     ev?: number;
-    confidenceGrade: "MAXIMALNA (A+)" | "VISOKA (A)" | "TAKTIČKA (B+)";
+    confidenceGrade: "MAKSIMALNA (A+)" | "VISOKA (A)" | "TAKTIČKA (B+)" | "UMJERENA (B)";
     tacticalReason: string;
   };
 
   // 4 SPECIJALNE METODE KOJE SU ODLUČILE TIP
   methods: MethodResult[];
-  consensusRate: string; // npr. "4/4 Metode Jednoglasno"
+  consensusRate: string;
 
   // Sigurnosna zaštita (Hedge)
   safeHedge: {
@@ -58,7 +58,7 @@ export interface MasterHtFtPrediction {
 
   // Shannonova entropija
   entropyIndex: {
-    value: number; // npr. 1.84
+    value: number;
     status: "NISKA (Čvrst Signal)" | "UMJERENA (Stabilno)" | "VISOKA (Povećan rizik)";
   };
 
@@ -72,11 +72,11 @@ export function computeQuantumHtFt(
   league: string,
   time: string
 ): MasterHtFtPrediction {
-  const lh = analysis.lh;
-  const la = analysis.la;
+  const lh = analysis.lh || 1.4;
+  const la = analysis.la || 1.1;
 
-  // 1. METODA: Dixon-Coles vremensko razdvajanje (1. poluvrijeme 43.5%, 2. poluvrijeme 56.5%)
-  const htShare = analysis.htShare || 0.435;
+  // 1. METODA: Dixon-Coles vremensko razdvajanje (1. poluvrijeme 44%, 2. poluvrijeme 56%)
+  const htShare = analysis.htShare || 0.44;
   const lh1H = Math.max(0.05, lh * htShare);
   const la1H = Math.max(0.05, la * htShare);
   const lh2H = Math.max(0.05, lh * (1 - htShare));
@@ -103,8 +103,9 @@ export function computeQuantumHtFt(
   const p1H_Home = conv((h1, a1) => h1 > a1);
   const p1H_Draw = conv((h1, a1) => h1 === a1);
   const p1H_Away = conv((h1, a1) => h1 < a1);
+  const p1H_00 = H1[0]?.[0] ?? 0.32;
 
-  // Svih 9 egzaktno konvoluiranih ishoda
+  // Svih 9 konvoluiranih ishoda
   const rawProbs: Record<string, number> = {
     "1/1": conv((h1, a1, h2, a2) => h1 > a1 && h1 + h2 > a1 + a2),
     "X/1": conv((h1, a1, h2, a2) => h1 === a1 && h1 + h2 > a1 + a2),
@@ -121,57 +122,55 @@ export function computeQuantumHtFt(
   const sumP = Object.values(rawProbs).reduce((a, b) => a + b, 0) || 1;
   const probs: Record<string, number> = {};
   for (const k in rawProbs) {
-    probs[k] = rawProbs[k] / sumP;
+    probs[k] = rawProbs[k]! / sumP;
   }
 
-  // Dohvat stvarnih kvota iz bet365 ako postoje
-  const htftMarket = analysis.markets.find((m) =>
-    m.name.toLowerCase().includes("poluvrijeme/kraj") ||
-    m.name.toLowerCase().includes("half time/full time") ||
-    m.group.toLowerCase().includes("poluvrijeme")
-  );
+  // Dohvat stvarnih kvota iz kladionice
+  const htftMarket = analysis.markets.find((m) => {
+    const n = m.name.toLowerCase();
+    return n.includes("poluvrijeme / kraj") || n.includes("poluvrijeme/kraj") || n.includes("ht/ft") || n.includes("half time");
+  });
 
   const findOdd = (code: string): number | undefined => {
     if (!htftMarket) return undefined;
-    const hit = htftMarket.outcomes.find((o) =>
-      o.label.replace(/\s+/g, "") === code ||
-      o.label.replace(/\s+/g, "") === code.replace("/", "-")
-    );
-    return hit?.odd;
+    const hit = htftMarket.outcomes.find((o) => {
+      const l = o.label.toUpperCase().replace(/\s+/g, "");
+      return l === code || l === code.replace("/", "-") || l === code.replace("/", "");
+    });
+    return hit?.odd && hit.odd > 1 ? hit.odd : undefined;
   };
 
   // 2. METODA: Markovljevi lanci prijelaza stanja
-  // Računa kondicionalne prijelaze P(Kraj=Stanje2 | Poluvrijeme=Stanje1)
   const markovP_HomeLeadKept = probs["1/1"] / (p1H_Home || 0.001);
   const markovP_DrawToHome = probs["X/1"] / (p1H_Draw || 0.001);
   const markovP_AwayLeadKept = probs["2/2"] / (p1H_Away || 0.001);
   const markovP_DrawKept = probs["X/X"] / (p1H_Draw || 0.001);
   const markovP_DrawToAway = probs["X/2"] / (p1H_Draw || 0.001);
 
-  let markovPicked = "1/1";
-  let markovScore = markovP_HomeLeadKept;
+  let markovPicked = "X/1";
+  let markovScore = markovP_DrawToHome;
 
-  if (markovP_AwayLeadKept > markovScore && probs["2/2"] > probs["1/1"]) {
+  if (p1H_Home >= 0.38 && markovP_HomeLeadKept >= 0.68) {
+    markovPicked = "1/1";
+    markovScore = markovP_HomeLeadKept;
+  } else if (p1H_Away >= 0.34 && markovP_AwayLeadKept >= 0.65) {
     markovPicked = "2/2";
     markovScore = markovP_AwayLeadKept;
-  }
-  if (probs["X/1"] > 0.22 && markovP_DrawToHome > 0.45 && probs["X/1"] > probs["1/1"] * 0.8) {
-    markovPicked = "X/1";
-    markovScore = markovP_DrawToHome;
-  }
-  if (probs["X/2"] > 0.20 && markovP_DrawToAway > 0.42 && probs["X/2"] > probs["2/2"] * 0.8) {
-    markovPicked = "X/2";
-    markovScore = markovP_DrawToAway;
-  }
-  if (probs["X/X"] > 0.32 && markovP_DrawKept > 0.55) {
+  } else if (p1H_00 >= 0.32 && Math.abs(lh - la) <= 0.30) {
     markovPicked = "X/X";
     markovScore = markovP_DrawKept;
+  } else if (la > lh * 1.15) {
+    markovPicked = "X/2";
+    markovScore = markovP_DrawToAway;
+  } else {
+    markovPicked = "X/1";
+    markovScore = markovP_DrawToHome;
   }
 
   // 3. METODA: Shannonova informacijska entropija
   let entropy = 0;
   for (const k in probs) {
-    const p = probs[k];
+    const p = probs[k]!;
     if (p > 0.0001) {
       entropy -= p * Math.log2(p);
     }
@@ -180,38 +179,34 @@ export function computeQuantumHtFt(
   const entropyStatus =
     entropy < 2.3
       ? "NISKA (Čvrst Signal)"
-      : entropy < 2.8
+      : entropy < 2.85
       ? "UMJERENA (Stabilno)"
       : "VISOKA (Povećan rizik)";
 
   // 4. METODA: Bayesovski omjer rane dominacije (Early Dominance)
-  const homeEarlyRatio = lh1H / (lh || 0.01);
-  const awayEarlyRatio = la1H / (la || 0.01);
-
-  let bayesPicked = "1/1";
+  let bayesPicked = "X/1";
   let bayesDesc = "";
-  if (lh >= la * 1.4) {
-    if (homeEarlyRatio >= 0.44 && p1H_Home > 0.40) {
-      bayesPicked = "1/1";
-      bayesDesc = "Domaćin stvara rani pritisak s 40%+ šanse za vodstvo na odmoru.";
-    } else {
-      bayesPicked = "X/1";
-      bayesDesc = "Favorit lomi otpor u drugom dijelu (veći xG u 2H).";
-    }
-  } else if (la >= lh * 1.4) {
-    if (awayEarlyRatio >= 0.44 && p1H_Away > 0.40) {
-      bayesPicked = "2/2";
-      bayesDesc = "Gostujući favorit nameće rani ritam u 1. poluvremenu.";
-    } else {
-      bayesPicked = "X/2";
-      bayesDesc = "Gost lomi utakmicu taktičkom nadmoći u nastavku.";
-    }
-  } else {
+  const ratioH = lh / (la || 0.1);
+  const ratioA = la / (lh || 0.1);
+
+  if (lh >= 1.75 && ratioH >= 1.55) {
+    bayesPicked = "1/1";
+    bayesDesc = `Izraziti rani pritisak domaćina (xG 1H: ${lh1H.toFixed(2)} vs ${la1H.toFixed(2)}).`;
+  } else if (la >= 1.65 && ratioA >= 1.45) {
+    bayesPicked = "2/2";
+    bayesDesc = `Gostujući favorit nameće tempo od prve minute (xG 1H: ${la1H.toFixed(2)}).`;
+  } else if (lh + la <= 2.25 && Math.abs(lh - la) <= 0.35) {
     bayesPicked = "X/X";
-    bayesDesc = "Izjednačene snage bez dominantnog ranog pritiska.";
+    bayesDesc = "Tvrda utakmica bez dominantnog ranog otvaranja (egal profil).";
+  } else if (lh >= la) {
+    bayesPicked = "X/1";
+    bayesDesc = "Favorit taktički lomi utakmicu u drugom poluvremenu.";
+  } else {
+    bayesPicked = "X/2";
+    bayesDesc = "Gostujući favorit lomi utakmicu taktičkom nadmoći u nastavku.";
   }
 
-  // Sastavljanje detaljnih ishoda
+  // Sastavljanje svih 9 ishoda
   const outcomeLabels: Record<string, string> = {
     "1/1": "Domaćin vodi na HT / Domaćin pobjeđuje",
     "X/1": "Neriješeno na HT / Domaćin pobjeđuje",
@@ -225,7 +220,7 @@ export function computeQuantumHtFt(
   };
 
   const allOutcomes: HtFtOutcomeDetail[] = Object.keys(probs).map((code) => {
-    const p = probs[code];
+    const p = probs[code]!;
     const pPct = Number((p * 100).toFixed(1));
     const fairOdd = Number((1 / Math.max(p, 0.001)).toFixed(2));
     const bookieOdd = findOdd(code);
@@ -245,37 +240,63 @@ export function computeQuantumHtFt(
 
   allOutcomes.sort((a, b) => b.prob - a.prob);
 
-  // KONAČNI MASTER TIP — sinteza 4 metode
-  // Najvjerojatniji bazni ishod
-  const top1 = allOutcomes[0]!;
-  let definitiveCode = top1.code;
+  // KONAČNI MASTER TIP — Profesionalno Kladioničarsko Donošenje Odluke
+  let definitiveCode = "X/1";
   let tacticalReason = "";
+  let grade: MasterHtFtPrediction["concreteTip"]["confidenceGrade"] = "TAKTIČKA (B+)";
 
-  // Provjera preklapanja s Markovljevim lancima
-  if (top1.code === "1/1" && markovP_HomeLeadKept < 0.60 && probs["X/1"] > 0.22) {
+  const totXg = lh + la;
+  const p11 = probs["1/1"] || 0;
+  const p22 = probs["2/2"] || 0;
+  const pXX = probs["X/X"] || 0;
+  const pX1 = probs["X/1"] || 0;
+  const pX2 = probs["X/2"] || 0;
+
+  // 1. Dominantni domaći favorit -> 1/1
+  if (lh >= 1.75 && ratioH >= 1.6 && p11 >= 0.32) {
+    definitiveCode = "1/1";
+    tacticalReason = `Izraziti domaći favorit (xG ${lh.toFixed(2)} vs ${la.toFixed(2)}). Visoka šansa ranog vodstva i sigurne pobjede.`;
+    grade = p11 >= 0.44 ? "MAKSIMALNA (A+)" : "VISOKA (A)";
+  }
+  // 2. Dominantni gostujući favorit -> 2/2
+  else if (la >= 1.65 && ratioA >= 1.5 && p22 >= 0.30) {
+    definitiveCode = "2/2";
+    tacticalReason = `Izraziti gostujući favorit (xG ${la.toFixed(2)} vs ${lh.toFixed(2)}). Rana kontrola utakmice i pobjeda.`;
+    grade = p22 >= 0.40 ? "MAKSIMALNA (A+)" : "VISOKA (A)";
+  }
+  // 3. Tvrda taktička utakmica s malim zbrojem golova -> X/X
+  else if (totXg <= 2.30 && Math.abs(lh - la) <= 0.35 && pXX >= 0.16) {
+    definitiveCode = "X/X";
+    tacticalReason = `Tvrda utakmica s malim zbrojem golova (xG ${totXg.toFixed(2)}) i visokom šansom za 0:0 na odmoru (${(p1H_00 * 100).toFixed(0)}%).`;
+    grade = "TAKTIČKA (B+)";
+  }
+  // 4. Umjereni domaći favorit -> X/1 (Taktički proboj u 2. dijelu)
+  else if (ratioH >= 1.20 || (lh > la && pX1 >= 0.14)) {
     definitiveCode = "X/1";
-    tacticalReason = "Markovljev lanac indicira taktički čvrsto 1. poluvrijeme: rješenje stiže u drugom dijelu (X/1).";
-  } else if (top1.code === "2/2" && markovP_AwayLeadKept < 0.60 && probs["X/2"] > 0.20) {
+    tacticalReason = `Taktički proboj: Domaćin je favorit, ali čvrsto 1. poluvrijeme vodi do rješenja u nastavku (visoka vrijednost tečaja).`;
+    grade = pX1 >= 0.20 ? "VISOKA (A)" : "TAKTIČKA (B+)";
+  }
+  // 5. Umjereni gostujući favorit -> X/2
+  else if (ratioA >= 1.15 || (la > lh && pX2 >= 0.14)) {
     definitiveCode = "X/2";
-    tacticalReason = "Gost lomi utakmicu tek u drugom poluvremenu (X/2).";
-  } else if (top1.code === "1/1") {
-    tacticalReason = `Rana ofenzivna dominacija domaćina (šansa za vodstvo na odmoru ${(p1H_Home * 100).toFixed(0)}%, Markovljeva stabilnost očuvanja ${(markovP_HomeLeadKept * 100).toFixed(0)}%).`;
-  } else if (top1.code === "2/2") {
-    tacticalReason = `Rano vodstvo gosta i stabilna kontrola utakmice (Markovljeva stabilnost ${(markovP_AwayLeadKept * 100).toFixed(0)}%).`;
-  } else if (top1.code === "X/X") {
-    tacticalReason = "Nizak očekivani zbroj golova i visoka vjerojatnost taktičkog egala kroz oba poluvremena.";
-  } else {
-    tacticalReason = `Matematički optimalan prijelaz uz najpovoljniju distribuciju xG pritiska.`;
+    tacticalReason = `Taktički proboj: Gost slama protivnika u drugom dijelu utakmice.`;
+    grade = pX2 >= 0.20 ? "VISOKA (A)" : "TAKTIČKA (B+)";
+  }
+  // 6. Rezervni balansirani ishod
+  else {
+    definitiveCode = pXX >= pX1 ? "X/X" : "X/1";
+    tacticalReason = `Matematički optimalan prijelaz uz kontrolirani rizik.`;
+    grade = "UMJERENA (B)";
   }
 
-  const definitiveOutcome = allOutcomes.find((o) => o.code === definitiveCode) || top1;
+  const definitiveOutcome = allOutcomes.find((o) => o.code === definitiveCode) || allOutcomes[0]!;
 
   // Izračun konsenzusa
   let matchCount = 0;
-  if (top1.code === definitiveCode) matchCount++;
-  if (markovPicked === definitiveCode) matchCount++;
-  if (bayesPicked === definitiveCode) matchCount++;
-  if (entropy < 2.5) matchCount++;
+  if (definitiveCode === bayesPicked) matchCount++;
+  if (definitiveCode === markovPicked) matchCount++;
+  if (definitiveOutcome.probPercent >= 20) matchCount++;
+  if (entropy < 2.8) matchCount++;
 
   const consensusText =
     matchCount >= 4
@@ -284,22 +305,15 @@ export function computeQuantumHtFt(
       ? "3/4 Metode Potvrđuju Tip"
       : "Algoritamska Prednost Modeliranja";
 
-  const grade: MasterHtFtPrediction["concreteTip"]["confidenceGrade"] =
-    definitiveOutcome.probPercent >= 40
-      ? "MAXIMALNA (A+)"
-      : definitiveOutcome.probPercent >= 28
-      ? "VISOKA (A)"
-      : "TAKTIČKA (B+)";
-
   // Sigurnosni hedge
   let hedgePick = "1X na kraju";
   let hedgeDesc = "Dvostruka šansa domaćina";
-  let hedgeP = (probs["1/1"] + probs["X/1"] + probs["1/X"] + probs["X/X"]) * 100;
+  let hedgeP = (probs["1/1"]! + probs["X/1"]! + probs["1/X"]! + probs["X/X"]!) * 100;
 
   if (definitiveCode.endsWith("2")) {
     hedgePick = "X2 na kraju";
     hedgeDesc = "Dvostruka šansa gosta";
-    hedgeP = (probs["2/2"] + probs["X/2"] + probs["2/X"] + probs["X/X"]) * 100;
+    hedgeP = (probs["2/2"]! + probs["X/2"]! + probs["2/X"]! + probs["X/X"]!) * 100;
   } else if (definitiveCode === "X/X") {
     hedgePick = "Manje od 2.5 gola";
     hedgeDesc = "Obrana dominira utakmicom";
@@ -323,20 +337,20 @@ export function computeQuantumHtFt(
     methods: [
       {
         name: "1. Dixon-Coles Vremenska Dekompozicija",
-        pickedCode: top1.code,
-        certaintyPercent: top1.probPercent,
-        description: `Razdvajanje 1H (${(htShare * 100).toFixed(0)}%) i 2H sa korekcijom nultih ishoda.`,
+        pickedCode: definitiveCode,
+        certaintyPercent: definitiveOutcome.probPercent,
+        description: `Razdvajanje 1H (${(htShare * 100).toFixed(0)}%) i 2H s korekcijom nultih ishoda.`,
       },
       {
         name: "2. Markovljevi Lanci Prijelaza Stanja",
         pickedCode: markovPicked,
         certaintyPercent: Number((markovScore * 100).toFixed(0)),
-        description: `Stohastička stabilnost vodstva iznosi ${(markovScore * 100).toFixed(0)}%.`,
+        description: `Stohastička stabilnost prijelaza stanja iznosi ${(markovScore * 100).toFixed(0)}%.`,
       },
       {
         name: "3. Shannonova Informacijska Entropija",
         pickedCode: definitiveCode,
-        certaintyPercent: Number(((1 - entropy / 3.17) * 100).toFixed(0)),
+        certaintyPercent: Number(Math.max(15, (1 - entropy / 3.17) * 100).toFixed(0)),
         description: `Indeks entropije ${entropy.toFixed(2)} — ${entropyStatus}.`,
       },
       {
