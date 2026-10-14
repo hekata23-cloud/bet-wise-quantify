@@ -9,7 +9,7 @@ export type Tip = { market: string; pick: string; prob: number; fair: number; od
 export type KosAnalysis = {
   mu: number; sigma: number; total: number; sigmaT: number; nba: boolean;
   pHome: number; pDraw: number; pAway: number; pHomeOT: number; pAwayOT: number;
-  x12: Tip[]; dc: Tip[]; ml: Tip[]; totals: Tip[]; best: Tip | null; safest: Tip | null; notes: string[];
+  x12: Tip[]; dc: Tip[]; ml: Tip[]; totals: Tip[]; best: Tip | null; safest: Tip | null; totalPick: Tip; notes: string[];
 };
 
 const erf = (x: number) => {
@@ -128,5 +128,22 @@ export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
   const safest = [...all].filter((t) => t.odd! >= 1.2 && (t.ev ?? -99) > -4).sort((a, b) => b.prob - a.prob)[0] ?? null;
   if (!best) notes.push("Nema tipa s pozitivnom vrijednošću (EV > +1.5%) — profesionalno: preskoči ili mali ulog.");
 
-  return { mu, sigma, total, sigmaT, nba, pHome, pDraw, pAway, pHomeOT, pAwayOT, x12, dc, ml: mlT, totals, best, safest, notes };
+  const totalPick = pickTotal(totals, lines);
+
+  return { mu, sigma, total, sigmaT, nba, pHome, pDraw, pAway, pHomeOT, pAwayOT, x12, dc, ml: mlT, totals, best, safest, totalPick, notes };
+}
+
+/**
+ * Obavezan tip zbroja poena (uklj. produžetke): uvijek vraća Više ili Manje.
+ * Glavna linija = najbliža 50/50; bira stranu s većom šansom, kod gotovo
+ * jednake šanse (<1 pp) prednost ima strana s boljim EV-om.
+ */
+export function pickTotal(totals: Tip[], lines: { line: number; o: number; u: number }[]): Tip {
+  const main = lines.length
+    ? [...lines].sort((a, b) => Math.abs(a.o - a.u) - Math.abs(b.o - b.u))[0]!.line
+    : Number(totals[0]!.market.replace(/[^\d.]/g, ""));
+  const pair = totals.filter((t) => t.market === `Zbroj ${main}`);
+  const [o, u] = [pair.find((t) => t.pick.startsWith("Više"))!, pair.find((t) => t.pick.startsWith("Manje"))!];
+  if (Math.abs(o.prob - u.prob) < 0.01 && o.ev != null && u.ev != null) return o.ev >= u.ev ? o : u;
+  return o.prob >= u.prob ? o : u;
 }
