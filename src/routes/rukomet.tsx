@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Activity, RefreshCw, Search, Settings, ShieldAlert, Trophy } from "lucide-react";
+import { Activity, Edit3, RefreshCw, Search, Settings, ShieldAlert, Trophy } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { getRukometGames, getRukometOdds, type RukometGame } from "@/lib/rukomet.functions";
+import { getRukometGames, getRukometOdds, type RukometGame, type RukometMarkets } from "@/lib/rukomet.functions";
 import { analyzeRukomet, type RukometAnalysis, type Tip } from "@/lib/rukomet-engine";
 import { rukometGuarded, readRukometState, resetRukometGuard, zagrebDay } from "@/lib/rukomet-guard";
 import { getApiKey } from "@/lib/zlatni-guard";
@@ -55,6 +55,15 @@ function RukometPage() {
   const [book, setBook] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
 
+  // Ručni unos kvota kad API nema kvote za utakmicu
+  const [manualMode, setManualMode] = useState(false);
+  const [m1, setM1] = useState("1.45");
+  const [mX, setMX] = useState("9.50");
+  const [m2, setM2] = useState("3.40");
+  const [mLine, setMLine] = useState("56.5");
+  const [mOver, setMOver] = useState("1.85");
+  const [mUnder, setMUnder] = useState("1.85");
+
   const onWait = (ms: number, r: string) =>
     setMsg(`Zaštita API-ja: ${r}. Čekam ${Math.ceil(ms / 1000)} s…`);
 
@@ -89,6 +98,49 @@ function RukometPage() {
     }
   };
 
+  const runAnalysis = (markets: RukometMarkets, leagueName: string, bookName: string | null) => {
+    const a = analyzeRukomet(markets, leagueName);
+    setBook(bookName);
+    if (!a) {
+      setMsg("Nema dovoljno kvota za izračun rukometnog modela. Možeš unijeti kvote ručno.");
+      setManualMode(true);
+      return;
+    }
+    setAn(a);
+    setMsg("");
+    setManualMode(false);
+  };
+
+  const handleManualAnalyze = () => {
+    const o1 = parseFloat(m1);
+    const oX = parseFloat(mX);
+    const o2 = parseFloat(m2);
+    if (!o1 || !o2 || o1 <= 1 || o2 <= 1) {
+      setMsg("Molimo unesi ispravne 1 i 2 kvote (veće od 1.00).");
+      return;
+    }
+
+    const mk: RukometMarkets = {
+      "Match Winner": {
+        Home: o1,
+        Draw: oX > 1 ? oX : 9.5,
+        Away: o2,
+      },
+    };
+
+    const lineVal = parseFloat(mLine);
+    const oOv = parseFloat(mOver);
+    const oUn = parseFloat(mUnder);
+    if (lineVal && oOv > 1 && oUn > 1) {
+      mk["Over/Under"] = {
+        [`Over ${lineVal}`]: oOv,
+        [`Under ${lineVal}`]: oUn,
+      };
+    }
+
+    runAnalysis(mk, sel?.league ?? "Rukomet", "Ručni unos");
+  };
+
   const open = async (g: RukometGame) => {
     if (busyId) return;
     const apiKey = getApiKey();
@@ -99,6 +151,7 @@ function RukometPage() {
     setBusyId(g.id);
     setSel(g);
     setAn(null);
+    setManualMode(false);
     setMsg(`Analiziram ${g.home} — ${g.away}…`);
     try {
       const r = await rukometGuarded(
@@ -107,19 +160,18 @@ function RukometPage() {
         onWait
       );
       if (r.error) {
-        setMsg(r.error === "RATE_LIMIT" ? "Limit API-ja — pričekaj 15 s." : r.error);
+        setMsg(
+          r.error === "RATE_LIMIT"
+            ? "Limit API-ja — pričekaj 15 s."
+            : `${r.error} Unesi kvote ručno u nastavku:`
+        );
+        setManualMode(true);
         return;
       }
-      const a = analyzeRukomet(r.markets, g.league);
-      setBook(r.bookmaker);
-      if (!a) {
-        setMsg("Nema dovoljno kvota za izračun rukometnog modela.");
-        return;
-      }
-      setAn(a);
-      setMsg("");
+      runAnalysis(r.markets, g.league, r.bookmaker);
     } catch (e: any) {
-      setMsg(e?.message ?? "Greška");
+      setMsg(`${e?.message ?? "Greška"}. Možeš unijeti kvote ručno:`);
+      setManualMode(true);
     } finally {
       setBusyId(null);
     }
@@ -148,235 +200,341 @@ function RukometPage() {
             min={MIN_DATE}
             value={date}
             onChange={(e) => setDate(e.target.value < MIN_DATE ? MIN_DATE : e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           />
           <button
             onClick={load}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-60"
+            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Učitaj utakmice
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Učitavam…" : "Učitaj utakmice"}
           </button>
           <button
             onClick={() => setSettings(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
           >
-            <Settings className="h-4 w-4" /> Postavke
+            <Settings className="h-4 w-4" />
+            Postavke
           </button>
+        </div>
+      </div>
+
+      {/* Status i zaštita */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3 text-xs">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 text-primary" />
+          <span>
+            Zaštita API-ja: <strong>{st?.blocked ? "Blokirano (cooldown)" : "Aktivna"}</strong> · Poziva danas:{" "}
+            <strong>{st?.countToday ?? 0}</strong> / 85 · Preostalo u minuti:{" "}
+            <strong>{st?.minuteRemaining ?? "—"}</strong>
+          </span>
+        </div>
+        {st?.blocked && (
           <button
             onClick={() => {
               resetRukometGuard();
-              setMsg("Blokada i pauza zaštite su uspješno poništene.");
+              setMsg("Zaštita poništena.");
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted"
+            className="rounded border border-destructive/40 bg-destructive/10 px-2 py-0.5 font-medium text-destructive hover:bg-destructive/20"
           >
-            <ShieldAlert className="h-4 w-4 text-emerald-400" /> Poništi blokadu
+            Poništi blokadu
           </button>
-        </div>
+        )}
       </div>
 
-      {/* Info traka zaštite */}
-      <div className="rounded-lg border border-border/60 bg-card/50 px-3 py-2 text-xs text-muted-foreground">
-        Zaštita: 1 kredit po utakmici, dnevni cache, razmak 2.5 s, max 8/min · Danas potrošeno: {st?.used ?? 0}
-        {st && st.dayRemaining >= 0 ? ` · Preostalo rukometnih kredita: ${st.dayRemaining}` : ""}
-      </div>
+      {msg && <div className="rounded-md border bg-muted/50 p-2.5 text-xs text-muted-foreground">{msg}</div>}
 
-      {msg && <div className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">{msg}</div>}
-
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        {/* Lijevi stupac: Popis utakmica */}
-        <div className="rounded-xl border border-border bg-card p-3">
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-border px-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
+      {/* Popis utakmica */}
+      {games.length > 0 && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
+              type="text"
+              placeholder="Pretraži klub ili ligu…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Traži klub ili ligu…"
-              className="w-full bg-transparent py-2 text-sm outline-none"
+              className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
             />
           </div>
-          <div className="max-h-[70vh] space-y-1 overflow-y-auto">
-            {shown.length === 0 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Klikni „Učitaj utakmice" za prikaz rasporeda.
-              </div>
-            )}
-            {shown.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => open(g)}
-                disabled={!!busyId}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted ${
-                  sel?.id === g.id ? "bg-primary/15" : ""
-                }`}
-              >
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="truncate">{g.league}</span>
-                  <span className="tabular-nums">{g.status === "NS" ? time(g.time) : g.status}</span>
-                </div>
-                <div className="font-medium">
-                  {g.home} — {g.away}
-                  {busyId === g.id ? " …" : ""}
-                </div>
-              </button>
-            ))}
+
+          <div className="grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
+            {shown.map((g) => {
+              const active = sel?.id === g.id;
+              const isBusy = busyId === g.id;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => open(g)}
+                  disabled={isBusy}
+                  className={`flex flex-col items-start gap-1 rounded-lg border p-2.5 text-left text-xs transition-colors ${
+                    active
+                      ? "border-primary bg-primary/10 shadow-sm"
+                      : "border-border hover:border-primary/50 hover:bg-accent/50"
+                  }`}
+                >
+                  <div className="flex w-full items-center justify-between text-muted-foreground">
+                    <span className="truncate text-[11px] font-medium">{g.league}</span>
+                    <span className="font-mono text-[11px] font-semibold">{time(g.time)}</span>
+                  </div>
+                  <div className="font-semibold text-foreground">
+                    {g.home} — {g.away}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">Status: {g.status}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
+      )}
 
-        {/* Desni stupac: Profesionalna analiza */}
-        <div className="space-y-4">
-          {!an && (
-            <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-              Odaberi utakmicu s lijevog popisa za uvid u profesionalne tipove.
+      {/* Ručni unos kvota kada API nema kvote */}
+      {sel && manualMode && (
+        <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Edit3 className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold">
+                Ručni unos kvota za: {sel.home} — {sel.away}
+              </h2>
             </div>
-          )}
+            <span className="text-[11px] text-muted-foreground">Kladionica nema API kvote</span>
+          </div>
 
-          {an && sel && (
-            <>
-              {/* Zaglavlje utakmice */}
-              <div className="rounded-xl border border-border bg-card p-4">
-                <div className="text-xs text-muted-foreground">
-                  {sel.league} · {time(sel.time)} · izvor kvota: {book ?? "Tržišni prosjek"}
-                </div>
-                <div className="text-xl font-bold mt-0.5">
-                  {sel.home} — {sel.away}
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                  <Stat k="Očekivani ukupni zbroj" v={`${an.muTotal.toFixed(1)} golova`} />
-                  <Stat k="Očekivano Domaćin" v={`${an.muHome.toFixed(1)} golova`} />
-                  <Stat k="Očekivano Gost" v={`${an.muAway.toFixed(1)} golova`} />
-                  <Stat k="Vjerojatnost remija" v={pct(an.pDraw)} />
-                </div>
-              </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 text-xs">
+            <div>
+              <label className="text-[10px] text-muted-foreground">1 (Domaćin)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={m1}
+                onChange={(e) => setM1(e.target.value)}
+                className="h-8 w-full rounded border bg-background px-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">X (Remi)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={mX}
+                onChange={(e) => setMX(e.target.value)}
+                className="h-8 w-full rounded border bg-background px-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">2 (Gost)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={m2}
+                onChange={(e) => setM2(e.target.value)}
+                className="h-8 w-full rounded border bg-background px-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Zbroj linija</label>
+              <input
+                type="number"
+                step="0.5"
+                value={mLine}
+                onChange={(e) => setMLine(e.target.value)}
+                className="h-8 w-full rounded border bg-background px-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Više kvota</label>
+              <input
+                type="number"
+                step="0.01"
+                value={mOver}
+                onChange={(e) => setMOver(e.target.value)}
+                className="h-8 w-full rounded border bg-background px-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground">Manje kvota</label>
+              <input
+                type="number"
+                step="0.01"
+                value={mUnder}
+                onChange={(e) => setMUnder(e.target.value)}
+                className="h-8 w-full rounded border bg-background px-2 text-xs"
+              />
+            </div>
+          </div>
 
-              {/* 1) OBAVEZNI TIP: ZBROJ GOLOVA */}
-              <div className="rounded-xl border-2 border-primary bg-primary/15 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Obavezan tip · Zbroj golova
-                </div>
-                <div className="text-2xl font-bold mt-1">{an.totalPick.pick}</div>
-                <div className="text-sm tabular-nums mt-0.5">
-                  Šansa {pct(an.totalPick.prob)} · fer kvota {an.totalPick.fair.toFixed(2)}
-                  {an.totalPick.odd
-                    ? ` · kvota kladionice ${an.totalPick.odd.toFixed(2)} · EV ${an.totalPick.ev!.toFixed(1)}%`
-                    : " · (model procjena)"}
-                  {" · "}očekivano ukupno {an.muTotal.toFixed(1)} golova
-                </div>
-              </div>
-
-              {/* 2) TIMSKI GOLOVI: DOMAĆIN I GOST */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="text-xs uppercase font-medium text-muted-foreground">
-                    Tip · Golovi domaćina
-                  </div>
-                  <div className="text-lg font-bold mt-0.5 text-primary">
-                    {an.homeTotalPick.pick}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1 tabular-nums">
-                    Šansa: <strong>{pct(an.homeTotalPick.prob)}</strong> · Fer: {an.homeTotalPick.fair.toFixed(2)}
-                    {an.homeTotalPick.odd ? ` · Kvota: ${an.homeTotalPick.odd.toFixed(2)}` : ""}
-                    {" · "}Model: {an.muHome.toFixed(1)} gola
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="text-xs uppercase font-medium text-muted-foreground">
-                    Tip · Golovi gosta
-                  </div>
-                  <div className="text-lg font-bold mt-0.5 text-primary">
-                    {an.awayTotalPick.pick}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1 tabular-nums">
-                    Šansa: <strong>{pct(an.awayTotalPick.prob)}</strong> · Fer: {an.awayTotalPick.fair.toFixed(2)}
-                    {an.awayTotalPick.odd ? ` · Kvota: ${an.awayTotalPick.odd.toFixed(2)}` : ""}
-                    {" · "}Model: {an.muAway.toFixed(1)} gola
-                  </div>
-                </div>
-              </div>
-
-              {/* VALUE I NAJSIGURNIJI TIP */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {an.best && <Pick title="Value tip (najbolji omjer kvote i šanse)" icon t={an.best} />}
-                {an.safest && <Pick title="Najsigurniji tip (najviša vjerojatnost)" t={an.safest} />}
-              </div>
-
-              {/* TABLICE ISHODA */}
-              <Table title="1X2 (regularno vrijeme 60 min)" rows={an.x12} best={an.best} />
-              <Table title="Dupla šansa" rows={an.dc} best={an.best} />
-              <Table title="Pobjednik 1 2 (uključujući hendikep/remi no bet)" rows={an.ml} best={an.best} />
-              <Table title="Ukupni zbroj golova (više / manje linije)" rows={an.totals} best={an.best} />
-              <Table title="Zbroj golova: Domaćin" rows={an.homeTotals} best={an.best} />
-              <Table title="Zbroj golova: Gost" rows={an.awayTotals} best={an.best} />
-            </>
-          )}
+          <button
+            onClick={handleManualAnalyze}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Pokreni kvantitativnu analizu
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Rezultati analize */}
+      {sel && an && (
+        <div className="space-y-4 rounded-xl border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+            <div>
+              <div className="text-xs text-muted-foreground">{sel.league} · {time(sel.time)}</div>
+              <h2 className="text-lg font-bold">
+                {sel.home} — {sel.away}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                Izvor kvota: {book ?? "Analitički model"}
+              </span>
+              <button
+                onClick={() => setManualMode(!manualMode)}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                {manualMode ? "Sakrij ručni unos" : "Prilagodi kvote ručno"}
+              </button>
+            </div>
+          </div>
+
+          {/* Istaknuti tipovi */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {an.best && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <Trophy className="h-4 w-4" /> Najbolji Value Tip (+EV)
+                </div>
+                <div className="mt-1 text-base font-bold">{an.best.pick}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Tržište: <strong>{an.best.market}</strong> · Vjerojatnost: <strong>{pct(an.best.prob)}</strong> · Fer kvota:{" "}
+                  <strong>{an.best.fair.toFixed(2)}</strong>
+                  {an.best.odd && (
+                    <>
+                      {" "}· Ponuđena: <strong>{an.best.odd.toFixed(2)}</strong> · EV:{" "}
+                      <strong className="text-emerald-600">+{an.best.ev?.toFixed(1)}%</strong>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            {an.safest && (
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                  <ShieldAlert className="h-4 w-4" /> Najsigurniji Tip (Najveća vjerojatnost)
+                </div>
+                <div className="mt-1 text-base font-bold">{an.safest.pick}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Tržište: <strong>{an.safest.market}</strong> · Vjerojatnost:{" "}
+                  <strong className="text-emerald-600">{pct(an.safest.prob)}</strong> · Fer kvota:{" "}
+                  <strong>{an.safest.fair.toFixed(2)}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Očekivani golovi i tempo */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 rounded-lg bg-muted/40 p-3 text-center text-xs">
+            <div>
+              <div className="text-muted-foreground">Očekivano golova</div>
+              <div className="text-base font-bold font-mono">{an.muTotal.toFixed(1)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Očekivano domaćin</div>
+              <div className="text-base font-bold font-mono text-primary">{an.muHome.toFixed(1)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Očekivano gost</div>
+              <div className="text-base font-bold font-mono text-primary">{an.muAway.toFixed(1)}</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Predviđena razlika</div>
+              <div className="text-base font-bold font-mono">
+                {an.muDiff > 0 ? `+${an.muDiff.toFixed(1)} dom.` : `${an.muDiff.toFixed(1)} gost`}
+              </div>
+            </div>
+          </div>
+
+          {/* Tržišta tabela */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* 1X2 & Pobjednik */}
+            <div className="rounded-lg border p-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                1X2 & Pobjednik (1 2)
+              </h3>
+              <div className="mt-2 divide-y text-xs">
+                {an.x12.map((t) => (
+                  <Row key={t.pick} tip={t} />
+                ))}
+                {an.ml.map((t) => (
+                  <Row key={t.pick} tip={t} label={`Pobjednik ${t.pick}`} />
+                ))}
+              </div>
+            </div>
+
+            {/* Dupla šansa */}
+            <div className="rounded-lg border p-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Dupla šansa (1X, 12, X2)
+              </h3>
+              <div className="mt-2 divide-y text-xs">
+                {an.dc.map((t) => (
+                  <Row key={t.pick} tip={t} />
+                ))}
+              </div>
+            </div>
+
+            {/* Ukupni zbroj golova */}
+            <div className="rounded-lg border p-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Ukupni zbroj golova (Više / Manje)
+              </h3>
+              <div className="mt-2 divide-y text-xs">
+                {an.totals.slice(0, 6).map((t) => (
+                  <Row key={t.pick} tip={t} />
+                ))}
+              </div>
+            </div>
+
+            {/* Timski golovi domaćina i gosta */}
+            <div className="rounded-lg border p-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Timski golovi ({sel.home} & {sel.away})
+              </h3>
+              <div className="mt-2 divide-y text-xs">
+                {an.homeTotals.slice(0, 3).map((t) => (
+                  <Row key={t.pick} tip={t} label={`${sel.home} ${t.pick}`} />
+                ))}
+                {an.awayTotals.slice(0, 3).map((t) => (
+                  <Row key={t.pick} tip={t} label={`${sel.away} ${t.pick}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SettingsModal open={settings} onClose={() => setSettings(false)} />
     </div>
   );
 }
 
-function Stat({ k, v }: { k: string; v: string }) {
+function Row({ tip, label }: { tip: Tip; label?: string }) {
+  const isValue = (tip.ev ?? 0) > 2;
   return (
-    <div className="rounded-lg bg-muted/40 p-2">
-      <div className="text-xs text-muted-foreground">{k}</div>
-      <div className="font-semibold tabular-nums">{v}</div>
-    </div>
-  );
-}
-
-function Pick({ title, icon, t }: { title: string; icon?: boolean; t: Tip }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {icon && <Trophy className="h-3.5 w-3.5 text-yellow-400" />} {title}
-      </div>
-      <div className="font-semibold">{t.market} · {t.pick}</div>
-      <div className="text-xs tabular-nums text-muted-foreground">
-        Šansa {pct(t.prob)} · fer {t.fair.toFixed(2)}
-        {t.odd ? ` · kvota ${t.odd.toFixed(2)} · EV ${t.ev! > 0 ? "+" : ""}${t.ev!.toFixed(1)}%` : ""}
+    <div className="flex items-center justify-between py-1.5">
+      <span className="font-medium text-foreground">{label ?? tip.pick}</span>
+      <div className="flex items-center gap-2 font-mono text-[11px]">
+        <span className="text-muted-foreground">{pct(tip.prob)}</span>
+        <span className="rounded bg-muted px-1.5 py-0.5">Fer {tip.fair.toFixed(2)}</span>
+        {tip.odd && (
+          <span className={`rounded px-1.5 py-0.5 font-bold ${isValue ? "bg-emerald-500/15 text-emerald-600" : "bg-card"}`}>
+            @{tip.odd.toFixed(2)}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-function Table({ title, rows, best }: { title: string; rows: Tip[]; best: Tip | null }) {
-  if (!rows.length) return null;
-  return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </div>
-      <div className="divide-y divide-border/40 text-sm">
-        {rows.map((r, i) => {
-          const isBest = best && best.market === r.market && best.pick === r.pick;
-          return (
-            <div
-              key={i}
-              className={`flex items-center justify-between py-1.5 ${isBest ? "font-semibold text-primary" : ""}`}
-            >
-              <div>
-                {r.pick}
-                {isBest && <span className="ml-2 text-[10px] uppercase text-yellow-400">★ Value</span>}
-              </div>
-              <div className="flex items-center gap-3 tabular-nums text-xs">
-                <span>šansa {pct(r.prob)}</span>
-                <span className="text-muted-foreground">fer {r.fair.toFixed(2)}</span>
-                <span className="font-semibold">{r.odd ? r.odd.toFixed(2) : "—"}</span>
-                {r.ev != null && (
-                  <span className={r.ev > 0 ? "text-emerald-400" : "text-muted-foreground"}>
-                    {r.ev > 0 ? "+" : ""}
-                    {r.ev.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
