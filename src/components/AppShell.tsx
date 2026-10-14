@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Activity,
   Brain,
   Dribbble,
   Calculator,
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/kosarka", label: "Košarka Sharp", icon: Dribbble },
+  { to: "/rukomet", label: "Rukomet Sharp", icon: Activity },
   { to: "/obrnute-kvote", label: "Obrnute kvote", icon: Radar },
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
@@ -119,19 +121,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav className="border-t border-border/40 bg-card/30 overflow-x-auto scrollbar-none">
           <div className="mx-auto flex max-w-7xl items-center gap-1 px-3 py-1.5 min-w-max">
             {NAV.map((item) => {
-              const Icon = item.icon;
               const active = path === item.to;
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                     active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-card"
+                      ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -140,8 +142,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      {/* Glavni sadržaj */}
-      <main className="flex-1">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+        {children}
+      </main>
 
       <footer className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
         Andromeda AI © 2026 · Kvantitativno modeliranje sportskih tržišta
@@ -149,4 +152,5 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
 
