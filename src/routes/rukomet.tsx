@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Activity, Edit3, RefreshCw, Search, Settings, ShieldAlert, Trophy } from "lucide-react";
+import { Activity, Edit3, RefreshCw, Search, Settings, ShieldAlert, Sparkles, Trophy } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { getRukometGames, getRukometOdds, type RukometGame, type RukometMarkets } from "@/lib/rukomet.functions";
 import { analyzeRukomet, type RukometAnalysis, type Tip } from "@/lib/rukomet-engine";
@@ -55,12 +55,12 @@ function RukometPage() {
   const [book, setBook] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
 
-  // Ručni unos kvota kad API nema kvote za utakmicu
+  // Ručni unos kvota
   const [manualMode, setManualMode] = useState(false);
-  const [m1, setM1] = useState("1.45");
-  const [mX, setMX] = useState("9.50");
-  const [m2, setM2] = useState("3.40");
-  const [mLine, setMLine] = useState("56.5");
+  const [m1, setM1] = useState("1.65");
+  const [mX, setMX] = useState("8.50");
+  const [m2, setM2] = useState("2.75");
+  const [mLine, setMLine] = useState("57.5");
   const [mOver, setMOver] = useState("1.85");
   const [mUnder, setMUnder] = useState("1.85");
 
@@ -98,20 +98,31 @@ function RukometPage() {
     }
   };
 
-  const runAnalysis = (markets: RukometMarkets, leagueName: string, bookName: string | null) => {
-    const a = analyzeRukomet(markets, leagueName);
+  const runAnalysis = (
+    markets: RukometMarkets,
+    leagueName: string,
+    bookName: string | null,
+    homeTeam: string,
+    awayTeam: string,
+    sourceMode?: "API" | "ALGORITAM" | "RUČNO"
+  ) => {
+    const a = analyzeRukomet(markets, leagueName, homeTeam, awayTeam, sourceMode);
     setBook(bookName);
-    if (!a) {
-      setMsg("Nema dovoljno kvota za izračun rukometnog modela. Možeš unijeti kvote ručno.");
-      setManualMode(true);
-      return;
-    }
     setAn(a);
+
+    // Prilagodi ručna polja točno ovoj utakmici
+    setM1(a.x12[0]?.fair ? a.x12[0].fair.toFixed(2) : "1.65");
+    setMX(a.x12[1]?.fair ? a.x12[1].fair.toFixed(2) : "8.50");
+    setM2(a.x12[2]?.fair ? a.x12[2].fair.toFixed(2) : "2.75");
+    setMLine((Math.round(a.muTotal * 2) / 2).toFixed(1));
+    setMOver("1.85");
+    setMUnder("1.85");
+
     setMsg("");
-    setManualMode(false);
   };
 
   const handleManualAnalyze = () => {
+    if (!sel) return;
     const o1 = parseFloat(m1);
     const oX = parseFloat(mX);
     const o2 = parseFloat(m2);
@@ -123,7 +134,7 @@ function RukometPage() {
     const mk: RukometMarkets = {
       "Match Winner": {
         Home: o1,
-        Draw: oX > 1 ? oX : 9.5,
+        Draw: oX > 1 ? oX : 8.5,
         Away: o2,
       },
     };
@@ -138,7 +149,8 @@ function RukometPage() {
       };
     }
 
-    runAnalysis(mk, sel?.league ?? "Rukomet", "Ručni unos");
+    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO");
+    setManualMode(false);
   };
 
   const open = async (g: RukometGame) => {
@@ -153,25 +165,23 @@ function RukometPage() {
     setAn(null);
     setManualMode(false);
     setMsg(`Analiziram ${g.home} — ${g.away}…`);
+
     try {
       const r = await rukometGuarded(
         `odds.${g.id}`,
         () => getRukometOdds({ data: { id: g.id, apiKey } }),
         onWait
       );
-      if (r.error) {
-        setMsg(
-          r.error === "RATE_LIMIT"
-            ? "Limit API-ja — pričekaj 15 s."
-            : `${r.error} Unesi kvote ručno u nastavku:`
-        );
-        setManualMode(true);
-        return;
+
+      if (r.error || !r.markets || Object.keys(r.markets).length === 0) {
+        // Nema API kvota — pokreni dinamički algoritam specifičan za ovu utakmicu i ligu
+        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM");
+      } else {
+        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API");
       }
-      runAnalysis(r.markets, g.league, r.bookmaker);
-    } catch (e: any) {
-      setMsg(`${e?.message ?? "Greška"}. Možeš unijeti kvote ručno:`);
-      setManualMode(true);
+    } catch {
+      // Fallback na dinamički algoritam
+      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM");
     } finally {
       setBusyId(null);
     }
@@ -226,8 +236,7 @@ function RukometPage() {
           <ShieldAlert className="h-4 w-4 text-primary" />
           <span>
             Zaštita API-ja: <strong>{st?.blocked ? "Blokirano (cooldown)" : "Aktivna"}</strong> · Poziva danas:{" "}
-            <strong>{st?.countToday ?? 0}</strong> / 85 · Preostalo u minuti:{" "}
-            <strong>{st?.minuteRemaining ?? "—"}</strong>
+            <strong>{st?.used ?? 0}</strong> / 85
           </span>
         </div>
         {st?.blocked && (
@@ -289,17 +298,17 @@ function RukometPage() {
         </div>
       )}
 
-      {/* Ručni unos kvota kada API nema kvote */}
+      {/* Ručni unos / prilagodba kvota */}
       {sel && manualMode && (
         <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Edit3 className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-semibold">
-                Ručni unos kvota za: {sel.home} — {sel.away}
+                Prilagodi kvote za: {sel.home} — {sel.away}
               </h2>
             </div>
-            <span className="text-[11px] text-muted-foreground">Kladionica nema API kvote</span>
+            <span className="text-[11px] text-muted-foreground">Prilagodi prema svojoj kladionici</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 text-xs">
@@ -370,7 +379,7 @@ function RukometPage() {
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Activity className="h-3.5 w-3.5" />
-            Pokreni kvantitativnu analizu
+            Pokreni analizu s ovim kvotama
           </button>
         </div>
       )}
@@ -386,14 +395,17 @@ function RukometPage() {
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                Izvor kvota: {book ?? "Analitički model"}
+              <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold ${
+                an.source === "API" ? "bg-emerald-500/10 text-emerald-600" : "bg-primary/10 text-primary"
+              }`}>
+                <Sparkles className="h-3 w-3" />
+                {an.source === "API" ? `Izvor: ${book ?? "Kladionica API"}` : "Izvor: Ligaški model Andromeda AI"}
               </span>
               <button
                 onClick={() => setManualMode(!manualMode)}
                 className="text-xs text-muted-foreground hover:text-foreground underline"
               >
-                {manualMode ? "Sakrij ručni unos" : "Prilagodi kvote ručno"}
+                {manualMode ? "Sakrij unos" : "Prilagodi kvote ručno"}
               </button>
             </div>
           </div>
@@ -536,5 +548,6 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
     </div>
   );
 }
+
 
 
