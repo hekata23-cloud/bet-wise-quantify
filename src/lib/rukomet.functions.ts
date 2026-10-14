@@ -52,7 +52,7 @@ export type RukometGame = {
 };
 
 export const getRukometGames = createServerFn({ method: "POST" })
-  .inputValidator((d) =>
+  .validator((d: { date: string; apiKey?: string }) =>
     z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), apiKey: z.string().optional() }).parse(d)
   )
   .handler(async ({ data }) => {
@@ -71,27 +71,48 @@ export const getRukometGames = createServerFn({ method: "POST" })
 
 export type RukometMarkets = Record<string, Record<string, number>>;
 
-/** Dohvat kvota: /odds?game=ID. Prednost Bet365 ili najbogatija kladionica. */
+/** Dohvat kvota: /odds?game=ID. Podržava i objekt i niz odgovora te spaja sva tržišta. */
 export const getRukometOdds = createServerFn({ method: "POST" })
-  .inputValidator((d) => z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d))
+  .validator((d: { id: number; apiKey?: string }) =>
+    z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d)
+  )
   .handler(async ({ data }) => {
     const r = await call(`/odds?game=${data.id}`, data.apiKey);
-    const books: any[] = ((r.data as any[]) ?? []).flatMap((it) => it?.bookmakers ?? []);
-    const chosen =
-      books.find((b) => /bet ?365/i.test(String(b.name))) ??
-      [...books].sort((a, b) => (b.bets?.length ?? 0) - (a.bets?.length ?? 0))[0];
+    const resp = r.data;
+    let books: any[] = [];
+
+    if (Array.isArray(resp)) {
+      books = resp.flatMap((it) => it?.bookmakers ?? (it?.bets ? [it] : []));
+    } else if (resp && typeof resp === "object") {
+      if (Array.isArray((resp as any).bookmakers)) {
+        books = (resp as any).bookmakers;
+      }
+    }
+
+    // Sortiraj kladionice po bogatstvu ponude i preferiraj poznatije kladionice
+    const sorted = [...books].sort((a, b) => {
+      const aP = /bet ?365|1xbet|unibet/i.test(String(a.name)) ? 100 : 0;
+      const bP = /bet ?365|1xbet|unibet/i.test(String(b.name)) ? 100 : 0;
+      return bP + (b.bets?.length ?? 0) - (aP + (a.bets?.length ?? 0));
+    });
 
     const markets: RukometMarkets = {};
-    for (const bet of chosen?.bets ?? []) {
-      const m: Record<string, number> = {};
-      for (const v of bet.values ?? []) {
-        const k = Number(v.odd);
-        if (Number.isFinite(k) && k > 1) m[String(v.value).trim()] = k;
+    for (const b of sorted) {
+      for (const bet of b?.bets ?? []) {
+        const name = String(bet.name).trim();
+        if (!markets[name]) {
+          const m: Record<string, number> = {};
+          for (const v of bet.values ?? []) {
+            const k = Number(v.odd);
+            if (Number.isFinite(k) && k > 1) m[String(v.value).trim()] = k;
+          }
+          if (Object.keys(m).length) markets[name] = m;
+        }
       }
-      if (Object.keys(m).length) markets[String(bet.name).trim()] = m;
     }
+
     const error =
       r.error ?? (Object.keys(markets).length ? null : "Kladionice još nisu objavile kvote za ovu rukometnu utakmicu.");
-    return { error, rate: r.rate, markets, bookmaker: (chosen?.name as string) ?? null };
+    return { error, rate: r.rate, markets, bookmaker: (sorted[0]?.name as string) ?? null };
   });
 
