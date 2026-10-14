@@ -31,6 +31,7 @@ const NAV = [
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/kosarka", label: "Košarka Sharp", icon: Dribbble },
+  { to: "/obrnute-kvote", label: "Obrnute kvote", icon: Radar },
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
