@@ -15,6 +15,7 @@ import { Route as BttsOverRouteImport } from './routes/btts-over'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as HtFtRouteImport } from './routes/ht-ft'
+import { Route as HtFtPredikcijaRouteImport } from './routes/ht-ft-predikcija'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as KosarkaRouteImport } from './routes/kosarka'
 import { Route as OverUnderRouteImport } from './routes/over-under'
@@ -59,6 +60,11 @@ const GoloviRoute = GoloviRouteImport.update({
 const HtFtRoute = HtFtRouteImport.update({
   id: '/ht-ft',
   path: '/ht-ft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HtFtPredikcijaRoute = HtFtPredikcijaRouteImport.update({
+  id: '/ht-ft-predikcija',
+  path: '/ht-ft-predikcija',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KalkulatorRoute = KalkulatorRouteImport.update({
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
+  '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
   '/over-under': typeof OverUnderRouteWithChildren
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
+  '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
   '/postavke': typeof PostavkeRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
+  '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
   '/over-under': typeof OverUnderRouteWithChildren
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/golovi'
     | '/ht-ft'
+    | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
     | '/over-under'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/golovi'
     | '/ht-ft'
+    | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
     | '/postavke'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/golovi'
     | '/ht-ft'
+    | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
     | '/over-under'
@@ -284,6 +296,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   GoloviRoute: typeof GoloviRoute
   HtFtRoute: typeof HtFtRoute
+  HtFtPredikcijaRoute: typeof HtFtPredikcijaRoute
   KalkulatorRoute: typeof KalkulatorRoute
   KosarkaRoute: typeof KosarkaRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
@@ -341,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/ht-ft'
       fullPath: '/ht-ft'
       preLoaderRoute: typeof HtFtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ht-ft-predikcija': {
+      id: '/ht-ft-predikcija'
+      path: '/ht-ft-predikcija'
+      fullPath: '/ht-ft-predikcija'
+      preLoaderRoute: typeof HtFtPredikcijaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kalkulator': {
@@ -472,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   GoloviRoute: GoloviRoute,
   HtFtRoute: HtFtRoute,
+  HtFtPredikcijaRoute: HtFtPredikcijaRoute,
   KalkulatorRoute: KalkulatorRoute,
   KosarkaRoute: KosarkaRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
