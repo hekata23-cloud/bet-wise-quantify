@@ -18,6 +18,7 @@ import { Route as HtFtRouteImport } from './routes/ht-ft'
 import { Route as HtFtPredikcijaRouteImport } from './routes/ht-ft-predikcija'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as KosarkaRouteImport } from './routes/kosarka'
+import { Route as ObrnuteKvoteRouteImport } from './routes/obrnute-kvote'
 import { Route as OverUnderRouteImport } from './routes/over-under'
 import { Route as PostavkeRouteImport } from './routes/postavke'
 import { Route as PrediktorRouteImport } from './routes/prediktor'
@@ -75,6 +76,11 @@ const KalkulatorRoute = KalkulatorRouteImport.update({
 const KosarkaRoute = KosarkaRouteImport.update({
   id: '/kosarka',
   path: '/kosarka',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObrnuteKvoteRoute = ObrnuteKvoteRouteImport.update({
+  id: '/obrnute-kvote',
+  path: '/obrnute-kvote',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverUnderRoute = OverUnderRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
+  '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
+  '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
+  '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
+    | '/obrnute-kvote'
     | '/over-under'
     | '/postavke'
     | '/prediktor'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
+    | '/obrnute-kvote'
     | '/postavke'
     | '/prediktor'
     | '/pro'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
+    | '/obrnute-kvote'
     | '/over-under'
     | '/postavke'
     | '/prediktor'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   HtFtPredikcijaRoute: typeof HtFtPredikcijaRoute
   KalkulatorRoute: typeof KalkulatorRoute
   KosarkaRoute: typeof KosarkaRoute
+  ObrnuteKvoteRoute: typeof ObrnuteKvoteRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
   PostavkeRoute: typeof PostavkeRoute
   PrediktorRoute: typeof PrediktorRoute
@@ -375,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/kosarka'
       fullPath: '/kosarka'
       preLoaderRoute: typeof KosarkaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/obrnute-kvote': {
+      id: '/obrnute-kvote'
+      path: '/obrnute-kvote'
+      fullPath: '/obrnute-kvote'
+      preLoaderRoute: typeof ObrnuteKvoteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/over-under': {
@@ -495,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
   HtFtPredikcijaRoute: HtFtPredikcijaRoute,
   KalkulatorRoute: KalkulatorRoute,
   KosarkaRoute: KosarkaRoute,
+  ObrnuteKvoteRoute: ObrnuteKvoteRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
   PostavkeRoute: PostavkeRoute,
   PrediktorRoute: PrediktorRoute,
