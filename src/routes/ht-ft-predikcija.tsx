@@ -231,7 +231,7 @@ export function QuantumHtFtPage() {
       {statusMsg && (
         <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 text-emerald-200 text-xs sm:text-sm">
           <span>{statusMsg}</span>
-          {guard.suspendedUntil && guard.suspendedUntil > Date.now() && (
+          {guard.cooldownUntil > Date.now() && (
             <button
               onClick={handleResetGuard}
               className="px-2.5 py-1 rounded-lg bg-red-600 text-white font-semibold text-xs hover:bg-red-500"

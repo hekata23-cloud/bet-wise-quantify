@@ -109,8 +109,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>
               Sharp Filter Aktivan:{" "}
-              <strong className="text-white">{activePreset.label}</strong> —
-              Minimalna vjerojatnost {settings.minProbability}%, Min EV {settings.minEV}%
+              <strong className="text-white">{activePreset.name}</strong> —
+              Minimalna vjerojatnost {Math.round(settings.minProb * 100)}%, Min EV {settings.minEV}%
             </span>
           </div>
         )}
