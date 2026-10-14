@@ -131,6 +131,15 @@ function KosarkaPage() {
                   <Stat k="Pobjeda uklj. OT" v={`${pct(an.pHomeOT)} / ${pct(an.pAwayOT)}`} />
                 </div>
               </div>
+              <div className="rounded-xl border-2 border-primary bg-primary/15 p-4">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Obavezan tip · zbroj koševa uklj. produžetke</div>
+                <div className="text-2xl font-bold">{an.totalPick.pick.startsWith("Više") ? "VIŠE OD" : "MANJE OD"} {an.totalPick.market.replace("Zbroj ", "")}</div>
+                <div className="text-sm tabular-nums">
+                  Šansa {pct(an.totalPick.prob)} · fer {an.totalPick.fair.toFixed(2)}
+                  {an.totalPick.odd ? ` · kvota ${an.totalPick.odd.toFixed(2)} · EV ${an.totalPick.ev!.toFixed(1)}%` : " · (bez kvote, procjena modela)"}
+                  {" · "}očekivano {an.total.toFixed(1)} koševa
+                </div>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {an.best && <Pick title="Value tip" icon t={an.best} />}
                 {an.safest && <Pick title="Najsigurniji tip" t={an.safest} />}
