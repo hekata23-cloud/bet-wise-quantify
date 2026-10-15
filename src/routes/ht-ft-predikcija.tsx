@@ -26,7 +26,7 @@ import {
   zagrebDay,
 } from "@/lib/zlatni-guard";
 
-export const Route = createFileRoute("/ht-ft")({
+export const Route = createFileRoute("/ht-ft-predikcija")({
   head: () => ({
     meta: [
       {
