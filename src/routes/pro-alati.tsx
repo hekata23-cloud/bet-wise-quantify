@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { evaluatePredictionIntegrity, integrityClass, footballContradiction } from "@/lib/prediction-integrity";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   asianHandicap, goalLineOver, countOver, statLambda, arbitrage, combo, kelly, liveMomentum,
@@ -200,3 +199,147 @@ function Live({ ctx }: { ctx: Ctx }) {
   const [v, setV] = useState(e ? { minute: String(e.minute), lh: ctx!.a.lh.toFixed(2), la: ctx!.a.la.toFixed(2), sotH: String(e.shotsOnH), sotA: String(e.shotsOnA), daH: String(e.shotsH * 4), daA: String(e.shotsA * 4), gH: String(e.goalsH), gA: String(e.goalsA) }
     : { minute: "60", lh: ctx?.a.lh.toFixed(2) ?? "1.5", la: ctx?.a.la.toFixed(2) ?? "1.1", sotH: "5", sotA: "2", daH: "45", daA: "25", gH: "0", gA: "0" });
   const s = (k: keyof typeof v) => (x: string) => setV({ ...v, [k]: x });
+  const r = liveMomentum({ minute: n(v.minute), lh: n(v.lh), la: n(v.la), sotH: n(v.sotH), sotA: n(v.sotA), daH: n(v.daH), daA: n(v.daA) });
+  const total = n(v.gH) + n(v.gA);
+  return (
+    <Card title="Live momentum">
+      <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+        <F label="Minuta" v={v.minute} set={s("minute")} /><F label="Golovi domaćin" v={v.gH} set={s("gH")} /><F label="Golovi gost" v={v.gA} set={s("gA")} />
+        <F label="λ domaćin (prije)" v={v.lh} set={s("lh")} /><F label="λ gost (prije)" v={v.la} set={s("la")} />
+        <F label="Udarci u okvir D" v={v.sotH} set={s("sotH")} /><F label="Udarci u okvir G" v={v.sotA} set={s("sotA")} />
+        <F label="Opasni napadi D" v={v.daH} set={s("daH")} /><F label="Opasni napadi G" v={v.daA} set={s("daA")} />
+      </div>
+      <Row k="Sljedeći gol — domaćin" v={pct(r.nextHome)} hi={r.nextHome > r.nextAway} />
+      <Row k="Sljedeći gol — gost" v={pct(r.nextAway)} hi={r.nextAway > r.nextHome} />
+      <Row k="Bez više golova" v={pct(r.noGoal)} />
+      <Row k={`Over ${total + 0.5} (još barem 1 gol)`} v={`${pct(1 - r.noGoal)} · fer ${fo(1 / (1 - r.noGoal))}`} />
+    </Card>
+  );
+}
+
+function Injury({ ctx }: { ctx: Ctx }) {
+  const [lh, setLh] = useState(ctx?.a.lh.toFixed(2) ?? "1.6"), [la, setLa] = useState(ctx?.a.la.toFixed(2) ?? "1.1");
+  const [miss, setMiss] = useState<{ team: "home" | "away"; role: Role; key: boolean; name?: string }[]>(
+    (ctx?.extra?.injuries ?? []).map((x) => ({ team: x.team, role: "vezni" as Role, key: false, name: `${x.player} (${x.reason})` })));
+  const before = oneXtwo(n(lh), n(la)); const adj = injuryAdjust(n(lh), n(la), miss); const after = oneXtwo(adj.lh, adj.la);
+  const roles: Role[] = ["napadac", "vezni", "obrana", "golman"];
+  return (
+    <Card title="Ozljede i postave">
+      <div className="grid grid-cols-2 gap-3"><F label="λ domaćin" v={lh} set={setLh} /><F label="λ gost" v={la} set={setLa} /></div>
+      {miss.map((m, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+          {m.name && <span className="font-medium">{m.name}</span>}
+          <select className={inp + " w-auto"} value={m.team} onChange={(e) => setMiss(miss.map((x, j) => j === i ? { ...x, team: e.target.value as "home" | "away" } : x))}><option value="home">Domaćin</option><option value="away">Gost</option></select>
+          <select className={inp + " w-auto"} value={m.role} onChange={(e) => setMiss(miss.map((x, j) => j === i ? { ...x, role: e.target.value as Role } : x))}>{roles.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+          <label className="flex items-center gap-1"><input type="checkbox" checked={m.key} onChange={(e) => setMiss(miss.map((x, j) => j === i ? { ...x, key: e.target.checked } : x))} /> ključni igrač</label>
+          <button className="text-xs text-destructive" onClick={() => setMiss(miss.filter((_, j) => j !== i))}>Ukloni</button>
+        </div>
+      ))}
+      <button className={btn} onClick={() => setMiss([...miss, { team: "home", role: "napadac", key: true }])}>Dodaj igrača koji ne igra</button>
+      <div className="grid md:grid-cols-2 gap-2">
+        {([["1", before.h, after.h], ["X", before.d, after.d], ["2", before.a, after.a], ["Over 2.5", before.o25, after.o25], ["GG", before.gg, after.gg]] as const).map(([k, b, a]) =>
+          <Row key={k} k={k} v={`${pct(b)} → ${pct(a)} · fer ${fo(1 / a)}`} hi={Math.abs(a - b) > 0.02} />)}
+      </div>
+      <Row k="Nove λ" v={`${adj.lh.toFixed(2)} : ${adj.la.toFixed(2)}`} />
+    </Card>
+  );
+}
+
+function History() {
+  const [picks, setPicks] = usePersist<HistPick[]>("pa.history", []);
+  const [f, setF] = useState({ card: "Pro Sharp", label: "", prob: "" });
+  const stats = historyByCard(picks);
+  const cards = ["Pro Sharp", "Zlatni tip", "Prediktor", "Kalkulator", "Termometar", "AI Prognoza", "AI Chat"];
+  return (
+    <Card title="Povijest točnosti po kartici">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+        <label className="block text-xs text-muted-foreground">Kartica<select className={inp + " mt-1"} value={f.card} onChange={(e) => setF({ ...f, card: e.target.value })}>{cards.map((c) => <option key={c}>{c}</option>)}</select></label>
+        <F label="Tip" v={f.label} set={(x) => setF({ ...f, label: x })} /><F label="Dana vjerojatnost %" v={f.prob} set={(x) => setF({ ...f, prob: x })} />
+        <button className={btn} onClick={() => { if (n(f.prob) > 0) { setPicks([{ id: uid(), card: f.card, label: f.label || "Tip", prob: n(f.prob) / 100, won: null, ts: Date.now() }, ...picks]); setF({ ...f, label: "", prob: "" }); } }}>Spremi tip</button>
+      </div>
+      {stats.map((s) => <Row key={s.card} k={`${s.card} · ${s.n} tipova`} v={`pogođeno ${pct(s.hitRate)} (očekivano ${pct(s.expected)}) · Brier ${s.brier.toFixed(3)}`} hi={s.hitRate >= s.expected} />)}
+      <div className="space-y-1">
+        {picks.map((p) => (
+          <div key={p.id} className="flex items-center gap-2 rounded-lg bg-muted/40 p-2 text-sm">
+            <span className="min-w-0 flex-1 truncate">{p.card} · {p.label} · {pct(p.prob)}</span>
+            <button onClick={() => setPicks(picks.map((x) => x.id === p.id ? { ...x, won: true } : x))} className={`rounded px-2 py-1 text-xs ${p.won === true ? "bg-primary text-primary-foreground" : "bg-background"}`}>Prošao</button>
+            <button onClick={() => setPicks(picks.map((x) => x.id === p.id ? { ...x, won: false } : x))} className={`rounded px-2 py-1 text-xs ${p.won === false ? "bg-destructive text-destructive-foreground" : "bg-background"}`}>Pao</button>
+            <button onClick={() => setPicks(picks.filter((x) => x.id !== p.id))} className="text-xs text-destructive">×</button>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">Brier ispod 0.20 = dobar model. Ako je pogođeno manje od očekivanog, kartica precjenjuje svoje tipove.</p>
+    </Card>
+  );
+}
+
+function BookMarkets({ m, names }: { m: Bet365Markets; names: string[] }) {
+  const found = names.filter((x) => m[x]);
+  if (!found.length) return <p className="text-xs text-muted-foreground">Kladionica nije objavila kvote za ova tržišta.</p>;
+  return <div className="space-y-2">{found.map((x) => <div key={x}><div className="text-xs text-muted-foreground">Kvote kladionice — {x}</div>
+    <div className="flex flex-wrap gap-1">{Object.entries(m[x]).map(([k, o]) => <span key={k} className="rounded bg-muted px-2 py-1 text-xs tabular-nums">{k}: {o}</span>)}</div></div>)}</div>;
+}
+
+function Loader({ ctx, setCtx }: { ctx: Ctx; setCtx: (c: Ctx) => void }) {
+  const [fx, setFx] = useState<ZtFixture[]>([]), [q, setQ] = useState(""), [msg, setMsg] = useState(""), [busy, setBusy] = useState(false);
+  const wait = (ms: number, why: string) => setMsg(`Zaštita: ${why} — čekam ${Math.ceil(ms / 1000)} s…`);
+  const err = (e: string) => e === "RATE_LIMIT" ? "API traži kratku pauzu (limit po minuti). Pričekaj 15 s i pokušaj ponovno." : e;
+  const loadDay = async () => {
+    const apiKey = getApiKey(); if (!apiKey) return setMsg("Upiši API-Football ključ u Postavkama.");
+    setBusy(true);
+    try {
+      const r = await guarded("fixtures", 1, () => getZtFixtures({ data: { date: zagrebDay(), apiKey } }), wait);
+      if (r.error) setMsg(err(r.error)); else { setFx(r.fixtures); setMsg(`${r.fixtures.length} utakmica (spremljeno za danas — ponovno učitavanje ne troši kredit).`); }
+    } catch (e: any) { setMsg(e?.message ?? "Greška"); } finally { setBusy(false); }
+  };
+  const pick = async (f: ZtFixture) => {
+    const apiKey = getApiKey(); if (!apiKey) return;
+    setBusy(true); setMsg(`Učitavam ${f.home} — ${f.away}…`);
+    try {
+      const r = await guarded(`match.${f.id}`, 2, () => getZtMatch({ data: { id: f.id, apiKey } }), wait);
+      if (r.error === "RATE_LIMIT" || r.error?.startsWith("ACCOUNT")) return setMsg(err(r.error));
+      const a = analyze(r.markets, r.home, r.away);
+      let extra: PaExtra | null = null;
+      try {
+        const live = f.status !== "NS" && f.status !== "TBD";
+        const id = live ? `paextra.${f.id}.${Math.floor(Date.now() / 120000)}` : `paextra.${f.id}`;
+        const x = await guarded(id, 2, () => getPaExtra({ data: { id: f.id, homeId: f.homeId, apiKey } }), wait);
+        extra = x.extra;
+      } catch { /* dodatni podaci nisu obavezni */ }
+      setCtx({ f, a, markets: r.markets, bookmaker: r.bookmaker, extra });
+      setMsg(r.bookmaker ? `Učitano: kvote (${r.bookmaker}), statistika, ozljede${extra?.minute ? ", live statistika" : ""}. Svi alati su popunjeni.` : "Kvote još nisu objavljene — model koristi samo statistiku.");
+    } catch (e: any) { setMsg(e?.message ?? "Greška"); } finally { setBusy(false); }
+  };
+  const list = fx.filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(q.toLowerCase())).slice(0, 40);
+  const r = ctx ? oneXtwo(ctx.a.lh, ctx.a.la) : null;
+  return (
+    <Card title="Učitaj utakmicu (API-Football)">
+      <div className="flex flex-wrap gap-2">
+        <button className={btn} disabled={busy} onClick={loadDay}>Učitaj utakmice dana</button>
+        <button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={() => { resetGuard(); setMsg("Blokada poništena."); }}>Poništi blokadu</button>
+        {fx.length > 0 && <input className={inp + " max-w-xs"} placeholder="Traži tim ili ligu…" value={q} onChange={(e) => setQ(e.target.value)} />}
+      </div>
+      {msg && <p className="text-sm text-muted-foreground">{msg}</p>}
+      {fx.length > 0 && <div className="max-h-64 overflow-y-auto space-y-1">{list.map((f) => (
+        <button key={f.id} disabled={busy} onClick={() => pick(f)} className={`flex w-full gap-2 rounded-lg px-3 py-2 text-left text-sm ${ctx?.f.id === f.id ? "bg-primary/15 text-primary" : "bg-muted/40 hover:bg-muted"}`}>
+          <span className="tabular-nums shrink-0">{new Date(f.time).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" })}</span>
+          <span className="min-w-0 flex-1 truncate">{f.home} — {f.away}</span><span className="hidden md:inline truncate text-xs text-muted-foreground max-w-[40%]">{f.league}</span>
+        </button>))}</div>}
+      {ctx && r && (
+        <div className="space-y-2">
+          <div className="font-semibold">{ctx.f.home} — {ctx.f.away}{ctx.extra && ctx.extra.minute > 0 ? ` · ${ctx.extra.minute}' (${ctx.extra.goalsH}:${ctx.extra.goalsA})` : ""}</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Row k="Očekivani golovi" v={`${ctx.a.lh.toFixed(2)} : ${ctx.a.la.toFixed(2)}`} />
+            <Row k="1 / X / 2" v={`${pct(r.h)} / ${pct(r.d)} / ${pct(r.a)}`} />
+            <Row k="Over 2.5 · GG" v={`${pct(r.o25)} · ${pct(r.gg)}`} />
+            <Row k="Najvjerojatniji rezultat" v={ctx.a.topScores[0] ? `${ctx.a.topScores[0].score} (${pct(ctx.a.topScores[0].p)})` : "—"} />
+          </div>
+          {ctx.a.golden && <Row k="Glavni tip" v={`${ctx.a.golden.market}: ${ctx.a.golden.outcome.label} · ${pct(ctx.a.golden.outcome.p)}`} hi />}
+          {ctx.a.safe && <Row k="Sigurna linija" v={`${ctx.a.safe.market}: ${ctx.a.safe.outcome.label} · ${pct(ctx.a.safe.outcome.p)}`} />}
+          {ctx.a.value && <Row k="Value tip" v={`${ctx.a.value.market}: ${ctx.a.value.outcome.label}`} />}
+          <p className="text-xs text-muted-foreground">Ozljede: {ctx.extra?.injuries.length ?? 0} · Postave: {ctx.extra?.lineupsReady ? "objavljene" : "još nisu"}. Otvori bilo koji alat ispod — već je popunjen.</p>
+        </div>
+      )}
+    </Card>
+  );
+}
