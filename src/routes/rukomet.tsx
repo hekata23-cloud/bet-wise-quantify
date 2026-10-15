@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Activity, Edit3, RefreshCw, Search, Settings, ShieldAlert, Sparkles, Trophy } from "lucide-react";
+import { Activity, CheckCircle2, Edit3, Flame, RefreshCw, Search, Settings, ShieldAlert, Sparkles, Target, Trophy } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
 import { getRukometGames, getRukometOdds, type RukometGame, type RukometMarkets } from "@/lib/rukomet.functions";
 import { analyzeRukomet, type RukometAnalysis, type Tip } from "@/lib/rukomet-engine";
@@ -10,16 +10,16 @@ import { getApiKey } from "@/lib/zlatni-guard";
 export const Route = createFileRoute("/rukomet")({
   head: () => ({
     meta: [
-      { title: "Rukomet Sharp · 1X2, Zbroj golova, Timski golovi · Andromeda AI" },
+      { title: "Rukomet Sharp · Bet365 Kvote & Točni Tipovi · Andromeda AI" },
       {
         name: "description",
         content:
-          "Profesionalna analiza rukometnih utakmica: 1X2, 1 2 pobjednik, ukupni zbroj golova, golovi domaćina i gosta po zagrebačkom vremenu.",
+          "Profesionalna analiza rukometnih utakmica: Bet365 kvote, 1X2, 1 2 pobjednik, ukupni zbroj golova i timske margine po zagrebačkom vremenu.",
       },
       { property: "og:title", content: "Rukomet Sharp · Andromeda AI" },
       {
         property: "og:description",
-        content: "Kvantitativni rukometni model bez kladioničarske marže: fer kvote, EV i zbrojevi golova.",
+        content: "Kvantitativni rukometni model s Bet365 kvotama: fer kvote, EV, točni tipovi i zbrojevi golova.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -53,6 +53,7 @@ function RukometPage() {
   const [sel, setSel] = useState<RukometGame | null>(null);
   const [an, setAn] = useState<RukometAnalysis | null>(null);
   const [book, setBook] = useState<string | null>(null);
+  const [isB365, setIsB365] = useState(false);
   const [settings, setSettings] = useState(false);
 
   // Ručni unos kvota
@@ -104,10 +105,12 @@ function RukometPage() {
     bookName: string | null,
     homeTeam: string,
     awayTeam: string,
-    sourceMode?: "API" | "ALGORITAM" | "RUČNO"
+    sourceMode?: "API" | "ALGORITAM" | "RUČNO",
+    isBet365Flag = false
   ) => {
-    const a = analyzeRukomet(markets, leagueName, homeTeam, awayTeam, sourceMode);
+    const a = analyzeRukomet(markets, leagueName, homeTeam, awayTeam, sourceMode, isBet365Flag);
     setBook(bookName);
+    setIsB365(isBet365Flag);
     setAn(a);
 
     // Prilagodi ručna polja točno ovoj utakmici
@@ -149,7 +152,7 @@ function RukometPage() {
       };
     }
 
-    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO");
+    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO", false);
     setManualMode(false);
   };
 
@@ -164,7 +167,7 @@ function RukometPage() {
     setSel(g);
     setAn(null);
     setManualMode(false);
-    setMsg(`Analiziram ${g.home} — ${g.away}…`);
+    setMsg(`Analiziram ${g.home} — ${g.away} (preuzimam Bet365 kvote)…`);
 
     try {
       const r = await rukometGuarded(
@@ -174,14 +177,12 @@ function RukometPage() {
       );
 
       if (r.error || !r.markets || Object.keys(r.markets).length === 0) {
-        // Nema API kvota — pokreni dinamički algoritam specifičan za ovu utakmicu i ligu
-        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM");
+        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false);
       } else {
-        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API");
+        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API", r.isBet365);
       }
     } catch {
-      // Fallback na dinamički algoritam
-      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM");
+      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false);
     } finally {
       setBusyId(null);
     }
@@ -201,7 +202,7 @@ function RukometPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">🤾 Rukomet Sharp</h1>
           <p className="text-sm text-muted-foreground">
-            1X2 · 1 2 Pobjednik · Zbroj golova · Golovi domaćina i gosta · Zagreb vrijeme
+            Bet365 Kvote · Pobjednik 1 2 · Zbroj golova · Timski golovi · Zagreb vrijeme
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -395,22 +396,129 @@ function RukometPage() {
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold ${
-                an.source === "API" ? "bg-emerald-500/10 text-emerald-600" : "bg-primary/10 text-primary"
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                isB365
+                  ? "bg-emerald-500/20 text-emerald-600 border border-emerald-500/30"
+                  : an.source === "API"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "bg-muted text-muted-foreground border"
               }`}>
                 <Sparkles className="h-3 w-3" />
-                {an.source === "API" ? `Izvor: ${book ?? "Kladionica API"}` : "Izvor: Ligaški model Andromeda AI"}
+                {isB365 ? "Bet365 Kvote" : an.source === "API" ? `Izvor: ${book ?? "API"}` : "Kvantitativni Model"}
               </span>
               <button
                 onClick={() => setManualMode(!manualMode)}
                 className="text-xs text-muted-foreground hover:text-foreground underline"
               >
-                {manualMode ? "Sakrij unos" : "Prilagodi kvote ručno"}
+                {manualMode ? "Sakrij unos" : "Prilagodi kvote"}
               </button>
             </div>
           </div>
 
-          {/* Istaknuti tipovi */}
+          {/* 🎯 KONKRETIZIRANI TIPOVI ZA OKLADU */}
+          <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Target className="h-4 w-4 text-primary" />
+                <span>🎯 Preporučeni Konkretni Tipovi</span>
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground font-mono">
+                {isB365 ? "Bet365 Kalibracija" : "Model Analiza"}
+              </span>
+            </div>
+
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+              {/* 1) Glavni pobjednik */}
+              <div className="rounded-lg border bg-card p-3 shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+                  <span>Pobjednik (1 2)</span>
+                  <span className="rounded bg-primary/10 px-1 text-primary font-bold">
+                    {an.concrete.winner.confidence}
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-foreground truncate">
+                  {an.concrete.winner.pick}
+                </div>
+                <div className="flex items-center justify-between text-xs font-mono pt-1 text-muted-foreground">
+                  <span>{pct(an.concrete.winner.prob)}</span>
+                  <span>Fer {an.concrete.winner.fair.toFixed(2)}</span>
+                  {an.concrete.winner.odd && (
+                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-600">
+                      @{an.concrete.winner.odd.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 2) Glavni zbroj golova */}
+              <div className="rounded-lg border bg-card p-3 shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+                  <span>Ukupno golova</span>
+                  <span className="text-primary font-semibold">
+                    ~{an.concrete.totalGoals.projected.toFixed(1)} gola
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-foreground">
+                  {an.concrete.totalGoals.pick}
+                </div>
+                <div className="flex items-center justify-between text-xs font-mono pt-1 text-muted-foreground">
+                  <span>{pct(an.concrete.totalGoals.prob)}</span>
+                  <span>Fer {an.concrete.totalGoals.fair.toFixed(2)}</span>
+                  {an.concrete.totalGoals.odd && (
+                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-600">
+                      @{an.concrete.totalGoals.odd.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 3) Timska margina domaćin */}
+              <div className="rounded-lg border bg-card p-3 shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+                  <span className="truncate">{sel.home}</span>
+                  <span className="font-mono text-primary font-semibold">
+                    ~{an.concrete.homeTotal.projected.toFixed(1)}
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-foreground truncate">
+                  {sel.home} {an.concrete.homeTotal.pick}
+                </div>
+                <div className="flex items-center justify-between text-xs font-mono pt-1 text-muted-foreground">
+                  <span>{pct(an.concrete.homeTotal.prob)}</span>
+                  <span>Fer {an.concrete.homeTotal.fair.toFixed(2)}</span>
+                  {an.concrete.homeTotal.odd && (
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-bold">
+                      @{an.concrete.homeTotal.odd.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 4) Timska margina gost */}
+              <div className="rounded-lg border bg-card p-3 shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+                  <span className="truncate">{sel.away}</span>
+                  <span className="font-mono text-primary font-semibold">
+                    ~{an.concrete.awayTotal.projected.toFixed(1)}
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-foreground truncate">
+                  {sel.away} {an.concrete.awayTotal.pick}
+                </div>
+                <div className="flex items-center justify-between text-xs font-mono pt-1 text-muted-foreground">
+                  <span>{pct(an.concrete.awayTotal.prob)}</span>
+                  <span>Fer {an.concrete.awayTotal.fair.toFixed(2)}</span>
+                  {an.concrete.awayTotal.odd && (
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-bold">
+                      @{an.concrete.awayTotal.odd.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Istaknuti tipovi: Value Tip i Sigurica */}
           <div className="grid gap-3 sm:grid-cols-2">
             {an.best && (
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
@@ -423,7 +531,7 @@ function RukometPage() {
                   <strong>{an.best.fair.toFixed(2)}</strong>
                   {an.best.odd && (
                     <>
-                      {" "}· Ponuđena: <strong>{an.best.odd.toFixed(2)}</strong> · EV:{" "}
+                      {" "}· Kvote: <strong>{an.best.odd.toFixed(2)}</strong> · EV:{" "}
                       <strong className="text-emerald-600">+{an.best.ev?.toFixed(1)}%</strong>
                     </>
                   )}
@@ -433,7 +541,7 @@ function RukometPage() {
             {an.safest && (
               <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-                  <ShieldAlert className="h-4 w-4" /> Najsigurniji Tip (Najveća vjerojatnost)
+                  <CheckCircle2 className="h-4 w-4" /> Najsigurniji Tip (Najveća vjerojatnost)
                 </div>
                 <div className="mt-1 text-base font-bold">{an.safest.pick}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
@@ -467,7 +575,7 @@ function RukometPage() {
             </div>
           </div>
 
-          {/* Tržišta tabela */}
+          {/* Detaljne tablice tržišta */}
           <div className="grid gap-4 md:grid-cols-2">
             {/* 1X2 & Pobjednik */}
             <div className="rounded-lg border p-3">
@@ -479,7 +587,7 @@ function RukometPage() {
                   <Row key={t.pick} tip={t} />
                 ))}
                 {an.ml.map((t) => (
-                  <Row key={t.pick} tip={t} label={`Pobjednik ${t.pick}`} />
+                  <Row key={t.pick} tip={t} label={`Pobjednik (1 2) ${t.pick}`} />
                 ))}
               </div>
             </div>
@@ -548,6 +656,5 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
     </div>
   );
 }
-
 
 
