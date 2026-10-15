@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { evaluatePredictionIntegrity, integrityClass, footballContradiction } from "@/lib/prediction-integrity";
 import { useState, useTransition, useMemo } from "react";
 import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
