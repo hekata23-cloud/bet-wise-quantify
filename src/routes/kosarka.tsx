@@ -6,6 +6,8 @@ import { getKosGames, getKosOdds, type KosGame } from "@/lib/kosarka.functions";
 import { analyzeKos, type KosAnalysis, type Tip } from "@/lib/kosarka-engine";
 import { kosGuarded, readKosState, resetKosGuard, zagrebDay } from "@/lib/kosarka-guard";
 import { getApiKey } from "@/lib/zlatni-guard";
+import { evaluatePredictionIntegrity, noVigProbability, twoWayMarginPercent, type IntegrityResult } from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/kosarka")({
   head: () => ({
@@ -27,6 +29,28 @@ const time = (iso: string) => {
   try { return new Date(iso).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" }); } catch { return iso; }
 };
 const pct = (p: number) => `${(p * 100).toFixed(1)}%`;
+
+function tipIntegrity(t: Tip, group: Tip[]): IntegrityResult {
+  const same = group.filter((x) => x.market === t.market);
+  let marketProbability: number | null = null;
+  let marginPercent: number | null = null;
+  if (same.length === 2) {
+    const opp = same.find((x) => x !== t);
+    if (t.odd && opp?.odd) {
+      marketProbability = noVigProbability(t.odd, opp.odd);
+      marginPercent = twoWayMarginPercent(t.odd, opp.odd);
+    }
+  }
+  return evaluatePredictionIntegrity({
+    probability: t.prob,
+    odds: t.odd,
+    marketProbability,
+    marginPercent,
+    dataQuality: t.odd ? 0.9 : 0.45,
+    fallbackModel: !t.odd,
+    market: t.market,
+  });
+}
 
 function KosarkaPage() {
   const [date, setDate] = useState(() => (zagrebDay() < MIN_DATE ? MIN_DATE : zagrebDay()));
@@ -139,15 +163,16 @@ function KosarkaPage() {
                   {an.totalPick.odd ? ` · kvota ${an.totalPick.odd.toFixed(2)} · EV ${an.totalPick.ev!.toFixed(1)}%` : " · (bez kvote, procjena modela)"}
                   {" · "}očekivano {an.total.toFixed(1)} koševa
                 </div>
+                <IntegrityPanel result={tipIntegrity(an.totalPick, an.totals)} title="Integritet: glavni tip" />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                {an.best && <Pick title="Value tip" icon t={an.best} />}
-                {an.safest && <Pick title="Najsigurniji tip" t={an.safest} />}
+                {an.best && <Pick title="Value tip" icon t={an.best} integrity={tipIntegrity(an.best, [...an.x12, ...an.dc, ...an.ml, ...an.totals])} />}
+                {an.safest && <Pick title="Najsigurniji tip" t={an.safest} integrity={tipIntegrity(an.safest, [...an.x12, ...an.dc, ...an.ml, ...an.totals])} />}
               </div>
-              <Table title="1X2 (regularno vrijeme, 4 četvrtine)" rows={an.x12} best={an.best} />
-              <Table title="Dupla šansa (regularno vrijeme)" rows={an.dc} best={an.best} />
-              <Table title="Pobjednik uključujući produžetke" rows={an.ml} best={an.best} />
-              <Table title="Zbroj poena više/manje (uklj. produžetke)" rows={an.totals} best={an.best} />
+              <Table title="1X2 (regularno vrijeme, 4 četvrtine)" rows={an.x12} best={an.best} group={an.x12} />
+              <Table title="Dupla šansa (regularno vrijeme)" rows={an.dc} best={an.best} group={an.dc} />
+              <Table title="Pobjednik uključujući produžetke" rows={an.ml} best={an.best} group={an.ml} />
+              <Table title="Zbroj poena više/manje (uklj. produžetke)" rows={an.totals} best={an.best} group={an.totals} />
               {an.notes.map((n) => <div key={n} className="text-xs text-muted-foreground">• {n}</div>)}
             </>
           )}
@@ -162,28 +187,30 @@ function Stat({ k, v }: { k: string; v: string }) {
   return <div className="rounded-lg bg-muted/50 p-2"><div className="text-[11px] text-muted-foreground">{k}</div><div className="font-semibold tabular-nums">{v}</div></div>;
 }
 
-function Pick({ title, t, icon }: { title: string; t: Tip; icon?: boolean }) {
+function Pick({ title, t, icon, integrity }: { title: string; t: Tip; icon?: boolean; integrity?: IntegrityResult }) {
   return (
     <div className="rounded-xl border border-primary/50 bg-primary/10 p-4">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon && <Trophy className="h-3.5 w-3.5" />}{title}</div>
       <div className="text-lg font-semibold">{t.market}: {t.pick}</div>
       <div className="text-sm tabular-nums">Šansa {pct(t.prob)} · kvota {t.odd?.toFixed(2)} · fer {t.fair.toFixed(2)} · EV {t.ev?.toFixed(1)}%</div>
+      <IntegrityPanel result={integrity} compact title={title} />
     </div>
   );
 }
 
-function Table({ title, rows, best }: { title: string; rows: Tip[]; best: Tip | null }) {
+function Table({ title, rows, best, group }: { title: string; rows: Tip[]; best: Tip | null; group: Tip[] }) {
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="mb-2 text-sm font-semibold">{title}</div>
       <table className="w-full text-sm tabular-nums">
-        <thead className="text-xs text-muted-foreground"><tr><th className="text-left">Tip</th><th>Šansa</th><th>Fer</th><th>Kvota</th><th>EV</th></tr></thead>
+        <thead className="text-xs text-muted-foreground"><tr><th className="text-left">Tip</th><th>Šansa</th><th>Fer</th><th>Kvota</th><th>EV</th><th></th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.market + r.pick} className={best && best.market === r.market && best.pick === r.pick ? "text-primary font-semibold" : ""}>
               <td className="py-1">{r.pick}</td><td className="text-center">{pct(r.prob)}</td><td className="text-center">{r.fair.toFixed(2)}</td>
               <td className="text-center">{r.odd ? r.odd.toFixed(2) : "—"}</td>
               <td className={`text-center ${r.ev != null && r.ev > 0 ? "text-primary" : "text-muted-foreground"}`}>{r.ev != null ? `${r.ev > 0 ? "+" : ""}${r.ev.toFixed(1)}%` : "—"}</td>
+              <td className="text-center"><IntegrityPanel result={tipIntegrity(r, group)} compact /></td>
             </tr>
           ))}
         </tbody>

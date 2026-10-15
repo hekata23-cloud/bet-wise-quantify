@@ -30,6 +30,11 @@ import {
   computeQuantumHtFt,
   type MasterHtFtPrediction,
 } from "@/lib/ht-ft-predikcija";
+import {
+  evaluatePredictionIntegrity,
+  footballContradiction,
+} from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/ht-ft-predikcija")({
   head: () => ({
@@ -177,6 +182,54 @@ export function QuantumHtFtPage() {
       setAnalyzingId(null);
     }
   };
+
+  // Prediction Integrity Gate — pune-vremenske vjerojatnosti izvedene iz HT/FT matrice
+  const ftProbs = useMemo(() => {
+    if (!prediction) return null;
+    const sum = (codes: string[]) =>
+      codes.reduce(
+        (total, code) =>
+          total + (prediction.allOutcomes.find((o) => o.code === code)?.prob ?? 0),
+        0,
+      );
+    return {
+      home: sum(["1/1", "X/1", "2/1"]),
+      draw: sum(["1/X", "X/X", "2/X"]),
+      away: sum(["1/2", "X/2", "2/2"]),
+    };
+  }, [prediction]);
+
+  const ftSelected = (code: string): "HOME" | "DRAW" | "AWAY" => {
+    const final = code.split("/")[1];
+    return final === "1" ? "HOME" : final === "X" ? "DRAW" : "AWAY";
+  };
+
+  const concreteTipIntegrity = useMemo(() => {
+    if (!prediction || !ftProbs) return null;
+    const ct = prediction.concreteTip;
+    return evaluatePredictionIntegrity({
+      probability: ct.probPercent / 100,
+      odds: ct.bookieOdd,
+      dataQuality: ct.bookieOdd ? 0.75 : 0.45,
+      fallbackModel: !ct.bookieOdd,
+      contradictory: footballContradiction({ selected: ftSelected(ct.code), ...ftProbs }),
+      market: `HT/FT ${ct.code}`,
+    });
+  }, [prediction, ftProbs]);
+
+  const outcomeIntegrities = useMemo(() => {
+    if (!prediction || !ftProbs) return [];
+    return prediction.allOutcomes.map((o) =>
+      evaluatePredictionIntegrity({
+        probability: o.prob,
+        odds: o.bookieOdd,
+        dataQuality: o.bookieOdd ? 0.7 : 0.45,
+        fallbackModel: !o.bookieOdd,
+        contradictory: footballContradiction({ selected: ftSelected(o.code), ...ftProbs }),
+        market: `HT/FT ${o.code}`,
+      })
+    );
+  }, [prediction, ftProbs]);
 
   const filteredFixtures = useMemo(() => {
     if (!searchQuery.trim()) return fixtures;
@@ -348,6 +401,7 @@ export function QuantumHtFtPage() {
                   💡 <strong className="text-emerald-300">Taktičko obrazloženje:</strong>{" "}
                   {prediction.concreteTip.tacticalReason}
                 </p>
+                <IntegrityPanel result={concreteTipIntegrity} title="Integritet: Konkretan Tip" />
               </div>
 
               {/* Kvote i matematički omjeri */}
@@ -447,7 +501,7 @@ export function QuantumHtFtPage() {
               Kompletna Matrica Svih 9 Ishoda Poluvrijeme / Kraj
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-              {prediction.allOutcomes.map((o) => {
+              {prediction.allOutcomes.map((o, oIdx) => {
                 const isSelected = o.code === prediction.concreteTip.code;
                 return (
                   <div
@@ -461,6 +515,7 @@ export function QuantumHtFtPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-foreground">{o.code}</span>
                       <span className="truncate max-w-[110px] text-[11px]">{o.label.split("(")[0]}</span>
+                      <IntegrityPanel result={outcomeIntegrities[oIdx]} compact />
                     </div>
                     <div className="text-right font-mono">
                       <span className="text-foreground">{o.probPercent}%</span>

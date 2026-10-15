@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { analizirajObrnuto } from "@/lib/obrnute-kvote";
+import { evaluatePredictionIntegrity, twoWayMarginPercent } from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
 import { getApiKey, guarded, resetGuard, zagrebDay } from "@/lib/zlatni-guard";
 import { SettingsModal } from "@/components/SettingsModal";
@@ -57,9 +59,9 @@ function Page() {
   };
   const list = fx.filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(q.toLowerCase())).slice(0, 80);
 
+  const num = (k: string) => Number((v[k] ?? "").replace(",", "."));
   const r = useMemo(() => {
-    const n = (k: string) => Number((v[k] ?? "").replace(",", "."));
-    return analizirajObrnuto({ k1: n("k1"), kx: n("kx"), k2: n("k2"), kOver: n("kOver"), kUnder: n("kUnder"), kGG: n("kGG"), kNG: n("kNG") });
+    return analizirajObrnuto({ k1: num("k1"), kx: num("kx"), k2: num("k2"), kOver: num("kOver"), kUnder: num("kUnder"), kGG: num("kGG"), kNG: num("kNG") });
   }, [v]);
 
   return (
@@ -101,18 +103,30 @@ function Page() {
             <Box k="Pošteni Više 2.5" v={pct(r.pOver)} />
             <Box k="Pošteni GG" v={pct(r.pBtts)} />
           </div>
-          {r.signali.map((s) => (
-            <div key={s.trziste} className={`rounded-xl border p-4 ${s.razina === "ZAMKA" ? "border-destructive bg-destructive/10" : s.razina === "SUMNJIVO" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
-              <div className="flex items-center justify-between text-sm font-semibold">
-                <span>{s.trziste}</span>
-                <span>{s.razina === "ZAMKA" ? "⚠️ ZAMKA" : s.razina === "SUMNJIVO" ? "Sumnjivo" : "✓ Usklađeno"}</span>
+          {r.signali.map((s) => {
+            const [oddA, oddB] = s.trziste === "2.5 golova" ? [num("kOver"), num("kUnder")] : [num("kGG"), num("kNG")];
+            const integrity = evaluatePredictionIntegrity({
+              probability: s.pModela,
+              odds: s.kvotaSkupe,
+              marketProbability: s.pTrzista,
+              marginPercent: twoWayMarginPercent(oddA, oddB),
+              dataQuality: 0.9,
+              market: s.trziste,
+            });
+            return (
+              <div key={s.trziste} className={`rounded-xl border p-4 ${s.razina === "ZAMKA" ? "border-destructive bg-destructive/10" : s.razina === "SUMNJIVO" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span>{s.trziste}</span>
+                  <span>{s.razina === "ZAMKA" ? "⚠️ ZAMKA" : s.razina === "SUMNJIVO" ? "Sumnjivo" : "✓ Usklađeno"}</span>
+                </div>
+                <p className="mt-1 text-sm">{s.tekst}</p>
+                <div className="mt-2 text-xs tabular-nums text-muted-foreground">
+                  „{s.skupa}": tržište {pct(s.pTrzista)} · model {pct(s.pModela)} · razlika {(s.razlika * 100).toFixed(1)} pp
+                </div>
+                <IntegrityPanel result={integrity} title={`Integritet: ${s.skupa}`} />
               </div>
-              <p className="mt-1 text-sm">{s.tekst}</p>
-              <div className="mt-2 text-xs tabular-nums text-muted-foreground">
-                „{s.skupa}": tržište {pct(s.pTrzista)} · model {pct(s.pModela)} · razlika {(s.razlika * 100).toFixed(1)} pp
-              </div>
-            </div>
-          ))}
+            );
+          })}
           <p className="text-xs text-muted-foreground">Signal nije jamstvo — pokazuje gdje kvota proturječi ostatku ponude. Igraj manji ulog na „skupu" stranu samo kod oznake ZAMKA.</p>
         </>
       )}

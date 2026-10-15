@@ -6,6 +6,8 @@ import { getRukometGames, getRukometOdds, type RukometGame, type RukometMarkets 
 import { analyzeRukomet, type RukometAnalysis, type Tip } from "@/lib/rukomet-engine";
 import { rukometGuarded, readRukometState, resetRukometGuard, zagrebDay } from "@/lib/rukomet-guard";
 import { getApiKey } from "@/lib/zlatni-guard";
+import { evaluatePredictionIntegrity, noVigProbability, twoWayMarginPercent, type IntegrityResult } from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/rukomet")({
   head: () => ({
@@ -42,6 +44,28 @@ const time = (iso: string) => {
   }
 };
 const pct = (p: number) => `${(p * 100).toFixed(1)}%`;
+
+function tipIntegrity(t: Tip, group: Tip[]): IntegrityResult {
+  const same = group.filter((x) => x.market === t.market);
+  let marketProbability: number | null = null;
+  let marginPercent: number | null = null;
+  if (same.length === 2) {
+    const opp = same.find((x) => x !== t);
+    if (t.odd && opp?.odd) {
+      marketProbability = noVigProbability(t.odd, opp.odd);
+      marginPercent = twoWayMarginPercent(t.odd, opp.odd);
+    }
+  }
+  return evaluatePredictionIntegrity({
+    probability: t.prob,
+    odds: t.odd,
+    marketProbability,
+    marginPercent,
+    dataQuality: t.odd ? 0.9 : 0.45,
+    fallbackModel: !t.odd,
+    market: t.market,
+  });
+}
 
 function RukometPage() {
   const [date, setDate] = useState(() => (zagrebDay() < MIN_DATE ? MIN_DATE : zagrebDay()));
@@ -194,6 +218,68 @@ function RukometPage() {
   }, [games, q]);
 
   const st = typeof window !== "undefined" ? readRukometState() : null;
+
+  const winnerIntegrity: IntegrityResult | null = an
+    ? (() => {
+        const type = an.concrete.winner.type;
+        const group = type === "1" || type === "2" ? an.ml : an.dc;
+        const same = group.filter((x) => x.odd);
+        const opp = same.length === 2 ? same.find((x) => x.odd !== an.concrete.winner.odd) : null;
+        const marketProbability =
+          an.concrete.winner.odd && opp?.odd ? noVigProbability(an.concrete.winner.odd, opp.odd) : null;
+        const marginPercent =
+          an.concrete.winner.odd && opp?.odd ? twoWayMarginPercent(an.concrete.winner.odd, opp.odd) : null;
+        return evaluatePredictionIntegrity({
+          probability: an.concrete.winner.prob,
+          odds: an.concrete.winner.odd,
+          marketProbability,
+          marginPercent,
+          dataQuality: an.source === "API" ? 0.9 : an.source === "RUČNO" ? 0.6 : 0.45,
+          fallbackModel: an.source === "ALGORITAM",
+          market: "Pobjednik",
+        });
+      })()
+    : null;
+
+  const totalGoalsIntegrity: IntegrityResult | null = an
+    ? (() => {
+        const same = an.totals.filter((x) => x.market === `Zbroj ${an.concrete.totalGoals.line}`);
+        const opp = same.length === 2 ? same.find((x) => x.pick !== an.concrete.totalGoals.pick) : null;
+        const marketProbability =
+          an.concrete.totalGoals.odd && opp?.odd ? noVigProbability(an.concrete.totalGoals.odd, opp.odd) : null;
+        const marginPercent =
+          an.concrete.totalGoals.odd && opp?.odd ? twoWayMarginPercent(an.concrete.totalGoals.odd, opp.odd) : null;
+        return evaluatePredictionIntegrity({
+          probability: an.concrete.totalGoals.prob,
+          odds: an.concrete.totalGoals.odd,
+          marketProbability,
+          marginPercent,
+          dataQuality: an.source === "API" ? 0.9 : an.source === "RUČNO" ? 0.6 : 0.45,
+          fallbackModel: an.source === "ALGORITAM",
+          market: "Ukupno golova",
+        });
+      })()
+    : null;
+
+  const homeTotalIntegrity: IntegrityResult | null = an
+    ? evaluatePredictionIntegrity({
+        probability: an.concrete.homeTotal.prob,
+        odds: an.concrete.homeTotal.odd,
+        dataQuality: an.concrete.homeTotal.odd ? 0.7 : 0.45,
+        fallbackModel: !an.concrete.homeTotal.odd,
+        market: "Golovi domaćina",
+      })
+    : null;
+
+  const awayTotalIntegrity: IntegrityResult | null = an
+    ? evaluatePredictionIntegrity({
+        probability: an.concrete.awayTotal.prob,
+        odds: an.concrete.awayTotal.odd,
+        dataQuality: an.concrete.awayTotal.odd ? 0.7 : 0.45,
+        fallbackModel: !an.concrete.awayTotal.odd,
+        market: "Golovi gosta",
+      })
+    : null;
 
   return (
     <div className="space-y-5">
@@ -448,6 +534,7 @@ function RukometPage() {
                     </span>
                   )}
                 </div>
+                <IntegrityPanel result={winnerIntegrity} compact title="Pobjednik" />
               </div>
 
               {/* 2) Glavni zbroj golova */}
@@ -470,6 +557,7 @@ function RukometPage() {
                     </span>
                   )}
                 </div>
+                <IntegrityPanel result={totalGoalsIntegrity} compact title="Ukupno golova" />
               </div>
 
               {/* 3) Timska margina domaćin */}
@@ -492,6 +580,7 @@ function RukometPage() {
                     </span>
                   )}
                 </div>
+                <IntegrityPanel result={homeTotalIntegrity} compact title="Golovi domaćina" />
               </div>
 
               {/* 4) Timska margina gost */}
@@ -514,6 +603,7 @@ function RukometPage() {
                     </span>
                   )}
                 </div>
+                <IntegrityPanel result={awayTotalIntegrity} compact title="Golovi gosta" />
               </div>
             </div>
           </div>
@@ -536,6 +626,7 @@ function RukometPage() {
                     </>
                   )}
                 </div>
+                <IntegrityPanel result={tipIntegrity(an.best, [...an.x12, ...an.dc, ...an.ml, ...an.totals, ...an.homeTotals, ...an.awayTotals])} compact title="Value Tip" />
               </div>
             )}
             {an.safest && (
@@ -549,6 +640,7 @@ function RukometPage() {
                   <strong className="text-emerald-600">{pct(an.safest.prob)}</strong> · Fer kvota:{" "}
                   <strong>{an.safest.fair.toFixed(2)}</strong>
                 </div>
+                <IntegrityPanel result={tipIntegrity(an.safest, [...an.x12, ...an.dc, ...an.ml, ...an.totals, ...an.homeTotals, ...an.awayTotals])} compact title="Najsigurniji tip" />
               </div>
             )}
           </div>

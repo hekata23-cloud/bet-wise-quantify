@@ -13,6 +13,8 @@ import { openrouterChat } from "@/lib/openrouter";
 import { groqChat } from "@/lib/groq";
 import { hasKey } from "@/lib/storage";
 import { Target, Bot, Zap, Calculator, Sparkles, Send, ShieldCheck, RefreshCw, HelpCircle } from "lucide-react";
+import { evaluatePredictionIntegrity } from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/pro")({
   head: () => ({
@@ -219,6 +221,44 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
     savePicks(p);
   };
 
+  const dataQualityRes = res && Object.keys(res.markets).length > 5 ? 0.9 : 0.6;
+  const goldenIntegrity = res?.golden
+    ? evaluatePredictionIntegrity({
+        probability: res.golden.outcome.p,
+        odds: res.golden.outcome.odd,
+        dataQuality: dataQualityRes,
+        fallbackModel: !res.golden.outcome.odd,
+        market: res.golden.market,
+      })
+    : null;
+  const valueIntegrity = res?.value
+    ? evaluatePredictionIntegrity({
+        probability: res.value.outcome.p,
+        odds: res.value.outcome.odd,
+        dataQuality: dataQualityRes,
+        fallbackModel: !res.value.outcome.odd,
+        market: res.value.market,
+      })
+    : null;
+  const safeIntegrity = res?.safe
+    ? evaluatePredictionIntegrity({
+        probability: res.safe.outcome.p,
+        odds: res.safe.outcome.odd,
+        dataQuality: dataQualityRes,
+        fallbackModel: !res.safe.outcome.odd,
+        market: res.safe.market,
+      })
+    : null;
+  const cmpWithIntegrity = cmp.map((r) => ({
+    ...r,
+    integrity: evaluatePredictionIntegrity({
+      probability: r.fairProb,
+      odds: r.softOdds,
+      marketProbability: r.fairProb,
+      dataQuality: 0.6,
+    }),
+  }));
+
   const shown = fixtures.filter((f) =>
     `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase())
   );
@@ -374,8 +414,9 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       <div className="text-xs text-muted-foreground">
                         Kvota: <b className="text-foreground">{res.golden.outcome.odd?.toFixed(2) ?? "—"}</b> · Fer kvota: <b>{res.golden.outcome.fair.toFixed(2)}</b>
                       </div>
-                      <div className="text-xs font-semibold text-emerald-500">
+                      <div className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5">
                         Vjerojatnost: {pct(res.golden.outcome.p)}
+                        <IntegrityPanel result={goldenIntegrity} compact />
                       </div>
                     </>
                   ) : (
@@ -391,8 +432,9 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       <div className="text-xs text-muted-foreground">
                         Kvota: <b className="text-foreground">{res.value.outcome.odd?.toFixed(2) ?? "—"}</b>
                       </div>
-                      <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                         EV: +{((res.value.outcome.ev ?? 0) * 100).toFixed(1)}% matematičke prednosti!
+                        <IntegrityPanel result={valueIntegrity} compact />
                       </div>
                     </>
                   ) : (
@@ -408,8 +450,9 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       <div className="text-xs text-muted-foreground">
                         Kvota: <b className="text-foreground">{res.safe.outcome.odd?.toFixed(2) ?? "—"}</b>
                       </div>
-                      <div className="text-xs font-semibold text-primary">
+                      <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
                         Sigurnost: {pct(res.safe.outcome.p)}
+                        <IntegrityPanel result={safeIntegrity} compact />
                       </div>
                     </>
                   ) : (
@@ -417,6 +460,8 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                   )}
                 </div>
               </div>
+
+              {goldenIntegrity && <IntegrityPanel result={goldenIntegrity} title="Integritet glavnog Sharp tipa" />}
 
               {/* Očekivani golovi i točni rezultati */}
               <div className="grid gap-2 sm:grid-cols-2 rounded-xl bg-muted/40 p-3 text-xs">
@@ -591,15 +636,18 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 ))}
               </div>
             </div>
-            {cmp.length > 0 && (
+            {cmpWithIntegrity.length > 0 && (
               <div className="rounded-xl bg-muted/40 p-3 space-y-2 text-xs">
-                {cmp.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between">
+                {cmpWithIntegrity.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2">
                     <span>
                       <b>Ishod {LBL[i]}:</b> fer vjerojatnost {pct(r.fairProb)} · poštena kvota {r.fairOdds.toFixed(2)}
                     </span>
-                    <span className={r.value ? "text-emerald-500 font-bold" : "text-muted-foreground"}>
-                      {r.edgePct >= 0 ? "+" : ""}{r.edgePct.toFixed(1)}% {r.value ? "🔥 VALUE BET" : ""}
+                    <span className="flex items-center gap-1.5">
+                      <span className={r.value ? "text-emerald-500 font-bold" : "text-muted-foreground"}>
+                        {r.edgePct >= 0 ? "+" : ""}{r.edgePct.toFixed(1)}% {r.value ? "🔥 VALUE BET" : ""}
+                      </span>
+                      {r.value && <IntegrityPanel result={r.integrity} compact />}
                     </span>
                   </div>
                 ))}

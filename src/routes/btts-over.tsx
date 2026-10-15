@@ -6,6 +6,13 @@ import { getApiKey, guarded, resetGuard, zagrebDay, readState } from "@/lib/zlat
 import { SettingsModal } from "@/components/SettingsModal";
 import { computeBttsOverAnalysis, type BttsOverAnalysis } from "@/lib/btts-over";
 import {
+  evaluatePredictionIntegrity,
+  footballContradiction,
+  noVigProbability,
+  twoWayMarginPercent,
+} from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
+import {
   AlertTriangle,
   Flame,
   RefreshCw,
@@ -248,6 +255,75 @@ export function BttsOverPage() {
     [analyzedList]
   );
 
+  // Prediction Integrity Gate — glavni tip Više/Manje 2.5
+  const mainOuIntegrity = useMemo(() => {
+    if (!analysisResult) return null;
+    const r = analysisResult;
+    const isOver = r.mainOverUnderTip.pick === "Više 2.5";
+    const selOdd = isOver ? r.bookieOver25 : r.bookieUnder25;
+    const oppOdd = isOver ? r.bookieUnder25 : r.bookieOver25;
+    const marketProbability = selOdd && oppOdd ? noVigProbability(selOdd, oppOdd) : null;
+    const marginPercent = selOdd && oppOdd ? twoWayMarginPercent(selOdd, oppOdd) : null;
+    return evaluatePredictionIntegrity({
+      probability: r.mainOverUnderTip.prob,
+      odds: r.mainOverUnderTip.odd ?? selOdd ?? null,
+      marketProbability,
+      marginPercent,
+      dataQuality: selOdd && oppOdd ? 0.9 : selOdd || oppOdd ? 0.6 : 0.45,
+      fallbackModel: !selOdd && !oppOdd,
+      contradictory: footballContradiction({
+        selected: isOver ? "OVER_25" : "UNDER_25",
+        over25: r.over25Prob,
+        bttsYes: r.bttsYesProb,
+      }),
+      market: "Više/Manje 2.5",
+    });
+  }, [analysisResult]);
+
+  // Prediction Integrity Gate — glavni tip GG/NG
+  const mainBttsIntegrity = useMemo(() => {
+    if (!analysisResult) return null;
+    const r = analysisResult;
+    const isGg = r.mainBttsTip.pick.includes("GG");
+    const selOdd = isGg ? r.bookieBttsYes : r.bookieBttsNo;
+    const oppOdd = isGg ? r.bookieBttsNo : r.bookieBttsYes;
+    const marketProbability = selOdd && oppOdd ? noVigProbability(selOdd, oppOdd) : null;
+    const marginPercent = selOdd && oppOdd ? twoWayMarginPercent(selOdd, oppOdd) : null;
+    return evaluatePredictionIntegrity({
+      probability: r.mainBttsTip.prob,
+      odds: r.mainBttsTip.odd ?? selOdd ?? null,
+      marketProbability,
+      marginPercent,
+      dataQuality: selOdd && oppOdd ? 0.9 : selOdd || oppOdd ? 0.6 : 0.45,
+      fallbackModel: !selOdd && !oppOdd,
+      contradictory: footballContradiction({
+        selected: isGg ? "BTTS_YES" : "BTTS_NO",
+        over25: r.over25Prob,
+        bttsYes: r.bttsYesProb,
+      }),
+      market: "Oba daju gol (GG/NG)",
+    });
+  }, [analysisResult]);
+
+  // Prediction Integrity Gate — kompaktne oznake za pobjednik + GG kombinacije
+  const comboIntegrities = useMemo(() => {
+    if (!analysisResult) return [];
+    const r = analysisResult;
+    return r.combos.map((c) =>
+      evaluatePredictionIntegrity({
+        probability: c.prob,
+        dataQuality: 0.55,
+        fallbackModel: true,
+        contradictory: footballContradiction({
+          selected: c.key.startsWith("1") ? "HOME" : c.key.startsWith("2") ? "AWAY" : "DRAW",
+          over25: r.over25Prob,
+          bttsYes: r.bttsYesProb,
+        }),
+        market: c.label,
+      })
+    );
+  }, [analysisResult]);
+
   return (
     <div className="space-y-8 pb-12">
       {/* Zaglavlje */}
@@ -473,6 +549,7 @@ export function BttsOverPage() {
                 </div>
 
                 <p className="text-xs text-muted-foreground italic">{analysisResult.mainOverUnderTip.reasoning}</p>
+                <IntegrityPanel result={mainOuIntegrity} title="Integritet: Više/Manje 2.5" />
               </div>
 
               {/* 2. Oba Daju Gol (GG / NG) */}
@@ -541,6 +618,7 @@ export function BttsOverPage() {
                 </div>
 
                 <p className="text-xs text-muted-foreground italic">{analysisResult.mainBttsTip.reasoning}</p>
+                <IntegrityPanel result={mainBttsIntegrity} title="Integritet: GG/NG" />
               </div>
             </div>
 
@@ -622,7 +700,7 @@ export function BttsOverPage() {
                 </div>
 
                 <div className="space-y-2 pt-1">
-                  {analysisResult.combos.map((c) => (
+                  {analysisResult.combos.map((c, ci) => (
                     <div
                       key={c.key}
                       className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/40 hover:border-amber-500/40 transition-colors"
@@ -631,9 +709,12 @@ export function BttsOverPage() {
                         <div className="font-semibold text-xs text-foreground truncate">{c.label}</div>
                         <div className="text-[10px] text-muted-foreground">{c.tag}</div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-xs font-mono font-bold text-amber-400">@ {c.fairOdd.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">{(c.prob * 100).toFixed(1)}% šanse</div>
+                      <div className="text-right shrink-0 flex items-center gap-2">
+                        <IntegrityPanel result={comboIntegrities[ci]} compact />
+                        <div>
+                          <div className="text-xs font-mono font-bold text-amber-400">@ {c.fairOdd.toFixed(2)}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{(c.prob * 100).toFixed(1)}% šanse</div>
+                        </div>
                       </div>
                     </div>
                   ))}
