@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { evaluatePredictionIntegrity, integrityClass, footballContradiction } from "@/lib/prediction-integrity";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -676,4 +677,6 @@ export function HtFtPage() {
     </div>
   );
 }
+
+
 
