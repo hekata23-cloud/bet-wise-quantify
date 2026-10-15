@@ -170,7 +170,9 @@ export function evaluateTip(
       reasons.push(`Premala kvota (${odd.toFixed(2)} < ${cfg.minOdds}) — nema vrijednosti`);
       isTrap = true;
     } else if (odd > cfg.maxOdds) {
+      // POPRAVAK: maksimalna kvota je obvezni limit, ne samo upozorenje.
       reasons.push(`Previsoka kvota (${odd.toFixed(2)} > ${cfg.maxOdds}) — previsok rizik`);
+      isTrap = true;
     }
   }
 

@@ -302,8 +302,9 @@ export function analyzeRukomet(
     0.05,
     Math.min(0.12, Phi((0.5 - muDiff) / sigmaDiff) - Phi((-0.5 - muDiff) / sigmaDiff))
   );
-  const pHome = Math.max(0.02, Math.min(0.96, 1 - Phi((0.5 - muDiff) / sigmaDiff)));
-  const pAway = Math.max(0.02, 1 - pHome - pDraw);
+  // POPRAVAK: ograniči domaćina prema remiju kako tri ishoda uvijek daju ukupno 1.
+  const pHome = Math.max(0.02, Math.min(0.96, 1 - pDraw - 0.02, 1 - Phi((0.5 - muDiff) / sigmaDiff)));
+  const pAway = 1 - pHome - pDraw;
 
   const pHomeML = pHome + pDraw * 0.5;
   const pAwayML = 1 - pHomeML;

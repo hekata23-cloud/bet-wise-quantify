@@ -98,7 +98,8 @@ export function negBinomnaVjerojatnostGola(k: number, mu: number, r = 4.5): numb
   return coeff * Math.pow(p, r) * Math.pow(1 - p, k);
 }
 
-export function negBinomZbrojGolova(lambdaTotal: number, uvjet: (golovi: number) => boolean, maxGolova = 12): number {
+// POPRAVAK: uključuje rep raspodjele koji je pri λ do 6.5 značajan iznad 12 golova.
+export function negBinomZbrojGolova(lambdaTotal: number, uvjet: (golovi: number) => boolean, maxGolova = 40): number {
   let suma = 0;
   for (let g = 0; g <= maxGolova; g++) {
     if (uvjet(g)) {

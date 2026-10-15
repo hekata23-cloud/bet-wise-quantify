@@ -350,8 +350,11 @@ export function computeBttsOverAnalysis(
   const sortedCombos = [...combos].sort((a, b) => b.prob - a.prob);
   const topCombo = sortedCombos[0];
 
-  // Dinamika 1. poluvremena (Poisson 44% distribucije)
-  const lambda1H = Number(((lh + la) * 0.44).toFixed(2));
+  // POPRAVAK: koristite HT udio i pri nuli; zadana vrijednost samo za nevaljan unos.
+  const htShare = Number.isFinite(analysis.htShare) && analysis.htShare >= 0 && analysis.htShare <= 1
+    ? analysis.htShare
+    : 0.44;
+  const lambda1H = Number(((lh + la) * htShare).toFixed(2));
   const p1H0 = Math.exp(-lambda1H);
   const p1H1 = Math.exp(-lambda1H) * lambda1H;
   const p1H2 = (Math.exp(-lambda1H) * Math.pow(lambda1H, 2)) / 2;
@@ -359,7 +362,22 @@ export function computeBttsOverAnalysis(
   const over05Prob = Number((1 - p1H0).toFixed(3));
   const over15Prob = Number((1 - (p1H0 + p1H1)).toFixed(3));
   const oneToTwoGoalsProb = Number((p1H1 + p1H2).toFixed(3));
-  const moreGoals2HProb = Number((0.54 + Math.min(0.04, totalXg * 0.01)).toFixed(3));
+  // POPRAVAK: izračunajte P(golova u 2H > golova u 1H) iz dvije Poissonove raspodjele.
+  const lambda2H = (lh + la) * (1 - htShare);
+  let moreGoals2H = 0;
+  for (let firstHalfGoals = 0; firstHalfGoals <= 20; firstHalfGoals++) {
+    let secondHalfGreater = 0;
+    for (let secondHalfGoals = firstHalfGoals + 1; secondHalfGoals <= 20; secondHalfGoals++) {
+      let factorial = 1;
+      for (let goal = 2; goal <= secondHalfGoals; goal++) factorial *= goal;
+      secondHalfGreater += Math.exp(-lambda2H) * Math.pow(lambda2H, secondHalfGoals) / factorial;
+    }
+    let firstHalfFactorial = 1;
+    for (let goal = 2; goal <= firstHalfGoals; goal++) firstHalfFactorial *= goal;
+    const firstHalfProbability = Math.exp(-lambda1H) * Math.pow(lambda1H, firstHalfGoals) / firstHalfFactorial;
+    moreGoals2H += firstHalfProbability * secondHalfGreater;
+  }
+  const moreGoals2HProb = Number(moreGoals2H.toFixed(3));
 
   const firstHalf: FirstHalfDynamics = {
     lambda1H,

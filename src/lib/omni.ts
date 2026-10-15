@@ -410,7 +410,8 @@ export async function runOmni(
   const pMain = Math.min(0.97, Math.max(0.03, market === "btts" ? pBtts : pOver));
   const list = market === "btts" ? bttsList : ouList;
   const spread = list.length > 1 ? Math.max(...list) - Math.min(...list) : 0;
-  const agreement = Math.max(0, Math.min(1, 1 - spread / 0.4));
+  // POPRAVAK: bez najmanje dvije procjene slaganje nije mjerljivo, pa ga ne prikazuj kao 100%.
+  const agreement = list.length > 1 ? Math.max(0, Math.min(1, 1 - spread / 0.4)) : 0;
 
   const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], odds.main ?? null, agreement, {
     ...a,

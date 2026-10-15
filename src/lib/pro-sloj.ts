@@ -6,15 +6,19 @@ import { loadJSON, saveJSON } from "./storage";
 /** De-vig "power" metodom (bisekcija): p_i = (1/o_i)^k, Σ = 1. */
 export function powerDevig(odds: number[]): number[] {
   const imp = odds.map((o) => 1 / o);
-  if (odds.some((o) => !(o > 1))) return [];
-  let lo = 0.5, hi = 3;
+  if (!odds.length || odds.some((o) => !(o > 1))) return [];
+  // POPRAVAK: proširi interval do Σpᵏ ≤ 1 kako bi bisekcija dosegla stvarni korijen.
+  let lo = 0, hi = 3;
+  while (imp.reduce((a, p) => a + Math.pow(p, hi), 0) > 1) hi *= 2;
   for (let i = 0; i < 80; i++) {
     const k = (lo + hi) / 2;
     const s = imp.reduce((a, p) => a + Math.pow(p, k), 0);
     if (s > 1) lo = k; else hi = k;
   }
   const k = (lo + hi) / 2;
-  return imp.map((p) => Math.pow(p, k));
+  const powered = imp.map((p) => Math.pow(p, k));
+  const total = powered.reduce((a, p) => a + p, 0);
+  return total > 0 ? powered.map((p) => p / total) : [];
 }
 
 export interface PinnacleRow { fairProb: number; fairOdds: number; softOdds: number; edgePct: number; value: boolean; }
@@ -58,14 +62,18 @@ function pois(k: number, l: number) { let f = 1; for (let i = 2; i <= k; i++) f 
 
 /** Tržišta iz λ (neovisni Poisson 0..10). */
 export function marketsFromLambdas(lh: number, la: number) {
-  let h = 0, d = 0, a = 0, o25 = 0, gg = 0;
+  let h = 0, d = 0, a = 0, o25 = 0, gg = 0, total = 0;
   for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) {
     const p = pois(i, lh) * pois(j, la);
+    total += p;
     if (i > j) h += p; else if (i === j) d += p; else a += p;
     if (i + j > 2) o25 += p;
     if (i > 0 && j > 0) gg += p;
   }
-  return { home: h, draw: d, away: a, over25: o25, btts: gg };
+  // POPRAVAK: ukloni masu golova izvan matrice 0..10 da bi sve tržišne vjerojatnosti bile konzistentne.
+  return total > 0
+    ? { home: h / total, draw: d / total, away: a / total, over25: o25 / total, btts: gg / total }
+    : { home: 0, draw: 0, away: 0, over25: 0, btts: 0 };
 }
 
 // ───── kalibracija ─────

@@ -123,8 +123,9 @@ export function evaluatePredictionIntegrity(
       ? input.odds
       : null;
 
+  // POPRAVAK: Nevaljana tržišna vjerojatnost ne smije se pretvoriti u 0% i lažno stvoriti veliko odstupanje.
   const marketProbability =
-    input.marketProbability === null || input.marketProbability === undefined
+    input.marketProbability === null || input.marketProbability === undefined || !Number.isFinite(input.marketProbability)
       ? null
       : clamp01(input.marketProbability);
 

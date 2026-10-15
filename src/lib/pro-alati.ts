@@ -57,17 +57,23 @@ export function combo(legs: Leg[]) {
   return { prob, odds, fairOdds: prob > 0 ? 1 / prob : Infinity, ev: prob * odds - 1, correlated };
 }
 
-export const kelly = (p: number, o: number, frac = 0.25) => Math.max(0, ((p * o - 1) / (o - 1)) * frac);
+// POPRAVAK: ne dijeli s nulom niti računa ulog za nevažeću decimalnu kvotu ≤ 1.
+export const kelly = (p: number, o: number, frac = 0.25) =>
+  o > 1 && Number.isFinite(o) && Number.isFinite(p) && Number.isFinite(frac)
+    ? Math.max(0, ((p * o - 1) / (o - 1)) * frac)
+    : 0;
 
 /** Live: preostali λ prema minuti i omjeru pritiska (udarci u okvir ×3 + opasni napadi). */
 export function liveMomentum(x: { minute: number; lh: number; la: number; sotH: number; sotA: number; daH: number; daA: number }) {
   const rem = Math.max(0, 90 - x.minute) / 90;
   const pH = x.sotH * 3 + x.daH, pA = x.sotA * 3 + x.daA, tot = pH + pA;
   const shareH = tot > 0 ? pH / tot : 0.5;
-  const baseShare = x.lh / (x.lh + x.la);
+  // POPRAVAK: zaštiti bazni udio i korektore od dijeljenja nulom kad je λ ukupni 0 ili jedne strane 0.
+  const baseTotal = x.lh + x.la;
+  const baseShare = baseTotal > 0 ? x.lh / baseTotal : 0.5;
   // umjerena korekcija (max ±40%) prema stvarnom pritisku
-  const fH = Math.min(1.4, Math.max(0.6, shareH / baseShare));
-  const fA = Math.min(1.4, Math.max(0.6, (1 - shareH) / (1 - baseShare)));
+  const fH = Math.min(1.4, Math.max(0.6, baseShare > 0 ? shareH / baseShare : 1));
+  const fA = Math.min(1.4, Math.max(0.6, baseShare < 1 ? (1 - shareH) / (1 - baseShare) : 1));
   const rh = x.lh * rem * fH, ra = x.la * rem * fA, r = rh + ra;
   const noGoal = Math.exp(-r);
   return { rh, ra, noGoal, nextHome: (1 - noGoal) * (rh / (r || 1)), nextAway: (1 - noGoal) * (ra / (r || 1)) };

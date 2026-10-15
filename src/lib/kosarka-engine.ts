@@ -70,7 +70,8 @@ export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
     const main = [...lines].sort((a, b) => Math.abs(a.o - a.u) - Math.abs(b.o - b.u))[0]!;
     sigmaT = main.line * 0.075;
     const pOver = devig([main.o, main.u])[0]!;
-    total = main.line + sigmaT * invPhi(pOver);
+    // POPRAVAK: total određuje sigmaT, zato kalibracija mora riješiti jednadžbu s konačnom σT.
+    total = main.line / (1 - 0.075 * invPhi(pOver));
   } else notes.push("Nema kvota na zbroj poena — korištena prosječna liga.");
   sigmaT = total * 0.075;
 

@@ -245,9 +245,10 @@ export function analyze(mk: Bet365Markets, home: TeamStats | null, away: TeamSta
   ]);
 
   // poluvremena (nezavisni Poisson po poluvremenu)
+  // POPRAVAK: uključuje cijeli raspon matrica kako konvolucija ne bi odbacila golove 7–10.
   const conv = (fn: (h1: number, a1: number, h2: number, a2: number) => boolean) => {
     let s = 0;
-    for (let a = 0; a <= 6; a++) for (let b = 0; b <= 6; b++) for (let c = 0; c <= 6; c++) for (let d = 0; d <= 6; d++)
+    for (let a = 0; a <= MAXG; a++) for (let b = 0; b <= MAXG; b++) for (let c = 0; c <= MAXG; c++) for (let d = 0; d <= MAXG; d++)
       if (fn(a, b, c, d)) s += H1[a]![b]! * H2[c]![d]!;
     return s;
   };

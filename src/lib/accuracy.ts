@@ -107,6 +107,8 @@ function fact(n: number): number {
   return r;
 }
 export function pois(l: number, k: number): number {
+  // POPRAVAK: Nevažeći λ ili broj golova ne smije proslijediti NaN u matricu rezultata.
+  if (!Number.isInteger(k) || k < 0 || !Number.isFinite(l) || l < 0) return 0;
   return (Math.exp(-l) * Math.pow(l, k)) / fact(k);
 }
 
@@ -134,12 +136,15 @@ export function scoreMatrix(lh: number, la: number, tau = 0.08, rho = -0.03, n =
     for (let j = 0; j <= n; j++) {
       // bivariate aproksimacija: ρ pomiče masu prema/od dijagonale
       const corr = 1 + rho * ((i - lh) * (j - la)) / Math.max(0.35, Math.sqrt(lh * la));
-      const v = pois(lh, i) * pois(la, j) * dc(i, j, lh, la, tau) * Math.max(0.05, corr);
+      // POPRAVAK: Dixon-Coles korekcija pri velikom λ i τ može biti negativna, a vjerojatnost ne smije biti ispod nule.
+      const v = Math.max(0, pois(lh, i) * pois(la, j) * dc(i, j, lh, la, tau) * Math.max(0.05, corr));
       m[i][j] = v;
       sum += v;
     }
   }
-  for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) m[i][j] /= sum;
+  // POPRAVAK: Degenerirana/nevjerojatna matrica ne smije se dijeliti s nulom.
+  const denominator = Number.isFinite(sum) && sum > 0 ? sum : 1;
+  for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) m[i][j] /= denominator;
   return { m, lh, la };
 }
 
@@ -242,13 +247,19 @@ export function probForMarket(mp: MarketProbs, market: Market): number {
 // ───────────────────────────── De-vig metode ─────────────────────────────
 /** Proporcionalni de-vig (2-way). */
 export function devigProportional(o1: number, o2: number): [number, number] {
+  // POPRAVAK: Nevaljane kvote ne smiju uzrokovati dijeljenje s nulom ili NaN.
+  if (!Number.isFinite(o1) || !Number.isFinite(o2) || o1 <= 1 || o2 <= 1) return [0.5, 0.5];
   const a = 1 / o1, b = 1 / o2, s = a + b;
   return [a / s, b / s];
 }
 /** Power de-vig — točniji za neuravnotežene kvote. */
 export function devigPower(o1: number, o2: number): [number, number] {
+  // POPRAVAK: Power de-vig ne može izračunati vjerojatnosti iz nevaljanih decimalnih kvota.
+  if (!Number.isFinite(o1) || !Number.isFinite(o2) || o1 <= 1 || o2 <= 1) return [0.5, 0.5];
   const a = 1 / o1, b = 1 / o2;
-  let lo = 0.5, hi = 5;
+  // POPRAVAK: Power de-vig traži korijen izvan raspona 0.5–5 kad su kvote vrlo visoke ili blizu 1.
+  let lo = 0, hi = 1;
+  while (Math.pow(a, hi) + Math.pow(b, hi) > 1 && hi < 128) hi *= 2;
   for (let i = 0; i < 80; i++) {
     const k = (lo + hi) / 2;
     if (Math.pow(a, k) + Math.pow(b, k) > 1) lo = k; else hi = k;
@@ -259,6 +270,8 @@ export function devigPower(o1: number, o2: number): [number, number] {
 }
 /** Shin de-vig — modelira udio informiranih igrača (najbolji za value). */
 export function devigShin(o1: number, o2: number): [number, number] {
+  // POPRAVAK: Shinova formula ne smije dijeliti s nulom niti vraćati NaN za nevaljane kvote.
+  if (!Number.isFinite(o1) || !Number.isFinite(o2) || o1 <= 1 || o2 <= 1) return [0.5, 0.5];
   const a = 1 / o1, b = 1 / o2, s = a + b;
   const f = (x: number, z: number) => (Math.sqrt(z * z + 4 * (1 - z) * (x * x) / s) - z) / (2 * (1 - z));
   let lo = 0, hi = 0.5;
@@ -296,7 +309,8 @@ export function shrinkToPrior(p: number, k: number, prior = 0.5): number {
 // ───────────────────── Robusna statistika ansambla ─────────────────────
 export function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
-  if (!s.length) return NaN;
+  // POPRAVAK: Prazan uzorak nema medijan; vraćamo neutralnu vrijednost umjesto NaN.
+  if (!s.length) return 0;
   const n = s.length;
   return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2;
 }
@@ -306,7 +320,8 @@ export function mad(xs: number[]): number {
 }
 /** Odbacuje outliere po MAD-u pa vraća težinski trimmed mean. */
 export function robustMean(xs: number[], maxDev: number): { value: number; kept: number[]; spread: number } {
-  if (!xs.length) return { value: NaN, kept: [], spread: 0 };
+  // POPRAVAK: Prazan ansambl ne smije proizvesti NaN u izlazu robusnog prosjeka.
+  if (!xs.length) return { value: 0, kept: [], spread: 0 };
   const m = median(xs);
   const d = Math.max(mad(xs) * 2.5, 0.03);
   const kept = xs.filter((x) => Math.abs(x - m) <= Math.min(maxDev, Math.max(d, 0.05)));
@@ -331,7 +346,8 @@ export function monteCarlo(lh: number, la: number, iters: number): { over25: num
     return k - 1;
   };
   let o = 0, b = 0, h = 0, d = 0;
-  const n = Math.max(1000, Math.min(iters, 60000));
+  // POPRAVAK: Nevaljan broj iteracija ne smije proizvesti NaN pri dijeljenju rezultata.
+  const n = Number.isFinite(iters) ? Math.max(1000, Math.min(Math.floor(iters), 60000)) : 1000;
   for (let i = 0; i < n; i++) {
     const a = samp(lh), c = samp(la);
     if (a + c > 2.5) o++;

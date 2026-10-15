@@ -25,7 +25,7 @@ export type PoissonMatrixResult = {
   lambdaHome: number;
   lambdaAway: number;
   lambdaTotal: number;
-  matrix: number[][]; // 0-6 x 0-6
+  matrix: number[][]; // 0-10 x 0-10
   topScores: ScoreProbability[];
   brackets: GoalBrackets;
   lines: OverUnderLines;
@@ -42,7 +42,9 @@ function factorial(n: number): number {
 }
 
 function poissonProb(lambda: number, k: number): number {
-  if (lambda <= 0) return k === 0 ? 1 : 0;
+  // POPRAVAK: izvan valjane Poissonove potpore nema vjerojatnosti, a λ=0 daje masu samo za 0.
+  if (!Number.isFinite(lambda) || lambda < 0 || !Number.isInteger(k) || k < 0) return 0;
+  if (lambda === 0) return k === 0 ? 1 : 0;
   return (Math.exp(-lambda) * Math.pow(lambda, k)) / factorial(k);
 }
 
@@ -57,7 +59,10 @@ function tauFactor(x: number, y: number, lambdaH: number, lambdaA: number, rho =
 
 // Stabilan numerički rješavač lambde bez mogućnosti divergencije ili NaN
 export function solveLambdaFromOver(pOverTarget: number): number {
-  const target = Math.min(0.88, Math.max(0.12, pOverTarget));
+  // POPRAVAK: ne dopustite da neispravan cilj propagira NaN kroz bisekciju.
+  const target = Number.isFinite(pOverTarget)
+    ? Math.min(0.88, Math.max(0.12, pOverTarget))
+    : 0.5;
   let low = 0.5;
   let high = 6.0;
   for (let i = 0; i < 24; i++) {
@@ -93,10 +98,15 @@ export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number)
     homeRatio = (lo + hi) / 2;
   }
   void k22;
-  const lambdaHome = Math.max(0.4, lambdaTotal * homeRatio);
-  const lambdaAway = Math.max(0.4, lambdaTotal * (1 - homeRatio));
+  // POPRAVAK: zaštitni minimum λ ne smije promijeniti ukupni očekivani broj golova.
+  const safeHomeRatio = lambdaTotal >= 0.8
+    ? Math.min(Math.min(0.85, 1 - 0.4 / lambdaTotal), Math.max(0.5, homeRatio))
+    : homeRatio;
+  const lambdaHome = lambdaTotal * safeHomeRatio;
+  const lambdaAway = lambdaTotal * (1 - safeHomeRatio);
 
-  const maxGoals = 6;
+  // POPRAVAK: šira matrica smanjuje pristranost od odbačenog Poissonova repa.
+  const maxGoals = 10;
   const matrix: number[][] = [];
   const allScores: ScoreProbability[] = [];
 
