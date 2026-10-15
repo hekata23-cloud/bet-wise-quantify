@@ -71,7 +71,7 @@ export const getRukometGames = createServerFn({ method: "POST" })
 
 export type RukometMarkets = Record<string, Record<string, number>>;
 
-/** Dohvat kvota: /odds?game=ID. Podržava i objekt i niz odgovora te spaja sva tržišta. */
+/** Dohvat kvota: /odds?game=ID s apsolutnim prioritetom za Bet365. */
 export const getRukometOdds = createServerFn({ method: "POST" })
   .validator((d: { id: number; apiKey?: string }) =>
     z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d)
@@ -89,15 +89,39 @@ export const getRukometOdds = createServerFn({ method: "POST" })
       }
     }
 
-    // Sortiraj kladionice po bogatstvu ponude i preferiraj poznatije kladionice
+    // Pronađi Bet365 (ID 8 ili naziv Bet365)
+    const b365 = books.find((b) => Number(b.id) === 8 || /bet ?365/i.test(String(b.name || "")));
+
+    // Sortiraj ostale kladionice po broju ponuđenih oklada
     const sorted = [...books].sort((a, b) => {
-      const aP = /bet ?365|1xbet|unibet/i.test(String(a.name)) ? 100 : 0;
-      const bP = /bet ?365|1xbet|unibet/i.test(String(b.name)) ? 100 : 0;
-      return bP + (b.bets?.length ?? 0) - (aP + (a.bets?.length ?? 0));
+      const aIsB365 = Number(a.id) === 8 || /bet ?365/i.test(String(a.name || ""));
+      const bIsB365 = Number(b.id) === 8 || /bet ?365/i.test(String(b.name || ""));
+      if (aIsB365 && !bIsB365) return -1;
+      if (!aIsB365 && bIsB365) return 1;
+      return (b.bets?.length ?? 0) - (a.bets?.length ?? 0);
     });
 
+    const primaryBook = b365 ?? sorted[0];
+    const isBet365 = Boolean(b365 && (primaryBook === b365 || Number(primaryBook?.id) === 8 || /bet ?365/i.test(String(primaryBook?.name || ""))));
+
     const markets: RukometMarkets = {};
+
+    // Prvo popuni iz primarne kladionice (Bet365)
+    if (primaryBook?.bets) {
+      for (const bet of primaryBook.bets) {
+        const name = String(bet.name).trim();
+        const m: Record<string, number> = {};
+        for (const v of bet.values ?? []) {
+          const k = Number(v.odd);
+          if (Number.isFinite(k) && k > 1) m[String(v.value).trim()] = k;
+        }
+        if (Object.keys(m).length) markets[name] = m;
+      }
+    }
+
+    // Dopuni sekundarna tržišta (ako Bet365 nema specifičan timski zbroj) iz ostalih
     for (const b of sorted) {
+      if (b === primaryBook) continue;
       for (const bet of b?.bets ?? []) {
         const name = String(bet.name).trim();
         if (!markets[name]) {
@@ -111,8 +135,17 @@ export const getRukometOdds = createServerFn({ method: "POST" })
       }
     }
 
+    const bookmakerName = isBet365 ? "Bet365" : (primaryBook?.name ? String(primaryBook.name) : null);
     const error =
       r.error ?? (Object.keys(markets).length ? null : "Kladionice još nisu objavile kvote za ovu rukometnu utakmicu.");
-    return { error, rate: r.rate, markets, bookmaker: (sorted[0]?.name as string) ?? null };
+
+    return {
+      error,
+      rate: r.rate,
+      markets,
+      bookmaker: bookmakerName,
+      isBet365,
+    };
   });
+
 
