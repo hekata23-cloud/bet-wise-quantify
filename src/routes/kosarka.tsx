@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { evaluatePredictionIntegrity, integrityClass, footballContradiction } from "@/lib/prediction-integrity";
 import { useMemo, useState } from "react";
 import { RefreshCw, Search, Settings, ShieldAlert, Trophy } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
