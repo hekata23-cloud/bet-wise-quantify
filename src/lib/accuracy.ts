@@ -114,10 +114,12 @@ export function pois(l: number, k: number): number {
 
 /** Dixon-Coles korekcija niskih rezultata. */
 function dc(i: number, j: number, lh: number, la: number, tau: number): number {
-  if (i === 0 && j === 0) return 1 - lh * la * tau;
-  if (i === 0 && j === 1) return 1 + lh * tau;
-  if (i === 1 && j === 0) return 1 + la * tau;
-  if (i === 1 && j === 1) return 1 - tau;
+  // POPRAVAK: τ je pozitivna JAČINA korekcije (0–0.2). Standardni Dixon-Coles koristi ρ = −τ,
+  // pa 0:0 i 1:1 postaju vjerojatniji, a 1:0 i 0:1 manje vjerojatni (prije je predznak bio obrnut).
+  if (i === 0 && j === 0) return 1 + lh * la * tau;
+  if (i === 0 && j === 1) return 1 - lh * tau;
+  if (i === 1 && j === 0) return 1 - la * tau;
+  if (i === 1 && j === 1) return 1 + tau;
   return 1;
 }
 

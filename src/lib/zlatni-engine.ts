@@ -62,6 +62,8 @@ export function devig(odds: number[]): number[] {
   const inv = odds.map((o) => 1 / o);
   if (inv.reduce((a, b) => a + b, 0) <= 1) { const t = inv.reduce((a, b) => a + b, 0); return inv.map((x) => x / t); }
   let lo = 1, hi = 3;
+  // POPRAVAK: proširi gornju granicu ako je marža toliko visoka da korijen leži iznad 3.
+  while (inv.reduce((a, x) => a + x ** hi, 0) > 1 && hi < 256) hi *= 2;
   for (let i = 0; i < 60; i++) {
     const k = (lo + hi) / 2;
     const t = inv.reduce((a, x) => a + x ** k, 0);

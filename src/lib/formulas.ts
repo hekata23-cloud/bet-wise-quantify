@@ -181,8 +181,10 @@ export function devigMultiplicative(odds: number[]): number[] {
 export function devigPower(odds: number[]): number[] {
   const raw = odds.map((o) => 1 / Math.max(1.01, o));
   // Σ r_i^k = 1, k ≥ 1 (veći k → manja suma). Bisekcija po k.
-  let lo = 0.5;
+  // POPRAVAK: širi interval (0..∞) da bisekcija pokrije i vrlo visoke marže i arbitražu (Σ1/o < 1).
+  let lo = 0;
   let hi = 5;
+  while (raw.reduce((acc, r) => acc + Math.pow(r, hi), 0) > 1 && hi < 256) hi *= 2;
   for (let i = 0; i < 80; i++) {
     const k = (lo + hi) / 2;
     const s = raw.reduce((acc, r) => acc + Math.pow(r, k), 0);
