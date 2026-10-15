@@ -139,10 +139,21 @@ export const getFixtureOdds = createServerFn({ method: "POST" })
         const ggVal = find("Both Teams Score")?.values.find((v) => v.value === "Yes");
         const exactBet = find("Exact Score");
 
-        if (overVal && !bestOver) bestOver = Number(overVal.odd);
-        if (ggVal && !bestGg) {
-          bestGg = Number(ggVal.odd);
-          chosenBookmaker = bm.name;
+        if (overVal) {
+          const odd = Number(overVal.odd);
+          // POPRAVAK: preskoči nevaljane kvote i zadrži najveću dostupnu ponudu.
+          if (Number.isFinite(odd) && odd > 1 && odd > (bestOver ?? 0)) {
+            bestOver = odd;
+            if (!bestGg) chosenBookmaker = bm.name;
+          }
+        }
+        if (ggVal) {
+          const odd = Number(ggVal.odd);
+          // POPRAVAK: bira najveću GG kvotu, ne prvu kladionicu u API odgovoru.
+          if (Number.isFinite(odd) && odd > 1 && odd > (bestGg ?? 0)) {
+            bestGg = odd;
+            chosenBookmaker = bm.name;
+          }
         }
 
         if (exactBet && Object.keys(exactScores).length === 0) {

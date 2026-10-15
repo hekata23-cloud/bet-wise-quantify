@@ -183,8 +183,11 @@ export function BttsOverPage() {
 
     // Brzi simulator bez trošenja API poziva
   const handleSimulateCustom = () => {
-    const hXg = parseFloat(simXgHome.replace(",", ".")) || 1.5;
-    const aXg = parseFloat(simXgAway.replace(",", ".")) || 1.2;
+    const parsedHXg = parseFloat(simXgHome.replace(",", "."));
+    const parsedAXg = parseFloat(simXgAway.replace(",", "."));
+    // POPRAVAK: nulti xG je valjan; fallback vrijedi samo za neispravan/negativan unos.
+    const hXg = Number.isFinite(parsedHXg) && parsedHXg >= 0 ? parsedHXg : 1.5;
+    const aXg = Number.isFinite(parsedAXg) && parsedAXg >= 0 ? parsedAXg : 1.2;
 
     const fakeMarkets = {
       "Goals Over/Under": {

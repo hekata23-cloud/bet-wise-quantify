@@ -337,14 +337,16 @@ export async function runOmni(
     methods.push("Bayesov update λ prema prosjeku lige");
   }
 
-  const bttsList = estimates.map((e) => e.pBtts).filter((x) => Number.isFinite(x));
-  const ouList = estimates.map((e) => e.pOver25).filter((x) => Number.isFinite(x));
+  // POPRAVAK: Vjerojatnost i pouzdanost moraju ostati uparene; nedostajuće procjene nisu ponderirani nuli.
+  const bttsEstimates = estimates.filter((e) => Number.isFinite(e.pBtts));
+  const ouEstimates = estimates.filter((e) => Number.isFinite(e.pOver25));
+  const bttsList = bttsEstimates.map((e) => e.pBtts);
+  const ouList = ouEstimates.map((e) => e.pOver25);
   const aggB = bttsList.length ? robustMean(bttsList, maxDev) : null;
   const aggO = ouList.length ? robustMean(ouList, maxDev) : null;
 
-  const confs = estimates.map((e) => e.conf);
-  const wB = aggB ? confWeightedMean(estimates.map((e) => e.pBtts), confs, sp.confGamma) : NaN;
-  const wO = aggO ? confWeightedMean(estimates.map((e) => e.pOver25), confs, sp.confGamma) : NaN;
+  const wB = aggB ? confWeightedMean(bttsList, bttsEstimates.map((e) => e.conf), sp.confGamma) : NaN;
+  const wO = aggO ? confWeightedMean(ouList, ouEstimates.map((e) => e.conf), sp.confGamma) : NaN;
 
   // ── vlastita matematika
   const sm = scoreMatrix(lh, la, a.tau, a.rho);
@@ -376,11 +378,8 @@ export async function runOmni(
     aggO ? aggO.value : mp.over25,
     wO,
   );
-  if (mc) {
-    pBtts = 0.85 * pBtts + 0.15 * mc.btts;
-    pOver = 0.85 * pOver + 0.15 * mc.over25;
-  }
-
+  // POPRAVAK: MC simulira neovisni Poisson, ne kopulu/game-state ni Dixon-Coles; služi samo kao kontrola.
+  
   pBtts = shrinkToPrior(pBtts, p.shrink, 0.5);
   pOver = shrinkToPrior(pOver, p.shrink, 0.5);
   if (p.usePlatt) {
@@ -399,7 +398,8 @@ export async function runOmni(
     pMarket = dv[0];
     methods.push(`de-vig (${sp.devig})`);
   } else if (odds.main) {
-    pMarket = devig(odds.main, 0);
+    // POPRAVAK: Bez suprotne kvote ne može se zvati dvosmjerni de-vig; koristi se gruba implicitna vjerojatnost.
+    pMarket = Math.min(0.97, 1 / odds.main / 1.06);
   }
 
   if (pMarket !== null) {
@@ -413,7 +413,9 @@ export async function runOmni(
   // POPRAVAK: bez najmanje dvije procjene slaganje nije mjerljivo, pa ga ne prikazuj kao 100%.
   const agreement = list.length > 1 ? Math.max(0, Math.min(1, 1 - spread / 0.4)) : 0;
 
-  const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], odds.main ?? null, agreement, {
+  // POPRAVAK: EV/Kelly računaju se kvotom ishoda koji je stvarno odabran.
+  const verdictOdds = pMain >= 0.5 ? odds.main ?? null : odds.alt ?? null;
+  const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], verdictOdds, agreement, {
     ...a,
     minConfidence: p.minConfidence,
     minEdge: p.minEdge,

@@ -46,7 +46,8 @@ const tip = (market: string, pick: string, prob: number, odd: number | null): Ti
 
 export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
   const notes: string[] = [];
-  const nba = /nba|wnba|ncaa/i.test(league);
+  // POPRAVAK: samo NBA ima 48 minuta; WNBA i NCAA koriste 40-minutni format.
+  const nba = /\bnba\b/i.test(league);
   const qMin = nba ? 48 : 40;
 
   // 1) Zbroj poena — glavna linija (najbliža 50/50)

@@ -262,7 +262,8 @@ export async function runConsensus(
       lambdaHome: lh,
       lambdaAway: la,
       leagueTotal: priorTotal,
-      sampleSize: Math.max(2, members.length * Math.max(1, a.passes)),
+      // POPRAVAK: U turbo načinu stvarni uzorak ima jedan prolaz, ne spremljeni broj prolaza.
+      sampleSize: Math.max(2, members.length * passes),
       tau: a.tau,
       rho: a.rho,
       homeShareFromOdds: homeShare,

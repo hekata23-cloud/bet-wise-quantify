@@ -170,7 +170,8 @@ export interface Fixture {
 }
 
 export function getFixturesByDate(date: string): Promise<Fixture[]> {
-  return afGet<Fixture[]>("fixtures", { date }, { ttlMs: 5 * 60 * 1000 });
+  // POPRAVAK: uskladi dan fixturesa s Europe/Zagreb umjesto zadane UTC zone API-ja.
+  return afGet<Fixture[]>("fixtures", { date, timezone: "Europe/Zagreb" }, { ttlMs: 5 * 60 * 1000 });
 }
 
 export function getLiveFixtures(): Promise<Fixture[]> {
