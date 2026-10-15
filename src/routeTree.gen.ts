@@ -25,6 +25,7 @@ import { Route as PrediktorRouteImport } from './routes/prediktor'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as ProAlatiRouteImport } from './routes/pro-alati'
 import { Route as RadarRouteImport } from './routes/radar'
+import { Route as RukometRouteImport } from './routes/rukomet'
 import { Route as TiketArhitektRouteImport } from './routes/tiket-arhitekt'
 import { Route as UzivoRouteImport } from './routes/uzivo'
 import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
@@ -113,6 +114,11 @@ const RadarRoute = RadarRouteImport.update({
   path: '/radar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RukometRoute = RukometRouteImport.update({
+  id: '/rukomet',
+  path: '/rukomet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TiketArhitektRoute = TiketArhitektRouteImport.update({
   id: '/tiket-arhitekt',
   path: '/tiket-arhitekt',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/rukomet': typeof RukometRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByTo {
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/rukomet': typeof RukometRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/rukomet': typeof RukometRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/rukomet'
     | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/rukomet'
     | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
@@ -292,6 +303,7 @@ export interface FileRouteTypes {
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/rukomet'
     | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
@@ -318,6 +330,7 @@ export interface RootRouteChildren {
   ProRoute: typeof ProRoute
   ProAlatiRoute: typeof ProAlatiRoute
   RadarRoute: typeof RadarRoute
+  RukometRoute: typeof RukometRoute
   TiketArhitektRoute: typeof TiketArhitektRoute
   UzivoRoute: typeof UzivoRoute
   ZlatniTipRoute: typeof ZlatniTipRoute
@@ -439,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RadarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rukomet': {
+      id: '/rukomet'
+      path: '/rukomet'
+      fullPath: '/rukomet'
+      preLoaderRoute: typeof RukometRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tiket-arhitekt': {
       id: '/tiket-arhitekt'
       path: '/tiket-arhitekt'
@@ -522,6 +542,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProRoute: ProRoute,
   ProAlatiRoute: ProAlatiRoute,
   RadarRoute: RadarRoute,
+  RukometRoute: RukometRoute,
   TiketArhitektRoute: TiketArhitektRoute,
   UzivoRoute: UzivoRoute,
   ZlatniTipRoute: ZlatniTipRoute,
