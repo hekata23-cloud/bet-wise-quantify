@@ -3,7 +3,7 @@
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard, limiti Football API-ja
    ne mogu biti oboreni ovom karticom)
-   NOVO: panel KONKRETAN TIP — jedna strana, kvota, EV, 1/4 Kelly ulog,
+   v3: timeout 45 s na bundle, analiza radi i bez kvota, keš ne pamti greške — NOVO: panel KONKRETAN TIP — jedna strana, kvota, EV, 1/4 Kelly ulog,
    sigurnosna linija i protivtip, sve iz same matrice.
    ============================================================ */
 
@@ -47,6 +47,13 @@ function ocjenaBoja(o: string) {
   if (o === "A") return "bg-sky-500/20 text-sky-300 border-sky-500/40";
   if (o === "B+") return "bg-amber-500/20 text-amber-300 border-amber-500/40";
   return "bg-slate-500/20 text-slate-300 border-slate-500/40";
+}
+/** Timeout: nikad ne vrti spinner beskonačno na zauzetom API-ju. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`premašio ${ms / 1000} s`)), ms)),
+  ]);
 }
 /** 1/4 Kelly u % banke, ograničeno na 3%. */
 function kellyUlog(p: number, kvota: number) {
@@ -106,22 +113,34 @@ function BttsUltraPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `bttsu.bundle.${u.id}`;
+    const ck = `bttsu.bundle.v3.${u.id}`;
     try {
       const kes = localStorage.getItem(ck);
-      const b = kes ? (JSON.parse(kes) as GoalsBundle)
-        : await getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } });
-      if (!kes) localStorage.setItem(ck, JSON.stringify(b));
+      const b = kes
+        ? (JSON.parse(kes) as GoalsBundle)
+        : await withTimeout(
+            getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } }),
+            45_000,
+          );
+      // Ne pamti greške u keš — samo uspješne bundleve.
+      if (!kes && !b.error) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
-      if (b.error) {
+      if (b.error && /(ključ|limit|minut)/i.test(b.error)) {
         setStatus(`Analiza nije uspjela: ${b.error}`);
       } else {
-        const a = goalsAnaliza({ kvote: b.kvote, formaDom: b.formaDom, formaGost: b.formaGost, brojKladionica: b.knjigaBtts + b.knjigaOu });
-        setAnaliza(a);
-        setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+        try {
+          const a = goalsAnaliza({ kvote: b.kvote, formaDom: b.formaDom, formaGost: b.formaGost, brojKladionica: b.knjigaBtts + b.knjigaOu });
+          setAnaliza(a);
+          if (b.error) setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
+          else setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+        } catch {
+          setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
+        }
       }
-    } catch {
-      setStatus("Greška pri analizi.");
+    } catch (e) {
+      setStatus(e instanceof Error && e.message.includes("45")
+        ? "Dohvat podataka je premašio 45 s (API je zaokupljen) — probaj opet za minutu."
+        : "Dohvat podataka nije uspio — probaj opet za minutu.");
     }
     setAnaliziram(false);
   };
