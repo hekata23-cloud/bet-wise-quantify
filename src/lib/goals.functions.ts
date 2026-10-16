@@ -188,7 +188,7 @@ export const getGoalsBundle = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<GoalsBundle> => {
     const bookmakers: any[] = [];
     let error: string | null = null;
-    for (let page = 1; page <= 3; page++) {
+    for (let page = 1; page <= 1; page++) {
       const r = await call(`/odds?fixture=${data.id}&page=${page}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
       if (r.error) { error = r.error; break; }
       const resp = (r.data as any[]) ?? [];
