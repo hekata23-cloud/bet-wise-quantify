@@ -11,6 +11,7 @@ import {
   MessageCircle,
   Radar,
   Radio,
+  Rocket,
   Settings,
   Sparkles,
   Target,
@@ -28,6 +29,7 @@ const NAV = [
   { to: "/", label: "Početna", icon: Sparkles },
   { to: "/ht-ft-predikcija", label: "HT/FT Predikcija", icon: Zap },
   { to: "/ht-ft", label: "HT/FT Sharp", icon: Clock },
+  { to: "/ht-ft-beta", label: "HT/FT Beta", icon: Rocket },
   { to: "/btts-over", label: "2.5 & BTTS Sharp", icon: Flame },
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/golovi", label: "Golovi Pro", icon: Goal },
@@ -152,5 +154,4 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
 
