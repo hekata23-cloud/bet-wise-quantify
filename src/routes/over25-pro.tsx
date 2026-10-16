@@ -1,4 +1,5 @@
-* ============================================================
+/* ============================================================
+
    2.5 PRO — Over/Under 2.5 (i 1.5 / 3.5 kontekst) pod lupom
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard)
