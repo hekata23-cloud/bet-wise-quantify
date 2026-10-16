@@ -1,21 +1,21 @@
-// ============= REZERVNI MOZAK za AI Prognozu — BESPLATNO ═══
+// ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO ═══
 // Kad Lovable AI Gateway kaže da su krediti potrošeni (402) ili je zauzet (429),
 // ova kartica ne ostaje prazna: ista prognoza se izračuna preko korisnikovog
 // besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
-// Model dobiva iste de-vig + Dixon-Coles brojke i ista pravila kao glavni mozak.
 //
-// LISTOPAD 2026 — popis modela provjeren ŽIVIM upitom na OpenRouter /models:
-// - "openrouter/free" NE postoji kao model → uklonjen (uzrok "nevažeći JSON").
-// - thinkingmachines/inkling:free → samo agentic aplikacije (403) → uklonjen.
-// - nvidia/nemotron-3-ultra-550b-a55b:free → prespor, ne stigne za 50 s → maknut.
-// - Prvi modeli su brzi, neparsiraju u reasoning, i dobro drže JSON format.
+// BRZINA: prva 3 modela pitaju se PARALELNO — tko prvi vrati ispravan JSON,
+// ta prognoza ide na ekran. To skida čekanje od 1-2 minute na spore modele.
+// Popis modela provjeren živim upitom na OpenRouter /models (16.10.2026):
+// - "openrouter/free" NE postoji kao model → uklonjen.
+// - inkling:free → samo agentic aplikacije (403) → uklonjen.
+// - ultra-550b → prespor → uklonjen.
 import { openrouterChat } from "./openrouter";
 import { hasKey } from "./storage";
 import type { AiPrognoza } from "./ai-prognoza.functions";
 
 export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: string };
 
-/** Besplatni OpenRouter modeli u redoslijedu pokušaja (svi živi 16.10.2026). */
+/** Besplatni OpenRouter modeli — prva tri idu paralelno, ostatak redom. */
 const FREE_MODELS = [
   "google/gemma-4-31b-it:free",
   "poolside/laguna-s-2.1:free",
@@ -97,10 +97,6 @@ function parsePrognoza(out: string): AiPrognoza | null {
   };
 }
 
-/**
- * Pokreni rezervni mozak. Vraća prognozu ili opis greške (npr. da OpenRouter
- * ključ nije spremljen u Postavkama). Nikad ne troši Lovable kredite.
- */
 /** Lokalni timeout da rezervni mozak nikad ne visi na sporom modelu. */
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -124,20 +120,47 @@ export async function runAiPrognozaFallback(input: {
 FORMAT ODGOVORA: vrati ISKLJUČIVO jedan JSON objekt, bez markdowna, bez obrazloženja van JSON-a, po ovoj shemi:
 ${SCHEMA_TEXT}`;
   const user = `Utakmica: ${input.utakmica}\nTražena vrsta oklade: ${input.vrstaOklade || "bilo koja (najbolji tip)"}\n\nPodaci modela:\n${input.kontekst}`;
+  const poruke = [
+    { role: "system" as const, content: sys },
+    { role: "user" as const, content: user },
+  ];
+
+  /** Jedan pokušaj modela: vraća parsiranu prognozu ili baca grešku. */
+  const pokusaj = async (model: string): Promise<AiPrognoza> => {
+    onProgress?.(`Rezervni mozak (besplatno): ${model}…`);
+    const out = await withTimeout(
+      openrouterChat(model, poruke, { maxTokens: 1400, temperature: 0.3 }),
+      45_000,
+    );
+    const p = parsePrognoza(out);
+    if (p) return p;
+    throw new Error(`${model}: nevažeći JSON`);
+  };
+
   const errs: string[] = [];
-  for (const model of FREE_MODELS) {
+
+  // FAZA 1: prva tri modela PARALELNO — prvi ispravni odgovor pobjeđuje.
+  try {
+    const p = await Promise.any(FREE_MODELS.slice(0, 3).map((m) => pokusaj(m)));
+    return { ok: true, p };
+  } catch (e) {
+    const agg = e as AggregateError;
+    if (agg && Array.isArray(agg.errors)) {
+      for (const er of agg.errors) errs.push(er instanceof Error ? er.message : String(er));
+    } else errs.push(e instanceof Error ? e.message : String(e));
+  }
+
+  // FAZA 2: ostatak modela redom (sporije, ali daje prognozu ako glavni tricu omanu).
+  for (const model of FREE_MODELS.slice(3)) {
     try {
-      onProgress?.(`Rezervni mozak (besplatno): ${model}…`);
-      const out = await withTimeout(openrouterChat(model, [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ], { maxTokens: 1400, temperature: 0.3 }), 50_000);
-      const p = parsePrognoza(out);
-      if (p) return { ok: true, p };
-      errs.push(`${model}: nevažeći JSON`);
+      const p = await pokusaj(model);
+      return { ok: true, p };
     } catch (e) {
-      errs.push(`${model}: ${e instanceof Error ? e.message : String(e)}`);
+      errs.push(e instanceof Error ? e.message : String(e));
     }
   }
+
   return { ok: false, error: `Rezervni mozak nije uspio. ${errs.slice(0, 3).join(" | ")}` };
 }
+  
+
