@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { guardGet } from "./api-guard.server";
 
 export type FixtureItem = {
   id: number;
@@ -30,29 +31,16 @@ export type OddsResult = {
 const BASE = "https://v3.football.api-sports.io";
 
 async function call(path: string, key: string) {
-  const response = await fetch(`${BASE}${path}`, {
-    headers: { "x-apisports-key": key },
-  });
-  const remainingRaw = response.headers.get("x-ratelimit-requests-remaining");
-  const remaining = remainingRaw !== null && remainingRaw !== "" ? Number(remainingRaw) : undefined;
-
-  if (response.status === 429) {
+  // api-guard: red čekanja + keš + retry + stale rezerva — klik na par više ne pada na 429.
+  const r = await guardGet(path, { apiKey: key });
+  const remaining = r.remainingDay >= 0 ? r.remainingDay : undefined;
+  if (r.error === "RATE_LIMIT")
     return { error: "Previše zahtjeva u minuti. Pričekaj 10 sekundi.", remaining };
-  }
-  if (response.status === 401 || response.status === 403) {
+  if (r.error && r.error.startsWith("ACCOUNT"))
     return { error: "API ključ nije važeći. Provjeri ga u Postavkama.", remaining };
-  }
-  if (!response.ok) {
-    return { error: `Servis je vratio grešku (${response.status}).`, remaining };
-  }
-
-  const body = (await response.json()) as { errors?: unknown; response?: unknown };
-  const errors = body.errors;
-  if (Array.isArray(errors) ? errors.length > 0 : errors && Object.keys(errors as object).length > 0) {
-    const first = Array.isArray(errors) ? String(errors[0]) : String(Object.values(errors as Record<string, unknown>)[0]);
-    return { error: first, remaining };
-  }
-  return { data: body.response, remaining };
+  if (r.error)
+    return { error: r.error, remaining };
+  return { data: r.data, remaining };
 }
 
 function validKey(data: { key?: string }) {
