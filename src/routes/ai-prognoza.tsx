@@ -24,6 +24,12 @@ export const Route = createFileRoute("/ai-prognoza")({
 const VRSTE = ["Najbolji tip (bilo koji)", "Konačan ishod 1X2", "Dvostruka šansa", "Ukupno golova", "Oba tima zabijaju (GG)", "Poluvrijeme / kraj", "Točan rezultat", "Golovi tima"];
 const num = (s: string) => { const v = parseFloat(s.replace(",", ".")); return Number.isFinite(v) && v > 1 ? v : undefined; };
 
+// Lovable AI krediti se pamte kao potrošeni do kraja posjete (refresh) — kartica
+// tada ODMAH ide na besplatni rezervni mozak umjesto da čeka ponovnu grešku.
+const LOVABLE_402 = "ai.lovable.402";
+const lovablePotrosen = () => { try { return sessionStorage.getItem(LOVABLE_402) === "1"; } catch { return false; } };
+const zapamtiLovable402 = () => { try { sessionStorage.setItem(LOVABLE_402, "1"); } catch { /* ignore */ } };
+
 function buildContext(a: Analysis, bookmaker: string | null) {
   const rows = a.markets.slice(0, 40).map((m) =>
     `${m.name}: ` + m.outcomes.map((o) => `${o.label} ${(o.p * 100).toFixed(1)}%${o.odd ? ` @${o.odd}` : ""}`).join(" | "),
@@ -98,25 +104,32 @@ function AiPrognozaPage() {
     setBusy(true); setMsg("AI analitičar radi…");
     const ctx = buildContext(a, book);
     const inp = { utakmica: match, vrstaOklade: vrsta, kontekst: ctx };
-    try {
-      const r = await getAiPrognoza({ data: inp });
-      if (r.ok) { setAi(r.p); setMsg(""); return; }
-      // Lovable AI krediti nisu dostupni (402) ili je zauzet (429) → besplatni rezervni mozak.
-      setMsg("Lovable AI nedostupan — probam besplatni rezervni mozak…");
+
+    const rezervni = async (glavnaGreska: string) => {
+      setMsg("Lovable AI nedostupan — besplatni mozgovi rade paralelno…");
       const fb = await runAiPrognozaFallback(inp, (m) => setMsg(m));
       if (fb.ok) {
         setAi(fb.p);
         setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
-      } else setMsg(`${r.error} — ${fb.error}`);
+      } else setMsg(`${glavnaGreska} — ${fb.error}`);
+    };
+
+    try {
+      // Ako smo već znali da su mjesečni krediti potrošeni, ne čekamo Lovable AI:
+      // odmah paralelni besplatni mozgovi.
+      if (lovablePotrosen()) {
+        await rezervni("Mjesečni besplatni AI krediti su potrošeni (pamti se do refresha stranice).");
+        return;
+      }
+      const r = await getAiPrognoza({ data: inp });
+      if (r.ok) { setAi(r.p); setMsg(""); return; }
+      const err = r.error || "";
+      if (/potrošen|potrošeni|kredit/i.test(err)) zapamtiLovable402();
+      await rezervni(err);
     } catch (e: any) {
-      setMsg("Lovable AI nedostupan — probam besplatni rezervni mozak…");
-      try {
-        const fb = await runAiPrognozaFallback(inp, (m) => setMsg(m));
-        if (fb.ok) {
-          setAi(fb.p);
-          setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
-        } else setMsg(`${e.message} — ${fb.error}`);
-      } catch (e2: any) { setMsg(`${e.message} — ${e2.message}`); }
+      zapamtiLovable402();
+      try { await rezervni(e.message); }
+      catch (e2: any) { setMsg(`${e.message} — ${e2.message}`); }
     } finally { setBusy(false); }
   };
 
