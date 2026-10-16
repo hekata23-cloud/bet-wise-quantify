@@ -11,11 +11,13 @@ export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: s
 
 /** Besplatni OpenRouter modeli u redoslijedu pokušaja. */
 const FREE_MODELS = [
-  "deepseek/deepseek-chat-v3.1:free",
-  "openai/gpt-oss-120b:free",
-  "qwen/qwen3-235b-a22b:free",
-  "meta-llama/llama-4-maverick:free",
-  "google/gemma-3-27b-it:free",
+  // Free Router uvijek routa na trenutno živi besplatni model — najsigurniji prvi.
+  "openrouter/free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "thinkingmachines/inkling:free",
+  "google/gemma-4-31b-it:free",
+  "poolside/laguna-s-2.1:free",
+  "nvidia/nemotron-3.5-lightning:free",
 ];
 
 const SCHEMA_TEXT = `{
