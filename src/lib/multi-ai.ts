@@ -95,4 +95,3 @@ Isto pitanje dobilo je ${opinions.length} neovisnih AI savjetnika s različitih 
   );
   return judge || opinions[0].answer;
 }
-
