@@ -103,7 +103,7 @@ function AiPrognozaPage() {
       if (r.ok) { setAi(r.p); setMsg(""); return; }
       // Lovable AI krediti nisu dostupni (402) ili je zauzet (429) → besplatni rezervni mozak.
       setMsg("Lovable AI nedostupan — probam besplatni rezervni mozak…");
-      const fb = await runAiPrognozaFallback(inp);
+      const fb = await runAiPrognozaFallback(inp, (m) => setMsg(m));
       if (fb.ok) {
         setAi(fb.p);
         setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
@@ -111,7 +111,7 @@ function AiPrognozaPage() {
     } catch (e: any) {
       setMsg("Lovable AI nedostupan — probam besplatni rezervni mozak…");
       try {
-        const fb = await runAiPrognozaFallback(inp);
+        const fb = await runAiPrognozaFallback(inp, (m) => setMsg(m));
         if (fb.ok) {
           setAi(fb.p);
           setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
