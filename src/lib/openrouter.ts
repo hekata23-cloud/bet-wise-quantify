@@ -47,8 +47,15 @@ async function call(model: string, messages: ORMessage[], opts: ORCallOptions): 
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || "OpenRouter Error");
-  return data.choices?.[0]?.message?.content?.trim() || "";
+  if (!res.ok) throw new Error(`(${res.status}) ${data.error?.message || "OpenRouter Error"}`);
+  const m = data.choices?.[0];
+  // Provider greška krije se unutar choices (npr. "no allowed providers").
+  if (m?.error?.message) throw new Error(m.error.message);
+  const content = m?.message?.content?.trim();
+  if (content) return content;
+  // Neki besplatni reasoning modeli vrate tekst u "reasoning" polju.
+  const reasoning = typeof m?.message?.reasoning === "string" ? m.message.reasoning.trim() : "";
+  return reasoning;
 }
 
 export async function openrouterChat(
@@ -62,7 +69,7 @@ export async function openrouterChat(
     const msg = e instanceof Error ? e.message : String(e);
     // Model umirovljen / nedostupan za free / preopterećen → jedan spas preko
     // Free Routera, koji uvijek routa na trenutno živi besplatni model.
-    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|rate|quota|429|402|404|400/i.test(msg);
+    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|rate|quota|429|402|404|400|\(429\)|\(400\)|\(404\)/i.test(msg);
     if (rescue && model !== "openrouter/free") {
       const out = await call("openrouter/free", messages, opts);
       if (out) return out;
