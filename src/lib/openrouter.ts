@@ -7,17 +7,21 @@ export interface ORMessage {
   content: string;
 }
 
-// Ožujak 2026 → listopad 2026: stari :free modeli (DeepSeek v3.1, GPT-OSS 120B,
-// Qwen3 235B, Llama 4 Maverick, Gemma 3 27B) su umirovljeni. Ovo su trenutno
-// živi besplatni modeli na OpenRouteru.
+// Popis modela provjeren ŽIVIM upitom na https://openrouter.ai/api/v1/models
+// (16.10.2026). "openrouter/free" NE postoji kao model — uklonjen. Inkling:free
+// je samo za agentic aplikacije (403), Ultra 550B prespor (timeout) — uklonjeni.
 export const OR_MODELS = [
-  { id: "openrouter/free", label: "Free Router (sam bira živi besplatni model)", free: true },
-  { id: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 3 Ultra (Logika)", free: true },
-  { id: "thinkingmachines/inkling-small:free", label: "Inkling Small (Brzina)", free: true },
+  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (Glavni)", free: true },
+  { id: "poolside/laguna-s-2.1:free", label: "Laguna S 2.1", free: true },
+  { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning", free: true },
+  { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B", free: true },
+  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B", free: true },
+  { id: "dots-studio/dots-3-note-preview:free", label: "Dots 3 Note Preview", free: true },
+  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", label: "Nemotron Nano Omni 30B", free: true },
 ];
 
 export function specialistDefault(): string {
-  return "openrouter/free";
+  return "google/gemma-4-31b-it:free";
 }
 
 export interface ORCallOptions {
@@ -39,7 +43,7 @@ async function call(model: string, messages: ORMessage[], opts: ORCallOptions): 
       "X-Title": "Andromeda AI Oracle"
     },
     body: JSON.stringify({
-      model: model || "openrouter/free",
+      model: model || specialistDefault(),
       messages,
       temperature: opts.temperature ?? 0.6,
       ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
@@ -67,11 +71,12 @@ export async function openrouterChat(
     return await call(model, messages, opts);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    // Model umirovljen / nedostupan za free / preopterećen → jedan spas preko
-    // Free Routera, koji uvijek routa na trenutno živi besplatni model.
-    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|rate|quota|429|402|404|400|\(429\)|\(400\)|\(404\)/i.test(msg);
-    if (rescue && model !== "openrouter/free") {
-      const out = await call("openrouter/free", messages, opts);
+    // Model umirovljen / nedostupan / preopterećen → jedan spas preko glavnog
+    // živog besplatnog modela (Gemma 4 31B — provjeren danas na OpenRouteru).
+    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|rate|quota|429|402|404|400|\(429\)|\(400\)|\(404\)/i.test(msg);
+    const main = specialistDefault();
+    if (rescue && model !== main) {
+      const out = await call(main, messages, opts);
       if (out) return out;
     }
     // Eksplicitni rezervni modeli iz poziva (npr. specialisti za tržište).
@@ -87,7 +92,7 @@ export async function openrouterChat(
 
 export async function testOpenRouter() {
   try {
-    await openrouterChat("openrouter/free", [{ role: "user", content: "Say OK" }]);
-    return { ok: true, msg: "OpenRouter Free Router je spreman!" };
+    await openrouterChat(specialistDefault(), [{ role: "user", content: "Say OK" }]);
+    return { ok: true, msg: "OpenRouter spreman — Gemma 4 31B odgovara!" };
   } catch (e: any) { return { ok: false, msg: e.message }; }
 }
