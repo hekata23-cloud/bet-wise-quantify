@@ -31,6 +31,8 @@ const NAV = [
   { to: "/ht-ft", label: "HT/FT Sharp", icon: Clock },
   { to: "/ht-ft-beta", label: "HT/FT Beta", icon: Rocket },
   { to: "/btts-over", label: "2.5 & BTTS Sharp", icon: Flame },
+  { to: "/btts-ultra", label: "BTTS Ultra", icon: Flame },
+  { to: "/over25-pro", label: "2.5 Pro", icon: Zap },
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/kosarka", label: "Košarka Sharp", icon: Dribbble },
