@@ -3,6 +3,8 @@
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard, limiti Football API-ja
    ne mogu biti oboreni ovom karticom)
+   NOVO: panel KONKRETAN TIP — jedna strana, kvota, EV, 1/4 Kelly ulog,
+   sigurnosna linija i protivtip, sve iz same matrice.
    ============================================================ */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -46,6 +48,13 @@ function ocjenaBoja(o: string) {
   if (o === "B+") return "bg-amber-500/20 text-amber-300 border-amber-500/40";
   return "bg-slate-500/20 text-slate-300 border-slate-500/40";
 }
+/** 1/4 Kelly u % banke, ograničeno na 3%. */
+function kellyUlog(p: number, kvota: number) {
+  if (kvota <= 1 || p <= 0) return 0;
+  return Math.max(0, Math.min(3, ((p * kvota - 1) / (kvota - 1)) * 25));
+}
+
+interface TipStrana { label: string; p: number | null; kv: number | null }
 
 function BttsUltraPage() {
   const [date, setDate] = useState(zagrebDay());
@@ -128,6 +137,38 @@ function BttsUltraPage() {
   const preporukaDa = pDa != null && kvotaDa != null && (pDa * kvotaDa - 1) >= 0.02;
   const preporukaNe = pNe != null && kvotaNe != null && (pNe * kvotaNe - 1) >= 0.02;
 
+  // ── KONKRETAN TIP: jedna strana BTTS + kvota + EV + Kelly ulog + sigurnosna linija ──
+  let tip: null | {
+    label: string; p: number; kv: number | null; edge: number | null; ulog: number;
+    sigLabel: string; sigP: number | null; sigKv: number | null;
+    altLabel: string; altP: number | null;
+  } = null;
+  if (analiza) {
+    const strane: TipStrana[] = [
+      { label: "DA", p: pDa, kv: kvotaDa },
+      { label: "NE", p: pNe, kv: kvotaNe },
+    ];
+    const isplativi = strane.filter((s) => s.p != null && s.kv != null && s.p * s.kv - 1 > 0)
+      .sort((a, b) => b.p! * b.kv! - a.p! * a.kv!);
+    const poProb = strane.filter((s) => s.p != null).sort((a, b) => b.p! - a.p!);
+    const c = isplativi[0] ?? poProb[0]!;
+    const sig = c.label === "DA"
+      ? { label: "Više od 1.5 golova", p: analiza.final["o15"] ?? null, kv: bundle?.kvote["o15"] ?? null }
+      : { label: "Manje od 2.5 golova", p: analiza.final["u25"] ?? null, kv: bundle?.kvote["u25"] ?? null };
+    tip = {
+      label: c.label,
+      p: c.p!,
+      kv: c.kv ?? null,
+      edge: c.p != null && c.kv != null ? c.p * c.kv - 1 : null,
+      ulog: c.kv != null ? kellyUlog(c.p!, c.kv) : 0,
+      sigLabel: sig.label,
+      sigP: sig.p,
+      sigKv: sig.kv,
+      altLabel: c.label === "DA" ? "NE" : "DA",
+      altP: strane.find((s) => s.label !== c.label)?.p ?? null,
+    };
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -207,6 +248,62 @@ function BttsUltraPage() {
 
           {analiza && (
             <>
+              {/* ═══ KONKRETAN TIP ═══ */}
+              {tip && (
+                <div className="rounded-2xl border border-primary/50 bg-primary/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-bold uppercase tracking-wide text-primary">🎯 Konkretan tip</div>
+                    {tip.kv != null && tip.edge != null && tip.edge >= 0.02 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                        <CheckCircle2 className="h-3 w-3" /> ISPLATIVO — ULOG {tip.ulog.toFixed(1)}% BANKE
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                        {tip.kv == null ? "FER TIP — KVOTA JOS NIJE OBJAVLJENA" : "PRESKOČI — NEMA VRIJEDNOSTI"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-2xl font-black">
+                    BTTS {tip.label}
+                    {tip.kv != null ? ` @ ${tip.kv.toFixed(2)}` : " (fer kvota dolje)"}
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Vjerojatnost</div>
+                      <div className="font-mono font-bold">{fmtPct(tip.p)}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Fer kvota</div>
+                      <div className="font-mono font-bold">{tip.p > 0 ? (1 / tip.p).toFixed(2) : "—"}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Kvota API</div>
+                      <div className="font-mono font-bold">{tip.kv?.toFixed(2) ?? "—"}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Edge / EV</div>
+                      <div className={`font-mono font-bold ${tip.edge != null ? edgeBoja(tip.edge) : ""}`}>
+                        {tip.edge != null ? `${(tip.edge * 100).toFixed(1)}%` : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Protivtip</div>
+                      <div className="font-mono font-bold">
+                        {tip.altLabel}{tip.altP != null ? ` ${fmtPct(tip.altP)}` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  {tip.sigP != null && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      🛡️ Sigurnosna linija: <b className="text-foreground">{tip.sigLabel}</b> (model {fmtPct(tip.sigP)}{tip.sigKv != null ? ` @ ${tip.sigKv.toFixed(2)}` : ""}) — ako ti je glavni tip pretežak, tu ide manji ulog.
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Odabir: najveći edge među isplativim stranama; ako nijedna nema edge, strana s većom vjerojatnošću.
+                  </div>
+                </div>
+              )}
+
               {/* Glavni BTTS ishod */}
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
