@@ -1,9 +1,11 @@
-/* ============================================================
+ /* ============================================================
    BTTS ULTRA — "Oba tima daju gol" pod lupom
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard, limiti Football API-ja
    ne mogu biti oboreni ovom karticom)
-   v3: timeout 45 s na bundle, analiza radi i bez kvota, keš ne pamti greške — NOVO: panel KONKRETAN TIP — jedna strana, kvota, EV, 1/4 Kelly ulog,
+   v4: motor UVIJEK radi — i kad bundle ima grešku (limit/ključ/minute)
+   i kad nema kvota; pokazuje upozorenje i daje model tip s fer kvotom.
+   Panel KONKRETAN TIP: jedna strana, kvota, EV, 1/4 Kelly ulog,
    sigurnosna linija i protivtip, sve iz same matrice.
    ============================================================ */
 
@@ -113,7 +115,7 @@ function BttsUltraPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `bttsu.bundle.v3.${u.id}`;
+    const ck = `bttsu.bundle.v4.${u.id}`;
     try {
       const kes = localStorage.getItem(ck);
       const b = kes
@@ -125,17 +127,25 @@ function BttsUltraPage() {
       // Ne pamti greške u keš — samo uspješne bundleve.
       if (!kes && !b.error) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
-      if (b.error && /(ključ|limit|minut)/i.test(b.error)) {
-        setStatus(`Analiza nije uspjela: ${b.error}`);
-      } else {
-        try {
-          const a = goalsAnaliza({ kvote: b.kvote, formaDom: b.formaDom, formaGost: b.formaGost, brojKladionica: b.knjigaBtts + b.knjigaOu });
-          setAnaliza(a);
-          if (b.error) setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
-          else setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
-        } catch {
-          setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
-        }
+
+      // ═══ KLJUČNA PROMJENA: motor UVIJEK radi ═══
+      // Prije je analiza stajala čim je bundle imao grešku (limit, ključ,
+      // minute). Motor zna raditi bez kvota (samo forma) pa je stavljamo
+      // u panel s upozorenjem umjesto praznog ekrana.
+      try {
+        const a = goalsAnaliza({
+          kvote: b.kvote ?? {},
+          formaDom: b.formaDom,
+          formaGost: b.formaGost,
+          brojKladionica: b.knjigaBtts + b.knjigaOu,
+        });
+        setAnaliza(a);
+        if (b.error)
+          setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
+        else
+          setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+      } catch {
+        setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
       }
     } catch (e) {
       setStatus(e instanceof Error && e.message.includes("45")
@@ -452,3 +462,4 @@ function BttsUltraPage() {
     </div>
   );
 }
+
