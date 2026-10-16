@@ -1,9 +1,10 @@
 /* ============================================================
-
    2.5 PRO — Over/Under 2.5 (i 1.5 / 3.5 kontekst) pod lupom
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard)
-   v3: timeout 45 s na bundle, analiza radi i bez kvota, keš ne pamti greške — NOVO: panel KONKRETAN TIP — jedna strana 2.5 linije, kvota, EV,
+   v4: motor UVIJEK radi — i kad bundle ima grešku (limit/ključ/minute)
+   i kad nema kvota; pokazuje upozorenje i daje model tip s fer kvotom.
+   Panel KONKRETAN TIP: jedna strana 2.5 linije, kvota, EV,
    1/4 Kelly ulog, sigurnosna linija i protivtip, sve iz same matrice.
    ============================================================ */
 
@@ -106,7 +107,7 @@ function Over25ProPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `o25p.bundle.v3.${u.id}`;
+    const ck = `o25p.bundle.v4.${u.id}`;
     try {
       const kes = localStorage.getItem(ck);
       const b = kes
@@ -118,17 +119,25 @@ function Over25ProPage() {
       // Ne pamti greške u keš — samo uspješne bundleve.
       if (!kes && !b.error) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
-      if (b.error && /(ključ|limit|minut)/i.test(b.error)) {
-        setStatus(`Analiza nije uspjela: ${b.error}`);
-      } else {
-        try {
-          const a = goalsAnaliza({ kvote: b.kvote, formaDom: b.formaDom, formaGost: b.formaGost, brojKladionica: b.knjigaOu });
-          setAnaliza(a);
-          if (b.error) setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
-          else setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
-        } catch {
-          setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
-        }
+
+      // ═══ KLJUČNA PROMJENA: motor UVIJEK radi ═══
+      // Prije je analiza stajala čim je bundle imao grešku (limit, ključ,
+      // minute). Motor zna raditi bez kvota (samo forma) pa je stavljamo
+      // u panel s upozorenjem umjesto praznog ekrana.
+      try {
+        const a = goalsAnaliza({
+          kvote: b.kvote ?? {},
+          formaDom: b.formaDom,
+          formaGost: b.formaGost,
+          brojKladionica: b.knjigaOu,
+        });
+        setAnaliza(a);
+        if (b.error)
+          setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
+        else
+          setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+      } catch {
+        setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
       }
     } catch (e) {
       setStatus(e instanceof Error && e.message.includes("45")
@@ -447,3 +456,4 @@ function Over25ProPage() {
     </div>
   );
 }
+
