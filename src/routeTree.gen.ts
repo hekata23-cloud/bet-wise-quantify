@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiPrognozaRouteImport } from './routes/ai-prognoza'
 import { Route as BttsOverRouteImport } from './routes/btts-over'
+import { Route as BttsUltraRouteImport } from './routes/btts-ultra'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as HtFtRouteImport } from './routes/ht-ft'
@@ -21,6 +22,7 @@ import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as KosarkaRouteImport } from './routes/kosarka'
 import { Route as ObrnuteKvoteRouteImport } from './routes/obrnute-kvote'
 import { Route as OverUnderRouteImport } from './routes/over-under'
+import { Route as Over25ProRouteImport } from './routes/over25-pro'
 import { Route as PostavkeRouteImport } from './routes/postavke'
 import { Route as PrediktorRouteImport } from './routes/prediktor'
 import { Route as ProRouteImport } from './routes/pro'
@@ -50,6 +52,11 @@ const BttsOverRoute = BttsOverRouteImport.update({
   path: '/btts-over',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BttsUltraRoute = BttsUltraRouteImport.update({
+  id: '/btts-ultra',
+  path: '/btts-ultra',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -66,10 +73,12 @@ const HtFtRoute = HtFtRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const HtFtBetaRoute = HtFtBetaRouteImport.update({
-const HtFtPredikcijaRoute = HtFtPredikcijaRouteImport.update({
   id: '/ht-ft-beta',
-  id: '/ht-ft-predikcija',
   path: '/ht-ft-beta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HtFtPredikcijaRoute = HtFtPredikcijaRouteImport.update({
+  id: '/ht-ft-predikcija',
   path: '/ht-ft-predikcija',
   getParentRoute: () => rootRouteImport,
 } as any)
@@ -91,6 +100,11 @@ const ObrnuteKvoteRoute = ObrnuteKvoteRouteImport.update({
 const OverUnderRoute = OverUnderRouteImport.update({
   id: '/over-under',
   path: '/over-under',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Over25ProRoute = Over25ProRouteImport.update({
+  id: '/over25-pro',
+  path: '/over25-pro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostavkeRoute = PostavkeRouteImport.update({
@@ -163,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
+  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
@@ -172,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/kosarka': typeof KosarkaRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/over-under': typeof OverUnderRouteWithChildren
+  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
@@ -190,6 +206,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
+  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
@@ -209,6 +226,7 @@ export interface FileRoutesByTo {
   '/zlatni-tip': typeof ZlatniTipRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
   '/over-under': typeof OverUnderIndexRoute
+  '/over25-pro': typeof Over25ProRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
@@ -217,6 +235,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
+  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
@@ -226,6 +245,7 @@ export interface FileRoutesById {
   '/kosarka': typeof KosarkaRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/over-under': typeof OverUnderRouteWithChildren
+  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
@@ -246,6 +266,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
+    | '/btts-ultra'
     | '/chat'
     | '/golovi'
     | '/ht-ft'
@@ -255,6 +276,7 @@ export interface FileRouteTypes {
     | '/kosarka'
     | '/obrnute-kvote'
     | '/over-under'
+    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
@@ -273,6 +295,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
+    | '/btts-ultra'
     | '/chat'
     | '/golovi'
     | '/ht-ft'
@@ -292,6 +315,7 @@ export interface FileRouteTypes {
     | '/zlatni-tip'
     | '/over-under/postavke'
     | '/over-under'
+    | '/over25-pro'
     | '/api/public/football-data'
     | '/api/public/nvidia'
   id:
@@ -299,6 +323,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
+    | '/btts-ultra'
     | '/chat'
     | '/golovi'
     | '/ht-ft'
@@ -308,6 +333,7 @@ export interface FileRouteTypes {
     | '/kosarka'
     | '/obrnute-kvote'
     | '/over-under'
+    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
@@ -327,6 +353,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiPrognozaRoute: typeof AiPrognozaRoute
   BttsOverRoute: typeof BttsOverRoute
+  BttsUltraRoute: typeof BttsUltraRoute
   ChatRoute: typeof ChatRoute
   GoloviRoute: typeof GoloviRoute
   HtFtRoute: typeof HtFtRoute
@@ -336,6 +363,7 @@ export interface RootRouteChildren {
   KosarkaRoute: typeof KosarkaRoute
   ObrnuteKvoteRoute: typeof ObrnuteKvoteRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
+  Over25ProRoute: typeof Over25ProRoute
   PostavkeRoute: typeof PostavkeRoute
   PrediktorRoute: typeof PrediktorRoute
   ProRoute: typeof ProRoute
@@ -372,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BttsOverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/btts-ultra': {
+      id: '/btts-ultra'
+      path: '/btts-ultra'
+      fullPath: '/btts-ultra'
+      preLoaderRoute: typeof BttsUltraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -394,14 +429,16 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRouteImport
     }
     '/ht-ft-beta': {
-    '/ht-ft-predikcija': {
       id: '/ht-ft-beta'
-      id: '/ht-ft-predikcija'
       path: '/ht-ft-beta'
-      path: '/ht-ft-predikcija'
       fullPath: '/ht-ft-beta'
-      fullPath: '/ht-ft-predikcija'
       preLoaderRoute: typeof HtFtBetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ht-ft-predikcija': {
+      id: '/ht-ft-predikcija'
+      path: '/ht-ft-predikcija'
+      fullPath: '/ht-ft-predikcija'
       preLoaderRoute: typeof HtFtPredikcijaRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -431,6 +468,13 @@ declare module '@tanstack/react-router' {
       path: '/over-under'
       fullPath: '/over-under'
       preLoaderRoute: typeof OverUnderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/over25-pro': {
+      id: '/over25-pro'
+      path: '/over25-pro'
+      fullPath: '/over25-pro'
+      preLoaderRoute: typeof Over25ProRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/postavke': {
@@ -545,6 +589,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiPrognozaRoute: AiPrognozaRoute,
   BttsOverRoute: BttsOverRoute,
+  BttsUltraRoute: BttsUltraRoute,
   ChatRoute: ChatRoute,
   GoloviRoute: GoloviRoute,
   HtFtRoute: HtFtRoute,
@@ -554,6 +599,7 @@ const rootRouteChildren: RootRouteChildren = {
   KosarkaRoute: KosarkaRoute,
   ObrnuteKvoteRoute: ObrnuteKvoteRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
+  Over25ProRoute: Over25ProRoute,
   PostavkeRoute: PostavkeRoute,
   PrediktorRoute: PrediktorRoute,
   ProRoute: ProRoute,
