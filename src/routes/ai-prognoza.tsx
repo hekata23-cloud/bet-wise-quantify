@@ -4,6 +4,7 @@ import { getZtFixtures, getZtMatch, type ZtFixture, type Bet365Markets } from "@
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
 import { getApiKey, guarded, pruneCache, resetGuard, zagrebDay } from "@/lib/zlatni-guard";
 import { getAiPrognoza, type AiPrognoza } from "@/lib/ai-prognoza.functions";
+import { runAiPrognozaFallback } from "@/lib/ai-prognoza-fallback";
 import { Brain, RefreshCw, Sparkles, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/ai-prognoza")({
@@ -95,10 +96,28 @@ function AiPrognozaPage() {
     const a = mode === "rucno" ? manualAnalyze() : an;
     if (!a) { if (mode === "auto") setMsg("Najprije odaberi utakmicu."); return; }
     setBusy(true); setMsg("AI analitičar radi…");
+    const ctx = buildContext(a, book);
+    const inp = { utakmica: match, vrstaOklade: vrsta, kontekst: ctx };
     try {
-      const r = await getAiPrognoza({ data: { utakmica: match, vrstaOklade: vrsta, kontekst: buildContext(a, book) } });
-      if (r.ok) { setAi(r.p); setMsg(""); } else setMsg(r.error);
-    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+      const r = await getAiPrognoza({ data: inp });
+      if (r.ok) { setAi(r.p); setMsg(""); return; }
+      // Lovable AI krediti nisu dostupni (402) ili je zauzet (429) → besplatni rezervni mozak.
+      setMsg("Lovable AI nedostupan — probam besplatni rezervni mozak…");
+      const fb = await runAiPrognozaFallback(inp);
+      if (fb.ok) {
+        setAi(fb.p);
+        setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
+      } else setMsg(`${r.error} — ${fb.error}`);
+    } catch (e: any) {
+      setMsg("Lovable AI nedostupan — probam besplatni rezervni mozak…");
+      try {
+        const fb = await runAiPrognozaFallback(inp);
+        if (fb.ok) {
+          setAi(fb.p);
+          setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
+        } else setMsg(`${e.message} — ${fb.error}`);
+      } catch (e2: any) { setMsg(`${e.message} — ${e2.message}`); }
+    } finally { setBusy(false); }
   };
 
   const shown = fixtures.filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase())).slice(0, 80);
