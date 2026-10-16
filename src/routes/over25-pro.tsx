@@ -2,6 +2,8 @@
    2.5 PRO — Over/Under 2.5 (i 1.5 / 3.5 kontekst) pod lupom
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard)
+   NOVO: panel KONKRETAN TIP — jedna strana 2.5 linije, kvota, EV,
+   1/4 Kelly ulog, sigurnosna linija i protivtip, sve iz same matrice.
    ============================================================ */
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -127,6 +129,44 @@ function Over25ProPage() {
 
   const lambdaUk = analiza?.lambdaUkupno ?? null;
 
+  // ── KONKRETAN TIP: jedna strana 2.5 linije + kvota + EV + Kelly ulog + sigurnosna linija ──
+  let tip: null | {
+    strana: "Više" | "Manje"; p: number; kv: number | null; edge: number | null; ulog: number;
+    sigLabel: string; sigP: number | null; sigKv: number | null;
+    altStrana: string; altP: number | null;
+  } = null;
+  if (analiza) {
+    const oP = analiza.final["o25"] ?? null, uP = analiza.final["u25"] ?? null;
+    const oK = bundle?.kvote["o25"] ?? null, uK = bundle?.kvote["u25"] ?? null;
+    const kandidati = [
+      { strana: "Više" as const, key: "o25", p: oP, kv: oK, edge: oP != null && oK != null ? oP * oK - 1 : null,
+        sigLabel: "Više od 1.5", sigP: analiza.final["o15"] ?? null, sigKv: bundle?.kvote["o15"] ?? null },
+      { strana: "Manje" as const, key: "u25", p: uP, kv: uK, edge: uP != null && uK != null ? uP * uK - 1 : null,
+        sigLabel: "Manje od 3.5", sigP: analiza.final["u35"] ?? null, sigKv: bundle?.kvote["u35"] ?? null },
+    ];
+    const isplativi = kandidati.filter((c) => c.edge != null && c.edge > 0).sort((a, b) => b.edge! - a.edge!);
+    const poProb = kandidati.filter((c) => c.p != null).sort((a, b) => b.p! - a.p!);
+    const c = isplativi[0] ?? poProb[0]!;
+    const kelly = analiza.kelly[c.key];
+    const ulog = kelly != null
+      ? Math.min(3, Math.max(0, kelly * 100))
+      : c.kv != null && c.p != null && c.kv > 1
+        ? Math.max(0, Math.min(3, ((c.p * c.kv - 1) / (c.kv - 1)) * 25))
+        : 0;
+    tip = {
+      strana: c.strana,
+      p: c.p!,
+      kv: c.kv ?? null,
+      edge: c.edge ?? null,
+      ulog,
+      sigLabel: c.sigLabel,
+      sigP: c.sigP,
+      sigKv: c.sigKv,
+      altStrana: c.strana === "Više" ? "Manje" : "Više",
+      altP: (c.strana === "Više" ? uP : oP),
+    };
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -206,6 +246,61 @@ function Over25ProPage() {
 
           {analiza && (
             <>
+              {/* ═══ KONKRETAN TIP ═══ */}
+              {tip && (
+                <div className="rounded-2xl border border-primary/50 bg-primary/5 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-bold uppercase tracking-wide text-primary">🎯 Konkretan tip</div>
+                    {tip.kv != null && tip.edge != null && tip.edge >= 0.02 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                        <CheckCircle2 className="h-3 w-3" /> ISPLATIVO — ULOG {tip.ulog.toFixed(1)}% BANKE
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                        {tip.kv == null ? "FER TIP — KVOTA JOS NIJE OBJAVLJENA" : "PRESKOČI — NEMA VRIJEDNOSTI"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-2xl font-black">
+                    {tip.strana} 2.5{tip.kv != null ? ` @ ${tip.kv.toFixed(2)}` : " (fer kvota dolje)"}
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Vjerojatnost</div>
+                      <div className="font-mono font-bold">{fmtPct(tip.p)}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Fer kvota</div>
+                      <div className="font-mono font-bold">{tip.p > 0 ? (1 / tip.p).toFixed(2) : "—"}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Kvota API</div>
+                      <div className="font-mono font-bold">{tip.kv?.toFixed(2) ?? "—"}</div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Edge / EV</div>
+                      <div className={`font-mono font-bold ${tip.edge != null ? edgeBoja(tip.edge) : ""}`}>
+                        {tip.edge != null ? `${(tip.edge * 100).toFixed(1)}%` : "—"}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-muted/40 p-2 text-center">
+                      <div className="text-muted-foreground">Protivtip</div>
+                      <div className="font-mono font-bold">
+                        {tip.altStrana} 2.5{tip.altP != null ? ` ${fmtPct(tip.altP)}` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  {tip.sigP != null && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      🛡️ Sigurnosna linija: <b className="text-foreground">{tip.sigLabel}</b> (model {fmtPct(tip.sigP)}{tip.sigKv != null ? ` @ ${tip.sigKv.toFixed(2)}` : ""}) — ako ti je glavni tip pretežak, tu ide manji ulog.
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Odabir: najveći edge među isplativim stranama 2.5 linije; ako nijedna nema edge, strana s većom vjerojatnošću.
+                  </div>
+                </div>
+              )}
+
               {/* Očekivani golovi — "termometar" */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-border bg-background/50 p-3 text-center">
