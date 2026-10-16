@@ -74,11 +74,21 @@ function parsePrognoza(out: string): AiPrognoza | null {
  * Pokreni rezervni mozak. Vraća prognozu ili opis greške (npr. da OpenRouter
  * ključ nije spremljen u Postavkama). Nikad ne troši Lovable kredite.
  */
+/** Lokalni timeout da rezervni mozak nikad ne visi na sporom modelu. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`nema odgovora ${ms / 1000} s`)), ms),
+    ),
+  ]);
+}
+
 export async function runAiPrognozaFallback(input: {
   utakmica: string;
   vrstaOklade: string;
   kontekst: string;
-}): Promise<FallbackResult> {
+}, onProgress?: (m: string) => void): Promise<FallbackResult> {
   if (!hasKey("openrouter")) {
     return { ok: false, error: "Za besplatni rezervni mozak dodaj OpenRouter ključ u Postavkama." };
   }
@@ -90,10 +100,11 @@ ${SCHEMA_TEXT}`;
   const errs: string[] = [];
   for (const model of FREE_MODELS) {
     try {
-      const out = await openrouterChat(model, [
+      onProgress?.(`Rezervni mozak (besplatno): ${model}…`);
+      const out = await withTimeout(openrouterChat(model, [
         { role: "system", content: sys },
         { role: "user", content: user },
-      ], { maxTokens: 1400, temperature: 0.3 });
+      ], { maxTokens: 1400, temperature: 0.3 }), 50_000);
       const p = parsePrognoza(out);
       if (p) return { ok: true, p };
       errs.push(`${model}: nevažeći JSON`);
