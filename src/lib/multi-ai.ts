@@ -2,6 +2,8 @@
 // nekoliko besplatnih modela s različitih servera (OpenRouter :free), pa
 // "sudija" model spoji njihove odgovore u jedan konačni, najbolji odgovor.
 // Sve besplatno: samo :free modeli i tvoj OpenRouter ključ.
+// Listopad 2026: stari :free modeli (DeepSeek v3.1, GPT-OSS, Qwen3 235B,
+// Llama 4, Gemma 3) umirovljeni — zamijenjeni trenutno živima.
 import { openrouterChat, specialistDefault, type ORMessage } from "./openrouter";
 import { hasKey } from "./storage";
 
@@ -10,13 +12,13 @@ export interface CouncilTurn {
   content: string;
 }
 
-/** Modeli u vijeću — svi besplatni, s različitih servera. */
+/** Modeli u vijeću — svi besplatni, trenutno živi na OpenRouteru. */
 export const COUNCIL_MODELS: { id: string; label: string }[] = [
-  { id: "deepseek/deepseek-chat-v3.1:free", label: "DeepSeek v3.1" },
-  { id: "openai/gpt-oss-120b:free", label: "GPT-OSS 120B" },
-  { id: "qwen/qwen3-235b-a22b:free", label: "Qwen3 235B" },
-  { id: "meta-llama/llama-4-maverick:free", label: "Llama 4 Maverick" },
-  { id: "google/gemma-3-27b-it:free", label: "Gemma 3 27B" },
+  { id: "nvidia/nemotron-3-ultra-550b-a55b:free", label: "Nemotron 3 Ultra" },
+  { id: "thinkingmachines/inkling:free", label: "Inkling" },
+  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B" },
+  { id: "poolside/laguna-s-2.1:free", label: "Laguna S 2.1" },
+  { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning" },
 ];
 
 export interface CouncilOpinion {
