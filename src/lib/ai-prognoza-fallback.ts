@@ -1,23 +1,29 @@
-// ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO ═══
+// ============= REZERVNI MOZAK za AI Prognozu — BESPLATNO ═══
 // Kad Lovable AI Gateway kaže da su krediti potrošeni (402) ili je zauzet (429),
 // ova kartica ne ostaje prazna: ista prognoza se izračuna preko korisnikovog
 // besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
 // Model dobiva iste de-vig + Dixon-Coles brojke i ista pravila kao glavni mozak.
+//
+// LISTOPAD 2026 — popis modela provjeren ŽIVIM upitom na OpenRouter /models:
+// - "openrouter/free" NE postoji kao model → uklonjen (uzrok "nevažeći JSON").
+// - thinkingmachines/inkling:free → samo agentic aplikacije (403) → uklonjen.
+// - nvidia/nemotron-3-ultra-550b-a55b:free → prespor, ne stigne za 50 s → maknut.
+// - Prvi modeli su brzi, neparsiraju u reasoning, i dobro drže JSON format.
 import { openrouterChat } from "./openrouter";
 import { hasKey } from "./storage";
 import type { AiPrognoza } from "./ai-prognoza.functions";
 
 export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: string };
 
-/** Besplatni OpenRouter modeli u redoslijedu pokušaja. */
+/** Besplatni OpenRouter modeli u redoslijedu pokušaja (svi živi 16.10.2026). */
 const FREE_MODELS = [
-  // Free Router uvijek routa na trenutno živi besplatni model — najsigurniji prvi.
-  "openrouter/free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "thinkingmachines/inkling:free",
   "google/gemma-4-31b-it:free",
   "poolside/laguna-s-2.1:free",
   "nvidia/nemotron-3.5-lightning:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "dots-studio/dots-3-note-preview:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
 ];
 
 const SCHEMA_TEXT = `{
@@ -38,21 +44,42 @@ PRAVILA:
 - ulogPostotak: 1/4 Kelly u % banke, 0 ako nije isplativo, maksimalno 3.
 - obrazlozenje: 2-4 rečenice konkretno. rizici: 1-3 kratke stavke.`;
 
+/** Izvući JSON kandidat iz odgovora modela (podnosi markdown i tekst oko njega). */
+function extractJson(out: string): string | null {
+  const s = out.replace(/```[a-z]*\s*/gi, "").trim();
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first < 0 || last <= first) return null;
+  return s.slice(first, last + 1);
+}
+
 function parsePrognoza(out: string): AiPrognoza | null {
-  const s = out.indexOf("{");
-  const e = out.lastIndexOf("}");
-  if (s < 0 || e <= s) return null;
-  let x: any;
+  const raw = extractJson(out);
+  if (!raw) return null;
+  let x: any = null;
   try {
-    x = JSON.parse(out.slice(s, e + 1));
+    x = JSON.parse(raw);
   } catch {
-    return null;
+    // Popravi najčešće greške modela: zapete zareze prije } ili ].
+    try {
+      x = JSON.parse(raw.replace(/,\s*([}\]])/g, "$1"));
+    } catch {
+      return null;
+    }
   }
-  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  if (!x) return null;
+  const num = (v: unknown): number | null => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim() !== "") {
+      const n = Number(v.replace(",", "."));
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
+  };
   const vjerojatnost = num(x.vjerojatnost);
-  const ferKvota = num(x.ferKvota);
+  const ferKvota = num(x.ferKvota) ?? (vjerojatnost !== null && vjerojatnost > 0 ? 100 / vjerojatnost : null);
   const ulogPostotak = num(x.ulogPostotak) ?? 0;
-  if (!x || typeof x.glavniTip !== "string" || vjerojatnost === null || ferKvota === null) return null;
+  if (typeof x.glavniTip !== "string" || vjerojatnost === null || ferKvota === null) return null;
   if (typeof x.obrazlozenje !== "string" || !Array.isArray(x.rizici)) return null;
   return {
     glavniTip: String(x.glavniTip),
