@@ -1,1 +1,338 @@
+/* ============================================================
+   BTTS ULTRA — "Oba tima daju gol" pod lupom
+   Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
+   Podaci: goals.functions.ts (kroz api-guard, limiti Football API-ja
+   ne mogu biti oboreni ovom karticom)
+   ============================================================ */
 
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import {
+  AlertTriangle,
+  Brain,
+  CheckCircle2,
+  Flame,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
+import { SettingsModal } from "@/components/SettingsModal";
+import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "@/lib/goals.functions";
+import { goalsAnaliza, type GoalsIzlaz } from "@/lib/goals-motor";
+import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
+
+export const Route = createFileRoute("/btts-ultra")({
+  head: () => ({
+    meta: [{ title: "BTTS Ultra · Oba tima daju gol · Precision Check" }],
+  }),
+  component: BttsUltraPage,
+});
+
+function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
+function vremeno(iso: string) {
+  try {
+    return new Date(iso).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" });
+  } catch { return iso; }
+}
+function edgeBoja(e: number) {
+  if (e >= 0.05) return "text-emerald-400";
+  if (e >= 0.02) return "text-amber-400";
+  return "text-slate-500";
+}
+function ocjenaBoja(o: string) {
+  if (o === "A+") return "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+  if (o === "A") return "bg-sky-500/20 text-sky-300 border-sky-500/40";
+  if (o === "B+") return "bg-amber-500/20 text-amber-300 border-amber-500/40";
+  return "bg-slate-500/20 text-slate-300 border-slate-500/40";
+}
+
+function BttsUltraPage() {
+  const [date, setDate] = useState(zagrebDay());
+  const [utakmice, setUtakmice] = useState<GoalsUtakmica[]>([]);
+  const [status, setStatus] = useState("");
+  const [ucitam, setUcitam] = useState(false);
+  const [trazim, setTrazim] = useState("");
+  const [odabrana, setOdabrana] = useState<GoalsUtakmica | null>(null);
+  const [analiziram, setAnaliziram] = useState(false);
+  const [bundle, setBundle] = useState<GoalsBundle | null>(null);
+  const [analiza, setAnaliza] = useState<GoalsIzlaz | null>(null);
+  const [settings, setSettings] = useState(false);
+
+  const ucitaj = async (dan: string, force = false) => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setStatus("Prvo unesi API-Football ključ u Postavkama (⚙️).");
+      setSettings(true);
+      return;
+    }
+    setUcitam(true);
+    setStatus("Učitavam utakmice za " + dan + "…");
+    const ck = `bttsu.fix.${dan}`;
+    try {
+      const kes = force ? null : localStorage.getItem(ck);
+      const r = kes ? (JSON.parse(kes) as { error: string | null; utakmice: GoalsUtakmica[] })
+        : await getGoalsUtakmice({ data: { date: dan, apiKey } });
+      if (!force && !kes) localStorage.setItem(ck, JSON.stringify(r));
+      if (r.error) {
+        setUtakmice([]);
+        setStatus(`Učitavanje nije uspjelo: ${r.error}`);
+      } else {
+        setUtakmice(r.utakmice);
+        setStatus(r.utakmice.length
+          ? `Učitano ${r.utakmice.length} utakmica. Klikni utakmicu za BTTS analizu.`
+          : "Nema nadolazećih utakmica za taj dan.");
+      }
+    } catch {
+      setStatus("Greška pri dohvatu utakmica.");
+    }
+    setUcitam(false);
+  };
+
+  const analiziraj = async (u: GoalsUtakmica) => {
+    const apiKey = getApiKey();
+    if (!apiKey) { setStatus("Nedostaje API ključ."); setSettings(true); return; }
+    setOdabrana(u);
+    setAnaliziram(true);
+    setBundle(null);
+    setAnaliza(null);
+    setStatus(`Analiziram ${u.home} — ${u.away}…`);
+    const ck = `bttsu.bundle.${u.id}`;
+    try {
+      const kes = localStorage.getItem(ck);
+      const b = kes ? (JSON.parse(kes) as GoalsBundle)
+        : await getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } });
+      if (!kes) localStorage.setItem(ck, JSON.stringify(b));
+      setBundle(b);
+      if (b.error) {
+        setStatus(`Analiza nije uspjela: ${b.error}`);
+      } else {
+        const a = goalsAnaliza({ kvote: b.kvote, formaDom: b.formaDom, formaGost: b.formaGost, brojKladionica: b.knjigaBtts + b.knjigaOu });
+        setAnaliza(a);
+        setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+      }
+    } catch {
+      setStatus("Greška pri analizi.");
+    }
+    setAnaliziram(false);
+  };
+
+  const filtrirane = utakmice.filter((u) =>
+    !trazim || `${u.home} ${u.away} ${u.league} ${u.country}`.toLowerCase().includes(trazim.toLowerCase()),
+  );
+
+  const pDa = analiza?.final["bttsDa"] ?? null;
+  const pNe = analiza?.final["bttsNe"] ?? null;
+  const kvotaDa = bundle?.kvote["bttsDa"];
+  const kvotaNe = bundle?.kvote["bttsNe"];
+  const preporukaDa = pDa != null && kvotaDa != null && (pDa * kvotaDa - 1) >= 0.02;
+  const preporukaNe = pNe != null && kvotaNe != null && (pNe * kvotaNe - 1) >= 0.02;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight">
+            <Flame className="h-5 w-5 text-orange-400" /> BTTS Ultra
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Oba tima daju gol — Poisson + Dixon-Coles matrica, kalibrirana tržištem, s formom oba tima.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+          />
+          <button
+            onClick={() => ucitaj(date, true)}
+            disabled={ucitam}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {ucitam ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            Učitaj
+          </button>
+        </div>
+      </div>
+
+      {status && (
+        <div className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
+          {status}
+          <button onClick={() => setSettings(true)} className="ml-2 underline hover:text-foreground">Postavke</button>
+        </div>
+      )}
+
+      {utakmice.length > 0 && (
+        <input
+          value={trazim}
+          onChange={(e) => setTrazim(e.target.value)}
+          placeholder="Traži tim ili ligu…"
+          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+        />
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {filtrirane.map((u) => (
+          <button
+            key={u.id}
+            onClick={() => analiziraj(u)}
+            className={`rounded-xl border p-3 text-left transition-all hover:border-primary/50 hover:bg-muted/50 ${
+              odabrana?.id === u.id ? "border-primary/70 bg-muted/60" : "border-border bg-card"
+            }`}
+          >
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {u.country} · {u.league} · {vremeno(u.time)}
+            </div>
+            <div className="mt-1 text-sm font-semibold">{u.home} — {u.away}</div>
+          </button>
+        ))}
+      </div>
+
+      {(analiziram || analiza) && odabrana && (
+        <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-bold">{odabrana.home} — {odabrana.away}</h2>
+            {analiza && (
+              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${ocjenaBoja(analiza.ocjena)}`}>
+                Povjerenje {analiza.povjerenje}/100 · {analiza.ocjena}
+              </span>
+            )}
+          </div>
+
+          {analiziram && <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" /> Analiziram kroz motor…
+          </div>}
+
+          {analiza && (
+            <>
+              {/* Glavni BTTS ishod */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { k: "DA", p: pDa, kvota: kvotaDa, rec: preporukaDa },
+                  { k: "NE", p: pNe, kvota: kvotaNe, rec: preporukaNe },
+                ].map((s) => (
+                  <div key={s.k} className="rounded-xl border border-border bg-background/50 p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-muted-foreground">BTTS {s.k}</span>
+                      {s.rec && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                          <CheckCircle2 className="h-3 w-3" /> VRIJEDI
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-3xl font-black tabular-nums">{s.p != null ? fmtPct(s.p) : "—"}</div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <div className="text-muted-foreground">Fer kvota</div>
+                        <div className="font-mono font-bold">{s.p != null ? (1 / s.p).toFixed(2) : "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Kvota API</div>
+                        <div className="font-mono font-bold">{s.kvota?.toFixed(2) ?? "—"}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground">Edge</div>
+                        <div className={`font-mono font-bold ${s.p != null && s.kvota != null ? edgeBoja(s.p * s.kvota - 1) : ""}`}>
+                          {s.p != null && s.kvota != null ? `${((s.p * s.kvota - 1) * 100).toFixed(1)}%` : "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Očekivani golovi + suglasnost */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground">λ Domaćin</div>
+                  <div className="text-xl font-bold tabular-nums">{analiza.lambdaDom.toFixed(2)}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground">μ Gost</div>
+                  <div className="text-xl font-bold tabular-nums">{analiza.lambdaGost.toFixed(2)}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="text-[10px] uppercase text-muted-foreground">Ukupno golova</div>
+                  <div className="text-xl font-bold tabular-nums">{analiza.lambdaUkupno.toFixed(2)}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="flex items-center gap-1 text-[10px] uppercase text-muted-foreground">
+                    <Brain className="h-3 w-3" /> Suglasnost s tržištem
+                  </div>
+                  <div className="text-xl font-bold tabular-nums">{fmtPct(analiza.suglasnost)}</div>
+                </div>
+              </div>
+
+              {/* Kontekst: ostala tržišta iz iste matrice */}
+              <div className="rounded-xl border border-border bg-background/50 p-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Kontekst iz iste matrice (istinitost BTTS procjene)
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                  {["o25", "u25", "o15", "o35", "nulaNula"].map((k) => {
+                    const p = k === "nulaNula"
+                      ? analiza.topRezultati.find((t) => t.rezultat === "0:0")?.p ?? null
+                      : analiza.final[k];
+                    const label: Record<string, string> = { o25: "Over 2.5", u25: "Under 2.5", o15: "Over 1.5", o35: "Over 3.5", nulaNula: "0:0" };
+                    return (
+                      <div key={k} className="rounded-lg bg-muted/40 p-2 text-center">
+                        <div className="text-muted-foreground">{label[k]}</div>
+                        <div className="font-mono font-bold">{p != null ? fmtPct(p) : "—"}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Faktori */}
+              {analiza.faktori.length > 0 && (
+                <div className="rounded-xl border border-border bg-background/50 p-3">
+                  <div className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <ShieldCheck className="h-3 w-3" /> Što model gleda
+                  </div>
+                  <ul className="list-inside list-disc text-xs text-muted-foreground">
+                    {analiza.faktori.map((f, i) => <li key={i}>{f}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {/* Top rezultati */}
+              <div className="rounded-xl border border-border bg-background/50 p-3">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Najvjerojatniji rezultati</div>
+                <div className="flex flex-wrap gap-2">
+                  {analiza.topRezultati.map((t) => (
+                    <span key={t.rezultat} className="rounded-lg bg-muted/40 px-2 py-1 font-mono text-xs">
+                      {t.rezultat} · {fmtPct(t.p)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Upozorenja */}
+              {analiza.upozorenja.length > 0 && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+                  <div className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-amber-300">
+                    <AlertTriangle className="h-3 w-3" /> Upozorenja
+                  </div>
+                  <ul className="list-inside list-disc text-xs text-amber-200/90">
+                    {analiza.upozorenja.map((w, i) => <li key={i}>{w}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {bundle && bundle.kvote["bttsDa"] == null && (
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
+                  <XCircle className="h-4 w-4 text-red-400" />
+                  Knjige ne nude BTTS tržište za ovu utakmicu — procjena je čisto modelna (fer kvote gore).
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {settings && <SettingsModal open={settings} onClose={() => setSettings(false)} />}
+    </div>
+  );
+}
