@@ -12,10 +12,10 @@ import { detectMarket, marketModule, specialistsForMarket, MARKET_LABEL } from "
 import { runConsensus, consensusBriefing } from "./consensus";
 import { runCouncil } from "./multi-ai";
 import { loadSuper, superPromptDirectives } from "./superaccuracy";
-import { loadAnti, antiActiveFor, antiErrorDirectives, antiUniversalDirectives } from "./antierror";
+import { loadAntiError as loadAnti, antiErrorActive, antiErrorDirectives } from "./antierror";
 import { loadPrecision, precisionDirectives } from "./precision";
 import { loadTitan, titanDirectives } from "./titan";
-import { loadMaster, masterActiveFor, masterDirectives } from "./mastermind";
+import { loadMastermind as loadMaster, mastermindActive, mastermindDirectives } from "./mastermind";
 import { getFixturesByDate, getLiveFixtures, ApiFootballError } from "./api-football";
 import type { ChatAttachment } from "./attachments";
 import { attachmentsContextText } from "./attachments";
@@ -227,11 +227,11 @@ export async function askAi(
   let omniBlock = "";
   const omni = loadOmni();
   const anti = loadAnti();
-  const antiOn = antiActiveFor(market, anti);
+  const antiOn = antiErrorActive(anti, market);
   // Mastermind v11 — vrhovni koordinator; kad je uključen, sam pali sve motore.
   const master = loadMaster();
-  const masterOn = masterActiveFor(market, master);
-  const forceEngines = (antiOn && anti.forceAllEngines) || (masterOn && master.caps.autoEngines);
+  const masterOn = mastermindActive(master, market);
+  const forceEngines = (antiOn && anti.forceEngines) || (masterOn && master.autoEngines);
   // Anti-greška zaštita koristi SVE motore: OMNI se pokreće i kad je ručno isključen.
   const runOmniNow = (omni.enabled || forceEngines) && (market === "btts" || market === "ou25");
   if (runOmniNow) {
@@ -264,15 +264,15 @@ Prije svakog odgovora interno prođi: (a) izvedi λ_dom i λ_gost iz forme, xG-a
 
 ═══ JEZIK — IZVORNI HRVATSKI (NEPREKRŠIVO) ═══
 Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski standard, ne srpski i ne "bosanski miks"): tisuća (ne hiljada), tjedan (ne sedmica), nogomet (ne fudbal), točno (ne tačno), vjerojatnost (ne verovatnoća), kvota, listić, poluvrijeme, ozljeda, sudac, momčad. Koristiš hrvatsku dijakritiku (č, ć, ž, š, đ) i hrvatski futur ("bit će", "past će"). Strane stručne pojmove (xG, Poisson, Kelly, Over/Under, BTTS) zadrži, ali sve oko njih objasni hrvatski. Ako korisnik piše engleski, srpski ili bez dijakritike — ti i dalje odgovaraš izvornim hrvatskim.${superDirectives}`;
-  const antiDirectives = antiErrorDirectives(market, anti);
+  const antiDirectives = antiErrorDirectives(anti, market);
   // Anti-greška v11 — univerzalna točnost za bilo koje pitanje.
-  const antiUniversal = antiUniversalDirectives(anti);
+  const antiUniversal = antiErrorDirectives({ ...anti, applyAll: true }, market);
   // Snajper motor v9 — samo ručno aktivirani filtri iz Postavki.
   const precision = precisionDirectives(market, loadPrecision());
   // Titan v10 — završna kontrola točnosti iznad svih motora.
-  const titan = titanDirectives(market, loadTitan());
+  const titan = titanDirectives(loadTitan(), market);
   // Mastermind v11 — glavni um; ide zadnji jer koordinira sve ostalo.
-  const mastermind = masterDirectives(market, master);
+  const mastermind = mastermindDirectives(master, market);
   const tail = `${precision}${titan}${antiUniversal}${mastermind}`;
   const marketDirective =
     market === "opce"
