@@ -23,7 +23,7 @@ import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
 type Sport = "kosarka" | "rukomet";
 type Rezultat = { analiza: SportIzlaz };
 
-const MAX_AUTO = 5;
+const MAX_AUTO = 3; // max 3 = max 6 API poziva (ispod limita 10/min)
 
 function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
 function vrijeme(iso: string) {

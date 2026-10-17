@@ -64,7 +64,7 @@ export function breakerRecord(scope: string, r: { status: number; remainingDay: 
     s.blockedUntil = nextUtcMidnight();
     s.reason = "DNEVNI_LIMIT: dnevni limit je potrošen — pozivi su zaustavljeni do ponoći UTC da račun ne bude suspendiran.";
   } else if (err.startsWith("RATE_LIMIT") || r.status === 429) {
-    s.cooldownUntil = now + 15_000;
+    s.cooldownUntil = now + 8_000;   // kratko hlađenje — novi pozivi dolaze tek nakon MIN_GAP_MS
   } else if (/suspend/i.test(err)) {
     s.blockedUntil = now + 6 * 60 * 60_000;
     s.reason = `ACCOUNT: račun je označen kao suspendiran — pozivi su zaustavljeni. Provjeri dashboard.api-football.com.`;

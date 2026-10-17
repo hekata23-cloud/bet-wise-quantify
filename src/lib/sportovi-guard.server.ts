@@ -20,11 +20,11 @@ export const BAZE: Record<string, string> = {
   rukomet: "https://v1.handball.api-sports.io",
 };
 
-const MIN_GAP_MS = 500;          // minimalni razmak između dva pojedinačna poziva
-const MAX_PER_MIN = 8;           // sigurna granica ispod limita od 10/min
+const MIN_GAP_MS = 7_000;        // 7s razmak = maks ~8 poziva/min, ne prelazi API limit
+const MAX_PER_MIN = 9;           // sigurna granica ispod limita od 10/min
 const WINDOW_MS = 60_000;
-const MAX_WAIT_MS = 12_000;      // maksimalno čekanje u redu prije brzog odustajanja
-const RETRY_DELAY_MS = 3_500;
+const MAX_WAIT_MS = 75_000;      // čekaj do 75s na slobodan slot (sprečava RATE_LIMIT)
+const RETRY_DELAY_MS = 8_000;    // čekaj 8s prije retryja na 429
 
 type Stanje = {
   cache: Map<string, { t: number; ttl: number; v: unknown }>;
