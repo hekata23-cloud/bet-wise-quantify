@@ -1,16 +1,8 @@
-// ══ SPORTOVI-GUARD v2: zaštita poziva za košarku i rukomet ══
-// Ista logika kao api-guard (red + keš + retry + stale rezerva), ali:
-//   - svaki sport ima SVOJU bazu (v1.basketball / v1.handball) i SVOJ
-//     dnevni limit od 100 besplatnih poziva, pa vode odvojene redove i keševe;
-//   - pozivi košarke ne potrošuju kvotu rukometa i obratno;
-//   - nogomet (api-guard) je i dalje potpuno nezavisna kvota.
-// v2 popravke:
-//   - razlikuje DNEVNI limit (potrošen — ništa ne pomaže do sutra) od
-//     MINUTNOG limita (429 — čekanje pomaže) i daje jasnu poruku;
-//   - fail-fast: ako bi čekanje u redu predugo trajalo (serverless timeout!),
-//     vrati grešku odmah umjesto da funkcija biva ubijena u pola posla;
-//   - jedan kratak retry (4 s) na minurni limit; na dnevni se NE pokušava ponovo.
-// Poruke grešaka: RATE_LIMIT, DNEVNI_LIMIT, "ACCOUNT: ..." — čitljive izravno u UI.
+// ══ SPORTOVI-GUARD v3: zaštita poziva za košarku i rukomet ══
+// - svaki sport ima SVOJU bazu i SVOJ dnevni limit (100 poziva, 10/min)
+// - precizno razlikuje DNEVNI limit od MINUTNOG (429)
+// - H2H podaci se keširaju na 7 dana da se ne troše upiti
+// - sigurnosni razmak i automatski retry na minutni limit
 
 import { breakerCheck, breakerRecord, scopeKey } from "./api-breaker.server";
 
@@ -28,11 +20,11 @@ export const BAZE: Record<string, string> = {
   rukomet: "https://v1.handball.api-sports.io",
 };
 
-const MIN_GAP_MS = 400;          // minimalni razmak između poziva
-const MAX_PER_MIN = 6;           // ispod free-limita od 10/min po sportu
+const MIN_GAP_MS = 500;          // minimalni razmak između dva pojedinačna poziva
+const MAX_PER_MIN = 8;           // sigurna granica ispod limita od 10/min
 const WINDOW_MS = 60_000;
-const MAX_WAIT_MS = 6_000;       // čekanje dulje od ovoga = fail fast (serverless timeout)
-const RETRY_DELAY_MS = 4_000;    // jedan kratak ponovni pokušaj na minurni RATE_LIMIT
+const MAX_WAIT_MS = 12_000;      // maksimalno čekanje u redu prije brzog odustajanja
+const RETRY_DELAY_MS = 3_500;
 
 type Stanje = {
   cache: Map<string, { t: number; ttl: number; v: unknown }>;
@@ -41,6 +33,7 @@ type Stanje = {
   lastCallAt: number;
 };
 const stanja = new Map<string, Stanje>();
+
 function stanje(sport: string): Stanje {
   let s = stanja.get(sport);
   if (!s) {
@@ -54,26 +47,27 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Zadanje TTL-ove po tipu poziva — razumno za besplatne planove. */
+/** TTL keša po tipu poziva — štedi besplatne API kvote */
 export function defaultTtl(path: string): number {
   const p = (path.split("?")[0] ?? path).replace(/^\//, "/");
   if (p === "/status") return 0;
   if (p === "/games") {
-    if (path.includes("date=")) return 10 * 60_000;   // raspored dana — živ podatak, ali štedi kvotu
-    if (path.includes("id=")) return 10 * 60_000;     // rezultat jedne igre
-    return 6 * 60 * 60_000;                           // forma tima — sporo se mijenja
+    if (path.includes("date=")) return 10 * 60_000;    // raspored dana — 10 minuta
+    if (path.includes("h2h=")) return 7 * 24 * 3600_000; // međusobni omjeri — 7 dana (ne troši kvotu!)
+    if (path.includes("id=")) return 10 * 60_000;      // pojedinačna utakmica — 10 minuta
+    return 6 * 3600_000;
   }
-  if (p === "/odds") return 10 * 60_000;              // kvote — dovoljno svježe, štedi kvotu
-  if (p === "/standings") return 12 * 60 * 60_000;
+  if (p === "/odds") return 15 * 60_000;               // kvote — 15 minuta
+  if (p === "/standings") return 12 * 3600_000;
   return 30 * 60_000;
 }
 
-/** Vrati true ako je dobio slot; false ako bi čekanje bilo predugo (fail fast). */
+/** Vrati true ako ima slobodnog slota unutar minute */
 async function waitSlot(s: Stanje): Promise<boolean> {
   const now = Date.now();
   while (s.stamps.length && now - s.stamps[0]! > WINDOW_MS) s.stamps.shift();
   if (s.stamps.length >= MAX_PER_MIN) {
-    const wait = Math.max(WINDOW_MS - (now - s.stamps[0]!) + 50, 1000);
+    const wait = Math.max(WINDOW_MS - (now - s.stamps[0]!) + 100, 1000);
     if (wait > MAX_WAIT_MS) return false;
     await sleep(wait);
     return waitSlot(s);
@@ -87,48 +81,62 @@ async function guardFetch(sport: string, path: string, apiKey: string): Promise<
   const meta = (status: number, remainingDay: number, dayLimit: number, remainingMinute: number) => ({
     status, remainingDay, dayLimit, remainingMinute,
   });
+
   try {
     const s = stanje(`${sport}:${apiKey}`);
     const slot = await waitSlot(s);
     if (!slot) {
-      // Predugo bi se čekalo — vrti u pola posla je gori od brze, jasne greške.
       return {
         status: 429, remainingDay: -1, dayLimit: -1, remainingMinute: -1,
-        error: "RATE_LIMIT: red za pozive je trenutačno pun — pričekaj minutu pa klikni Učitaj.",
+        error: "RATE_LIMIT: Previše upita u minuti. Pričekaj 20-ak sekundi.",
         data: null,
       };
     }
+
     s.lastCallAt = Date.now();
     s.stamps.push(s.lastCallAt);
+
     const res = await fetch(`${BAZE[sport] ?? BAZE["kosarka"]}${path}`, {
       headers: { "x-apisports-key": apiKey },
     });
+
     const remainingDay = Number(res.headers.get("x-ratelimit-requests-remaining") ?? -1);
     const dayLimit = Number(res.headers.get("x-ratelimit-requests-limit") ?? -1);
     const remainingMinute = Number(res.headers.get("x-ratelimit-remaining") ?? -1);
     const m = meta(res.status, remainingDay, dayLimit, remainingMinute);
 
-    if (remainingDay === 0)
-      return { ...m, error: "DNEVNI_LIMIT: potrošen je dnevni limit besplatnih poziva za ovaj sport — obnavlja se ponoć UTC. Do tada kartica radi s keširanim podacima.", data: null };
-    if (res.status === 429)
-      return { ...m, error: "RATE_LIMIT: API je odbio poziv (limit u minuti) — pričekaj minutu pa klikni Učitaj.", data: null };
-    if (res.status === 401 || res.status === 403)
-      return { ...m, error: "ACCOUNT: API ključ nije važeći ili pretplata za ovaj sport nije aktivna.", data: null };
+    if (remainingDay === 0) {
+      return { ...m, error: "DNEVNI_LIMIT: Potrošen je dnevni limit (100 poziva) za ovaj sport. Obnavlja se u ponoć UTC (01:00/02:00 h).", data: null };
+    }
+    if (res.status === 429) {
+      return { ...m, error: "RATE_LIMIT: API limit u minuti (max 10 upita/min). Pričekaj 30 sekundi.", data: null };
+    }
+    if (res.status === 401 || res.status === 403) {
+      return { ...m, error: "ACCOUNT: API ključ nije važeći ili sport nije aktiviran na tvom računu.", data: null };
+    }
     if (!res.ok) return { ...m, error: `API greška ${res.status}.`, data: null };
 
     const json = (await res.json()) as { errors?: unknown; response?: unknown };
     const errs = json.errors && (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors as object).length);
+
     if (errs) {
-      const txt = JSON.stringify(json.errors);
-      if (/for the day|daily/i.test(txt))
-        return { ...m, error: "DNEVNI_LIMIT: potrošen je dnevni limit besplatnih poziva za ovaj sport — obnavlja se ponoć UTC.", data: null };
-      if (/rate ?limit|too many|requests/i.test(txt))
-        return { ...m, error: "RATE_LIMIT: API je odbio poziv (limit u minuti) — pričekaj minutu pa klikni Učitaj.", data: null };
-      // API-Sports code 6 / "subscription" / "token" — sport nije besplatno pretplaćen
-      if (/suspend|subscription|token|key|plan/i.test(txt))
-        return { ...m, error: `ACCOUNT: ${txt}`, data: null };
-      return { ...m, error: txt, data: null };
+      const errObj = (typeof json.errors === "object" && json.errors !== null) ? json.errors : {};
+      const errValues = Object.values(errObj).map((v) => String(v)).join(" ");
+      const txt = `${JSON.stringify(json.errors)} ${errValues}`;
+
+      // Točna provjera dnevnog vs minutnog limita iz tijela odgovora
+      if (/day|daily|100 requests|per day/i.test(errValues)) {
+        return { ...m, error: "DNEVNI_LIMIT: Potrošen je dnevni limit od 100 poziva. Obnavlja se u ponoć UTC.", data: null };
+      }
+      if (/minute|per minute|too many|rate ?limit/i.test(errValues)) {
+        return { ...m, error: "RATE_LIMIT: Dosegnut limit od 10 poziva u minuti. Pričekaj 30 sekundi.", data: null };
+      }
+      if (/suspend|subscription|token|key|plan/i.test(txt)) {
+        return { ...m, error: `ACCOUNT: ${errValues || txt}`, data: null };
+      }
+      return { ...m, error: errValues || txt, data: null };
     }
+
     return { ...m, error: null, data: json.response };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "nepoznato";
@@ -136,20 +144,18 @@ async function guardFetch(sport: string, path: string, apiKey: string): Promise<
   }
 }
 
-/**
- * Glavni ulaz. Vrati podatke s kešom, redom čekanja, retry-jem i stale rezervom.
- * error je null i kad je poslužen stale podatak — pozivač dobije podatke umjesto blokade.
- */
 export async function sportoviGet(
   sport: string,
   path: string,
   opts: { apiKey?: string | null; ttlMs?: number } = {},
 ): Promise<GuardResult> {
   const apiKey = (opts.apiKey ?? "").trim();
-  if (!apiKey)
-    return { error: "Nedostaje API ključ (unese ga u Postavkama).", data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
-  if (!BAZE[sport])
+  if (!apiKey) {
+    return { error: "Nedostaje API ključ (unesi ga u Postavkama).", data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+  }
+  if (!BAZE[sport]) {
     return { error: `Nepoznat sport: ${sport}`, data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+  }
 
   const s = stanje(`${sport}:${apiKey}`);
   const ttl = opts.ttlMs ?? defaultTtl(path);
@@ -163,10 +169,12 @@ export async function sportoviGet(
   const scope = scopeKey(sport, apiKey);
   let blok = breakerCheck(scope);
   if (blok && blok.startsWith("RATE_LIMIT")) {
-    // Kratko hlađenje (≤15 s): pričekaj na serveru umjesto da korisnik vidi grešku.
     const m = blok.match(/još (\d+) s/);
     const sek = m ? Number(m[1]) : 15;
-    if (sek <= 16) { await sleep(sek * 1000 + 300); blok = breakerCheck(scope); }
+    if (sek <= 15) {
+      await sleep(sek * 1000 + 300);
+      blok = breakerCheck(scope);
+    }
   }
   if (blok) {
     if (hit) return { error: null, data: hit.v, status: 200, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
@@ -176,9 +184,10 @@ export async function sportoviGet(
   const p = (async (): Promise<GuardResult> => {
     let res: GuardResult = await guardFetch(sport, path, apiKey);
     breakerRecord(scope, res);
-    // Retry SAMO na minurni RATE_LIMIT — dnevni limit se ne oporavlja čekanjem.
+
+    // Ponovi samo kod 429 minutnog limita nakon kratke pauze
     if (res.error && res.error.startsWith("RATE_LIMIT") && res.status === 429) {
-      await sleep(RETRY_DELAY_MS * 4);
+      await sleep(RETRY_DELAY_MS);
       res = await guardFetch(sport, path, apiKey);
       breakerRecord(scope, res);
     }
@@ -186,9 +195,7 @@ export async function sportoviGet(
       s.cache.set(path, { t: Date.now(), ttl, v: res.data });
       return res;
     }
-    // STALE rezerva: stari podatak je bolji od blokade korisnika.
     if (hit) {
-      console.warn(`[sportovi-guard] ${sport}${path}: ${res.error} — vraćam memorirani podatak.`);
       return { ...res, error: null, data: hit.v };
     }
     return res;
@@ -202,26 +209,31 @@ export async function sportoviGet(
   }
 }
 
-// ── Pomoćni ulazi za Košarku PRO / Rukomet PRO ──
 export type Sport = "kosarka" | "rukomet";
 export type SportOdgovor = { ok: boolean; data: any; error: string | null; code: string | null };
 
 function kljuc(): string {
   return (process.env.API_SPORTS_KEY ?? process.env.API_FOOTBALL_KEY ?? "").trim();
 }
+
 function uOdgovor(r: GuardResult): SportOdgovor {
   const code = r.error ? (r.error.split(":")[0] ?? "ERROR") : null;
   return { ok: r.error === null, data: r.data, error: r.error, code };
 }
+
 export async function dohvatiUtakmiceSport(sport: Sport, date: string, apiKey?: string): Promise<SportOdgovor> {
   return uOdgovor(await sportoviGet(sport, `/games?date=${encodeURIComponent(date)}&timezone=Europe%2FZagreb`, { apiKey: apiKey ?? kljuc() }));
 }
+
 export async function dohvatiOddsSport(sport: Sport, gameId: number, apiKey?: string): Promise<SportOdgovor> {
   return uOdgovor(await sportoviGet(sport, `/odds?game=${gameId}`, { apiKey: apiKey ?? kljuc() }));
 }
+
 export async function dohvatiH2HSport(sport: Sport, homeId: number, awayId: number, apiKey?: string): Promise<SportOdgovor> {
   return uOdgovor(await sportoviGet(sport, `/games?h2h=${homeId}-${awayId}`, { apiKey: apiKey ?? kljuc() }));
 }
+
 export function statusSportova() {
   return { kljucPostoji: kljuc().length > 0, sportovi: Object.keys(BAZE) };
 }
+

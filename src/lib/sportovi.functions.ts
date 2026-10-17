@@ -1,8 +1,7 @@
 /* ============================================================
    SPORTOVI FUNCTIONS — TanStack Start server functions za
    Košarku PRO i Rukomet PRO.
-   Podaci idu kroz sportovi-guard.server.ts (API-Sports).
-   Model: sportovi-motor.ts.
+   Kvote se filtriraju s apsolutnim prioritetom za Bet365.
    ============================================================ */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -199,48 +198,49 @@ function kvoteIzOdds(oddsResp: any[], sport: Sport): {
   const sve: any[] = (oddsResp ?? []).flatMap((it: any) => (Array.isArray(it?.bookmakers) ? it.bookmakers : []));
   const b365 = sve.filter((b) => /bet ?365/i.test(String(b?.name ?? "")));
   const odabrane = b365.length ? b365 : sve;
-  for (const item of [{ bookmakers: odabrane }]) {
-    const bms = item.bookmakers;
-    for (const bm of bms) {
-      knjiga++;
-      if (!bookmaker && bm?.name) bookmaker = String(bm.name);
-      const bets = Array.isArray(bm?.bets) ? bm.bets : [];
-      for (const bet of bets) {
-        const name = String(bet?.name ?? "").toLowerCase();
-        const vals = Array.isArray(bet?.values) ? bet.values : [];
-        if (name.includes("quarter") || name.includes("half") || name.includes("period") || name.includes("poluvrijeme") || name.includes("četvrtina") || name.includes("handicap") || name.includes("azijski")) {
-          continue;
+  if (b365.length) {
+    bookmaker = "Bet365";
+  }
+
+  for (const bm of odabrane) {
+    knjiga++;
+    if (!bookmaker && bm?.name) bookmaker = String(bm.name);
+    const bets = Array.isArray(bm?.bets) ? bm.bets : [];
+    for (const bet of bets) {
+      const name = String(bet?.name ?? "").toLowerCase();
+      const vals = Array.isArray(bet?.values) ? bet.values : [];
+      if (name.includes("quarter") || name.includes("half") || name.includes("period") || name.includes("poluvrijeme") || name.includes("četvrtina") || name.includes("handicap") || name.includes("azijski")) {
+        continue;
+      }
+      if (name === "home/away" || name === "winner" || name === "match winner" || name === "pobjednik") {
+        for (const v of vals) {
+          const val = String(v?.value ?? "").toLowerCase();
+          const odd = Number(v?.odd);
+          if (!Number.isFinite(odd) || odd <= 1) continue;
+          if (val === "home" || val === "1") ml1.push(odd);
+          else if (val === "away" || val === "2") ml2.push(odd);
         }
-        if (name === "home/away" || name === "winner" || name === "match winner" || name === "pobjednik") {
-          for (const v of vals) {
-            const val = String(v?.value ?? "").toLowerCase();
-            const odd = Number(v?.odd);
-            if (!Number.isFinite(odd) || odd <= 1) continue;
-            if (val === "home" || val === "1") ml1.push(odd);
-            else if (val === "away" || val === "2") ml2.push(odd);
-          }
-          continue;
+        continue;
+      }
+      if (name === "match winner 3-way" || name === "3way result" || name === "1x2" || name === "regular time result") {
+        for (const v of vals) {
+          const val = String(v?.value ?? "").toLowerCase();
+          const odd = Number(v?.odd);
+          if (!Number.isFinite(odd) || odd <= 1) continue;
+          if (val === "home" || val === "1") w1.push(odd);
+          else if (val === "draw" || val === "x" || val === "tie") wX.push(odd);
+          else if (val === "away" || val === "2") w2.push(odd);
         }
-        if (name === "match winner 3-way" || name === "3way result" || name === "1x2" || name === "regular time result") {
-          for (const v of vals) {
-            const val = String(v?.value ?? "").toLowerCase();
-            const odd = Number(v?.odd);
-            if (!Number.isFinite(odd) || odd <= 1) continue;
-            if (val === "home" || val === "1") w1.push(odd);
-            else if (val === "draw" || val === "x" || val === "tie") wX.push(odd);
-            else if (val === "away" || val === "2") w2.push(odd);
-          }
-          continue;
-        }
-        const kat = kategorijaOU(name);
-        if (kat) {
-          const l = nadjiNajboljuLiniju(vals);
-          if (l) {
-            const meta = kat === "domacin" ? dm : kat === "gost" ? gs : uk;
-            meta.linije.push(l.linija);
-            meta.over.push(l.over);
-            meta.under.push(l.under);
-          }
+        continue;
+      }
+      const kat = kategorijaOU(name);
+      if (kat) {
+        const l = nadjiNajboljuLiniju(vals);
+        if (l) {
+          const meta = kat === "domacin" ? dm : kat === "gost" ? gs : uk;
+          meta.linije.push(l.linija);
+          meta.over.push(l.over);
+          meta.under.push(l.under);
         }
       }
     }
@@ -343,18 +343,24 @@ export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
 
     let h2hGoloviDom: number[] = [];
     let h2hGoloviGost: number[] = [];
+
+    // H2H je opcionalan — ako limit nastupi, NE rušimo analizu jer kvote imamo!
     if (utakmica.domacinId && utakmica.gostId) {
-      const h2hRes = await dohvatiH2HSport(sport, utakmica.domacinId, utakmica.gostId, apiKey);
-      if (h2hRes.ok && Array.isArray(h2hRes.data)) {
-        for (const m of h2hRes.data.slice(0, 10)) {
-          const domJePrvi = m?.teams?.home?.id === utakmica.domacinId;
-          const dScore = domJePrvi ? m?.scores?.home?.total ?? m?.scores?.home : m?.scores?.away?.total ?? m?.scores?.away;
-          const gScore = domJePrvi ? m?.scores?.away?.total ?? m?.scores?.away : m?.scores?.home?.total ?? m?.scores?.home;
-          if (dScore != null && gScore != null) {
-            h2hGoloviDom.push(Number(dScore));
-            h2hGoloviGost.push(Number(gScore));
+      try {
+        const h2hRes = await dohvatiH2HSport(sport, utakmica.domacinId, utakmica.gostId, apiKey);
+        if (h2hRes.ok && Array.isArray(h2hRes.data)) {
+          for (const m of h2hRes.data.slice(0, 10)) {
+            const domJePrvi = m?.teams?.home?.id === utakmica.domacinId;
+            const dScore = domJePrvi ? m?.scores?.home?.total ?? m?.scores?.home : m?.scores?.away?.total ?? m?.scores?.away;
+            const gScore = domJePrvi ? m?.scores?.away?.total ?? m?.scores?.away : m?.scores?.home?.total ?? m?.scores?.home;
+            if (dScore != null && gScore != null) {
+              h2hGoloviDom.push(Number(dScore));
+              h2hGoloviGost.push(Number(gScore));
+            }
           }
         }
+      } catch {
+        // Ignoriraj grešku H2H poziva radi očuvanja analize
       }
     }
 
