@@ -86,7 +86,8 @@ function KosarkaProPage() {
       const kes = force ? null : localStorage.getItem(ck);
       const r = kes ? (JSON.parse(kes) as { error: string | null; utakmice: SportUtakmica[] })
         : await getSportUtakmice({ data: { sport: "kosarka", date: dan, apiKey } });
-      if (!force && !kes) localStorage.setItem(ck, JSON.stringify(r));
+      // FIX: greška se NIKAD ne kešira — keširani rezultat s greškom se ignorira.
+      if (!force && !kes && !r.error) localStorage.setItem(ck, JSON.stringify(r));
       if (r.error) {
         setUtakmice([]);
         setStatus(
@@ -114,7 +115,8 @@ function KosarkaProPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `kosa.bundle.v1.${u.id}`;
+    // FIX: cache key v2 — stari keš koji je imao grešku unutar sebe više se ne koristi.
+    const ck = `kosa.bundle.v2.${u.id}`;
     const dohvati = async (): Promise<SportBundle> =>
       (await withTimeout(
         getSportBundle({ data: { sport: "kosarka", id: u.id, homeId: u.homeId, awayId: u.awayId, leagueId: u.leagueId, season: u.season, apiKey } }),
@@ -122,9 +124,17 @@ function KosarkaProPage() {
       )) as SportBundle;
     try {
       const kes = localStorage.getItem(ck);
+      const kesObj = (() => {
+        if (!kes) return null;
+        try {
+          const c = JSON.parse(kes) as SportBundle;
+          // FIX: keširani bundle s greškom (npr. ACCOUNT/rate limit) se ignorira.
+          return c && !c.error ? c : null;
+        } catch { return null; }
+      })();
       let b: SportBundle;
-      if (kes) {
-        b = JSON.parse(kes) as SportBundle;
+      if (kesObj) {
+        b = kesObj;
       } else {
         try {
           setStatus("Dohvaćam forme i kvote (API red, do 90 s)…");
@@ -134,7 +144,8 @@ function KosarkaProPage() {
           b = await dohvati();
         }
       }
-      if (!kes && !b.error) localStorage.setItem(ck, JSON.stringify(b));
+      // FIX: u keš sprema se samo uspješan bundle (bez error polja).
+      if (!b.error) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
       try {
         const a = sportAnaliza({
@@ -213,7 +224,7 @@ function KosarkaProPage() {
             className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-white"
           />
           <button
-            onClick={() => ucitaj(date)}
+            onClick={() => ucitaj(date, true)}
             disabled={ucitam}
             className="flex items-center gap-1 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-500 disabled:opacity-50"
           >
@@ -382,3 +393,4 @@ function KosarkaProPage() {
     </div>
   );
 }
+
