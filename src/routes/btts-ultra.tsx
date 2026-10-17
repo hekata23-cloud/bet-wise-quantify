@@ -25,6 +25,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "@/lib/goals.functions";
 import { goalsAnaliza, type GoalsIzlaz } from "@/lib/goals-motor";
 import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
+import { zapisiTip } from "@/lib/dnevnik";
 
 export const Route = createFileRoute("/btts-ultra")({
   head: () => ({
@@ -63,7 +64,7 @@ function kellyUlog(p: number, kvota: number) {
   return Math.max(0, Math.min(3, ((p * kvota - 1) / (kvota - 1)) * 25));
 }
 
-interface TipStrana { label: string; p: number | null; kv: number | null }
+interface TipStrana { label: string; p: number | null; kv: number | null | undefined }
 
 function BttsUltraPage() {
   const [date, setDate] = useState(zagrebDay());
@@ -115,15 +116,15 @@ function BttsUltraPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `bttsu.bundle.v4.${u.id}`;
+    const ck = `bttsu.bundle.v5.${u.id}`;
 
     // v5: 90 s po pokušaju + jedan automatski ponovni pokušaj —
     // red API-ja (10 poziva/min) zna trajati dulje od 45 s.
-    const dohvati = () =>
-      withTimeout(
+    const dohvati = async (): Promise<GoalsBundle> =>
+      (await withTimeout(
         getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } }),
         90_000,
-      );
+      )) as GoalsBundle;
 
     try {
       const kes = localStorage.getItem(ck);
@@ -150,8 +151,26 @@ function BttsUltraPage() {
           formaDom: b.formaDom,
           formaGost: b.formaGost,
           brojKladionica: b.knjigaBtts + b.knjigaOu,
+          liga: b.liga ?? null,
         });
         setAnaliza(a);
+        // Dnevnik: zapiši konkretnu stranu BTTS da Dnevnik može ocijeniti karticu.
+        const stranaD: "da" | "ne" =
+          (a.final["bttsDa"] ?? 0) >= (a.final["bttsNe"] ?? 0) ? "da" : "ne";
+        const pTipD = stranaD === "da" ? a.final["bttsDa"] : a.final["bttsNe"];
+        const kvTipD = b.kvote[stranaD === "da" ? "bttsDa" : "bttsNe"];
+        if (pTipD != null) {
+          zapisiTip({
+            kartica: "BTTS Ultra",
+            utakmica: `${u.home} — ${u.away}`,
+            liga: u.league,
+            fixtureId: u.id,
+            tip: kvTipD != null ? `BTTS ${stranaD.toUpperCase()} @ ${kvTipD.toFixed(2)}` : `BTTS ${stranaD.toUpperCase()}`,
+            p: pTipD,
+            kvota: kvTipD ?? null,
+            provjera: { vrsta: "btts", strana: stranaD },
+          });
+        }
         if (b.error)
           setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
         else
