@@ -34,6 +34,45 @@ export interface ORCallOptions {
 /** Vlastiti timeout po pozivu — model koji visi nikad ne blokira lanac. */
 const CALL_TIMEOUT_MS = 40_000;
 
+/** Besplatni nivo OpenRotera: 50 zahtjeva/dan i 20/minuti — PO RAČUNU,
+ *  ne po modelu. Limit se resetira u ponoć UTC (02:00 po našem vremenu). */
+export const FREE_DAILY_LIMIT = 50;
+
+// ── Dnevna potrošnja (lokalna procjena u localStorage, po UTC danu) ──
+const USAGE_KEY = "or_free_usage";
+
+function danUTC(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Koliko smo (procjena) zahtjeva poslali danas. */
+export function orUsageToday(): number {
+  try {
+    const raw = JSON.parse(localStorage.getItem(USAGE_KEY) || "{}");
+    if (raw.dan !== danUTC()) return 0;
+    return raw.broj || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function zabiljeziPokusaj(): void {
+  try {
+    localStorage.setItem(
+      USAGE_KEY,
+      JSON.stringify({ dan: danUTC(), broj: orUsageToday() + 1 }),
+    );
+  } catch {
+    /* nebitno */
+  }
+}
+
+/** Prepoznaj OpenRouterovu ograničavajuću grešku (429). Limit je po RAČUNU,
+ *  ne po modelu — pa zamjena modela ne pomaže i ne treba dalje trošiti pokušaje. */
+export function jeRateGreska(msg: string): boolean {
+  return /\(429\)|rate.?limit|too many requests|quota exceeded|free-model/i.test(msg);
+}
+
 /** Jedan poziv prema OpenRouteru; baca grešku s porukom provajdera. */
 async function call(model: string, messages: ORMessage[], opts: ORCallOptions): Promise<string> {
   const key = getKey("openrouter");
@@ -94,28 +133,46 @@ export async function openrouterChat(
   messages: ORMessage[],
   opts: ORCallOptions = {},
 ): Promise<string> {
+  zabiljeziPokusaj();
   try {
     return await call(model, messages, opts);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    // 429 / quota → odmah baci jasnu poruku, BEZ spasonosnih pokušaja:
+    // svaki dodatni poziv samo troši dio istog dnevnog limita.
+    if (jeRateGreska(msg)) {
+      throw new Error(
+        `${model}: ${msg} — OpenRouter ograničenje: 50 zahtjeva/dan i 20 u minuti (besplatno, po računu). Pričekaj minutu; dnevni limit se resetira u 02:00. Trajno rješenje: 10 $ kredita → 1000 zahtjeva/dan.`,
+      );
+    }
     // Model umirovljen / nedostupan / preopterećen / spor / prazan → spas preko
     // živih besplatnih modela (max 2, da ukupno vrijeme ostane pod kontrolom).
-    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|rate|quota|429|402|404|400|prazan odgovor|nema odgovora/i.test(msg);
+    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|402|404|400|prazan odgovor|nema odgovora/i.test(msg);
     if (rescue) {
       for (const m of RESCUE_MODELS) {
         if (m === model) continue;
         try {
+          zabiljeziPokusaj();
           const out = await call(m, messages, opts);
           if (out) return out;
-        } catch { /* idemo na sljedeći */ }
+        } catch (e2) {
+          const m2 = e2 instanceof Error ? e2.message : String(e2);
+          if (jeRateGreska(m2)) throw new Error(m2);
+          /* idemo na sljedeći */
+        }
       }
     }
     // Eksplicitni rezervni modeli iz poziva.
     for (const fb of opts.extraFallbacks ?? []) {
       try {
+        zabiljeziPokusaj();
         const out = await call(fb, messages, opts);
         if (out) return out;
-      } catch { /* idemo dalje */ }
+      } catch (e2) {
+        const m2 = e2 instanceof Error ? e2.message : String(e2);
+        if (jeRateGreska(m2)) throw new Error(m2);
+        /* idemo dalje */
+      }
     }
     throw e;
   }
@@ -127,3 +184,4 @@ export async function testOpenRouter() {
     return { ok: true, msg: "OpenRouter spreman — Gemma 4 31B odgovara!" };
   } catch (e: any) { return { ok: false, msg: e.message }; }
 }
+
