@@ -1,30 +1,34 @@
-// ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO, s lanacem 3 provajdera ═══
-// v5 — RASPODJELA OPTEREĆENJA NA VIŠE BESPLATNIH IZVORA:
-//  1. Google Gemini (besplatni ključ s aistudio.google.com) — daleko najveći
-//     besplatni limit (requests/day računa se po projektu, reset u ponoć
-//     po pacifičkom vremenu), pa ide PRVI.
-//  2. Groq (besplatni ključ s console.groq.com) — llama-3.1-8b-instant ima
-//     14 400 zahtjeva/dan, veći modeli 1 000/dan. Groq sam bira model ako
-//     je jedan preopterećen.
-//  3. OpenRouter :free modeli — treća rezerva (50/dan, 20/min po računu).
-// Ključna razlika u odnosu na staro ponašanje: 429 na jednom provajderu
-// NE prekida posao — preskačemo na sljedećeg provajdera jer su limiti
-// neovisni. Jedan klik troši 1 zahtjev na jednom provajderu (bez paralelne
-// granje), pa limiti troše se sporo i raspodijeljeno.
-import { geminiChat } from "./gemini";
-import { groqChat } from "./groq";
+// ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO, lanac 3 provajdera ═══
+// v6 — POPRAVAK PRAZNIH ODGOVORA:
+//  - Gemini: gemini-3.8-flash RAZMIŠLJA prije odgovora — stari kod dao je
+//    samo 2500 tokena, misli su pojele cijeli budžet pa je tekst bio prazan.
+//    Sada: budžet 16384, thinking na "low", JSON način rada (responseMimeType),
+//    čitaju se SVI dijelovi odgovora, a finishReason/blockReason se javljaju.
+//  - Groq: dodan JSON način (response_format) i čitanje "reasoning" polja
+//    (gpt-oss modeli) ako je content prazan; temperature 0.3.
+//  - Redoslijed: Gemini → Groq → OpenRouter; 429 na jednom ne staje, ide se
+//    na sljedećeg. Jedan klik = 1 zahtjev na jednom provajderu.
+import { getKey, hasKey } from "./storage";
 import { openrouterChat, jeRateGreska, orUsageToday, FREE_DAILY_LIMIT } from "./openrouter";
-import { hasKey } from "./storage";
 import type { AiPrognoza } from "./ai-prognoza.functions";
 
 export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: string };
 
-// Popis OpenRouter modela provjeren živim upitom na /models (17.10.2026).
 const OPENROUTER_MODELS = [
   "google/gemma-4-31b-it:free",
   "poolside/laguna-s-2.1:free",
   "nvidia/nemotron-3.5-lightning:free",
   "google/gemma-4-26b-a4b-it:free",
+];
+
+// gemini-3.7-flash i 3.5-flash su umirovljeni (auto-preusmjerenje na 3.8/3.6).
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash"];
+
+const GROQ_MODELS = [
+  "llama-3.3-70b-versatile",  // 1 000 zahtjeva/dan — najpametniji
+  "llama-3.1-8b-instant",     // 14 400 zahtjeva/dan — najizdašniji limit
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
 ];
 
 const SCHEMA_TEXT = `{
@@ -45,7 +49,7 @@ PRAVILA:
 - ulogPostotak: 1/4 Kelly u % banke, 0 ako nije isplativo, maksimalno 3.
 - obrazlozenje: 2-4 rečenice konkretno. rizici: 1-3 kratke stavke.`;
 
-/** Izvući JSON kandidat iz odgovora modela (podnosi markdown i tekst oko njega). */
+/** Izvući JSON kandidat iz odgovora (podnosi markdown i tekst oko njega). */
 function extractJson(out: string): string | null {
   const s = out.replace(/```[a-z]*\s*/gi, "").trim();
   const first = s.indexOf("{");
@@ -61,7 +65,6 @@ function parsePrognoza(out: string): AiPrognoza | null {
   try {
     x = JSON.parse(raw);
   } catch {
-    // Popravi najčešće greške modela: zapete zarede prije } ili ].
     try {
       x = JSON.parse(raw.replace(/,\s*([}\]])/g, "$1"));
     } catch {
@@ -98,7 +101,6 @@ function parsePrognoza(out: string): AiPrognoza | null {
   };
 }
 
-/** Lokalni timeout da provajder koji visi nikad ne blokira lanac. */
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     p,
@@ -110,11 +112,118 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 const PROVIDER_TIMEOUT_MS = 60_000;
 
-/** Prepoznaj ograničavajuću grešku BILO kojeg provajdera (429 / quota). */
 function jeRatePoruka(msg: string): boolean {
   return /429|rate.?limit|too many requests|quota|exhausted|dosegao limit|resource/i.test(msg);
 }
 
+// ─────────────────────────── GEMINI ───────────────────────────
+async function geminiJSON(sys: string, user: string): Promise<string> {
+  const key = getKey("gemini");
+  if (!key) throw new Error("Gemini ključ nedostaje (Postavke).");
+  let lastErr = "Gemini: prazan odgovor";
+  for (const MODEL of GEMINI_MODELS) {
+    for (const sRazmisljanjem of [true, false]) {
+      const gen: any = {
+        temperature: 0.3,
+        maxOutputTokens: 16384,
+        responseMimeType: "application/json",
+      };
+      if (sRazmisljanjem) gen.thinkingConfig = { thinkingLevel: "low" };
+      let res: Response;
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: user }] }],
+              system_instruction: { parts: [{ text: sys }] },
+              generationConfig: gen,
+            }),
+          },
+        );
+      } catch (e) {
+        throw new Error(`Gemini mreža: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      const data: any = await res.json().catch(() => null);
+      if (!res.ok) {
+        const m = data?.error?.message || "Gemini Error";
+        lastErr = `(${res.status}) ${m}`;
+        // Ako model ne prihvaća thinkingLevel, pokušaj bez razmišljanja.
+        if (res.status === 400 && sRazmisljanjem && /thinking/i.test(String(m))) continue;
+        break; // idući model
+      }
+      const cand = data?.candidates?.[0];
+      const parts = cand?.content?.parts ?? [];
+      const text = parts
+        .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+        .join("")
+        .trim();
+      if (text) return text;
+      const fr = cand?.finishReason || data?.promptFeedback?.blockReason;
+      lastErr = fr ? `Gemini: prazan odgovor (finishReason=${fr})` : "Gemini: prazan odgovor";
+      break;
+    }
+  }
+  throw new Error(lastErr);
+}
+
+// ─────────────────────────── GROQ ───────────────────────────
+async function groqJSON(sys: string, user: string): Promise<string> {
+  const key = getKey("groq");
+  if (!key) throw new Error("Groq ključ nedostaje (Postavke).");
+  let lastErr = "Groq: prazan odgovor";
+  for (const MODEL of GROQ_MODELS) {
+    for (const sJsonem of [true, false]) {
+      let res: Response;
+      try {
+        res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${key}`,
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages: [
+              { role: "system", content: sys },
+              { role: "user", content: user },
+            ],
+            temperature: 0.3,
+            max_tokens: 4096,
+            ...(sJsonem ? { response_format: { type: "json_object" } } : {}),
+          }),
+        });
+      } catch (e) {
+        throw new Error(`Groq mreža: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        let m = t.slice(0, 200);
+        try {
+          const j = JSON.parse(t);
+          if (j?.error?.message) m = String(j.error.message);
+        } catch { /* sirovo */ }
+        lastErr = `(${res.status}) ${m}`;
+        // Ako model ne podržava JSON način, pokušaj bez njega.
+        if (res.status === 400 && sJsonem) continue;
+        break;
+      }
+      const j: any = await res.json().catch(() => null);
+      const msg = j?.choices?.[0]?.message;
+      const text =
+        (typeof msg?.content === "string" ? msg.content : "") ||
+        (typeof msg?.reasoning === "string" ? msg.reasoning : "");
+      if (text.trim()) return text;
+      lastErr = "Groq: prazan odgovor";
+      break;
+    }
+  }
+  throw new Error(lastErr);
+}
+
+// ─────────────────────── GLAVNI LANAC ───────────────────────
 export async function runAiPrognozaFallback(input: {
   utakmica: string;
   vrstaOklade: string;
@@ -126,9 +235,7 @@ FORMAT ODGOVORA: vrati ISKLJUČIVO jedan JSON objekt, bez markdowna, bez obrazlo
 ${SCHEMA_TEXT}`;
   const user = `Utakmica: ${input.utakmica}\nTražena vrsta oklade: ${input.vrstaOklade || "bilo koja (najbolji tip)"}\n\nPodaci modela:\n${input.kontekst}`;
 
-  const nemaNijednog =
-    !hasKey("gemini") && !hasKey("groq") && !hasKey("openrouter");
-  if (nemaNijednog) {
+  if (!hasKey("gemini") && !hasKey("groq") && !hasKey("openrouter")) {
     return {
       ok: false,
       error:
@@ -136,43 +243,26 @@ ${SCHEMA_TEXT}`;
     };
   }
 
-  /** Jedan pokušaj: pozovi provajdera i parsiraj odgovor. */
   const pokusaj = async (provajder: string): Promise<AiPrognoza> => {
+    let out: string;
     if (provajder === "gemini") {
-      const out = await withTimeout(
-        geminiChat(sys, [{ role: "user", parts: [{ text: user }] }]),
-        PROVIDER_TIMEOUT_MS,
-      );
-      const p = parsePrognoza(out);
-      if (p) return p;
-      throw new Error("Gemini: nevažeći ili prazan odgovor");
-    }
-    if (provajder === "groq") {
-      const out = await withTimeout(
-        groqChat([
+      out = await withTimeout(geminiJSON(sys, user), PROVIDER_TIMEOUT_MS);
+    } else if (provajder === "groq") {
+      out = await withTimeout(groqJSON(sys, user), PROVIDER_TIMEOUT_MS);
+    } else {
+      out = await withTimeout(
+        openrouterChat(OPENROUTER_MODELS[0], [
           { role: "system", content: sys },
           { role: "user", content: user },
-        ]),
+        ], { maxTokens: 1400, temperature: 0.3 }),
         PROVIDER_TIMEOUT_MS,
       );
-      const p = parsePrognoza(out);
-      if (p) return p;
-      throw new Error("Groq: nevažeći ili prazan odgovor");
     }
-    // openrouter
-    const out = await withTimeout(
-      openrouterChat(OPENROUTER_MODELS[0], [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ], { maxTokens: 1400, temperature: 0.3 }),
-      PROVIDER_TIMEOUT_MS,
-    );
     const p = parsePrognoza(out);
     if (p) return p;
-    throw new Error("OpenRouter: nevažeći ili prazan odgovor");
+    throw new Error(`${provajder}: odgovor nije valjani JSON predviđanja`);
   };
 
-  // Redoslijed: Gemini prvi (najveći besplatni limit), pa Groq, pa OpenRouter.
   const lanac: string[] = [];
   if (hasKey("gemini")) lanac.push("gemini");
   if (hasKey("groq")) lanac.push("groq");
@@ -186,8 +276,6 @@ ${SCHEMA_TEXT}`;
       return { ok: true, p };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Rate greška → NE stajemo: limiti su neovisni po provajderu,
-      // pa idemo na sljedećeg (on možda još ima slobodnih zahtjeva).
       if (jeRatePoruka(msg) || jeRateGreska(msg)) {
         errs.push(`${provajder}: ograničenje zahtjeva (429/quota)`);
         continue;
