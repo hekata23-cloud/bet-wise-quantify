@@ -1,32 +1,30 @@
-// ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO ═══
-// Kad Lovable AI Gateway kaže da su krediti potrošeni (402) ili je zauzet (429)
-// ili visi, ova kartica ne ostaje prazna: ista prognoza se izračuna preko
-// korisnikovog besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
-//
-// v4 — ŠTEDLJIVO, JEDAN MODEL PO JEDAN:
-// OpenRouter besplatno = 50 zahtjeva/dan i 20 u minuti, PO RAČUNU (ne po modelu).
-// Staro paralelno granje (4+ modela po kliku) ubijalo je dnevni limit za
-// nekoliko klikova i izazivalo 429. Sada:
-//  - klik = u pravilu 1 zahtjev (prvi model koji uspije pobjeđuje);
-//  - na 429 odmah stajemo s jasnom porukom (limit je računski, ne modelski);
-//  - najviše 4 pokušaja i najviše 3 minute po kliku — nikad "vrti mozgove".
-// Popis modela provjeren živim upitom na OpenRouter /models (17.10.2026).
+// ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO, s lanacem 3 provajdera ═══
+// v5 — RASPODJELA OPTEREĆENJA NA VIŠE BESPLATNIH IZVORA:
+//  1. Google Gemini (besplatni ključ s aistudio.google.com) — daleko najveći
+//     besplatni limit (requests/day računa se po projektu, reset u ponoć
+//     po pacifičkom vremenu), pa ide PRVI.
+//  2. Groq (besplatni ključ s console.groq.com) — llama-3.1-8b-instant ima
+//     14 400 zahtjeva/dan, veći modeli 1 000/dan. Groq sam bira model ako
+//     je jedan preopterećen.
+//  3. OpenRouter :free modeli — treća rezerva (50/dan, 20/min po računu).
+// Ključna razlika u odnosu na staro ponašanje: 429 na jednom provajderu
+// NE prekida posao — preskačemo na sljedećeg provajdera jer su limiti
+// neovisni. Jedan klik troši 1 zahtjev na jednom provajderu (bez paralelne
+// granje), pa limiti troše se sporo i raspodijeljeno.
+import { geminiChat } from "./gemini";
+import { groqChat } from "./groq";
 import { openrouterChat, jeRateGreska, orUsageToday, FREE_DAILY_LIMIT } from "./openrouter";
 import { hasKey } from "./storage";
 import type { AiPrognoza } from "./ai-prognoza.functions";
 
 export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: string };
 
-const FREE_MODELS = [
+// Popis OpenRouter modela provjeren živim upitom na /models (17.10.2026).
+const OPENROUTER_MODELS = [
   "google/gemma-4-31b-it:free",
   "poolside/laguna-s-2.1:free",
   "nvidia/nemotron-3.5-lightning:free",
   "google/gemma-4-26b-a4b-it:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "dots-studio/dots-3-note-preview:free",
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-  "xingchen-agi/xing4.0-29b-a4b:free",
-  "nvidia/nemotron-3.5-super-vl:free",
 ];
 
 const SCHEMA_TEXT = `{
@@ -100,7 +98,7 @@ function parsePrognoza(out: string): AiPrognoza | null {
   };
 }
 
-/** Lokalni timeout da rezervni mozak nikad ne visi na sporom modelu. */
+/** Lokalni timeout da provajder koji visi nikad ne blokira lanac. */
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     p,
@@ -110,77 +108,99 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-const MODEL_TIMEOUT_MS = 55_000;
-const MAX_POKUSAJA = 4;          // najviše 4 modela po kliku
-const UKUPNI_ROK_MS = 3 * 60_000; // apsolutni plafon: 3 minute po kliku
+const PROVIDER_TIMEOUT_MS = 60_000;
+
+/** Prepoznaj ograničavajuću grešku BILO kojeg provajdera (429 / quota). */
+function jeRatePoruka(msg: string): boolean {
+  return /429|rate.?limit|too many requests|quota|exhausted|dosegao limit|resource/i.test(msg);
+}
 
 export async function runAiPrognozaFallback(input: {
   utakmica: string;
   vrstaOklade: string;
   kontekst: string;
 }, onProgress?: (m: string) => void): Promise<FallbackResult> {
-  if (!hasKey("openrouter")) {
-    return { ok: false, error: "Za besplatni rezervni mozak dodaj OpenRouter ključ u Postavkama." };
-  }
   const sys = `${RULES}
 
 FORMAT ODGOVORA: vrati ISKLJUČIVO jedan JSON objekt, bez markdowna, bez obrazloženja van JSON-a, po ovoj shemi:
 ${SCHEMA_TEXT}`;
   const user = `Utakmica: ${input.utakmica}\nTražena vrsta oklade: ${input.vrstaOklade || "bilo koja (najbolji tip)"}\n\nPodaci modela:\n${input.kontekst}`;
-  const poruke = [
-    { role: "system" as const, content: sys },
-    { role: "user" as const, content: user },
-  ];
 
-  /** Jedan pokušaj modela: vraća parsiranu prognozu ili baca grešku. */
-  const pokusaj = async (model: string): Promise<AiPrognoza> => {
-    const out = await withTimeout(
-      openrouterChat(model, poruke, { maxTokens: 1400, temperature: 0.3 }),
-      MODEL_TIMEOUT_MS,
-    );
-    const p = parsePrognoza(out);
-    if (p) return p;
-    throw new Error(`${model}: nevažeći JSON`);
-  };
-
-  // Dnevni limit je računski: ako je lokalna procjena došla do 50, ne troši
-  // ni jedan dodatni zahtjev na pokušaje.
-  const potroseno = orUsageToday();
-  if (potroseno >= FREE_DAILY_LIMIT) {
+  const nemaNijednog =
+    !hasKey("gemini") && !hasKey("groq") && !hasKey("openrouter");
+  if (nemaNijednog) {
     return {
       ok: false,
-      error: `Dnevni besplatni limit OpenRotera (${FREE_DAILY_LIMIT} zahtjeva) je vjerojatno potrošen. Obnavlja se u 02:00 po noći (ponoć UTC). Trajno rješenje: 10 $ kredita na OpenRouteru → 1000 zahtjeva dnevno.`,
+      error:
+        "Za besplatni rezervni mozak dodaj u Postavkama Google Gemini ključ (besplatan, aistudio.google.com/apikey) — po mogućnosti i Groq (console.groq.com) i OpenRouter kao rezerve.",
     };
   }
 
-  const errs: string[] = [];
-  const rok = Date.now() + UKUPNI_ROK_MS;
-  let pokusano = 0;
-
-  for (const model of FREE_MODELS) {
-    if (pokusano >= MAX_POKUSAJA) break;
-    if (Date.now() > rok) { errs.push("isteklo ukupno vrijeme (3 min)"); break; }
-    pokusano++;
-    onProgress?.(
-      `Rezervni mozak (${pokusano}/${MAX_POKUSAJA}): ${model} — danas oko ${potroseno + pokusano}/${FREE_DAILY_LIMIT} zahtjeva…`,
+  /** Jedan pokušaj: pozovi provajdera i parsiraj odgovor. */
+  const pokusaj = async (provajder: string): Promise<AiPrognoza> => {
+    if (provajder === "gemini") {
+      const out = await withTimeout(
+        geminiChat(sys, [{ role: "user", parts: [{ text: user }] }]),
+        PROVIDER_TIMEOUT_MS,
+      );
+      const p = parsePrognoza(out);
+      if (p) return p;
+      throw new Error("Gemini: nevažeći ili prazan odgovor");
+    }
+    if (provajder === "groq") {
+      const out = await withTimeout(
+        groqChat([
+          { role: "system", content: sys },
+          { role: "user", content: user },
+        ]),
+        PROVIDER_TIMEOUT_MS,
+      );
+      const p = parsePrognoza(out);
+      if (p) return p;
+      throw new Error("Groq: nevažeći ili prazan odgovor");
+    }
+    // openrouter
+    const out = await withTimeout(
+      openrouterChat(OPENROUTER_MODELS[0], [
+        { role: "system", content: sys },
+        { role: "user", content: user },
+      ], { maxTokens: 1400, temperature: 0.3 }),
+      PROVIDER_TIMEOUT_MS,
     );
+    const p = parsePrognoza(out);
+    if (p) return p;
+    throw new Error("OpenRouter: nevažeći ili prazan odgovor");
+  };
+
+  // Redoslijed: Gemini prvi (najveći besplatni limit), pa Groq, pa OpenRouter.
+  const lanac: string[] = [];
+  if (hasKey("gemini")) lanac.push("gemini");
+  if (hasKey("groq")) lanac.push("groq");
+  if (hasKey("openrouter")) lanac.push("openrouter");
+
+  const errs: string[] = [];
+  for (const provajder of lanac) {
+    onProgress?.(`Rezervni mozak: pokušavam ${provajder.toUpperCase()}…`);
     try {
-      const p = await pokusaj(model);
+      const p = await pokusaj(provajder);
       return { ok: true, p };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // 429 → stajemo ODMAH. Limit je po računu, pa zamjena modela ne pomaže.
-      if (jeRateGreska(msg)) {
-        return {
-          ok: false,
-          error: `OpenRouter ograničenje (429): besplatno je 50 zahtjeva/dan i 20 u minuti — po računu, ne po modelu. Pričekaj minutu; dnevni limit se resetira u 02:00. Trajno rješenje: 10 $ kredita → 1000 zahtjeva/dan.`,
-        };
+      // Rate greška → NE stajemo: limiti su neovisni po provajderu,
+      // pa idemo na sljedećeg (on možda još ima slobodnih zahtjeva).
+      if (jeRatePoruka(msg) || jeRateGreska(msg)) {
+        errs.push(`${provajder}: ograničenje zahtjeva (429/quota)`);
+        continue;
       }
-      errs.push(msg);
+      errs.push(`${provajder}: ${msg}`);
     }
   }
 
-  // Sažetak grešaka: bez duplikata, prva 4, da se vidi TOČNO zašto je stalo.
+  const openrouterNapomena =
+    hasKey("openrouter") && orUsageToday() >= FREE_DAILY_LIMIT
+      ? ` OpenRouter dnevni limit (${FREE_DAILY_LIMIT}) vjerojatno potrošen — reset u 02:00.`
+      : "";
   const jedinstvene = [...new Set(errs)].slice(0, 4).join(" | ");
-  return { ok: false, error: `Rezervni mozak nije uspio (${pokusano} ${pokusano === 1 ? "pokušaj" : "pokušaja"} po kliku — štedimo dnevni limit). ${jedinstvene}` };
+  return { ok: false, error: `Rezervni mozak nije uspio (${lanac.join(" → ")}). ${jedinstvene}.${openrouterNapomena}` };
 }
+
