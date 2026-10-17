@@ -14,6 +14,9 @@ import { Route as AiPrognozaRouteImport } from './routes/ai-prognoza'
 import { Route as BttsOverRouteImport } from './routes/btts-over'
 import { Route as BttsUltraRouteImport } from './routes/btts-ultra'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as DnevnikRouteImport } from './routes/dnevnik'
+import { Route as KosarkaProRouteImport } from './routes/kosarka-pro'
+import { Route as RukometProRouteImport } from './routes/rukomet-pro'
 import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as HtFtRouteImport } from './routes/ht-ft'
 import { Route as HtFtBetaRouteImport } from './routes/ht-ft-beta'
@@ -60,6 +63,21 @@ const BttsUltraRoute = BttsUltraRouteImport.update({
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DnevnikRoute = DnevnikRouteImport.update({
+  id: '/dnevnik',
+  path: '/dnevnik',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KosarkaProRoute = KosarkaProRouteImport.update({
+  id: '/kosarka-pro',
+  path: '/kosarka-pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RukometProRoute = RukometProRouteImport.update({
+  id: '/rukomet-pro',
+  path: '/rukomet-pro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoloviRoute = GoloviRouteImport.update({
@@ -179,6 +197,9 @@ export interface FileRoutesByFullPath {
   '/btts-over': typeof BttsOverRoute
   '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
+  '/dnevnik': typeof DnevnikRoute
+  '/kosarka-pro': typeof KosarkaProRoute
+  '/rukomet-pro': typeof RukometProRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
   '/ht-ft-beta': typeof HtFtBetaRoute
@@ -208,6 +229,9 @@ export interface FileRoutesByTo {
   '/btts-over': typeof BttsOverRoute
   '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
+  '/dnevnik': typeof DnevnikRoute
+  '/kosarka-pro': typeof KosarkaProRoute
+  '/rukomet-pro': typeof RukometProRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
   '/ht-ft-beta': typeof HtFtBetaRoute
@@ -237,6 +261,9 @@ export interface FileRoutesById {
   '/btts-over': typeof BttsOverRoute
   '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
+  '/dnevnik': typeof DnevnikRoute
+  '/kosarka-pro': typeof KosarkaProRoute
+  '/rukomet-pro': typeof RukometProRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
   '/ht-ft-beta': typeof HtFtBetaRoute
@@ -268,6 +295,9 @@ export interface FileRouteTypes {
     | '/btts-over'
     | '/btts-ultra'
     | '/chat'
+    | '/dnevnik'
+    | '/kosarka-pro'
+    | '/rukomet-pro'
     | '/golovi'
     | '/ht-ft'
     | '/ht-ft-beta'
@@ -297,6 +327,9 @@ export interface FileRouteTypes {
     | '/btts-over'
     | '/btts-ultra'
     | '/chat'
+    | '/dnevnik'
+    | '/kosarka-pro'
+    | '/rukomet-pro'
     | '/golovi'
     | '/ht-ft'
     | '/ht-ft-beta'
@@ -325,6 +358,9 @@ export interface FileRouteTypes {
     | '/btts-over'
     | '/btts-ultra'
     | '/chat'
+    | '/dnevnik'
+    | '/kosarka-pro'
+    | '/rukomet-pro'
     | '/golovi'
     | '/ht-ft'
     | '/ht-ft-beta'
@@ -355,6 +391,9 @@ export interface RootRouteChildren {
   BttsOverRoute: typeof BttsOverRoute
   BttsUltraRoute: typeof BttsUltraRoute
   ChatRoute: typeof ChatRoute
+  DnevnikRoute: typeof DnevnikRoute
+  KosarkaProRoute: typeof KosarkaProRoute
+  RukometProRoute: typeof RukometProRoute
   GoloviRoute: typeof GoloviRoute
   HtFtRoute: typeof HtFtRoute
   HtFtBetaRoute: typeof HtFtBetaRoute
@@ -412,6 +451,27 @@ declare module '@tanstack/react-router' {
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dnevnik': {
+      id: '/dnevnik'
+      path: '/dnevnik'
+      fullPath: '/dnevnik'
+      preLoaderRoute: typeof DnevnikRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kosarka-pro': {
+      id: '/kosarka-pro'
+      path: '/kosarka-pro'
+      fullPath: '/kosarka-pro'
+      preLoaderRoute: typeof KosarkaProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rukomet-pro': {
+      id: '/rukomet-pro'
+      path: '/rukomet-pro'
+      fullPath: '/rukomet-pro'
+      preLoaderRoute: typeof RukometProRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/golovi': {
@@ -591,6 +651,9 @@ const rootRouteChildren: RootRouteChildren = {
   BttsOverRoute: BttsOverRoute,
   BttsUltraRoute: BttsUltraRoute,
   ChatRoute: ChatRoute,
+  DnevnikRoute: DnevnikRoute,
+  KosarkaProRoute: KosarkaProRoute,
+  RukometProRoute: RukometProRoute,
   GoloviRoute: GoloviRoute,
   HtFtRoute: HtFtRoute,
   HtFtBetaRoute: HtFtBetaRoute,
