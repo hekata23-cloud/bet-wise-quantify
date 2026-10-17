@@ -141,3 +141,11 @@ export function statistika(): KarticaStat[] {
   }
   return out.sort((a, b) => b.igrano - a.igrano);
 }
+// Brisanje cijelog dnevnika (koristi stranica /dnevnik).
+export function brisiDnevnik(): void {
+  try {
+    localStorage.removeItem(KLJUC);
+  } catch {
+    // localStorage nedostupan — ignoriraj
+  }
+}
