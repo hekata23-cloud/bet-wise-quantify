@@ -2,26 +2,54 @@ import { getKey } from "./storage";
 
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
+// gemini-3.8-flash RAZMIŠLJA prije odgovora — misli troše output budžet,
+// pa je budžet uvećan na 16384 i razmišljanje je na najnižem nivou.
+// Prazan odgovor je sada GREŠKA s točnim uzrokom (finishReason), ne tišina.
+const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash"];
+
 export async function geminiChat(systemPrompt: string, history: any[]): Promise<string> {
   const key = getKey("gemini");
   if (!key) throw new Error("Nedostaje Google API ključ");
 
-  const MODEL = "gemini-3.8-flash";
-  const url = `${BASE_URL}/${MODEL}:generateContent?key=${key}`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: history,
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature: 0.6, maxOutputTokens: 2500 }
-    })
-  });
-
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error?.message || "Gemini Error");
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+  let lastErr = "Gemini: prazan odgovor";
+  for (const MODEL of MODELS) {
+    for (const sRazmisljanjem of [true, false]) {
+      const gen: any = { temperature: 0.6, maxOutputTokens: 16384 };
+      if (sRazmisljanjem) gen.thinkingConfig = { thinkingLevel: "low" };
+      const response = await fetch(
+        `${BASE_URL}/${MODEL}:generateContent?key=${encodeURIComponent(key)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: history,
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: gen,
+          }),
+        },
+      );
+      const data = await response.json().catch(() => null as any);
+      if (!response.ok) {
+        const m = data?.error?.message || "Gemini Error";
+        lastErr = `(${response.status}) ${m}`;
+        // Ako model ne prihvaća thinkingLevel, pokušaj bez razmišljanja.
+        if (response.status === 400 && sRazmisljanjem && /thinking/i.test(String(m))) continue;
+        break; // idući model
+      }
+      const cand = data?.candidates?.[0];
+      const parts = cand?.content?.parts ?? [];
+      // Čitaju se SVI dijelovi odgovora, ne samo prvi.
+      const text = parts
+        .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
+        .join("")
+        .trim();
+      if (text) return text;
+      const fr = cand?.finishReason || data?.promptFeedback?.blockReason;
+      lastErr = fr ? `Gemini: prazan odgovor (finishReason=${fr})` : "Gemini: prazan odgovor";
+      break;
+    }
+  }
+  throw new Error(lastErr);
 }
 
 export async function testGemini() {
