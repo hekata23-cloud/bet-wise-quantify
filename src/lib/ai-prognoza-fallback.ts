@@ -3,12 +3,15 @@
 // ili visi, ova kartica ne ostaje prazna: ista prognoza se izračuna preko
 // korisnikovog besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
 //
-// v3 — BRZINA I GRANICA VREMENA:
-//  - FAZA 1: 4 modela PARALELNO, 50 s po modelu → najviše 50 s.
-//  - FAZA 2: SVI ostali modeli PARALELNO, 50 s → najviše još 50 s.
-//  Maksimalno 100 s okretanja, nikad "vrti mozgove" u nedogled.
+// v4 — ŠTEDLJIVO, JEDAN MODEL PO JEDAN:
+// OpenRouter besplatno = 50 zahtjeva/dan i 20 u minuti, PO RAČUNU (ne po modelu).
+// Staro paralelno granje (4+ modela po kliku) ubijalo je dnevni limit za
+// nekoliko klikova i izazivalo 429. Sada:
+//  - klik = u pravilu 1 zahtjev (prvi model koji uspije pobjeđuje);
+//  - na 429 odmah stajemo s jasnom porukom (limit je računski, ne modelski);
+//  - najviše 4 pokušaja i najviše 3 minute po kliku — nikad "vrti mozgove".
 // Popis modela provjeren živim upitom na OpenRouter /models (17.10.2026).
-import { openrouterChat } from "./openrouter";
+import { openrouterChat, jeRateGreska, orUsageToday, FREE_DAILY_LIMIT } from "./openrouter";
 import { hasKey } from "./storage";
 import type { AiPrognoza } from "./ai-prognoza.functions";
 
@@ -60,7 +63,7 @@ function parsePrognoza(out: string): AiPrognoza | null {
   try {
     x = JSON.parse(raw);
   } catch {
-    // Popravi najčešće greške modela: zapete zareze prije } ili ].
+    // Popravi najčešće greške modela: zapete zarede prije } ili ].
     try {
       x = JSON.parse(raw.replace(/,\s*([}\]])/g, "$1"));
     } catch {
@@ -107,7 +110,9 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-const MODEL_TIMEOUT_MS = 50_000;
+const MODEL_TIMEOUT_MS = 55_000;
+const MAX_POKUSAJA = 4;          // najviše 4 modela po kliku
+const UKUPNI_ROK_MS = 3 * 60_000; // apsolutni plafon: 3 minute po kliku
 
 export async function runAiPrognozaFallback(input: {
   utakmica: string;
@@ -138,34 +143,44 @@ ${SCHEMA_TEXT}`;
     throw new Error(`${model}: nevažeći JSON`);
   };
 
-  const errs: string[] = [];
-  const skupiGreske = (e: unknown) => {
-    const agg = e as AggregateError;
-    if (agg && Array.isArray(agg.errors)) {
-      for (const er of agg.errors) errs.push(er instanceof Error ? er.message : String(er));
-    } else errs.push(e instanceof Error ? e.message : String(e));
-  };
-
-  // FAZA 1: 4 najbrža modela PARALELNO — prvi ispravan JSON pobjeđuje (max 50 s).
-  onProgress?.(`Rezervni mozak: 4 besplatna modela rade paralelno (do 50 s)…`);
-  try {
-    const p = await Promise.any(FREE_MODELS.slice(0, 4).map((m) => pokusaj(m)));
-    return { ok: true, p };
-  } catch (e) {
-    skupiGreske(e);
+  // Dnevni limit je računski: ako je lokalna procjena došla do 50, ne troši
+  // ni jedan dodatni zahtjev na pokušaje.
+  const potroseno = orUsageToday();
+  if (potroseno >= FREE_DAILY_LIMIT) {
+    return {
+      ok: false,
+      error: `Dnevni besplatni limit OpenRotera (${FREE_DAILY_LIMIT} zahtjeva) je vjerojatno potrošen. Obnavlja se u 02:00 po noći (ponoć UTC). Trajno rješenje: 10 $ kredita na OpenRouteru → 1000 zahtjeva dnevno.`,
+    };
   }
 
-  // FAZA 2: SVI ostali PARALELNO (max još 50 s) — ne redom, da ne vrti u nedogled.
-  onProgress?.(`Rezervni mozak: prva 4 nisu dala ispravan odgovor — pokušavam ostalih ${FREE_MODELS.length - 4} paralelno…`);
-  try {
-    const p = await Promise.any(FREE_MODELS.slice(4).map((m) => pokusaj(m)));
-    return { ok: true, p };
-  } catch (e) {
-    skupiGreske(e);
+  const errs: string[] = [];
+  const rok = Date.now() + UKUPNI_ROK_MS;
+  let pokusano = 0;
+
+  for (const model of FREE_MODELS) {
+    if (pokusano >= MAX_POKUSAJA) break;
+    if (Date.now() > rok) { errs.push("isteklo ukupno vrijeme (3 min)"); break; }
+    pokusano++;
+    onProgress?.(
+      `Rezervni mozak (${pokusano}/${MAX_POKUSAJA}): ${model} — danas oko ${potroseno + pokusano}/${FREE_DAILY_LIMIT} zahtjeva…`,
+    );
+    try {
+      const p = await pokusaj(model);
+      return { ok: true, p };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // 429 → stajemo ODMAH. Limit je po računu, pa zamjena modela ne pomaže.
+      if (jeRateGreska(msg)) {
+        return {
+          ok: false,
+          error: `OpenRouter ograničenje (429): besplatno je 50 zahtjeva/dan i 20 u minuti — po računu, ne po modelu. Pričekaj minutu; dnevni limit se resetira u 02:00. Trajno rješenje: 10 $ kredita → 1000 zahtjeva/dan.`,
+        };
+      }
+      errs.push(msg);
+    }
   }
 
   // Sažetak grešaka: bez duplikata, prva 4, da se vidi TOČNO zašto je stalo.
   const jedinstvene = [...new Set(errs)].slice(0, 4).join(" | ");
-  return { ok: false, error: `Rezervni mozak nije uspio (svi ${FREE_MODELS.length} besplatnih modela). ${jedinstvene}` };
+  return { ok: false, error: `Rezervni mozak nije uspio (${pokusano} ${pokusano === 1 ? "pokušaj" : "pokušaja"} po kliku — štedimo dnevni limit). ${jedinstvene}` };
 }
-
