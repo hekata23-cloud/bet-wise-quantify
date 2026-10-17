@@ -9,7 +9,7 @@
    ============================================================ */
 import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Brain, CheckCircle2, RefreshCw, Sparkles, Target } from "lucide-react";
-import { SettingsModal } from "@/components/SettingsModal";
+import { SportSettingsModal } from "@/components/SportSettingsModal";
 import {
   dohvatiSportUtakmiceServer,
   analizirajSportUtakmicuServer,
@@ -288,7 +288,7 @@ export function SportProStranica(props: {
         </div>
       </div>
 
-      <SettingsModal open={settings} onClose={() => setSettings(false)} />
+      <SportSettingsModal open={settings} onClose={() => setSettings(false)} sport={sport} />
     </div>
   );
 }

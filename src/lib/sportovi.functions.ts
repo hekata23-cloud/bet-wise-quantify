@@ -413,3 +413,65 @@ export const statusSportovaServer = createServerFn({ method: "GET" })
   });
 
 
+
+/** Testira API ključ na pravom endpointu za dani sport (košarka/rukomet). */
+export const testApiKeySport = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown): { sport: Sport; apiKey: string } => {
+    const obj = (d ?? {}) as Record<string, unknown>;
+    const sport: Sport = obj["sport"] === "rukomet" ? "rukomet" : "kosarka";
+    const apiKey = typeof obj["apiKey"] === "string" ? obj["apiKey"].trim() : "";
+    return { sport, apiKey };
+  })
+  .handler(async ({ data }) => {
+    const { sport, apiKey } = data;
+    if (!apiKey) return { ok: false as const, error: "Nije unesen API ključ." };
+
+    try {
+      const baza = sport === "kosarka"
+        ? "https://v1.basketball.api-sports.io"
+        : "https://v1.handball.api-sports.io";
+
+      const res = await fetch(`${baza}/status`, {
+        headers: { "x-apisports-key": apiKey },
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false as const, error: "API ključ nije važeći ili sport nije aktiviran na tvom računu." };
+      }
+      if (!res.ok) {
+        return { ok: false as const, error: `API greška ${res.status}` };
+      }
+
+      const json = (await res.json()) as {
+        errors?: Record<string, string> | string[];
+        response?: {
+          subscription?: { plan?: string; active?: boolean };
+          requests?: { current?: number; limit_day?: number };
+          account?: { email?: string };
+        };
+      };
+
+      const errs = json.errors && (
+        Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length
+      );
+      if (errs) {
+        const errVals = Array.isArray(json.errors)
+          ? json.errors.join(" ")
+          : Object.values(json.errors as Record<string, string>).join(" ");
+        return { ok: false as const, error: errVals || "Nevažeći ključ" };
+      }
+
+      const resp = json.response;
+      return {
+        ok: true as const,
+        plan: resp?.subscription?.plan ?? "Free",
+        active: resp?.subscription?.active ?? true,
+        current: resp?.requests?.current ?? 0,
+        limit: resp?.requests?.limit_day ?? 100,
+        email: resp?.account?.email ?? "",
+      };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Nepoznata greška";
+      return { ok: false as const, error: `Mrežna greška: ${msg}` };
+    }
+  });
