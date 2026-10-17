@@ -3,7 +3,7 @@
 import { formatZagreb, isoDateZagreb } from "./zagreb-time";
 import { geminiChat, type GeminiMessage, type GeminiPart } from "./gemini";
 import { groqChat, type GroqMessage } from "./groq";
-import { openrouterChat, type ORMessage, specialistDefault } from "./openrouter";
+import { openrouterChat, orUsageToday, FREE_DAILY_LIMIT, type ORMessage, specialistDefault } from "./openrouter";
 import { huggingfaceChat, HF_MODELS, type HFMessage } from "./huggingface";
 import { nvidiaChat, type NimMessage } from "./nvidia";
 import { loadOmni, runOmni, omniBriefing } from "./omni";
@@ -207,7 +207,7 @@ export interface BrainPrefs {
 }
 
 function loadPrefs(): BrainPrefs {
-  return loadJSON<BrainPrefs>("tm.brain.prefs", { primary: "openrouter", prioritizeSpecialists: true });
+  return loadJSON<BrainPrefs>("tm.brain.prefs", { primary: "gemini", prioritizeSpecialists: true });
 }
 
 export async function askAi(
@@ -244,11 +244,13 @@ export async function askAi(
   }
 
   // ── Ansambl konsenzus: numerička procjena više modela prije finalnog odgovora
+  // Štedljivo: ne troši OpenRouter dnevnu kvotu ako je gotovo potrošena.
   let consensusBlock = "";
   if (
     (prefs.ensemble !== false || forceEngines) &&
     market !== "opce" &&
-    hasKey("openrouter")
+    hasKey("openrouter") &&
+    orUsageToday() < FREE_DAILY_LIMIT
   ) {
     try {
       const c = await withTimeout(runConsensus(market, userText, ctx), 60_000, "Ansambl konsenzus");
@@ -297,6 +299,7 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
     market === "opce" &&
     prefs.ensemble !== false &&
     hasKey("openrouter") &&
+    orUsageToday() < FREE_DAILY_LIMIT &&
     !hasImages
   ) {
     try {
@@ -307,16 +310,17 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
     }
   }
 
-  // Redoslijed mozgova prema korisničkim postavkama i dostupnim ključevima
+  // Redoslijed mozgova: Gemini i Groq prvo (veliki besplatni limiti),
+  // OpenRouter samo kao rezerva — 50 zahtjeva/dan se troši polako.
   const brains: Array<"openrouter" | "gemini" | "groq" | "huggingface" | "nvidia"> = [];
   const push = (b: "openrouter" | "gemini" | "groq" | "huggingface" | "nvidia") => {
     if (!brains.includes(b)) brains.push(b);
   };
   if (prefs.primary) push(prefs.primary);
-  push("openrouter");
-  push("nvidia");
   push("gemini");
   push("groq");
+  push("nvidia");
+  push("openrouter"); // samo rezerva — ne troši 50/dan kvotu prije vremena
   push("huggingface");
 
   const errors: string[] = [];
@@ -438,3 +442,4 @@ async function runNim(
   msgs.push({ role: "user", content: userText });
   return nvidiaChat(model, msgs, { timeoutMs: 40_000, maxTokens: 1600 });
 }
+
