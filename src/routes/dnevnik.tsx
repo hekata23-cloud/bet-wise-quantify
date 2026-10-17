@@ -1,18 +1,21 @@
 /* ============================================================
-   DNEVNIK — rezultatski dnevnik točnosti (korak 3)
-   Sprema izdane tipove (BTTS Ultra, 2.5 Pro, HT/FT Beta) i po
-   završetku utakmice uspoređuje stvarni ishod. Hit rate i
-   Brier score po kartici — objektivno mjerilo da li motor
-   pretjeruje ili je stvarno točan.
+   DNEVNIK — rezultatski dnevnik točnosti (v2 — slaže se s lib/dnevnik v2)
+   Sprema izdane tipove i po završetku utakmice uspoređuje stvarni
+   ishod. Hit rate i Brier score po kartici — objektivno mjerilo točnosti.
    ============================================================ */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { BookOpen, CheckCircle2, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { brisiDnevnik, dnevnikUnosi, statistika, type DnevnikUnos } from "@/lib/dnevnik";
+import {
+  brisiDnevnik,
+  dnevnikUnosi,
+  pogodakLi,
+  statistika,
+  type DnevnikUnos,
+} from "@/lib/dnevnik";
 import { getRezultat } from "@/lib/dnevnik.functions";
-import { pogodakLi } from "@/lib/dnevnik";
 import { saveJSON } from "@/lib/storage";
 import { getApiKey } from "@/lib/zlatni-guard";
 
@@ -40,12 +43,11 @@ function DnevnikPage() {
   const [settings, setSettings] = useState(false);
 
   const osvjezi = useCallback(() => setUnosi(dnevnikUnosi()), []);
-
   useEffect(() => { osvjezi(); }, [osvjezi]);
 
   const provjeri = useCallback(async () => {
     const apiKey = getApiKey();
-    if (!apiKey) { setStatus("Prvo unesi API-Football ključ u Postavkama (⚙️)."); setSettings(true); return; }
+    if (!apiKey) { setStatus("Prvo unesi API-Sports ključ u Postavkama (⚙️)."); setSettings(true); return; }
     const sviCekajuci = dnevnikUnosi().filter((u) => u.status === "cekaj");
     const cekajuci = sviCekajuci.slice(0, 15); // najviše 15 po posjeti — API red ostaje u granicama
     const ostalo = sviCekajuci.length - cekajuci.length;
@@ -55,15 +57,19 @@ function DnevnikPage() {
     let pogodci = 0, promasaji = 0, josCekaju = 0;
     for (const u of cekajuci) {
       try {
-        const r = await getRezultat({ data: { id: u.fixtureId, apiKey } });
-        if (r.error || !r.gotova) { josCekaju++; continue; }
+        // v2 API: fixtureId + sport; vraća zavrsena/dom/gost/domHT/gostHT
+        const r = await getRezultat({ data: { fixtureId: u.fixtureId, sport: u.sport, apiKey } });
+        if (r.error || !r.zavrsena) { josCekaju++; continue; }
+        // HT/FT tip bez poznatog poluvremena → još čeka (ne broji se kao promašaj)
+        if (u.provjera.vrsta === "htft" && (r.domHT == null || r.gostHT == null)) { josCekaju++; continue; }
+        if (r.dom == null || r.gost == null) { josCekaju++; continue; }
         const svi = dnevnikUnosi();
         const idx = svi.findIndex((x) => x.id === u.id);
         if (idx < 0) continue;
-        const hit = pogodakLi(r.gh, r.ga, r.hth, r.hta, u.provjera);
-        svi[idx].status = hit == null ? "cekaj" : hit ? "pogodak" : "promasaj";
-        svi[idx].rezultat = r.rezultat;
-        if (hit != null) { hit ? pogodci++ : promasaji++; }
+        const hit = pogodakLi(u.provjera, r.dom, r.gost, r.domHT, r.gostHT);
+        svi[idx].status = hit ? "pogodak" : "promasaj";
+        svi[idx].rezultat = `${r.dom} — ${r.gost}${r.domHT != null ? ` (${r.domHT} — ${r.gostHT})` : ""}`;
+        if (hit) pogodci++; else promasaji++;
         saveJSON(KEY, svi);
       } catch { josCekaju++; }
     }
@@ -76,8 +82,13 @@ function DnevnikPage() {
   useEffect(() => { provjeri(); /* eslint-disable-next-line */ }, []);
 
   const stat = statistika();
-  const ukupnoP = stat.reduce((s, x) => s + x.pogodci, 0);
-  const ukupnoN = stat.reduce((s, x) => s + x.promasaji, 0);
+  // v2 statistika nema promašaje i čekaju — računamo iz unosa
+  const cekajuPo = new Map<string, number>();
+  for (const u of dnevnikUnosi().filter((x) => x.status === "cekaj")) {
+    cekajuPo.set(u.kartica, (cekajuPo.get(u.kartica) ?? 0) + 1);
+  }
+  const ukupnoP = stat.reduce((s, x) => s + x.pogodeno, 0);
+  const ukupnoN = stat.reduce((s, x) => s + x.igrano, 0) - ukupnoP;
 
   return (
     <div className="space-y-4">
@@ -144,20 +155,23 @@ function DnevnikPage() {
               </tr>
             </thead>
             <tbody>
-              {stat.map((s) => (
-                <tr key={s.kartica} className="border-t border-border">
-                  <td className="px-3 py-2 font-medium">{s.kartica}</td>
-                  <td className="px-3 py-2 text-right font-mono">{s.broj}</td>
-                  <td className="px-3 py-2 text-right font-mono font-bold">{s.pogodci + s.promasaji > 0 ? fmtPct(s.hitRate) : "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">
-                    {s.pogodci + s.promasaji > 0 ? s.brier.toFixed(3) : "—"}
-                    {s.pogodci + s.promasaji > 0 && (
-                      <span className="ml-1 text-[10px] text-muted-foreground">({brierOcjena(s.brier)})</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right font-mono text-muted-foreground">{s.cekaju}</td>
-                </tr>
-              ))}
+              {stat.map((s) => {
+                const prom = s.igrano - s.pogodeno;
+                return (
+                  <tr key={s.kartica} className="border-t border-border">
+                    <td className="px-3 py-2 font-medium">{s.kartica}</td>
+                    <td className="px-3 py-2 text-right font-mono">{s.igrano}</td>
+                    <td className="px-3 py-2 text-right font-mono font-bold">{prom + s.pogodeno > 0 ? fmtPct(s.hitRate) : "—"}</td>
+                    <td className="px-3 py-2 text-right font-mono">
+                      {prom + s.pogodeno > 0 ? s.brier.toFixed(3) : "—"}
+                      {prom + s.pogodeno > 0 && (
+                        <span className="ml-1 text-[10px] text-muted-foreground">({brierOcjena(s.brier)})</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono text-muted-foreground">{cekajuPo.get(s.kartica) ?? 0}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -166,7 +180,7 @@ function DnevnikPage() {
       <div className="space-y-1.5">
         {unosi.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Dnevnik je prazan. Analiziraj utakmicu na BTTS Ultra, 2.5 Pro ili HT/FT Beta — svaki izdani tip automatski se zapiše ovdje.
+            Dnevnik je prazan. Analiziraj utakmicu na bilo kojoj kartici — izdani tip automatski se zapiše ovdje.
           </div>
         ) : (
           [...unosi].reverse().map((u) => (
@@ -174,7 +188,7 @@ function DnevnikPage() {
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold">{u.utakmica}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  {u.kartica}{u.liga ? ` · ${u.liga}` : ""} · {new Date(u.ts).toLocaleDateString("hr-HR")}
+                  {u.kartica}{u.liga ? ` · ${u.liga}` : ""} · {new Date(u.datum).toLocaleDateString("hr-HR")}
                   {u.rezultat ? ` · rezultat ${u.rezultat}` : ""}
                 </div>
               </div>
@@ -185,7 +199,7 @@ function DnevnikPage() {
                 </div>
                 {u.status === "pogodak" && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />}
                 {u.status === "promasaj" && <XCircle className="h-4 w-4 shrink-0 text-red-400" />}
-                {(!u.status || u.status === "cekaj") && <RefreshCw className="h-4 w-4 shrink-0 text-slate-500" />}
+                {u.status === "cekaj" && <RefreshCw className="h-4 w-4 shrink-0 text-slate-500" />}
               </div>
             </div>
           ))
