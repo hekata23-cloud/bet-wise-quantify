@@ -1,11 +1,11 @@
- /* ============================================================
+/* ============================================================
    BTTS ULTRA — "Oba tima daju gol" pod lupom
    Motor: goals-motor.ts (Poisson + Dixon-Coles + kalibracija tržištem)
    Podaci: goals.functions.ts (kroz api-guard, limiti Football API-ja
    ne mogu biti oboreni ovom karticom)
-   v4: motor UVIJEK radi — i kad bundle ima grešku (limit/ključ/minute)
-   i kad nema kvota; pokazuje upozorenje i daje model tip s fer kvotom.
-   Panel KONKRETAN TIP: jedna strana, kvota, EV, 1/4 Kelly ulog,
+   v5: motor UVIJEK radi — i kad bundle ima grešku (limit/ključ/minute)
+   i kad nema kvota; 90 s timeout po pokušaju + automatski drugi pokušaj;
+   panel KONKRETAN TIP — jedna strana, kvota, EV, 1/4 Kelly ulog,
    sigurnosna linija i protivtip, sve iz same matrice.
    ============================================================ */
 
@@ -116,22 +116,34 @@ function BttsUltraPage() {
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
     const ck = `bttsu.bundle.v4.${u.id}`;
+
+    // v5: 90 s po pokušaju + jedan automatski ponovni pokušaj —
+    // red API-ja (10 poziva/min) zna trajati dulje od 45 s.
+    const dohvati = () =>
+      withTimeout(
+        getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } }),
+        90_000,
+      );
+
     try {
       const kes = localStorage.getItem(ck);
-      const b = kes
-        ? (JSON.parse(kes) as GoalsBundle)
-        : await withTimeout(
-            getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } }),
-            45_000,
-          );
+      let b: GoalsBundle;
+      if (kes) {
+        b = JSON.parse(kes) as GoalsBundle;
+      } else {
+        try {
+          setStatus("Dohvaćam kvote i forme (API red, do 90 s)…");
+          b = await dohvati();
+        } catch {
+          setStatus("Prvi pokušaj nije došao do kraja — pokušavam još jednom…");
+          b = await dohvati();
+        }
+      }
       // Ne pamti greške u keš — samo uspješne bundleve.
       if (!kes && !b.error) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
 
-      // ═══ KLJUČNA PROMJENA: motor UVIJEK radi ═══
-      // Prije je analiza stajala čim je bundle imao grešku (limit, ključ,
-      // minute). Motor zna raditi bez kvota (samo forma) pa je stavljamo
-      // u panel s upozorenjem umjesto praznog ekrana.
+      // Motor UVIJEK radi — i kad bundle ima grešku i kad nema kvota.
       try {
         const a = goalsAnaliza({
           kvote: b.kvote ?? {},
@@ -147,10 +159,8 @@ function BttsUltraPage() {
       } catch {
         setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
       }
-    } catch (e) {
-      setStatus(e instanceof Error && e.message.includes("45")
-        ? "Dohvat podataka je premašio 45 s (API je zaokupljen) — probaj opet za minutu."
-        : "Dohvat podataka nije uspio — probaj opet za minutu.");
+    } catch {
+      setStatus("Dohvat podataka nije uspio ni drugim pokušajem — API je zaokupljen, probaj za minutu.");
     }
     setAnaliziram(false);
   };
@@ -462,4 +472,3 @@ function BttsUltraPage() {
     </div>
   );
 }
-
