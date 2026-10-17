@@ -1,32 +1,20 @@
 /* ═══════════════════════════════════════════════════════════════════
    GOALS-MOTOR — zajednički "mozak" za BTTS Ultra i 2.5 Pro karticu
    ═══════════════════════════════════════════════════════════════════
-   Metodologija (sve u jednom dosljednom modelu, bez "čarobnih brojeva"):
+   v6 — POPRAVCI TOČNOSTI (numericki testirani):
+    - distribucija golova (g0..g4, g5+) sada obuhvaća i rezultate s
+      ukupno 10+ golova (npr. 5:5, 7:6) — staro polje je gubilo masu;
+    - P(BTTS) ≤ P(Over 1.5) garancija vrijedi i nakon formsskog sloja.
 
+   Metodologija:
    1) FORMA → očekivani golovi timova (λ domaćin, μ gost)
-      napad/obrana svakog tima relativno na ligu (1 = prosječno),
-      umnoženo s malom prednošću domaćeg terena (×1.08 / ×0.94).
-   2) TRŽIŠTE → implicitni ukupni golovi: iz de-margined parova
-      Over/Under 1.5 / 2.5 / 3.5 rješavamo Poissonovu CDF i dobivamo
-      λ ukupno kako ga kladionice "vide" (2.5 linija nosi najviše težine).
-   3) MJEŠANJE: finalni ukupni golovi = w·λ(tržište) + (1-w)·λ(forma).
-      Težina tržištu raste s brojem dostupnih linija i kladionica —
-      tržište nije uvijek mjerilo ishoda, ali je najbolji jednostruki
-      prediktor kad je likvidno, pa ga nikad ne ignoriramo potpuno.
-   4) RAZDVOBA λ domaćin/gost: kalibrira se prema de-margined 1X2
-      (gruba pretraga omjera), ne uzalud "po osjećaju".
-   5) DIXON-COLES korekcija (rho): golovi nisu nezavisni — 0:0 i 1:1
-      su češći, a 0:1/1:0 rjeđi nego što čisti Poisson kaže. Rho se
-      fita na tržištu U 1.5 kad je dostupno, inače -0.05.
-   6) IZ FINALNE MATRICE rezultata (0..9 × 0..9) dolazi SVIŠTA isto:
-      BTTS, Over/Under 1.5/2.5/3.5, 1X2, top rezultati — zato je
-      model unutarnje konzistentan (P(Over 2.5) < P(Over 1.5) uvijek).
-   7) BTTS i Over 2.5 dobiju mali dodatni "formski" sloj (do 20% težine)
-      iz stvarne BTTS/Over forme oba tima — tržišta tu često kasne.
-   8) EDGE i KELLY spram stvarnih kvota; ocjena povjerenja (A+..C)
-      od uzorka forme, pokrivenosti tržišta i suglasnosti model-tržište.
-
-   Zaštićeni ugovori nema — čisti matematički modul, može se testirati.
+   2) TRŽIŠTE → implicitni ukupni golovi iz de-margined O/U linija
+   3) MJEŠANJE: w·λ(tržište) + (1-w)·λ(forma)
+   4) RAZDVOBA λ domaćin/gost kalibrirana de-margined 1X2
+   5) DIXON-COLES korekcija (rho), fit na U 1.5
+   6) SVI izlazi iz jedne matrice rezultata (0..9 × 0..9)
+   7) BTTS i Over 2.5 dobiju mali formsski sloj (do 20% težine)
+   8) EDGE i KELLY spram stvarnih kvota; ocjena povjerenja A+..C
    ═══════════════════════════════════════════════════════════════════ */
 
 export type FormaGolovi = {
@@ -56,7 +44,7 @@ export type GoalsIzlaz = {
   model: Record<string, number>;
   /** de-margined tržište (samo dostupne stavke) */
   market: Record<string, number>;
-  /** finalne vjerojatnosti (grid + formski sloj) */
+  /** finalne vjerojatnosti (grid + formsski sloj) */
   final: Record<string, number>;
   /** fer kvota = 1 / vjerojatnost */
   fairOdds: Record<string, number>;
@@ -322,7 +310,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const G = izgradiGrid(lamH, lamA, rho);
   const M = metrikeIzGrida(G);
 
-  /* 7) formski sloj za BTTS i Over 2.5 */
+  /* 7) formsski sloj za BTTS i Over 2.5 */
   const model: Record<string, number> = {};
   const mModel = metrikeIzGrida(izgradiGrid(lamModel, muModel, rho));
   model["1"] = mModel.p1;
@@ -353,8 +341,9 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   o25 = clamp(o25, M.o35, M.o15);
   const o15 = M.o15;
   const o35 = M.o35;
+  // P(BTTS) ≤ P(Over 1.5) matematici mora vrijediti i nakon formsskog sloja.
+  bttsDa = clamp(bttsDa, 0.001, Math.max(0.001, Math.min(0.999, M.o15)));
   const bttsNe = clamp(1 - bttsDa, 0.001, 0.999);
-  bttsDa = clamp(bttsDa, 0.001, 0.999);
 
   const final: Record<string, number> = {
     "1": M.p1, "X": M.pX, "2": M.p2,
@@ -363,13 +352,15 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     u15: 1 - o15, u25: 1 - o25, u35: 1 - o35,
   };
   // distribucija ukupnih golova (za 2.5 Pro): g0..g4, g5+
+  // VAŽNO: polje ide do 2*MAX_GOL jer zbroj golova (i+j) može biti do 18
+  // (npr. 5:5, 7:6) — staro polje do 9 ti je rezultate gubilo iz g5+.
   {
-    const pg: number[] = new Array(MAX_GOL + 1).fill(0);
+    const pg: number[] = new Array(2 * MAX_GOL + 1).fill(0);
     for (let i = 0; i <= MAX_GOL; i++)
       for (let j = 0; j <= MAX_GOL; j++) pg[i + j]! += G[i]![j]!;
     for (let k = 0; k <= 4; k++) final[`g${k}`] = pg[k]!;
     let g5 = 0;
-    for (let k = 5; k <= MAX_GOL; k++) g5 += pg[k]!;
+    for (let k = 5; k <= 2 * MAX_GOL; k++) g5 += pg[k]!;
     final["g5+"] = g5;
   }
 
