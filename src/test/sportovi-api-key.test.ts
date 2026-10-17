@@ -24,7 +24,10 @@ describe.each(["kosarka", "rukomet"] as const)("%s saved API credential", (sport
   beforeEach(() => {
     vi.clearAllMocks();
     guard.dohvatiUtakmiceSport.mockResolvedValue({ ok: true, data: [] });
-    guard.dohvatiOddsSport.mockResolvedValue({ ok: true, data: [] });
+    guard.dohvatiOddsSport.mockResolvedValue({ ok: true, data: [{ bookmakers: [
+      { name: "Other", bets: [{ name: "Home/Away", values: [{ value: "Home", odd: "3.00" }, { value: "Away", odd: "1.40" }] }] },
+      { name: "Bet365", bets: [{ name: "Home/Away", values: [{ value: "Home", odd: "1.80" }, { value: "Away", odd: "2.00" }] }] },
+    ] }] });
     guard.dohvatiH2HSport.mockResolvedValue({ ok: true, data: [] });
   });
   it("forwards the entered key when loading games", async () => {
@@ -40,5 +43,15 @@ describe.each(["kosarka", "rukomet"] as const)("%s saved API credential", (sport
   it("forwards the entered key on the bundle path", async () => {
     await getSportBundle({ data: { sport, id: 42, apiKey: "test-credential" } });
     expect(guard.dohvatiOddsSport).toHaveBeenCalledWith(sport, 42, "test-credential");
+  });
+  it("uses only Bet365 odds when Bet365 is offered", async () => {
+    const r = await getSportBundle({ data: { sport, id: 42, apiKey: "k" } });
+    expect(r.bookmaker).toBe("Bet365");
+    expect(r.kvote["2"]).toBe(2);
+  });
+  it("refuses a pick when no odds exist", async () => {
+    guard.dohvatiOddsSport.mockResolvedValue({ ok: true, data: [] });
+    const r = await analizirajSportUtakmicuServer({ data: { sport, utakmica: { id: 1 } as any, apiKey: "k" } });
+    expect(r.ok).toBe(false);
   });
 });

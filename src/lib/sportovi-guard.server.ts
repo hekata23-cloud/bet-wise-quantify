@@ -161,7 +161,13 @@ export async function sportoviGet(
   if (running) return running;
 
   const scope = scopeKey(sport, apiKey);
-  const blok = breakerCheck(scope);
+  let blok = breakerCheck(scope);
+  if (blok && blok.startsWith("RATE_LIMIT")) {
+    // Kratko hlađenje (≤15 s): pričekaj na serveru umjesto da korisnik vidi grešku.
+    const m = blok.match(/još (\d+) s/);
+    const sek = m ? Number(m[1]) : 15;
+    if (sek <= 16) { await sleep(sek * 1000 + 300); blok = breakerCheck(scope); }
+  }
   if (blok) {
     if (hit) return { error: null, data: hit.v, status: 200, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
     return { error: blok, data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
@@ -172,7 +178,7 @@ export async function sportoviGet(
     breakerRecord(scope, res);
     // Retry SAMO na minurni RATE_LIMIT — dnevni limit se ne oporavlja čekanjem.
     if (res.error && res.error.startsWith("RATE_LIMIT") && res.status === 429) {
-      await sleep(RETRY_DELAY_MS);
+      await sleep(RETRY_DELAY_MS * 4);
       res = await guardFetch(sport, path, apiKey);
       breakerRecord(scope, res);
     }
@@ -208,7 +214,7 @@ function uOdgovor(r: GuardResult): SportOdgovor {
   return { ok: r.error === null, data: r.data, error: r.error, code };
 }
 export async function dohvatiUtakmiceSport(sport: Sport, date: string, apiKey?: string): Promise<SportOdgovor> {
-  return uOdgovor(await sportoviGet(sport, `/games?date=${encodeURIComponent(date)}`, { apiKey: apiKey ?? kljuc() }));
+  return uOdgovor(await sportoviGet(sport, `/games?date=${encodeURIComponent(date)}&timezone=Europe%2FZagreb`, { apiKey: apiKey ?? kljuc() }));
 }
 export async function dohvatiOddsSport(sport: Sport, gameId: number, apiKey?: string): Promise<SportOdgovor> {
   return uOdgovor(await sportoviGet(sport, `/odds?game=${gameId}`, { apiKey: apiKey ?? kljuc() }));

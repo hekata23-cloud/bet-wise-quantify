@@ -73,7 +73,7 @@ export function SportProStranica(props: {
   const [rez, setRez] = useState<Record<number, Rezultat>>({});
   const [settings, setSettings] = useState(false);
 
-  const rezKljuc = (dan: string) => `${pre}.rez.v3.${dan}`;
+  const rezKljuc = (dan: string) => `${pre}.rez.v4.${dan}`;
 
   useEffect(() => {
     try {

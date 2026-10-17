@@ -195,8 +195,12 @@ function kvoteIzOdds(oddsResp: any[], sport: Sport): {
   let bookmaker: string | null = null;
   let knjiga = 0;
 
-  for (const item of oddsResp ?? []) {
-    const bms = Array.isArray(item?.bookmakers) ? item.bookmakers : [];
+  // Bet365 ima apsolutnu prednost: ako ga ima, koriste se SAMO njegove kvote.
+  const sve: any[] = (oddsResp ?? []).flatMap((it: any) => (Array.isArray(it?.bookmakers) ? it.bookmakers : []));
+  const b365 = sve.filter((b) => /bet ?365/i.test(String(b?.name ?? "")));
+  const odabrane = b365.length ? b365 : sve;
+  for (const item of [{ bookmakers: odabrane }]) {
+    const bms = item.bookmakers;
     for (const bm of bms) {
       knjiga++;
       if (!bookmaker && bm?.name) bookmaker = String(bm.name);
@@ -332,6 +336,10 @@ export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
       knjiga: 0,
       bookmaker: null,
     };
+
+    if (!oddsRes.ok) return { ok: false, error: oddsRes.error ?? "Dohvat kvota nije uspio." };
+    if (!Object.keys(parsed.kvote).length)
+      return { ok: false, error: "Bet365 i ostale kladionice još nisu objavile kvote za ovu utakmicu — tip bi bio nagađanje, pa ga ne prikazujem." };
 
     let h2hGoloviDom: number[] = [];
     let h2hGoloviGost: number[] = [];
