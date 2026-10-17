@@ -3,19 +3,16 @@
 // ova kartica ne ostaje prazna: ista prognoza se izračuna preko korisnikovog
 // besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
 //
-// BRZINA: prva 3 modela pitaju se PARALELNO — tko prvi vrati ispravan JSON,
-// ta prognoza ide na ekran. To skida čekanje od 1-2 minute na spore modele.
-// Popis modela provjeren živim upitom na OpenRouter /models (16.10.2026):
-// - "openrouter/free" NE postoji kao model → uklonjen.
-// - inkling:free → samo agentic aplikacije (403) → uklonjen.
-// - ultra-550b → prespor → uklonjen.
+// BRZINA: prva 4 modela pitaju se PARALELNO — tko prvi vrati ispravan JSON,
+// ta prognoza ide na ekran. v2: 60 s po modelu, 4 paralelna, jasnije greške.
+// Popis modela provjeren živim upitom na OpenRouter /models (17.10.2026).
 import { openrouterChat } from "./openrouter";
 import { hasKey } from "./storage";
 import type { AiPrognoza } from "./ai-prognoza.functions";
 
 export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: string };
 
-/** Besplatni OpenRouter modeli — prva tri idu paralelno, ostatak redom. */
+/** Besplatni OpenRouter modeli — prva četiri idu paralelno, ostatak redom. */
 const FREE_MODELS = [
   "google/gemma-4-31b-it:free",
   "poolside/laguna-s-2.1:free",
@@ -24,6 +21,8 @@ const FREE_MODELS = [
   "nvidia/nemotron-3-super-120b-a12b:free",
   "dots-studio/dots-3-note-preview:free",
   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  "xingchen-agi/xing4.0-29b-a4b:free",
+  "nvidia/nemotron-3.5-super-vl:free",
 ];
 
 const SCHEMA_TEXT = `{
@@ -130,7 +129,7 @@ ${SCHEMA_TEXT}`;
     onProgress?.(`Rezervni mozak (besplatno): ${model}…`);
     const out = await withTimeout(
       openrouterChat(model, poruke, { maxTokens: 1400, temperature: 0.3 }),
-      45_000,
+      60_000,
     );
     const p = parsePrognoza(out);
     if (p) return p;
@@ -139,9 +138,9 @@ ${SCHEMA_TEXT}`;
 
   const errs: string[] = [];
 
-  // FAZA 1: prva tri modela PARALELNO — prvi ispravni odgovor pobjeđuje.
+  // FAZA 1: prva četiri modela PARALELNO — prvi ispravan odgovor pobjeđuje.
   try {
-    const p = await Promise.any(FREE_MODELS.slice(0, 3).map((m) => pokusaj(m)));
+    const p = await Promise.any(FREE_MODELS.slice(0, 4).map((m) => pokusaj(m)));
     return { ok: true, p };
   } catch (e) {
     const agg = e as AggregateError;
@@ -150,9 +149,10 @@ ${SCHEMA_TEXT}`;
     } else errs.push(e instanceof Error ? e.message : String(e));
   }
 
-  // FAZA 2: ostatak modela redom (sporije, ali daje prognozu ako glavni tricu omanu).
-  for (const model of FREE_MODELS.slice(3)) {
+  // FAZA 2: ostatak modela redom (sporije, ali daje prognozu ako prva četiri omanu).
+  for (const model of FREE_MODELS.slice(4)) {
     try {
+      onProgress?.(`Rezervni mozak: još pokušavam s ${model}…`);
       const p = await pokusaj(model);
       return { ok: true, p };
     } catch (e) {
@@ -162,5 +162,5 @@ ${SCHEMA_TEXT}`;
 
   return { ok: false, error: `Rezervni mozak nije uspio. ${errs.slice(0, 3).join(" | ")}` };
 }
-  
+
 
