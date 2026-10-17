@@ -48,17 +48,40 @@ function DnevnikPage() {
   const provjeri = useCallback(async () => {
     const apiKey = getApiKey();
     if (!apiKey) { setStatus("Prvo unesi API-Sports ključ u Postavkama (⚙️)."); setSettings(true); return; }
-    const sviCekajuci = dnevnikUnosi().filter((u) => u.status === "cekaj");
+    // Ne troši API pozive: preskoči tipove provjerene u zadnjih 30 min i
+    // tipove zapisane prije manje od 2 h (utakmica sigurno nije gotova).
+    const sad = Date.now();
+    const sviCekajuci = dnevnikUnosi().filter(
+      (u) =>
+        u.status === "cekaj" &&
+        sad - (u.zadnjaProvjera ?? 0) > 30 * 60_000 &&
+        sad - new Date(u.datum).getTime() > 2 * 60 * 60_000,
+    );
     const cekajuci = sviCekajuci.slice(0, 15); // najviše 15 po posjeti — API red ostaje u granicama
     const ostalo = sviCekajuci.length - cekajuci.length;
-    if (!cekajuci.length) { setStatus("Svi tipovi su već provjereni."); return; }
+    if (!cekajuci.length) {
+      const ima = dnevnikUnosi().some((u) => u.status === "cekaj");
+      setStatus(ima ? "Tipovi koji čekaju još nisu spremni za provjeru (utakmice traju ili su nedavno provjerene)." : "Svi tipovi su već provjereni.");
+      return;
+    }
     setProvjeram(true);
     setStatus(`Provjeravam ${cekajuci.length} tipova kroz API red…`);
     let pogodci = 0, promasaji = 0, josCekaju = 0;
+    let zaustavljeno: string | null = null;
     for (const u of cekajuci) {
       try {
         // v2 API: fixtureId + sport; vraća zavrsena/dom/gost/domHT/gostHT
         const r = await getRezultat({ data: { fixtureId: u.fixtureId, sport: u.sport, apiKey } });
+        {
+          const svi0 = dnevnikUnosi();
+          const i0 = svi0.findIndex((x) => x.id === u.id);
+          if (i0 >= 0) { svi0[i0].zadnjaProvjera = Date.now(); saveJSON(KEY, svi0); }
+        }
+        if (r.error && /DNEVNI_LIMIT|ACCOUNT|RATE_LIMIT/.test(r.error)) {
+          // osigurač: odmah stani, ne troši dalje pozive
+          zaustavljeno = r.error;
+          break;
+        }
         if (r.error || !r.zavrsena) { josCekaju++; continue; }
         // HT/FT tip bez poznatog poluvremena → još čeka (ne broji se kao promašaj)
         if (u.provjera.vrsta === "htft" && (r.domHT == null || r.gostHT == null)) { josCekaju++; continue; }
@@ -66,7 +89,7 @@ function DnevnikPage() {
         const svi = dnevnikUnosi();
         const idx = svi.findIndex((x) => x.id === u.id);
         if (idx < 0) continue;
-        const hit = pogodakLi(u.provjera, r.dom, r.gost, r.domHT, r.gostHT);
+        const hit = pogodakLi(u.provjera, r.dom, r.gost, r.domHT, r.gostHT, r.domReg, r.gostReg);
         svi[idx].status = hit ? "pogodak" : "promasaj";
         svi[idx].rezultat = `${r.dom} — ${r.gost}${r.domHT != null ? ` (${r.domHT} — ${r.gostHT})` : ""}`;
         if (hit) pogodci++; else promasaji++;
@@ -74,7 +97,8 @@ function DnevnikPage() {
       } catch { josCekaju++; }
     }
     osvjezi();
-    setStatus(`Gotovo: ${pogodci} pogođeno, ${promasaji} promašeno${josCekaju ? `, ${josCekaju} još čeka rezultat` : ""}${ostalo > 0 ? `. Još ${ostalo} tipova čeka sljedeću provjeru.` : ""}`);
+    if (zaustavljeno) setStatus(`Provjera zaustavljena radi zaštite API računa (${pogodci} pogođeno, ${promasaji} promašeno do tada): ${zaustavljeno}`);
+    else setStatus(`Gotovo: ${pogodci} pogođeno, ${promasaji} promašeno${josCekaju ? `, ${josCekaju} još čeka rezultat` : ""}${ostalo > 0 ? `. Još ${ostalo} tipova čeka sljedeću provjeru.` : ""}`);
     setProvjeram(false);
   }, [osvjezi]);
 
@@ -183,7 +207,7 @@ function DnevnikPage() {
             Dnevnik je prazan. Analiziraj utakmicu na bilo kojoj kartici — izdani tip automatski se zapiše ovdje.
           </div>
         ) : (
-          [...unosi].reverse().map((u) => (
+          unosi.map((u) => (
             <div key={u.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2">
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold">{u.utakmica}</div>

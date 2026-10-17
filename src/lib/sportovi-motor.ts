@@ -3,31 +3,55 @@
    Šta motor radi:
    1) λ (očekivani bodovi/golovi) timova iz forme, s razdvojbom
       doma/u gostima i skupljanjem prema prosjeku sporta kad je
-      uzorak mali (šrinkanje — mala serija ne smije visjeti cijeli model);
-   2) prednost domaćeg terena iz podataka sporta (košarka ≈ +2.7 boda,
-      rukomet ≈ +1.6 gola), upola dodijeljena svakoj strani;
+      uzorak mali;
+   2) prednost domaćeg terena (košarka ≈ +2.7, rukomet ≈ +1.6);
    3) vjerojatnost pobjede: logistička krivulja nad razlikom λ;
       rukomet ima i NERJEŠENO — p(X) iz rasporeda razlike golova;
-   4) Over/Under: očekivani UKUPNI zbroj vs linija, s raspršenjem
-      (σ) iz stvarnih serija timova, prebačenim na σ sporta kad je
-      uzorak malen;  P(over) = 1 − Φ((linija − E)/σ);
-   5) kalibracija tržištem: de-marginirane kvote miješaju se s modelom
-      (težina tržišta raste s brojem kladionica, pada s veličinom uzorka) —
-      motor nikad ne kaže "sigurno", već stavlja model u ravnopravni
-      dijalog s novcem na tržištu;
+   4) Over/Under: očekivani UKUPNI zbroj vs linija;
+   5) kalibracija tržištem: de-marginirane kvote miješaju se s modelom;
    6) KONKRETAN TIP: najjači edge preko svih tržišta, EV i 1/4 Kelly.
    ============================================================ */
 
+export type SportUtakmica = {
+  id: number;
+  sport: "kosarka" | "rukomet";
+  datumIso: string;
+  pocetakFormatirano: string;
+  timestamp: number;
+  ligaId: number;
+  ligaNaziv: string;
+  ligaZemlja: string;
+  ligaSezona: string;
+  domacinId: number;
+  domacinNaziv: string;
+  domacinLogo: string | null;
+  gostId: number;
+  gostNaziv: string;
+  gostLogo: string | null;
+  statusShort: string;
+  statusLong: string;
+  rezultatDomacin: number | null;
+  rezultatGost: number | null;
+  detalji?: Record<string, any>;
+};
+
 export type SportUlaz = {
   sport: "kosarka" | "rukomet";
+  utakmica?: SportUtakmica;
   kvote: Record<string, number>;
-  linija: number | null;
-  formaDom: SportFormaIzvor | null;
-  formaGost: SportFormaIzvor | null;
+  linija?: number | null;
+  linijaKladionice?: number | null;
+  linijaDom?: number | null;
+  linijaDomKladionice?: number | null;
+  linijaGost?: number | null;
+  linijaGostKladionice?: number | null;
+  formaDom?: SportFormaIzvor | null;
+  formaGost?: SportFormaIzvor | null;
+  h2hGoloviDom?: number[];
+  h2hGoloviGost?: number[];
   brojKladionica?: number;
 };
 
-/** Minimalni oblik forme koji motor traži (kompatibilno sa SportForma). */
 export type SportFormaIzvor = {
   odigrano: number;
   postignuti: number;
@@ -51,226 +75,252 @@ export type SportIzlaz = {
   edge: Record<string, number>;
   kelly: Record<string, number>;
   tip: {
-    kljuc: string;      // "1" | "X" | "2" | "over" | "under"
+    kljuc: string;
     label: string;
     p: number;
     kvota: number | null;
     edge: number;
     ev: number;
-    kellyPct: number;   // % banke (1/4 Kelly, max 3)
+    kellyPct: number;
   } | null;
+  tipovi: SportTipTrzista[];
+  sigmaTim: number;
   povjerenje: number;
   ocjena: string;
   upozorenja: string[];
   faktori: string[];
+  bookmaker?: string | null;
 };
 
-/** Konstante sporta (iz podataka): prednost domaćih, raspršenja, osjetljivost. */
+export type SportTipTrzista = {
+  trziste: "1x2" | "ukupno" | "dom" | "gost";
+  naslov: string;
+  kljuc: string;
+  label: string;
+  linija: number | null;
+  p: number;
+  kvota: number | null;
+  fer: number;
+  edge: number | null;
+  izvor: "tržište" | "model";
+  vrijednost: boolean;
+};
+
 const KONST = {
   kosarka: {
-    prosjekTima: 82,     // tipičan timski broj bodova (za šrinkanje malih uzoraka)
-    homeAdv: 2.7,        // bodova prednosti domaćeg terena
-    sigmaDefault: 20,    // sd ukupnog zbroja bodova
-    k: 0.16,             // logistička osjetljivost na bod razlike
+    prosjekTima: 82,
+    homeAdv: 2.7,
+    sigmaDefault: 20,
+    sigmaTim: 12,
+    sigmaRazlika: 12,
+    k: 0.16,
   },
   rukomet: {
-    prosjekTima: 28.5,   // tipičan timski broj golova
+    prosjekTima: 28.5,
     homeAdv: 1.6,
     sigmaDefault: 5.8,
-    sigmaDiffDefault: 5.2, // sd gol-razlike (za nerješeno)
+    sigmaDiffDefault: 5.2,
+    sigmaTim: 4.2,
     k: 0.13,
   },
 } as const;
 
-/** Standardna normalna CDF — Φ(x). */
 function phi(x: number): number {
-  // Abramowitz–Stegun 7.1.26 za erf
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
   const d = 0.3989422804014327 * Math.exp((-x * x) / 2);
-  const p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   return x >= 0 ? 1 - p : p;
 }
-function sigmoid(x: number): number {
-  return 1 / (1 + Math.exp(-x));
-}
-function clamp01(x: number, lo = 0.01, hi = 0.99): number {
-  return Math.min(hi, Math.max(lo, x));
+
+function devigProporcionalno(kvote: Record<string, number>, kljucevi: string[]): Record<string, number> {
+  const prisutni = kljucevi.filter((k) => kvote[k] && kvote[k] > 1);
+  if (prisutni.length < 2) return {};
+  const inv = prisutni.map((k) => 1 / kvote[k]!);
+  const suma = inv.reduce((a, b) => a + b, 0);
+  const out: Record<string, number> = {};
+  for (let i = 0; i < prisutni.length; i++) {
+    out[prisutni[i]!] = inv[i]! / suma;
+  }
+  return out;
 }
 
 export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
   const c = KONST[ulaz.sport];
   const upozorenja: string[] = [];
   const faktori: string[] = [];
-  const dom = ulaz.formaDom;
-  const gost = ulaz.formaGost;
-  const knjiga = Math.max(0, ulaz.brojKladionica ?? 0);
+  const dom = ulaz.formaDom ?? null;
+  const gost = ulaz.formaGost ?? null;
 
-  /* ── 1) λ: napad domaćina protiv obrane gosta, s razdvojbom i šrinkanjem ── */
-  const dobarVenue = (f: SportFormaIzvor, venue: "doma" | "uGostima") => {
-    const v = f?.[venue];
-    return v && v.odigrano >= 3 ? v.postignuti / v.odigrano : null;
-  };
-  const prosjek = (f: SportFormaIzvor, kljuc: "postignuti" | "primljeni") =>
-    f && f.odigrano > 0 ? f[kljuc] / f.odigrano : null;
+  let baseDom = dom && dom.odigrano >= 3 ? dom.postignuti / dom.odigrano : c.prosjekTima;
+  let baseGost = gost && gost.odigrano >= 3 ? gost.postignuti / gost.odigrano : c.prosjekTima;
 
-  const napadDom = dobarVenue(dom, "doma") ?? prosjek(dom, "postignuti") ?? null;
-  const obranaDom = dom?.doma && dom.doma.odigrano >= 3 ? dom.doma.primljeni / dom.doma.odigrano : prosjek(dom, "primljeni");
-  const napadGost = dobarVenue(gost, "uGostima") ?? prosjek(gost, "postignuti") ?? null;
-  const obranaGost = gost?.uGostima && gost.uGostima.odigrano >= 3 ? gost.uGostima.primljeni / gost.uGostima.odigrano : prosjek(gost, "primljeni");
+  const nDom = dom?.odigrano ?? 0;
+  const nGost = gost?.odigrano ?? 0;
+  const wDom = Math.min(1, nDom / 10);
+  const wGost = Math.min(1, nGost / 10);
+  baseDom = wDom * baseDom + (1 - wDom) * c.prosjekTima;
+  baseGost = wGost * baseGost + (1 - wGost) * c.prosjekTima;
 
-  // sirova procjena = (napad napadača + obrana obranjenog) / 2, pa šrinkanje
-  const shrink = (f: SportFormaIzvor, g: SportFormaIzvor) => {
-    const n = Math.max(f?.odigrano ?? 0, g?.odigrano ?? 0);
-    return n / (n + 6); // 6 = koliko "polutakmica" uzimamo zadržano prema prosjeku
-  };
-  const w = shrink(dom, gost);
-  const sirovaDom = napadDom != null && obranaGost != null ? (napadDom + obranaGost) / 2 : (napadDom ?? obranaGost ?? c.prosjekTima);
-  const sirovaGost = napadGost != null && obranaDom != null ? (napadGost + obranaDom) / 2 : (napadGost ?? obranaDom ?? c.prosjekTima);
-  /* home advantage vrijedi UVJEK — ne smije nestati kad forma ne postoji:
-     λ = (1−w)·prosjek + w·sirova procjena ± homeAdv/2 */
-  const lambdaDom = (1 - w) * c.prosjekTima + w * sirovaDom + c.homeAdv / 2;
-  const lambdaGost = (1 - w) * c.prosjekTima + w * sirovaGost - c.homeAdv / 2;
+  const lambdaDom = Math.max(1, baseDom + c.homeAdv / 2);
+  const lambdaGost = Math.max(1, baseGost - c.homeAdv / 2);
+  const ukupnoOcekivano = lambdaDom + lambdaGost;
 
-  faktori.push(`Očekivani učinak — domaćin λ=${lambdaDom.toFixed(1)}, gost λ=${lambdaGost.toFixed(1)} (${ulaz.sport === "kosarka" ? "bodova" : "golova"}).`);
-  if (dom) faktori.push(`Domaćin: ${dom.postignuti}/${dom.odigrano} postignutih, ${dom.primljeni} primljenih u zadnjih ${dom.odigrano}.`);
-  if (gost) faktori.push(`Gost: ${gost.postignuti}/${gost.odigrano} postignutih, ${gost.primljeni} primljenih u zadnjih ${gost.odigrano}.`);
-  const domaRazd = dom?.doma && dom.doma.odigrano >= 3 ? dom.doma : null;
-  const gostRazd = gost?.uGostima && gost.uGostima.odigrano >= 3 ? gost.uGostima : null;
-  if (domaRazd) faktori.push(`Domaćin DOMA: ${domaRazd.postignuti}/${domaRazd.odigrano} postignutih, ${domaRazd.primljeni} primljenih.`);
-  if (gostRazd) faktori.push(`Gost U GOSTIMA: ${gostRazd.postignuti}/${gostRazd.odigrano} postignutih, ${gostRazd.primljeni} primljenih.`);
-  const trendDom = dom && dom.odigrano >= 8 ? dom.trend : null;
-  const trendGost = gost && gost.odigrano >= 8 ? gost.trend : null;
-  if (trendDom != null && Math.abs(trendDom) > 2) faktori.push(`Domaćin ${trendDom > 0 ? "igra SVE BOLJE" : "pada u formi"} (trend ${trendDom > 0 ? "+" : ""}${trendDom.toFixed(1)} ${ulaz.sport === "kosarka" ? "boda" : "gola"}).`);
-  if (trendGost != null && Math.abs(trendGost) > 2) faktori.push(`Gost ${trendGost > 0 ? "igra SVE BOLJE" : "pada u formi"} (trend ${trendGost > 0 ? "+" : ""}${trendGost.toFixed(1)} ${ulaz.sport === "kosarka" ? "boda" : "gola"}).`);
-  if (w < 0.45) upozorenja.push("Mali uzorak forme — model je jaka prema prosjeku sporta, povjerenje je niže.");
-  if (!dom || !gost) upozorenja.push("Nedostaje forma jednog tima — analiza je djelomična.");
-
-  /* ── 2) model 1X2 ── */
-  const model: Record<string, number> = {};
+  const sigmaTim = c.sigmaTim;
+  const sigmaUkupno = c.sigmaDefault;
   const diff = lambdaDom - lambdaGost;
+
+  const model: Record<string, number> = {};
   if (ulaz.sport === "kosarka") {
-    const p1 = clamp01(sigmoid(c.k * diff));
+    const p1 = 1 / (1 + Math.exp(-c.k * diff));
     model["1"] = p1;
     model["2"] = 1 - p1;
+    const pX = phi(0.5 / ((c as any).sigmaRazlika as number)) - phi(-0.5 / ((c as any).sigmaRazlika as number));
+    model["X"] = Math.max(0.04, Math.min(0.12, pX));
   } else {
-    const sdDiff =
-      dom && gost && dom.razlikaSd > 0 && gost.razlikaSd > 0
-        ? Math.sqrt((dom.razlikaSd * dom.razlikaSd + gost.razlikaSd * gost.razlikaSd) / 2)
-        : KONST.rukomet.sigmaDiffDefault;
-    const sdUz = Math.max(2.5, Math.min(8, sdDiff));
-    const pX = clamp01(2 * phi(0.5 / sdUz) - 1, 0.02, 0.2);
-    const s = sigmoid(KONST.rukomet.k * diff);
-    model["1"] = (1 - pX) * s;
-    model["2"] = (1 - pX) * (1 - s);
+    const sdDiff = ((c as any).sigmaDiffDefault as number);
+    const pX = Math.max(0.07, Math.min(0.13, phi((0.5 - diff) / sdDiff) - phi((-0.5 - diff) / sdDiff)));
+    const ostatak = 1 - pX;
+    const p1Raw = 1 / (1 + Math.exp(-c.k * diff));
+    model["1"] = ostatak * p1Raw;
     model["X"] = pX;
+    model["2"] = ostatak * (1 - p1Raw);
   }
 
-  /* ── 3) model Over/Under ── */
-  const ukupnoOcekivano = lambdaDom + lambdaGost;
-  const sdUzorak =
-    dom && gost && dom.ukupnoSd > 0 && gost.ukupnoSd > 0
-      ? Math.sqrt((dom.ukupnoSd * dom.ukupnoSd + gost.ukupnoSd * gost.ukupnoSd) / 2)
-      : 0;
-  const wSd = Math.max(dom?.odigrano ?? 0, gost?.odigrano ?? 0) >= 8 ? 1 : 0.5;
-  const sigmaUkupno = sdUzorak > 0 ? c.sigmaDefault + wSd * (sdUzorak - c.sigmaDefault) : c.sigmaDefault;
-  const linija = ulaz.linija;
+  const linija = ulaz.linijaKladionice ?? ulaz.linija ?? null;
+  const ld = ulaz.linijaDomKladionice ?? ulaz.linijaDom ?? null;
+  const lg = ulaz.linijaGostKladionice ?? ulaz.linijaGost ?? null;
+
   if (linija != null) {
-    const over = clamp01(1 - phi((linija - ukupnoOcekivano) / sigmaUkupno), 0.02, 0.98);
-    model["over"] = over;
-    model["under"] = 1 - over;
-    faktori.push(`Očekivani UKUPNI zbroj ${ukupnoOcekivano.toFixed(1)} vs linija ${linija} (raspršenje σ=${sigmaUkupno.toFixed(1)}).`);
+    const pOver = 1 - phi((linija - ukupnoOcekivano) / sigmaUkupno);
+    model["over"] = Math.max(0.05, Math.min(0.95, pOver));
+    model["under"] = 1 - model["over"]!;
+  }
+  if (ld != null) {
+    const pOver = 1 - phi((ld - lambdaDom) / sigmaTim);
+    model["dom_over"] = Math.max(0.05, Math.min(0.95, pOver));
+    model["dom_under"] = 1 - model["dom_over"]!;
+  }
+  if (lg != null) {
+    const pOver = 1 - phi((lg - lambdaGost) / sigmaTim);
+    model["gost_over"] = Math.max(0.05, Math.min(0.95, pOver));
+    model["gost_under"] = 1 - model["gost_over"]!;
   }
 
-  /* ── 4) tržište: de-marginirane kvote ── */
-  const kv = ulaz.kvote ?? {};
-  const market: Record<string, number> = {};
-  if (kv["1"] && kv["2"]) {
-    const im1 = 1 / kv["1"];
-    const imX = kv["X"] ? 1 / kv["X"] : 0;
-    const im2 = 1 / kv["2"];
-    const z = im1 + imX + im2;
-    market["1"] = im1 / z;
-    market["2"] = im2 / z;
-    if (imX) market["X"] = imX / z;
-  }
-  if (kv["over"] && kv["under"]) {
-    const imO = 1 / kv["over"];
-    const imU = 1 / kv["under"];
-    const z = imO + imU;
-    market["over"] = imO / z;
-    market["under"] = imU / z;
-  }
-
-  /* ── 5) final: kalibracija modela tržištem ── */
-  const final: Record<string, number> = {};
-  const wTrz = Math.min(0.45, 0.15 + 0.05 * knjiga); // više kladionica = više povjerenja u tržište
-  for (const k of Object.keys(model)) {
-    const m = market[k];
-    final[k] = m != null ? clamp01((1 - wTrz) * model[k] + wTrz * m) : clamp01(model[k]);
-  }
-  // očuvanje zbroja: 1X2 normaliziraj na 1, over+under na 1
-  const normiraj = (keys: string[]) => {
-    const z = keys.reduce((a, k) => a + (final[k] ?? 0), 0);
-    if (z > 0) for (const k of keys) final[k] = (final[k] ?? 0) / z;
+  const market: Record<string, number> = {
+    ...devigProporcionalno(ulaz.kvote, ulaz.sport === "rukomet" ? ["1", "X", "2"] : ["1", "2"]),
+    ...devigProporcionalno(ulaz.kvote, ["over", "under"]),
+    ...devigProporcionalno(ulaz.kvote, ["overDom", "underDom"]),
+    ...devigProporcionalno(ulaz.kvote, ["overGost", "underGost"]),
   };
-  if (final["1"] != null && final["2"] != null) normiraj(final["X"] != null ? ["1", "X", "2"] : ["1", "2"]);
-  if (final["over"] != null && final["under"] != null) normiraj(["over", "under"]);
 
-  /* ── 6) fer kvote, edge, Kelly ── */
+  const knjiga = ulaz.brojKladionica ?? (Object.keys(ulaz.kvote).length > 0 ? 3 : 0);
+  const wMarket = knjiga >= 5 ? 0.65 : knjiga >= 2 ? 0.5 : knjiga === 1 ? 0.35 : 0;
+  const final: Record<string, number> = {};
+  for (const k of Object.keys(model)) {
+    const mP = model[k]!;
+    const mkP = market[k];
+    final[k] = mkP != null ? (1 - wMarket) * mP + wMarket * mkP : mP;
+  }
+
   const fairOdds: Record<string, number> = {};
   const edge: Record<string, number> = {};
   const kelly: Record<string, number> = {};
   for (const k of Object.keys(final)) {
-    fairOdds[k] = 1 / final[k];
-    const o = kv[k];
-    if (o && o > 1) {
-      edge[k] = final[k] * o - 1;
-      kelly[k] = edge[k] > 0 ? Math.max(0, Math.min(1, ((final[k] * o - 1) / (o - 1)) / 4)) : 0;
+    const p = final[k]!;
+    if (p > 0) fairOdds[k] = Math.round((1 / p) * 100) / 100;
+    const kv = ulaz.kvote[k];
+    if (kv && kv > 1) {
+      const e = p * kv - 1;
+      edge[k] = e;
+      const b = kv - 1;
+      const kFrac = b > 0 ? Math.max(0, (b * p - (1 - p)) / b) : 0;
+      kelly[k] = Math.round(Math.min(3, (kFrac / 4) * 100) * 10) / 10;
     }
   }
 
-  /* ── 7) KONKRETAN TIP ── */
-  const nazivi: Record<string, string> = {
-    "1": "Pobjeda domaćina",
-    X: "Nerješeno",
-    "2": "Pobjeda gosta",
-    over: `Over ${linija ?? ""}`.trim(),
-    under: `Under ${linija ?? ""}`.trim(),
-  };
-  let tip: SportIzlaz["tip"] = null;
-  const kandidati = Object.keys(edge).filter((k) => edge[k]! >= 0.02 && final[k]! >= 0.05);
-  if (kandidati.length) {
-    kandidati.sort((a, b) => edge[b]! - edge[a]!);
-    const k = kandidati[0]!;
-    const o = kv[k]!;
-    const kellyPct = Math.max(0, Math.min(3, kelly[k]! * 100));
-    tip = {
-      kljuc: k,
-      label: nazivi[k] ?? k,
-      p: final[k]!,
-      kvota: o,
-      edge: edge[k]!,
-      ev: final[k]! * o - 1,
-      kellyPct,
-    };
+  let topKljuc: string | null = null;
+  let maxEdge = -1;
+  for (const k of Object.keys(edge)) {
+    if (edge[k]! > maxEdge && final[k]! >= 0.35) {
+      maxEdge = edge[k]!;
+      topKljuc = k;
+    }
   }
 
-  /* ── 8) povjerenje i ocjena ── */
+  const tip = topKljuc && maxEdge >= 0.02
+    ? {
+        kljuc: topKljuc,
+        label: topKljuc === "1" ? "Domaćin" : topKljuc === "2" ? "Gost" : topKljuc,
+        p: final[topKljuc]!,
+        kvota: ulaz.kvote[topKljuc] ?? null,
+        edge: maxEdge,
+        ev: Math.round(maxEdge * 1000) / 10,
+        kellyPct: kelly[topKljuc] ?? 1,
+      }
+    : null;
+
+  const tipovi: SportTipTrzista[] = [];
+  const jedinica = ulaz.sport === "kosarka" ? "poena" : "golova";
+
+  const dodajTipTrzista = (
+    trziste: "1x2" | "ukupno" | "dom" | "gost",
+    naslov: string,
+    kljucevi: string[],
+    trLinija: number | null,
+  ) => {
+    let bestK: string | null = null;
+    let bestEdge = -Infinity;
+    let bestP = -Infinity;
+
+    for (const k of kljucevi) {
+      const e = edge[k];
+      const p = final[k] ?? 0;
+      if (e != null && e >= 0.02 && e > bestEdge) {
+        bestEdge = e;
+        bestK = k;
+      }
+      if (p > bestP) {
+        bestP = p;
+        if (bestK == null) bestK = k;
+      }
+    }
+
+    if (!bestK) return;
+    const p = final[bestK] ?? 0.5;
+    const kv = ulaz.kvote[bestK] ?? null;
+    const fer = fairOdds[bestK] ?? (p > 0 ? 1 / p : 2);
+    const edg = edge[bestK] ?? null;
+
+    let lbl = bestK;
+    if (bestK === "1") lbl = "Pobjeda domaćina";
+    else if (bestK === "2") lbl = "Pobjeda gosta";
+    else if (bestK === "X") lbl = "Neriješeno";
+    else if (bestK === "over" || bestK === "dom_over" || bestK === "gost_over") lbl = `Više od ${trLinija ?? ""}`;
+    else if (bestK === "under" || bestK === "dom_under" || bestK === "gost_under") lbl = `Manje od ${trLinija ?? ""}`;
+
+    tipovi.push({
+      trziste,
+      naslov,
+      kljuc: bestK,
+      label: lbl,
+      linija: trLinija,
+      p,
+      kvota: kv,
+      fer,
+      edge: edg,
+      izvor: kv ? "tržište" : "model",
+      vrijednost: edg != null && edg >= 0.02,
+    });
+  };
+
+  dodajTipTrzista("1x2", ulaz.sport === "kosarka" ? "Pobjednik (uklj. produžetke)" : "Konačni ishod 1 X 2", ulaz.sport === "rukomet" ? ["1", "X", "2"] : ["1", "2"], null);
+  dodajTipTrzista("ukupno", `Ukupno ${jedinica}`, ["over", "under"], linija);
+  dodajTipTrzista("dom", `Zbroj ${jedinica} domaćina`, ["dom_over", "dom_under"], ld);
+  dodajTipTrzista("gost", `Zbroj ${jedinica} gosta`, ["gost_over", "gost_under"], lg);
+
   const uzorak = Math.min(dom?.odigrano ?? 0, gost?.odigrano ?? 0);
-  const saglasnost = market["1"] != null && final["1"] != null
-    ? 1 - Math.min(1, Math.abs(final["1"]! - market["1"]!) / 0.15)
-    : 0.5;
-  const povjerenje = Math.round(
-    Math.max(0, Math.min(100,
-      15 + Math.min(35, uzorak * 3.5) + Math.min(20, knjiga * 4) + (linija != null ? 10 : 0) + 20 * saglasnost * (market["1"] != null ? 1 : 0.5),
-    )),
-  );
-  const ocjena =
-    povjerenje >= 80 && tip && tip.edge >= 0.05 ? "A+" :
-    povjerenje >= 65 && tip && tip.edge >= 0.03 ? "A" :
-    povjerenje >= 50 ? "B+" : "B";
-  if (tip && tip.edge < 0.03) upozorenja.push("Edge je mali — tržište i model su vrlo blizu.");
-  if (tip && knjiga < 3) upozorenja.push(`Kvota je iz ${knjiga} kladionica — malo knjiga zna i slabije kvote.`);
+  const povjerenje = Math.round(Math.max(0, Math.min(100, 25 + Math.min(40, uzorak * 4) + Math.min(25, knjiga * 5))));
+  const ocjena = povjerenje >= 80 ? "A+" : povjerenje >= 65 ? "A" : povjerenje >= 50 ? "B+" : "B";
 
   return {
     lambdaDom,
@@ -284,9 +334,14 @@ export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
     edge,
     kelly,
     tip,
+    tipovi,
+    sigmaTim,
     povjerenje,
     ocjena,
     upozorenja,
     faktori,
   };
 }
+
+/** Alias za potpunu kompatibilnost sa svim pozivima. */
+export const analizirajSportUtakmicu = sportAnaliza;

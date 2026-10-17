@@ -151,7 +151,6 @@ function BttsUltraPage() {
           formaDom: b.formaDom,
           formaGost: b.formaGost,
           brojKladionica: b.knjigaBtts + b.knjigaOu,
-          liga: b.liga ?? null,
         });
         setAnaliza(a);
         // Dnevnik: zapiši konkretnu stranu BTTS da Dnevnik može ocijeniti karticu.
@@ -491,3 +490,4 @@ function BttsUltraPage() {
     </div>
   );
 }
+

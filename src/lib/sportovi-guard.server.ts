@@ -12,6 +12,8 @@
 //   - jedan kratak retry (4 s) na minurni limit; na dnevni se NE pokušava ponovo.
 // Poruke grešaka: RATE_LIMIT, DNEVNI_LIMIT, "ACCOUNT: ..." — čitljive izravno u UI.
 
+import { breakerCheck, breakerRecord, scopeKey } from "./api-breaker.server";
+
 export type GuardResult = {
   error: string | null;
   data: unknown;
@@ -123,7 +125,7 @@ async function guardFetch(sport: string, path: string, apiKey: string): Promise<
       if (/rate ?limit|too many|requests/i.test(txt))
         return { ...m, error: "RATE_LIMIT: API je odbio poziv (limit u minuti) — pričekaj minutu pa klikni Učitaj.", data: null };
       // API-Sports code 6 / "subscription" / "token" — sport nije besplatno pretplaćen
-      if (/subscription|token|key|plan/i.test(txt))
+      if (/suspend|subscription|token|key|plan/i.test(txt))
         return { ...m, error: `ACCOUNT: ${txt}`, data: null };
       return { ...m, error: txt, data: null };
     }
@@ -158,12 +160,21 @@ export async function sportoviGet(
   const running = s.inflight.get(path);
   if (running) return running;
 
+  const scope = scopeKey(sport, apiKey);
+  const blok = breakerCheck(scope);
+  if (blok) {
+    if (hit) return { error: null, data: hit.v, status: 200, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+    return { error: blok, data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+  }
+
   const p = (async (): Promise<GuardResult> => {
     let res: GuardResult = await guardFetch(sport, path, apiKey);
+    breakerRecord(scope, res);
     // Retry SAMO na minurni RATE_LIMIT — dnevni limit se ne oporavlja čekanjem.
-    if (res.error && res.error.startsWith("RATE_LIMIT")) {
+    if (res.error && res.error.startsWith("RATE_LIMIT") && res.status === 429) {
       await sleep(RETRY_DELAY_MS);
       res = await guardFetch(sport, path, apiKey);
+      breakerRecord(scope, res);
     }
     if (res.error === null) {
       s.cache.set(path, { t: Date.now(), ttl, v: res.data });
@@ -183,4 +194,28 @@ export async function sportoviGet(
   } finally {
     s.inflight.delete(path);
   }
+}
+
+// ── Pomoćni ulazi za Košarku PRO / Rukomet PRO ──
+export type Sport = "kosarka" | "rukomet";
+export type SportOdgovor = { ok: boolean; data: any; error: string | null; code: string | null };
+
+function kljuc(): string {
+  return (process.env.API_SPORTS_KEY ?? process.env.API_FOOTBALL_KEY ?? "").trim();
+}
+function uOdgovor(r: GuardResult): SportOdgovor {
+  const code = r.error ? (r.error.split(":")[0] ?? "ERROR") : null;
+  return { ok: r.error === null, data: r.data, error: r.error, code };
+}
+export async function dohvatiUtakmiceSport(sport: Sport, date: string, apiKey?: string): Promise<SportOdgovor> {
+  return uOdgovor(await sportoviGet(sport, `/games?date=${encodeURIComponent(date)}`, { apiKey: apiKey ?? kljuc() }));
+}
+export async function dohvatiOddsSport(sport: Sport, gameId: number, apiKey?: string): Promise<SportOdgovor> {
+  return uOdgovor(await sportoviGet(sport, `/odds?game=${gameId}`, { apiKey: apiKey ?? kljuc() }));
+}
+export async function dohvatiH2HSport(sport: Sport, homeId: number, awayId: number, apiKey?: string): Promise<SportOdgovor> {
+  return uOdgovor(await sportoviGet(sport, `/games?h2h=${homeId}-${awayId}`, { apiKey: apiKey ?? kljuc() }));
+}
+export function statusSportova() {
+  return { kljucPostoji: kljuc().length > 0, sportovi: Object.keys(BAZE) };
 }

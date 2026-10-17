@@ -18,6 +18,8 @@ export type GuardResult = {
   remainingMinute: number;
 };
 
+import { breakerCheck, breakerRecord, scopeKey } from "./api-breaker.server";
+
 const BASE = "https://v3.football.api-sports.io";
 const MIN_GAP_MS = 650;          // minimalni razmak između poziva
 const MAX_PER_MIN = 8;           // ispod free-limita od 10/min
@@ -83,6 +85,8 @@ async function guardFetch(path: string, apiKey: string): Promise<GuardResult> {
     const errs = json.errors && (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors as object).length);
     if (errs) {
       const txt = JSON.stringify(json.errors);
+      if (/for the day|daily/i.test(txt))
+        return { ...m, error: "DNEVNI_LIMIT: potrošen je dnevni limit API-Footballa — obnova u ponoć UTC.", data: null };
       if (/rate ?limit|too many|requests/i.test(txt)) return { ...m, error: "RATE_LIMIT", data: null };
       if (/suspend|token|key/i.test(txt)) return { ...m, error: `ACCOUNT: ${txt}`, data: null };
       return { ...m, error: txt, data: null };
@@ -114,11 +118,20 @@ export async function guardGet(
   const running = inflight.get(path);
   if (running) return running;
 
+  const scope = scopeKey("football", apiKey);
+  const blok = breakerCheck(scope);
+  if (blok) {
+    if (hit) return { error: null, data: hit.v, status: 200, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+    return { error: blok.startsWith("RATE_LIMIT") ? "RATE_LIMIT" : blok, data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+  }
+
   const p = (async (): Promise<GuardResult> => {
     let res: GuardResult = await guardFetch(path, apiKey);
-    if (res.error === "RATE_LIMIT" && RETRY_DELAYS.length) {
+    breakerRecord(scope, res);
+    if (res.error === "RATE_LIMIT" && RETRY_DELAYS.length && res.remainingDay !== 0) {
       await sleep(RETRY_DELAYS[0]!);
       res = await guardFetch(path, apiKey);
+      breakerRecord(scope, res);
     }
     if (res.error === null) {
       cache.set(path, { t: Date.now(), ttl, v: res.data });

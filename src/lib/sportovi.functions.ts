@@ -1,344 +1,401 @@
 /* ============================================================
-   SPORTOVI.FUNCTIONS.TS — podaci za Košarka Pro i Rukomet Pro
-   Izvori: v1.basketball.api-sports.io i v1.handball.api-sports.io
-   (isti API-Sports ključ; svaki sport ima zasebnih 100 besplatnih
-   poziva dnevno — otvori api-sports.io dashboard i pretplati
-   besplatni plan za košarku i rukomet).
-   Svi pozivi idu kroz sportovi-guard v2 (red + keš + retry + stale),
-   pa ove kartice NE MOGU oboriti dnevni limit.
-   v2: forme dohvaća PARALELNO (brže — serverless timeout), jasno
-   razlikuje minurni RATE_LIMIT od potrošenog DNEVNOG limita.
-   Izlaz: kvote (1, X?, 2 + over/under s linijom, MEDIAN konsenzus
-   kladionica) + forma zadnjih 10 utakmica s razdvojkom doma/u gostima.
+   SPORTOVI FUNCTIONS — TanStack Start server functions za
+   Košarku PRO i Rukomet PRO.
+   Podaci idu kroz sportovi-guard.server.ts (API-Sports).
+   Model: sportovi-motor.ts.
    ============================================================ */
 
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { sportoviGet } from "./sportovi-guard.server";
+import {
+  dohvatiUtakmiceSport,
+  dohvatiOddsSport,
+  dohvatiH2HSport,
+  statusSportova,
+  type Sport,
+} from "./sportovi-guard.server";
+import {
+  analizirajSportUtakmicu,
+  type SportUtakmica,
+  type SportIzlaz,
+} from "./sportovi-motor";
 
-const TZ = "Europe/Zagreb";
-
-export type Sport = "kosarka" | "rukomet";
-
-export type SportUtakmica = {
-  id: number;
-  time: string;
-  league: string;
-  country: string;
-  home: string;
-  away: string;
-  homeId: number;
-  awayId: number;
-  leagueId: number;
-  season: number;
-};
-
-/** Forma tima za košarku/rukomet (zadnjih 10, s razdvojbom i raspršenjem). */
-export type SportForma = {
-  odigrano: number;
-  postignuti: number;   // ukupno postignuto u zadnjih N
-  primljeni: number;    // ukupno primljeno u zadnjih N
-  doma: { odigrano: number; postignuti: number; primljeni: number } | null;
-  uGostima: { odigrano: number; postignuti: number; primljeni: number } | null;
-  /** serija zadnjih utakmica (najnovija prva) — za trend i raspršenje */
-  lista: { datum: string; doma: boolean; protivnik: string; post: number; prim: number }[];
-  /** sd UKUPNOG broja bodova/golova u njegovim utakmicama (za O/U) */
-  ukupnoSd: number;
-  /** sd gol/bod RAZLIKE u njegovim utakmicama (za pX kod rukometa) */
-  razlikaSd: number;
-  trend: number; // + = igra bolje nego na početku serije (razlika posljednjih 5 vs prijašnjih)
-};
+export type { SportUtakmica, SportIzlaz };
 
 export type SportBundle = {
-  error: string | null;
-  remaining: number;
-  kvote: Record<string, number>;   // "1", "X" (rukomet), "2", "over", "under"
-  linija: number | null;           // linija Over/Under (npr. 158.5 ili 55.5)
-  knjiga: number;                  // koliko kladionica daje kvote
-  formaDom: SportForma | null;
-  formaGost: SportForma | null;
+  kvote: Record<string, number>;
+  linija: number | null;
+  linijaDom: number | null;
+  linijaGost: number | null;
+  knjiga: number;
   bookmaker: string | null;
+  formaDom: any | null;
+  formaGost: any | null;
+  error?: string;
   upozorenja: string[];
 };
 
-const danjiSchema = z.object({
-  sport: z.enum(["kosarka", "rukomet"]),
-  date: z.string(),
-  apiKey: z.string(),
-});
-const bundleSchema = z.object({
-  sport: z.enum(["kosarka", "rukomet"]),
-  id: z.number(),
-  homeId: z.number(),
-  awayId: z.number(),
-  leagueId: z.number(),
-  season: z.number(),
-  apiKey: z.string(),
-});
+function normalizirajKosarku(raw: any): SportUtakmica | null {
+  try {
+    const id = Number(raw?.id);
+    if (!id) return null;
+    const date = String(raw?.date ?? "");
+    const time = String(raw?.time ?? "");
+    const timestamp = Number(raw?.timestamp ?? 0) * 1000 || (date ? new Date(date).getTime() : Date.now());
 
-/** Završene utakmice po sportu (za formu i provjeru tipova). */
-export const ZAVRSENE: Record<Sport, string[]> = {
-  kosarka: ["FT", "AOT"],           // završeno / nakon produžetka
-  rukomet: ["FT", "AOT", "AET"],    // završeno / produžetak / penali
-};
+    const league = raw?.league ?? {};
+    const teams = raw?.teams ?? {};
+    const scores = raw?.scores ?? {};
+    const status = raw?.status ?? {};
 
-function median(xs: number[]): number {
-  if (!xs.length) return NaN;
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
-}
-
-/** Iz odgovora /games izvuci naš oblik utakmice. */
-function ocistiUtakmicu(g: any): SportUtakmica | null {
-  const id = Number(g?.id);
-  const home = g?.teams?.home?.name;
-  const away = g?.teams?.away?.name;
-  const leagueId = Number(g?.league?.id);
-  if (!id || !home || !away || !leagueId) return null;
-  return {
-    id,
-    time: String(g?.date ?? g?.time ?? ""),
-    league: String(g?.league?.name ?? ""),
-    country: String(g?.country?.name ?? g?.country ?? ""),
-    home,
-    away,
-    homeId: Number(g?.teams?.home?.id ?? 0),
-    awayId: Number(g?.teams?.away?.id ?? 0),
-    leagueId,
-    season: Number(g?.league?.season ?? 0),
-  };
-}
-
-/** Rezultat jedne utakmice za formu (po sportu druge su polja). */
-function rezultat(g: any, sport: Sport, teamId: number): { post: number; prim: number; doma: boolean } | null {
-  let h: unknown;
-  let a: unknown;
-  if (sport === "kosarka") {
-    h = g?.scores?.home?.total;
-    a = g?.scores?.away?.total;
-  } else {
-    h = g?.scores?.home;
-    a = g?.scores?.away;
+    return {
+      id,
+      sport: "kosarka",
+      datumIso: date || new Date(timestamp).toISOString(),
+      pocetakFormatirano: time || (date ? date.slice(11, 16) : "--:--"),
+      timestamp,
+      ligaId: Number(league?.id ?? 0),
+      ligaNaziv: String(league?.name ?? "Košarka"),
+      ligaZemlja: String(league?.country?.name ?? league?.country ?? ""),
+      ligaSezona: String(league?.season ?? ""),
+      domacinId: Number(teams?.home?.id ?? 0),
+      domacinNaziv: String(teams?.home?.name ?? "Domaćin"),
+      domacinLogo: teams?.home?.logo ?? null,
+      gostId: Number(teams?.away?.id ?? 0),
+      gostNaziv: String(teams?.away?.name ?? "Gost"),
+      gostLogo: teams?.away?.logo ?? null,
+      statusShort: String(status?.short ?? "NS"),
+      statusLong: String(status?.long ?? ""),
+      rezultatDomacin: scores?.home?.total != null ? Number(scores.home.total) : null,
+      rezultatGost: scores?.away?.total != null ? Number(scores.away.total) : null,
+      detalji: {
+        cetvrtineDom: [scores?.home?.quarter_1, scores?.home?.quarter_2, scores?.home?.quarter_3, scores?.home?.quarter_4],
+        cetvrtineGost: [scores?.away?.quarter_1, scores?.away?.quarter_2, scores?.away?.quarter_3, scores?.away?.quarter_4],
+        produzetakDom: scores?.home?.over_time != null ? Number(scores.home.over_time) : null,
+        produzetakGost: scores?.away?.over_time != null ? Number(scores.away.over_time) : null,
+      },
+    };
+  } catch {
+    return null;
   }
-  const hs = Number(h);
-  const as = Number(a);
-  if (!Number.isFinite(hs) || !Number.isFinite(as) || hs + as <= 0) return null;
-  const doma = Number(g?.teams?.home?.id ?? -1) === teamId;
-  return { post: doma ? hs : as, prim: doma ? as : hs, doma };
 }
 
-function sdi(xs: number[]): number {
-  if (xs.length < 2) return 0;
-  const m = xs.reduce((a, b) => a + b, 0) / xs.length;
-  return Math.sqrt(xs.reduce((a, b) => a + (b - m) * (b - m), 0) / (xs.length - 1));
-}
+function normalizirajRukomet(raw: any): SportUtakmica | null {
+  try {
+    const id = Number(raw?.id);
+    if (!id) return null;
+    const date = String(raw?.date ?? "");
+    const time = String(raw?.time ?? "");
+    const timestamp = Number(raw?.timestamp ?? 0) * 1000 || (date ? new Date(date).getTime() : Date.now());
 
-function formaIzUtakmica(utakmice: any[], sport: Sport, teamId: number, teamName: string): SportForma | null {
-  const zavr: { datum: string; doma: boolean; protivnik: string; post: number; prim: number }[] = [];
-  for (const g of utakmice) {
-    const short = String(g?.status?.short ?? "");
-    if (!ZAVRSENE[sport].includes(short)) continue;
-    const r = rezultat(g, sport, teamId);
-    if (!r) continue;
-    zavr.push({
-      datum: String(g?.date ?? ""),
-      doma: r.doma,
-      protivnik: r.doma ? String(g?.teams?.away?.name ?? "") : String(g?.teams?.home?.name ?? ""),
-      post: r.post,
-      prim: r.prim,
-    });
+    const league = raw?.league ?? {};
+    const teams = raw?.teams ?? {};
+    const scores = raw?.scores ?? {};
+    const periods = raw?.periods ?? {};
+    const status = raw?.status ?? {};
+
+    return {
+      id,
+      sport: "rukomet",
+      datumIso: date || new Date(timestamp).toISOString(),
+      pocetakFormatirano: time || (date ? date.slice(11, 16) : "--:--"),
+      timestamp,
+      ligaId: Number(league?.id ?? 0),
+      ligaNaziv: String(league?.name ?? "Rukomet"),
+      ligaZemlja: String(league?.country?.name ?? league?.country ?? ""),
+      ligaSezona: String(league?.season ?? ""),
+      domacinId: Number(teams?.home?.id ?? 0),
+      domacinNaziv: String(teams?.home?.name ?? "Domaćin"),
+      domacinLogo: teams?.home?.logo ?? null,
+      gostId: Number(teams?.away?.id ?? 0),
+      gostNaziv: String(teams?.away?.name ?? "Gost"),
+      gostLogo: teams?.away?.logo ?? null,
+      statusShort: String(status?.short ?? "NS"),
+      statusLong: String(status?.long ?? ""),
+      rezultatDomacin: scores?.home != null ? Number(scores.home) : null,
+      rezultatGost: scores?.away != null ? Number(scores.away) : null,
+      detalji: {
+        poluvrijeme1Dom: periods?.first?.home != null ? Number(periods.first.home) : null,
+        poluvrijeme1Gost: periods?.first?.away != null ? Number(periods.first.away) : null,
+        poluvrijeme2Dom: periods?.second?.home != null ? Number(periods.second.home) : null,
+        poluvrijeme2Gost: periods?.second?.away != null ? Number(periods.second.away) : null,
+      },
+    };
+  } catch {
+    return null;
   }
-  if (!zavr.length) return null;
-  zavr.sort((x, y) => (x.datum < y.datum ? 1 : -1)); // najnovija prva
-  const zad = zavr.slice(0, 10);
-  const agg = (f: typeof zad) => ({
-    odigrano: f.length,
-    postignuti: f.reduce((a, b) => a + b.post, 0),
-    primljeni: f.reduce((a, b) => a + b.prim, 0),
-  });
-  const doma = zad.filter((x) => x.doma);
-  const uGostima = zad.filter((x) => !x.doma);
-  const ukupna = zad.map((x) => x.post + x.prim);
-  const razlike = zad.map((x) => x.post - x.prim);
-  const pol = Math.min(5, zad.length);
-  const novije = zad.slice(0, pol);
-  const starije = zad.slice(pol);
-  const trend =
-    starije.length >= 3
-      ? novije.reduce((a, b) => a + (b.post - b.prim), 0) / novije.length -
-        starije.reduce((a, b) => a + (b.post - b.prim), 0) / starije.length
-      : 0;
-  return {
-    ...agg(zad),
-    doma: doma.length ? agg(doma) : null,
-    uGostima: uGostima.length ? agg(uGostima) : null,
-    lista: zad,
-    ukupnoSd: sdi(ukupna),
-    razlikaSd: sdi(razlike),
-    trend,
-  };
 }
 
-/** Kvote: MEDIAN po ishodu preko svih kladionica (otporno na iskočenu kvotu). */
+function medianBrojeva(arr: number[]): number | null {
+  const cisti = arr.filter((x) => Number.isFinite(x) && x > 1).sort((a, b) => a - b);
+  if (cisti.length === 0) return null;
+  const m = Math.floor(cisti.length / 2);
+  const v = cisti.length % 2 === 1 ? cisti[m]! : (cisti[m - 1]! + cisti[m]!) / 2;
+  return Math.round(v * 100) / 100;
+}
+
+function kategorijaOU(naziv: string): "ukupno" | "domacin" | "gost" | null {
+  const s = naziv.toLowerCase();
+  if (s.includes("home") || s.includes("doma") || s.includes("team 1") || s.includes("team1")) {
+    if (s.includes("over") || s.includes("under") || s.includes("total")) return "domacin";
+  }
+  if (s.includes("away") || s.includes("gost") || s.includes("team 2") || s.includes("team2")) {
+    if (s.includes("over") || s.includes("under") || s.includes("total")) return "gost";
+  }
+  if (s.includes("over/under") || s.includes("total points") || s.includes("total goals") || s.includes("total") || s.includes("goals over")) {
+    return "ukupno";
+  }
+  return null;
+}
+
+function nadjiNajboljuLiniju(values: any[]): { linija: number; over: number; under: number } | null {
+  const po = new Map<number, { over?: number; under?: number }>();
+  for (const v of values ?? []) {
+    const lab = String(v?.value ?? "").toLowerCase().trim();
+    const odd = Number(v?.odd);
+    if (!Number.isFinite(odd) || odd <= 1) continue;
+    const hc = Number(v?.handicap);
+    const izTeksta = Number(lab.match(/(\d+(?:\.\d+)?)/)?.[1] ?? NaN);
+    const l = Number.isFinite(hc) && hc > 0 ? hc : izTeksta;
+    if (!Number.isFinite(l) || l <= 0) continue;
+    const e = po.get(l) ?? {};
+    if (/^over/.test(lab)) e.over = odd;
+    else if (/^under/.test(lab)) e.under = odd;
+    else continue;
+    po.set(l, e);
+  }
+  let best: { linija: number; over: number; under: number } | null = null;
+  for (const [l, e] of po) {
+    if (!e.over || !e.under) continue;
+    if (!best || Math.abs(e.over - e.under) < Math.abs(best.over - best.under)) {
+      best = { linija: l, over: e.over, under: e.under };
+    }
+  }
+  return best;
+}
+
+type TrzisteOU = { over: number[]; under: number[]; linije: number[] };
+const noviOU = (): TrzisteOU => ({ over: [], under: [], linije: [] });
+
 function kvoteIzOdds(oddsResp: any[], sport: Sport): {
   kvote: Record<string, number>;
   linija: number | null;
+  linijaDom: number | null;
+  linijaGost: number | null;
   knjiga: number;
   bookmaker: string | null;
 } {
-  const o1: number[] = [];
-  const oX: number[] = [];
-  const o2: number[] = [];
-  const oOver: number[] = [];
-  const oUnder: number[] = [];
-  const linije: number[] = [];
-  let knjiga = 0;
+  const ml1: number[] = [];
+  const ml2: number[] = [];
+  const w1: number[] = [];
+  const wX: number[] = [];
+  const w2: number[] = [];
+  const uk = noviOU();
+  const dm = noviOU();
+  const gs = noviOU();
   let bookmaker: string | null = null;
+  let knjiga = 0;
 
-  for (const r of oddsResp ?? []) {
-    for (const bk of r?.bookmakers ?? []) {
-      let imaWinner = false;
-      let imaTotals = false;
-      for (const bet of bk?.bets ?? []) {
-        const ime = String(bet?.name ?? "").toLowerCase();
-        const values: any[] = bet?.values ?? [];
-        if (/home\s*\/?\s*away|match\s*winner|1x2|winner\b/..test(ime)) {
-          let d1 = 0, dX = 0, d2 = 0;
-          for (const v of values) {
-            const lab = String(v?.value ?? "").toLowerCase();
-            const odd = Number(v?.odd);
-            if (!Number.isFinite(odd) || odd <= 1) continue;
-            if (/^home$|^1$/.test(lab)) d1 = odd;
-            else if (/^draw$|^x$/.test(lab)) dX = odd;
-            else if (/^away$|^2$/.test(lab)) d2 = odd;
-          }
-          if (d1 > 1 && d2 > 1) {
-            o1.push(d1);
-            o2.push(d2);
-            if (dX > 1) oX.push(dX);
-            imaWinner = true;
-            if (!bookmaker) bookmaker = String(bk?.name ?? "");
-          }
+  for (const item of oddsResp ?? []) {
+    const bms = Array.isArray(item?.bookmakers) ? item.bookmakers : [];
+    for (const bm of bms) {
+      knjiga++;
+      if (!bookmaker && bm?.name) bookmaker = String(bm.name);
+      const bets = Array.isArray(bm?.bets) ? bm.bets : [];
+      for (const bet of bets) {
+        const name = String(bet?.name ?? "").toLowerCase();
+        const vals = Array.isArray(bet?.values) ? bet.values : [];
+        if (name.includes("quarter") || name.includes("half") || name.includes("period") || name.includes("poluvrijeme") || name.includes("četvrtina") || name.includes("handicap") || name.includes("azijski")) {
+          continue;
         }
-        if (/over\s*\/?\s*under|totals?\b|total\s*points?\b|total\s*goals?\b/.test(ime)) {
-          let dO = 0, dU = 0, linija: number | null = null;
-          for (const v of values) {
-            const lab = String(v?.value ?? "").toLowerCase();
+        if (name === "home/away" || name === "winner" || name === "match winner" || name === "pobjednik") {
+          for (const v of vals) {
+            const val = String(v?.value ?? "").toLowerCase();
             const odd = Number(v?.odd);
             if (!Number.isFinite(odd) || odd <= 1) continue;
-            const hc = Number(v?.handicap);
-            const izTeksta = Number(String(v?.value ?? "").match(/(\d+(?:\.\d+)?)/)?.[1] ?? NaN);
-            const l = Number.isFinite(hc) ? hc : izTeksta;
-            if (/^over$|^over\s*[\d.]+/.test(lab)) { dO = odd; if (l != null && Number.isFinite(l)) linija = l; }
-            else if (/^under$|^under\s*[\d.]+/.test(lab)) { dU = odd; if (l != null && Number.isFinite(l) && linija == null) linija = l; }
+            if (val === "home" || val === "1") ml1.push(odd);
+            else if (val === "away" || val === "2") ml2.push(odd);
           }
-          if (dO > 1 && dU > 1 && linija != null) {
-            oOver.push(dO);
-            oUnder.push(dU);
-            linije.push(linija);
-            imaTotals = true;
+          continue;
+        }
+        if (name === "match winner 3-way" || name === "3way result" || name === "1x2" || name === "regular time result") {
+          for (const v of vals) {
+            const val = String(v?.value ?? "").toLowerCase();
+            const odd = Number(v?.odd);
+            if (!Number.isFinite(odd) || odd <= 1) continue;
+            if (val === "home" || val === "1") w1.push(odd);
+            else if (val === "draw" || val === "x" || val === "tie") wX.push(odd);
+            else if (val === "away" || val === "2") w2.push(odd);
+          }
+          continue;
+        }
+        const kat = kategorijaOU(name);
+        if (kat) {
+          const l = nadjiNajboljuLiniju(vals);
+          if (l) {
+            const meta = kat === "domacin" ? dm : kat === "gost" ? gs : uk;
+            meta.linije.push(l.linija);
+            meta.over.push(l.over);
+            meta.under.push(l.under);
           }
         }
       }
-      if (imaWinner || imaTotals) knjiga++;
     }
   }
 
   const kvote: Record<string, number> = {};
-  if (o1.length) { kvote["1"] = median(o1); kvote["2"] = median(o2); }
-  if (oX.length) kvote["X"] = median(oX);
-  let linija: number | null = linije.length ? median(linije) : null;
-  // košarka: drži se svake linije — ako se linije razlikuju, uzmi median ali
-  // upozori motor; rukomet isto (linija 0.5 koraka).
-  if (oOver.length && linija != null) { kvote["over"] = median(oOver); kvote["under"] = median(oUnder); }
-  if (sport === "rukomet" && linija != null && linija < 20) linija = null; // sumnjivo mala linija → odbaci
-  return { kvote, linija, knjiga, bookmaker };
+  const setKv = (k: string, arr: number[]) => {
+    const m = medianBrojeva(arr);
+    if (m) kvote[k] = m;
+  };
+
+  setKv("1", ml1);
+  setKv("2", ml2);
+  if (!kvote["1"]) setKv("1", w1);
+  if (!kvote["2"]) setKv("2", w2);
+  setKv("1reg", w1);
+  setKv("X", wX);
+  setKv("2reg", w2);
+  if (sport === "rukomet") {
+    if (kvote["1reg"]) kvote["1"] = kvote["1reg"];
+    if (kvote["2reg"]) kvote["2"] = kvote["2reg"];
+  }
+
+  const medLinUk = medianBrojeva(uk.linije);
+  if (medLinUk) {
+    setKv("over", uk.over);
+    setKv("under", uk.under);
+  }
+  const medLinDom = medianBrojeva(dm.linije);
+  if (medLinDom) {
+    setKv("overDom", dm.over);
+    setKv("underDom", dm.under);
+  }
+  const medLinGost = medianBrojeva(gs.linije);
+  if (medLinGost) {
+    setKv("overGost", gs.over);
+    setKv("underGost", gs.under);
+  }
+
+  return {
+    kvote,
+    linija: medLinUk,
+    linijaDom: medLinDom,
+    linijaGost: medLinGost,
+    knjiga,
+    bookmaker,
+  };
 }
 
-export const getSportUtakmice = createServerFn({ method: "GET" })
-  .inputValidator((d) => danjiSchema.parse(d))
+export const dohvatiSportUtakmiceServer = createServerFn({ method: "GET" })
+  .validator((d: unknown): { sport: Sport; date: string } => {
+    const obj = (d ?? {}) as any;
+    const sport: Sport = obj.sport === "rukomet" ? "rukomet" : "kosarka";
+    const date = typeof obj.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.date)
+      ? obj.date
+      : new Date().toISOString().slice(0, 10);
+    return { sport, date };
+  })
   .handler(async ({ data }) => {
-    const empty = { error: null as string | null, utakmice: [] as SportUtakmica[], remaining: -1 };
-    try {
-      const r = await sportoviGet(data.sport, `/games?date=${data.date}&timezone=${encodeURIComponent(TZ)}`, {
-        apiKey: data.apiKey,
-        ttlMs: 10 * 60_000,
-      });
-      if (r.error) return { ...empty, error: r.error, remaining: r.remainingDay };
-      const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
-      const utakmice = resp
-        .filter((g) => String(g?.status?.short ?? "") === "NS") // samo nadolazeće
-        .map(ocistiUtakmicu)
-        .filter((u): u is SportUtakmica => u != null)
-        .sort((a, b) => (a.time < b.time ? -1 : 1));
-      return { ...empty, utakmice, remaining: r.remainingDay };
-    } catch (e) {
-      return { ...empty, error: e instanceof Error ? e.message : "Greška dohvata" };
+    const res = await dohvatiUtakmiceSport(data.sport, data.date);
+    if (!res.ok) {
+      return { ok: false, error: res.error, code: res.code, utakmice: [] };
     }
+    const norm = data.sport === "kosarka" ? normalizirajKosarku : normalizirajRukomet;
+    const utakmice: SportUtakmica[] = (res.data ?? [])
+      .map(norm)
+      .filter((u: SportUtakmica | null): u is SportUtakmica => u !== null);
+
+    return {
+      ok: true,
+      sport: data.sport,
+      date: data.date,
+      count: utakmice.length,
+      utakmice,
+    };
   });
 
-export const getSportBundle = createServerFn({ method: "POST" })
-  .inputValidator((d) => bundleSchema.parse(d))
-  .handler(async ({ data }): Promise<SportBundle> => {
-    const upozorenja: string[] = [];
-    const out = {
-      error: null as string | null,
-      remaining: -1,
-      kvote: {} as Record<string, number>,
-      linija: null as number | null,
+export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
+  .validator((d: unknown): { sport: Sport; utakmica: SportUtakmica } => {
+    const obj = (d ?? {}) as any;
+    if (!obj?.utakmica?.id) throw new Error("Nedostaje utakmica");
+    const sport: Sport = obj.sport === "rukomet" ? "rukomet" : "kosarka";
+    return { sport, utakmica: obj.utakmica };
+  })
+  .handler(async ({ data }): Promise<{ ok: boolean; izlaz?: SportIzlaz; error?: string }> => {
+    const { sport, utakmica } = data;
+    const oddsRes = await dohvatiOddsSport(sport, utakmica.id);
+    const parsed = oddsRes.ok ? kvoteIzOdds(oddsRes.data, sport) : {
+      kvote: {},
+      linija: null,
+      linijaDom: null,
+      linijaGost: null,
       knjiga: 0,
-      formaDom: null as SportForma | null,
-      formaGost: null as SportForma | null,
-      bookmaker: null as string | null,
-      upozorenja,
+      bookmaker: null,
     };
 
-    // 1) forma timova — zadnjih 10 završenih utakmica (keš 6 h)
-    const formaZa = async (teamId: number, teamName: string) => {
-      const p = `/games?team=${teamId}&season=${data.season}&league=${data.leagueId}`;
-      let r = await sportoviGet(data.sport, p, { apiKey: data.apiKey, ttlMs: 6 * 60 * 60_000 });
-      if (!r.error && !(Array.isArray(r.data) && r.data.length)) {
-        // neke lige/sezoni ne vole league filter — pokušaj bez njega
-        r = await sportoviGet(data.sport, `/games?team=${teamId}&season=${data.season}`, {
-          apiKey: data.apiKey,
-          ttlMs: 6 * 60 * 60_000,
-        });
+    let h2hGoloviDom: number[] = [];
+    let h2hGoloviGost: number[] = [];
+    if (utakmica.domacinId && utakmica.gostId) {
+      const h2hRes = await dohvatiH2HSport(sport, utakmica.domacinId, utakmica.gostId);
+      if (h2hRes.ok && Array.isArray(h2hRes.data)) {
+        for (const m of h2hRes.data.slice(0, 10)) {
+          const domJePrvi = m?.teams?.home?.id === utakmica.domacinId;
+          const dScore = domJePrvi ? m?.scores?.home?.total ?? m?.scores?.home : m?.scores?.away?.total ?? m?.scores?.away;
+          const gScore = domJePrvi ? m?.scores?.away?.total ?? m?.scores?.away : m?.scores?.home?.total ?? m?.scores?.home;
+          if (dScore != null && gScore != null) {
+            h2hGoloviDom.push(Number(dScore));
+            h2hGoloviGost.push(Number(gScore));
+          }
+        }
       }
-      if (r.error) {
-        upozorenja.push(`Forma ${teamName}: ${r.error}`);
-        return null;
-      }
-      const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
-      return formaIzUtakmica(resp, data.sport, teamId, teamName);
-    };
-    // FIX: paralelno — pola vremena, manja šansa da serverless funkcija bude ubijena
-    const [fd, fg] = await Promise.all([
-      formaZa(data.homeId, "domaćina"),
-      formaZa(data.awayId, "gosta"),
-    ]);
-    out.formaDom = fd;
-    out.formaGost = fg;
-    if (!out.formaDom && !out.formaGost)
-      upozorenja.push("Nema dovoljno završenih utakmica za forme — analiza je ograničena.");
-
-    // 2) kvote (keš 10 min)
-    const ro = await sportoviGet(data.sport, `/odds?game=${data.id}`, { apiKey: data.apiKey });
-    const odErr = ro.error;
-    if (ro.error) {
-      upozorenja.push(`Kvote: ${ro.error}`);
-    } else {
-      const resp = Array.isArray(ro.data) ? (ro.data as any[]) : [];
-      const k = kvoteIzOdds(resp, data.sport);
-      out.kvote = k.kvote;
-      out.linija = k.linija;
-      out.knjiga = k.knjiga;
-      out.bookmaker = k.bookmaker;
-      if (!k.knjiga) upozorenja.push("Kladionice još ne daju kvote za ovu utakmicu — analiza je samo iz forme.");
     }
-    out.remaining = ro.remainingDay;
-    // FIX: ako je palo SVE (npr. potrošen dnevni limit), signaliziraj grešku
-    // da UI pokaže jasno upozorenje umjesto prazne analize.
-    if (!out.formaDom && !out.formaGost && !out.knjiga && odErr) out.error = odErr;
-    return out;
+
+    const izlaz = analizirajSportUtakmicu({
+      sport,
+      utakmica,
+      kvote: parsed.kvote,
+      linijaKladionice: parsed.linija,
+      linijaDomKladionice: parsed.linijaDom,
+      linijaGostKladionice: parsed.linijaGost,
+      h2hGoloviDom,
+      h2hGoloviGost,
+    });
+
+    izlaz.bookmaker = parsed.bookmaker;
+    return { ok: true, izlaz };
   });
+
+export const getSportUtakmice = dohvatiSportUtakmiceServer;
+export const getSportBundle = createServerFn({ method: "POST" })
+  .validator((d: unknown) => d as any)
+  .handler(async ({ data }) => {
+    const sport: Sport = data?.sport === "rukomet" ? "rukomet" : "kosarka";
+    const id = Number(data?.id);
+    const oddsRes = await dohvatiOddsSport(sport, id);
+    const parsed = oddsRes.ok ? kvoteIzOdds(oddsRes.data, sport) : {
+      kvote: {},
+      linija: null,
+      linijaDom: null,
+      linijaGost: null,
+      knjiga: 0,
+      bookmaker: null,
+    };
+    return {
+      kvote: parsed.kvote,
+      linija: parsed.linija,
+      linijaDom: parsed.linijaDom,
+      linijaGost: parsed.linijaGost,
+      knjiga: parsed.knjiga,
+      bookmaker: parsed.bookmaker,
+      formaDom: null,
+      formaGost: null,
+      upozorenja: oddsRes.error ? [oddsRes.error] : [],
+    };
+  });
+
+export const statusSportovaServer = createServerFn({ method: "GET" })
+  .handler(async () => {
+    return statusSportova();
+  });
+
+

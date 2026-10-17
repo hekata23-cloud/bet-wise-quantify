@@ -142,7 +142,6 @@ function Over25ProPage() {
           formaDom: b.formaDom,
           formaGost: b.formaGost,
           brojKladionica: b.knjigaOu,
-          liga: b.liga ?? null,
         });
         setAnaliza(a);
         // Dnevnik: zapiši konkretnu stranu 2.5 linije da Dnevnik može ocijeniti karticu.

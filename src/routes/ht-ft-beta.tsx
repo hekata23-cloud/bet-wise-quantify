@@ -108,7 +108,7 @@ function HtFtBetaPage() {
     try {
       const keš = localStorage.getItem(ck);
       const b = keš ? (JSON.parse(keš) as BetaBundle)
-        : await getBetaBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, leagueId: u.leagueId, season: u.season, apiKey } });
+        : await getBetaBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } });
       if (!keš) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
       if (b.error) {
@@ -118,7 +118,6 @@ function HtFtBetaPage() {
           kvote: b.kvote,
           formaDom: b.formaDom,
           formaGost: b.formaGost,
-          liga: b.liga ?? null,
         });
         setAnaliza(a);
         // Dnevnik: zapiši najjaču HT/FT ćeliju da Dnevnik može ocijeniti karticu.
@@ -298,6 +297,7 @@ function HtFtBetaPage() {
                   </tbody>
                 </table>
               </div>
+
               <div className="mt-3 grid gap-3 text-sm md:grid-cols-2">
                 <div className="rounded-lg bg-slate-950 px-3 py-2">
                   <span className="text-slate-400">Rezultat se DRŽI:</span> <b className="text-emerald-400">{fmtPct(analiza.drzanje)}</b>
@@ -380,3 +380,4 @@ function HtFtBetaPage() {
     </div>
   );
 }
+

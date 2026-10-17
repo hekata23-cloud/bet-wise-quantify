@@ -10,6 +10,10 @@ export type Provjera =
   | { vrsta: "1x2"; strana: "1" | "X" | "2" }
   | { vrsta: "btts"; strana: "da" | "ne" }
   | { vrsta: "ou"; strana: "over" | "under"; linija: number }
+  /** zbroj jednog tima (domaćin/gost) preko/ispod linije */
+  | { vrsta: "tt"; tim: "dom" | "gost"; strana: "over" | "under"; linija: number }
+  /** 1X2 u regularnom vremenu (košarka 4 četvrtine, rukomet 60 min) */
+  | { vrsta: "1x2reg"; strana: "1" | "X" | "2" }
   | { vrsta: "htft"; kod: string };
 
 export type DnevnikUnos = {
@@ -25,7 +29,8 @@ export type DnevnikUnos = {
   kvota: number | null;
   provjera: Provjera;
   status: "cekaj" | "pogodak" | "promasaj";
-  rezultat?: string;  // npr. "2 — 1 (1 — 0)"
+  rezultat?: string;
+  zadnjaProvjera?: number; // ms — da Dnevnik ne troši pozive na istu utakmicu  // npr. "2 — 1 (1 — 0)"
 };
 
 const KLJUC = "pc.dnevnik.v1";
@@ -84,8 +89,24 @@ export function zapisiTip(u: {
 }
 
 /** Je li tip pogođen prema završnom rezultatu? */
-export function pogodakLi(pr: Provjera, dom: number, gost: number, domHT: number | null, gostHT: number | null): boolean {
+export function pogodakLi(
+  pr: Provjera,
+  dom: number,
+  gost: number,
+  domHT: number | null,
+  gostHT: number | null,
+  domReg: number | null = null,
+  gostReg: number | null = null,
+): boolean {
   switch (pr.vrsta) {
+    case "1x2reg": {
+      const d = domReg ?? dom, g = gostReg ?? gost;
+      return pr.strana === (d > g ? "1" : d < g ? "2" : "X");
+    }
+    case "tt": {
+      const v = pr.tim === "dom" ? dom : gost;
+      return pr.strana === (v > pr.linija ? "over" : "under");
+    }
     case "1x2":
       return pr.strana === (dom > gost ? "1" : dom < gost ? "2" : "X");
     case "btts":

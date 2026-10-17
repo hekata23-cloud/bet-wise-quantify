@@ -1,7 +1,7 @@
 // Objedinjeni mozak: Gemini primarno, Groq fallback. Ljudska, prijateljska
 // komunikacija, ali s "britkim" analitičkim razmišljanjem.
 import { formatZagreb, isoDateZagreb } from "./zagreb-time";
-import { geminiChat, type GeminiMessage, type GeminiPart } from "./gemini";
+import { geminiChat } from "./gemini";
 import { groqChat, type GroqMessage } from "./groq";
 import { openrouterChat, orUsageToday, FREE_DAILY_LIMIT, type ORMessage, specialistDefault } from "./openrouter";
 import { huggingfaceChat, HF_MODELS, type HFMessage } from "./huggingface";
@@ -19,6 +19,9 @@ import { loadMastermind as loadMaster, mastermindActive, mastermindDirectives } 
 import { getFixturesByDate, getLiveFixtures, ApiFootballError } from "./api-football";
 import type { ChatAttachment } from "./attachments";
 import { attachmentsContextText } from "./attachments";
+
+type GeminiPart = { text?: string; inline_data?: { mime_type: string; data: string } };
+type GeminiMessage = { role: string; parts: GeminiPart[] };
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -370,7 +373,7 @@ async function runOpenRouter(
       { type: "text", text: userText || "(bez teksta)" },
     ];
     for (const a of imgs) parts.push({ type: "image_url", image_url: { url: a.dataUrl! } });
-    msgs.push({ role: "user", content: parts });
+    msgs.push({ role: "user", content: JSON.stringify(parts) });
   } else {
     const imgNote = imgs.length ? "\n\n(Napomena: korisnik je poslao slike; odabrani model nije vision — radi po tekstualnom opisu privitaka iz KONTEKST-a.)" : "";
     msgs.push({ role: "user", content: userText + imgNote });
@@ -440,6 +443,7 @@ async function runNim(
   const msgs: NimMessage[] = [{ role: "system", content: sys }];
   for (const t of history) msgs.push({ role: t.role, content: t.content });
   msgs.push({ role: "user", content: userText });
-  return nvidiaChat(model, msgs, { timeoutMs: 40_000, maxTokens: 1600 });
+  return nvidiaChat(model, msgs, { maxTokens: 1600 });
 }
+
 

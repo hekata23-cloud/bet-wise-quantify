@@ -1,3 +1,4 @@
+
 /* ============================================================
    Zajednička stranica za Košarka Pro i Rukomet Pro.
    - učita utakmice dana (1 API poziv, keš 10 min)
@@ -9,15 +10,20 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, Brain, CheckCircle2, RefreshCw, Sparkles, Target } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { getSportBundle, getSportUtakmice, type SportBundle, type SportUtakmica } from "@/lib/sportovi.functions";
-import { sportAnaliza, type SportIzlaz, type SportTipTrzista } from "@/lib/sportovi-motor";
+import {
+  dohvatiSportUtakmiceServer,
+  analizirajSportUtakmicuServer,
+  type SportUtakmica,
+  type SportIzlaz,
+} from "@/lib/sportovi.functions";
+import { type SportTipTrzista } from "@/lib/sportovi-motor";
 import { zapisiTip, type Provjera } from "@/lib/dnevnik";
 import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
 
 type Sport = "kosarka" | "rukomet";
-type Rezultat = { bundle: SportBundle; analiza: SportIzlaz };
+type Rezultat = { analiza: SportIzlaz };
 
-const MAX_AUTO = 5; // svaka analiza ≈ 3–5 poziva; 100/dan po sportu
+const MAX_AUTO = 5;
 
 function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
 function vrijeme(iso: string) {
@@ -40,7 +46,6 @@ function provjeraZa(sport: Sport, t: SportTipTrzista): Provjera | null {
   const strana = t.kljuc;
   if (t.trziste === "1x2") {
     if (strana !== "1" && strana !== "X" && strana !== "2") return null;
-    // rukomet: 1X2 u 60 min; košarka 1/2 uključuje produžetke, X = nakon 4 četvrtine
     if (sport === "rukomet" || strana === "X") return { vrsta: "1x2reg", strana };
     return { vrsta: "1x2", strana };
   }
@@ -70,7 +75,6 @@ export function SportProStranica(props: {
 
   const rezKljuc = (dan: string) => `${pre}.rez.v3.${dan}`;
 
-  // učitaj zapamćene analize za dan (bez API poziva)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(rezKljuc(date));
@@ -85,13 +89,13 @@ export function SportProStranica(props: {
   }, [date]);
 
   const spremiRez = (dan: string, novi: Record<number, Rezultat>) => {
-    try { localStorage.setItem(rezKljuc(dan), JSON.stringify(novi)); } catch { /* pun storage */ }
+    try { localStorage.setItem(rezKljuc(dan), JSON.stringify(novi)); } catch { /* ignoriraj */ }
   };
 
   const ucitaj = async (force = false) => {
     const apiKey = getApiKey();
     if (!apiKey) {
-      setStatus(`Prvo unesi API-Sports ključ u Postavkama (⚙️) i aktiviraj besplatni plan za ${sport === "kosarka" ? "košarku" : "rukomet"}.`);
+      setStatus(`Prvo unesi API-Sports ključ u Postavkama (⚙️).`);
       setSettings(true);
       return;
     }
@@ -108,19 +112,15 @@ export function SportProStranica(props: {
     setUcitam(true);
     setStatus(`Učitavam utakmice za ${date}…`);
     try {
-      const r = await withTimeout(getSportUtakmice({ data: { sport, date, apiKey } }), 30_000);
-      if (r.error) {
-        setStatus(
-          r.error.startsWith("ACCOUNT")
-            ? `API: ${r.error} — na dashboard.api-football.com aktiviraj besplatni plan za ovaj sport (isti ključ).`
-            : `Učitavanje nije uspjelo: ${r.error}`,
-        );
+      const r = await withTimeout(dohvatiSportUtakmiceServer({ data: { sport, date } }), 30_000);
+      if (!r.ok && r.error) {
+        setStatus(`Učitavanje nije uspjelo: ${r.error}`);
       } else {
         setUtakmice(r.utakmice);
         localStorage.setItem(ck, JSON.stringify({ t: Date.now(), utakmice: r.utakmice }));
         setStatus(
           r.utakmice.length
-            ? `Učitano ${r.utakmice.length} utakmica${r.remaining >= 0 ? ` · preostalo ${r.remaining} poziva danas` : ""}. Klikni utakmicu ili "Analiziraj prvih ${MAX_AUTO}".`
+            ? `Učitano ${r.utakmice.length} utakmica. Klikni utakmicu ili "Analiziraj prvih ${MAX_AUTO}".`
             : "Nema nadolazećih utakmica za taj dan.",
         );
       }
@@ -130,48 +130,36 @@ export function SportProStranica(props: {
     setUcitam(false);
   };
 
-  /** Analiza jedne utakmice. Vrati grešku zaštite (ako je ima) da se serija zaustavi. */
   const analiziraj = async (u: SportUtakmica, tiho = false): Promise<string | null> => {
     const apiKey = getApiKey();
     if (!apiKey) { setSettings(true); return "ACCOUNT: nema ključa"; }
     setOdabrana(u);
-    if (rez[u.id]) return null; // već analizirano danas — 0 poziva
+    if (rez[u.id]) return null;
     setRadim(u.id);
-    if (!tiho) setStatus(`Analiziram ${u.home} — ${u.away}…`);
+    if (!tiho) setStatus(`Analiziram ${u.domacinNaziv} — ${u.gostNaziv}…`);
     try {
-      const b = (await withTimeout(
-        getSportBundle({ data: { sport, id: u.id, homeId: u.homeId, awayId: u.awayId, leagueId: u.leagueId, season: u.season, apiKey } }),
-        60_000,
-      )) as SportBundle;
-      if (b.error && !b.formaDom && !b.formaGost && !b.knjiga) {
-        setStatus(`⚠️ ${b.error}`);
+      const res = await withTimeout(analizirajSportUtakmicuServer({ data: { sport, utakmica: u } }), 60_000);
+      if (!res.ok || !res.izlaz) {
+        const err = res.error || "Greška pri analizi";
+        setStatus(`⚠️ ${err}`);
         setRadim(null);
-        return jeZastita(b.error) ? b.error : null;
+        return jeZastita(err) ? err : null;
       }
-      const a = sportAnaliza({
-        sport,
-        kvote: b.kvote ?? {},
-        linija: b.linija ?? null,
-        linijaDom: b.linijaDom ?? null,
-        linijaGost: b.linijaGost ?? null,
-        formaDom: b.formaDom,
-        formaGost: b.formaGost,
-        brojKladionica: b.knjiga,
-      });
+      const a = res.izlaz;
       setRez((prev) => {
-        const novi = { ...prev, [u.id]: { bundle: b, analiza: a } };
+        const novi = { ...prev, [u.id]: { analiza: a } };
         spremiRez(date, novi);
         return novi;
       });
-      // Dnevnik: svaki konkretan tip po tržištu
+
       for (const t of a.tipovi) {
         const pr = provjeraZa(sport, t);
         if (!pr) continue;
         zapisiTip({
           sport,
           kartica,
-          utakmica: `${u.home} — ${u.away}`,
-          liga: u.league,
+          utakmica: `${u.domacinNaziv} — ${u.gostNaziv}`,
+          liga: u.ligaNaziv,
           fixtureId: u.id,
           tip: t.kvota != null ? `${t.label} @ ${t.kvota.toFixed(2)}` : t.label,
           p: t.p,
@@ -180,9 +168,8 @@ export function SportProStranica(props: {
         });
       }
       if (!tiho) setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}). Tipovi su zapisani u Dnevnik.`);
-      const zast = b.upozorenja.find(jeZastita) ?? null;
       setRadim(null);
-      return zast;
+      return null;
     } catch {
       setStatus("Dohvat nije uspio (server zauzet) — probaj ponovno za minutu.");
       setRadim(null);
@@ -190,21 +177,22 @@ export function SportProStranica(props: {
     }
   };
 
+  const filtrirane = utakmice.filter(
+    (u) => !trazim || `${u.domacinNaziv} ${u.gostNaziv} ${u.ligaNaziv} ${u.ligaZemlja}`.toLowerCase().includes(trazim.toLowerCase()),
+  );
+
   const analizirajSve = async () => {
     const lista = filtrirane.filter((u) => !rez[u.id]).slice(0, MAX_AUTO);
     if (!lista.length) { setStatus("Sve prikazane utakmice su već analizirane."); return; }
     for (let i = 0; i < lista.length; i++) {
       const u = lista[i]!;
-      setStatus(`Analiziram ${i + 1}/${lista.length}: ${u.home} — ${u.away}…`);
+      setStatus(`Analiziram ${i + 1}/${lista.length}: ${u.domacinNaziv} — ${u.gostNaziv}…`);
       const zast = await analiziraj(u, true);
       if (zast) { setStatus(`Zaustavljeno radi zaštite računa: ${zast}`); return; }
     }
     setStatus(`Gotovo — analizirano ${lista.length} utakmica. Tipovi su zapisani u Dnevnik.`);
   };
 
-  const filtrirane = utakmice.filter(
-    (u) => !trazim || `${u.home} ${u.away} ${u.league} ${u.country}`.toLowerCase().includes(trazim.toLowerCase()),
-  );
   const trenutni = odabrana ? rez[odabrana.id] : undefined;
   const zauzet = radim != null || ucitam;
 
@@ -263,11 +251,11 @@ export function SportProStranica(props: {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-foreground">{u.home} — {u.away}</span>
+                  <span className="text-sm font-medium text-foreground">{u.domacinNaziv} — {u.gostNaziv}</span>
                   {radim === u.id && <Brain className="h-4 w-4 animate-pulse text-primary" />}
                   {r && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />}
                 </div>
-                <div className="text-xs text-muted-foreground">{u.country ? `${u.country} · ` : ""}{u.league} · {vrijeme(u.time)}</div>
+                <div className="text-xs text-muted-foreground">{u.ligaZemlja ? `${u.ligaZemlja} · ` : ""}{u.ligaNaziv} · {vrijeme(u.datumIso)}</div>
                 {r && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {r.analiza.tipovi.map((t) => (
@@ -307,13 +295,12 @@ export function SportProStranica(props: {
 
 function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport }) {
   const a = r.analiza;
-  const b = r.bundle;
   const jed = sport === "kosarka" ? "poena" : "golova";
   return (
     <>
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-foreground">{u.home} — {u.away}</span>
+          <span className="text-sm font-semibold text-foreground">{u.domacinNaziv} — {u.gostNaziv}</span>
           <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${ocjenaBoja(a.ocjena)}`}>{a.ocjena} · {a.povjerenje}/100</span>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -322,7 +309,7 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
           <div className="rounded-lg bg-muted/40 p-2"><div className="text-muted-foreground">Gost</div><div className="text-lg font-bold text-foreground">{a.lambdaGost.toFixed(1)}</div></div>
         </div>
         <div className="mt-2 text-[11px] text-muted-foreground">
-          Očekivani {jed}{sport === "kosarka" ? " (uklj. produžetke)" : ""} · kvote iz {b.knjiga} kladionica{b.bookmaker ? ` (npr. ${b.bookmaker})` : ""}
+          Očekivani {jed}{sport === "kosarka" ? " (uklj. produžetke)" : ""}{a.bookmaker ? ` · kvote (npr. ${a.bookmaker})` : ""}
         </div>
       </div>
 
@@ -341,7 +328,7 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
           <div key={t.trziste} className={`rounded-xl border p-3 ${t.vrijednost ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-card"}`}>
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t.naslov}</div>
             <div className="mt-0.5 text-base font-bold text-foreground">
-              {t.label === "Pobjeda domaćina" ? `1 · ${u.home}` : t.label === "Pobjeda gosta" ? `2 · ${u.away}` : t.label}
+              {t.label === "Pobjeda domaćina" ? `1 · ${u.domacinNaziv}` : t.label === "Pobjeda gosta" ? `2 · ${u.gostNaziv}` : t.label}
             </div>
             <div className="mt-1 grid grid-cols-2 gap-x-2 text-xs text-muted-foreground">
               <span>Vjerojatnost <b className="text-foreground">{fmtPct(t.p)}</b></span>
@@ -359,9 +346,9 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
       <div className="rounded-xl border border-border bg-card p-4 text-sm">
         <div className="mb-1 font-semibold text-foreground">Sve vjerojatnosti</div>
         <div className="grid grid-cols-3 gap-1 text-xs text-muted-foreground">
-          {(sport === "rukomet" ? ["1", "X", "2"] : ["1", "X", "2"]).map((k) =>
+          {["1", "X", "2"].map((k) =>
             a.final[k] != null ? (
-              <span key={k}>{k === "X" && sport === "kosarka" ? "X (4 čet.)" : k}: <b className="text-foreground">{fmtPct(a.final[k]!)}</b>{b.kvote[k] ? ` @ ${b.kvote[k]!.toFixed(2)}` : ""}</span>
+              <span key={k}>{k === "X" && sport === "kosarka" ? "X (4 čet.)" : k}: <b className="text-foreground">{fmtPct(a.final[k]!)}</b></span>
             ) : null,
           )}
         </div>
@@ -373,10 +360,10 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
           <ul className="space-y-1 text-xs text-muted-foreground">{a.faktori.map((f, i) => <li key={i}>• {f}</li>)}</ul>
         </div>
       )}
-      {[...a.upozorenja, ...b.upozorenja].length > 0 && (
+      {a.upozorenja.length > 0 && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
           <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-300"><AlertTriangle className="h-4 w-4" /> Upozorenja</div>
-          <ul className="space-y-1 text-xs text-amber-200/80">{[...a.upozorenja, ...b.upozorenja].map((f, i) => <li key={i}>• {f}</li>)}</ul>
+          <ul className="space-y-1 text-xs text-amber-200/80">{a.upozorenja.map((f, i) => <li key={i}>• {f}</li>)}</ul>
         </div>
       )}
     </>
