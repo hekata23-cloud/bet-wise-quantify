@@ -1,10 +1,12 @@
 // ═══ REZERVNI MOZAK za AI Prognozu — BESPLATNO ═══
-// Kad Lovable AI Gateway kaže da su krediti potrošeni (402) ili je zauzet (429),
-// ova kartica ne ostaje prazna: ista prognoza se izračuna preko korisnikovog
-// besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
+// Kad Lovable AI Gateway kaže da su krediti potrošeni (402) ili je zauzet (429)
+// ili visi, ova kartica ne ostaje prazna: ista prognoza se izračuna preko
+// korisnikovog besplatnog OpenRouter ključa (:free modeli). Nula Lovable kredita.
 //
-// BRZINA: prva 4 modela pitaju se PARALELNO — tko prvi vrati ispravan JSON,
-// ta prognoza ide na ekran. v2: 60 s po modelu, 4 paralelna, jasnije greške.
+// v3 — BRZINA I GRANICA VREMENA:
+//  - FAZA 1: 4 modela PARALELNO, 50 s po modelu → najviše 50 s.
+//  - FAZA 2: SVI ostali modeli PARALELNO, 50 s → najviše još 50 s.
+//  Maksimalno 100 s okretanja, nikad "vrti mozgove" u nedogled.
 // Popis modela provjeren živim upitom na OpenRouter /models (17.10.2026).
 import { openrouterChat } from "./openrouter";
 import { hasKey } from "./storage";
@@ -12,7 +14,6 @@ import type { AiPrognoza } from "./ai-prognoza.functions";
 
 export type FallbackResult = { ok: true; p: AiPrognoza } | { ok: false; error: string };
 
-/** Besplatni OpenRouter modeli — prva četiri idu paralelno, ostatak redom. */
 const FREE_MODELS = [
   "google/gemma-4-31b-it:free",
   "poolside/laguna-s-2.1:free",
@@ -106,6 +107,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+const MODEL_TIMEOUT_MS = 50_000;
+
 export async function runAiPrognozaFallback(input: {
   utakmica: string;
   vrstaOklade: string;
@@ -126,10 +129,9 @@ ${SCHEMA_TEXT}`;
 
   /** Jedan pokušaj modela: vraća parsiranu prognozu ili baca grešku. */
   const pokusaj = async (model: string): Promise<AiPrognoza> => {
-    onProgress?.(`Rezervni mozak (besplatno): ${model}…`);
     const out = await withTimeout(
       openrouterChat(model, poruke, { maxTokens: 1400, temperature: 0.3 }),
-      60_000,
+      MODEL_TIMEOUT_MS,
     );
     const p = parsePrognoza(out);
     if (p) return p;
@@ -137,30 +139,33 @@ ${SCHEMA_TEXT}`;
   };
 
   const errs: string[] = [];
-
-  // FAZA 1: prva četiri modela PARALELNO — prvi ispravan odgovor pobjeđuje.
-  try {
-    const p = await Promise.any(FREE_MODELS.slice(0, 4).map((m) => pokusaj(m)));
-    return { ok: true, p };
-  } catch (e) {
+  const skupiGreske = (e: unknown) => {
     const agg = e as AggregateError;
     if (agg && Array.isArray(agg.errors)) {
       for (const er of agg.errors) errs.push(er instanceof Error ? er.message : String(er));
     } else errs.push(e instanceof Error ? e.message : String(e));
+  };
+
+  // FAZA 1: 4 najbrža modela PARALELNO — prvi ispravan JSON pobjeđuje (max 50 s).
+  onProgress?.(`Rezervni mozak: 4 besplatna modela rade paralelno (do 50 s)…`);
+  try {
+    const p = await Promise.any(FREE_MODELS.slice(0, 4).map((m) => pokusaj(m)));
+    return { ok: true, p };
+  } catch (e) {
+    skupiGreske(e);
   }
 
-  // FAZA 2: ostatak modela redom (sporije, ali daje prognozu ako prva četiri omanu).
-  for (const model of FREE_MODELS.slice(4)) {
-    try {
-      onProgress?.(`Rezervni mozak: još pokušavam s ${model}…`);
-      const p = await pokusaj(model);
-      return { ok: true, p };
-    } catch (e) {
-      errs.push(e instanceof Error ? e.message : String(e));
-    }
+  // FAZA 2: SVI ostali PARALELNO (max još 50 s) — ne redom, da ne vrti u nedogled.
+  onProgress?.(`Rezervni mozak: prva 4 nisu dala ispravan odgovor — pokušavam ostalih ${FREE_MODELS.length - 4} paralelno…`);
+  try {
+    const p = await Promise.any(FREE_MODELS.slice(4).map((m) => pokusaj(m)));
+    return { ok: true, p };
+  } catch (e) {
+    skupiGreske(e);
   }
 
-  return { ok: false, error: `Rezervni mozak nije uspio. ${errs.slice(0, 3).join(" | ")}` };
+  // Sažetak grešaka: bez duplikata, prva 4, da se vidi TOČNO zašto je stalo.
+  const jedinstvene = [...new Set(errs)].slice(0, 4).join(" | ");
+  return { ok: false, error: `Rezervni mozak nije uspio (svi ${FREE_MODELS.length} besplatnih modela). ${jedinstvene}` };
 }
-
 
