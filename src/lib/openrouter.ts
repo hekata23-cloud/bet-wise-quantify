@@ -8,8 +8,7 @@ export interface ORMessage {
 }
 
 // Popis modela provjeren ŽIVIM upitom na https://openrouter.ai/api/v1/models
-// (16.10.2026). "openrouter/free" NE postoji kao model — uklonjen. Inkling:free
-// je samo za agentic aplikacije (403), Ultra 550B prespor (timeout) — uklonjeni.
+// (17.10.2026) — svi slugovi postoje. Besplatnih modela ima ukupno 16.
 export const OR_MODELS = [
   { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (Glavni)", free: true },
   { id: "poolside/laguna-s-2.1:free", label: "Laguna S 2.1", free: true },
@@ -18,6 +17,9 @@ export const OR_MODELS = [
   { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B", free: true },
   { id: "dots-studio/dots-3-note-preview:free", label: "Dots 3 Note Preview", free: true },
   { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", label: "Nemotron Nano Omni 30B", free: true },
+  // v5: novi red iz živog popisa — dodatni spasi kad glavni tri omanu
+  { id: "xingchen-agi/xing4.0-29b-a4b:free", label: "Xing 4.0 29B", free: true },
+  { id: "nvidia/nemotron-3.5-super-vl:free", label: "Nemotron 3.5 Super VL", free: true },
 ];
 
 export function specialistDefault(): string {
@@ -30,37 +32,65 @@ export interface ORCallOptions {
   extraFallbacks?: string[];
 }
 
+/** Vlastiti timeout po pozivu — model koji visi nikad ne blokira lanac. */
+const CALL_TIMEOUT_MS = 50_000;
+
 /** Jedan poziv prema OpenRouteru; baca grešku s porukom provajdera. */
 async function call(model: string, messages: ORMessage[], opts: ORCallOptions): Promise<string> {
   const key = getKey("openrouter");
   if (!key) throw new Error("Ključ nedostaje");
 
-  const res = await fetch(URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${key}`,
-      "X-Title": "Andromeda AI Oracle"
-    },
-    body: JSON.stringify({
-      model: model || specialistDefault(),
-      messages,
-      temperature: opts.temperature ?? 0.6,
-      ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-    })
-  });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), CALL_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${key}`,
+        "X-Title": "Andromeda AI Oracle",
+      },
+      body: JSON.stringify({
+        model: model || specialistDefault(),
+        messages,
+        temperature: opts.temperature ?? 0.6,
+        ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+      }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError")
+      throw new Error(`${model}: nema odgovora ${CALL_TIMEOUT_MS / 1000} s`);
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(`(${res.status}) ${data.error?.message || "OpenRouter Error"}`);
-  const m = data.choices?.[0];
+  const data = await res.json().catch(() => null as unknown);
+  if (!res.ok) {
+    const m = (data as any)?.error?.message;
+    throw new Error(`(${res.status}) ${m || "OpenRouter Error"}`);
+  }
+  const ch = (data as any)?.choices?.[0];
   // Provider greška krije se unutar choices (npr. "no allowed providers").
-  if (m?.error?.message) throw new Error(m.error.message);
-  const content = m?.message?.content?.trim();
+  if (ch?.error?.message) throw new Error(ch.error.message);
+  const content = typeof ch?.message?.content === "string" ? ch.message.content.trim() : "";
   if (content) return content;
   // Neki besplatni reasoning modeli vrate tekst u "reasoning" polju.
-  const reasoning = typeof m?.message?.reasoning === "string" ? m.message.reasoning.trim() : "";
-  return reasoning;
+  const reasoning = typeof ch?.message?.reasoning === "string" ? ch.message.reasoning.trim() : "";
+  if (reasoning) return reasoning;
+  // v5: prazan odgovor je jasna greška — ne šuti.
+  throw new Error(`${model}: prazan odgovor`);
 }
+
+/** Redoslijed spasova kad traženi model omane (živi besplatni modeli). */
+const RESCUE_MODELS = [
+  specialistDefault(),
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "poolside/laguna-s-2.1:free",
+];
 
 export async function openrouterChat(
   model: string,
@@ -71,13 +101,17 @@ export async function openrouterChat(
     return await call(model, messages, opts);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    // Model umirovljen / nedostupan / preopterećen → jedan spas preko glavnog
-    // živog besplatnog modela (Gemma 4 31B — provjeren danas na OpenRouteru).
-    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|rate|quota|429|402|404|400|\(429\)|\(400\)|\(404\)/i.test(msg);
-    const main = specialistDefault();
-    if (rescue && model !== main) {
-      const out = await call(main, messages, opts);
-      if (out) return out;
+    // Model umirovljen / nedostupan / preopterećen / spor / prazan → spas preko
+    // drugih živih besplatnih modela redom (v5: do 4 spasa, ne samo jedan).
+    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|rate|quota|429|402|404|400|prazan odgovor|nema odgovora|AbortError/i.test(msg);
+    if (rescue) {
+      for (const m of RESCUE_MODELS) {
+        if (m === model) continue;
+        try {
+          const out = await call(m, messages, opts);
+          if (out) return out;
+        } catch { /* idemo na sljedeći */ }
+      }
     }
     // Eksplicitni rezervni modeli iz poziva (npr. specialisti za tržište).
     for (const fb of opts.extraFallbacks ?? []) {
