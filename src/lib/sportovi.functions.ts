@@ -4,8 +4,10 @@
    (isti API-Sports ključ; svaki sport ima zasebnih 100 besplatnih
    poziva dnevno — otvori api-sports.io dashboard i pretplati
    besplatni plan za košarku i rukomet).
-   Svi pozivi idu kroz sportovi-guard (red + keš + retry + stale),
+   Svi pozivi idu kroz sportovi-guard v2 (red + keš + retry + stale),
    pa ove kartice NE MOGU oboriti dnevni limit.
+   v2: forme dohvaća PARALELNO (brže — serverless timeout), jasno
+   razlikuje minurni RATE_LIMIT od potrošenog DNEVNOG limita.
    Izlaz: kvote (1, X?, 2 + over/under s linijom, MEDIAN konsenzus
    kladionica) + forma zadnjih 10 utakmica s razdvojkom doma/u gostima.
    ============================================================ */
@@ -201,7 +203,7 @@ function kvoteIzOdds(oddsResp: any[], sport: Sport): {
       for (const bet of bk?.bets ?? []) {
         const ime = String(bet?.name ?? "").toLowerCase();
         const values: any[] = bet?.values ?? [];
-        if (/home\s*\/?\s*away|match\s*winner|1x2|winner\b/.test(ime)) {
+        if (/home\s*\/?\s*away|match\s*winner|1x2|winner\b/..test(ime)) {
           let d1 = 0, dX = 0, d2 = 0;
           for (const v of values) {
             const lab = String(v?.value ?? "").toLowerCase();
@@ -261,7 +263,7 @@ export const getSportUtakmice = createServerFn({ method: "GET" })
     try {
       const r = await sportoviGet(data.sport, `/games?date=${data.date}&timezone=${encodeURIComponent(TZ)}`, {
         apiKey: data.apiKey,
-        ttlMs: 5 * 60_000,
+        ttlMs: 10 * 60_000,
       });
       if (r.error) return { ...empty, error: r.error, remaining: r.remainingDay };
       const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
@@ -310,13 +312,19 @@ export const getSportBundle = createServerFn({ method: "POST" })
       const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
       return formaIzUtakmica(resp, data.sport, teamId, teamName);
     };
-    out.formaDom = await formaZa(data.homeId, "domaćina");
-    out.formaGost = await formaZa(data.awayId, "gosta");
+    // FIX: paralelno — pola vremena, manja šansa da serverless funkcija bude ubijena
+    const [fd, fg] = await Promise.all([
+      formaZa(data.homeId, "domaćina"),
+      formaZa(data.awayId, "gosta"),
+    ]);
+    out.formaDom = fd;
+    out.formaGost = fg;
     if (!out.formaDom && !out.formaGost)
       upozorenja.push("Nema dovoljno završenih utakmica za forme — analiza je ograničena.");
 
     // 2) kvote (keš 10 min)
     const ro = await sportoviGet(data.sport, `/odds?game=${data.id}`, { apiKey: data.apiKey });
+    const odErr = ro.error;
     if (ro.error) {
       upozorenja.push(`Kvote: ${ro.error}`);
     } else {
@@ -329,5 +337,8 @@ export const getSportBundle = createServerFn({ method: "POST" })
       if (!k.knjiga) upozorenja.push("Kladionice još ne daju kvote za ovu utakmicu — analiza je samo iz forme.");
     }
     out.remaining = ro.remainingDay;
+    // FIX: ako je palo SVE (npr. potrošen dnevni limit), signaliziraj grešku
+    // da UI pokaže jasno upozorenje umjesto prazne analize.
+    if (!out.formaDom && !out.formaGost && !out.knjiga && odErr) out.error = odErr;
     return out;
   });
