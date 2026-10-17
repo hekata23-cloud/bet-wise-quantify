@@ -88,7 +88,7 @@ async function guardFetch(sport: string, path: string, apiKey: string): Promise<
     status, remainingDay, dayLimit, remainingMinute,
   });
   try {
-    const s = stanje(sport);
+    const s = stanje(`${sport}:${apiKey}`);
     const slot = await waitSlot(s);
     if (!slot) {
       // Predugo bi se čekalo — vrti u pola posla je gori od brze, jasne greške.
@@ -151,7 +151,7 @@ export async function sportoviGet(
   if (!BAZE[sport])
     return { error: `Nepoznat sport: ${sport}`, data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
 
-  const s = stanje(sport);
+  const s = stanje(`${sport}:${apiKey}`);
   const ttl = opts.ttlMs ?? defaultTtl(path);
   const hit = s.cache.get(path);
   if (hit && Date.now() - hit.t <= ttl) {

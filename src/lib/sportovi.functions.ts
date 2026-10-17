@@ -286,17 +286,17 @@ function kvoteIzOdds(oddsResp: any[], sport: Sport): {
   };
 }
 
-export const dohvatiSportUtakmiceServer = createServerFn({ method: "GET" })
-  .validator((d: unknown): { sport: Sport; date: string } => {
+export const dohvatiSportUtakmiceServer = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown): { sport: Sport; date: string; apiKey?: string } => {
     const obj = (d ?? {}) as any;
     const sport: Sport = obj.sport === "rukomet" ? "rukomet" : "kosarka";
     const date = typeof obj.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.date)
       ? obj.date
       : new Date().toISOString().slice(0, 10);
-    return { sport, date };
+    return { sport, date, apiKey: typeof obj.apiKey === "string" ? obj.apiKey.trim() : undefined };
   })
   .handler(async ({ data }) => {
-    const res = await dohvatiUtakmiceSport(data.sport, data.date);
+    const res = await dohvatiUtakmiceSport(data.sport, data.date, data.apiKey);
     if (!res.ok) {
       return { ok: false, error: res.error, code: res.code, utakmice: [] };
     }
@@ -315,15 +315,15 @@ export const dohvatiSportUtakmiceServer = createServerFn({ method: "GET" })
   });
 
 export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
-  .validator((d: unknown): { sport: Sport; utakmica: SportUtakmica } => {
+  .inputValidator((d: unknown): { sport: Sport; utakmica: SportUtakmica; apiKey?: string } => {
     const obj = (d ?? {}) as any;
     if (!obj?.utakmica?.id) throw new Error("Nedostaje utakmica");
     const sport: Sport = obj.sport === "rukomet" ? "rukomet" : "kosarka";
-    return { sport, utakmica: obj.utakmica };
+    return { sport, utakmica: obj.utakmica, apiKey: typeof obj.apiKey === "string" ? obj.apiKey.trim() : undefined };
   })
   .handler(async ({ data }): Promise<{ ok: boolean; izlaz?: SportIzlaz; error?: string }> => {
-    const { sport, utakmica } = data;
-    const oddsRes = await dohvatiOddsSport(sport, utakmica.id);
+    const { sport, utakmica, apiKey } = data;
+    const oddsRes = await dohvatiOddsSport(sport, utakmica.id, apiKey);
     const parsed = oddsRes.ok ? kvoteIzOdds(oddsRes.data, sport) : {
       kvote: {},
       linija: null,
@@ -336,7 +336,7 @@ export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
     let h2hGoloviDom: number[] = [];
     let h2hGoloviGost: number[] = [];
     if (utakmica.domacinId && utakmica.gostId) {
-      const h2hRes = await dohvatiH2HSport(sport, utakmica.domacinId, utakmica.gostId);
+      const h2hRes = await dohvatiH2HSport(sport, utakmica.domacinId, utakmica.gostId, apiKey);
       if (h2hRes.ok && Array.isArray(h2hRes.data)) {
         for (const m of h2hRes.data.slice(0, 10)) {
           const domJePrvi = m?.teams?.home?.id === utakmica.domacinId;
@@ -367,11 +367,11 @@ export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
 
 export const getSportUtakmice = dohvatiSportUtakmiceServer;
 export const getSportBundle = createServerFn({ method: "POST" })
-  .validator((d: unknown) => d as any)
+  .inputValidator((d: unknown) => d as any)
   .handler(async ({ data }) => {
     const sport: Sport = data?.sport === "rukomet" ? "rukomet" : "kosarka";
     const id = Number(data?.id);
-    const oddsRes = await dohvatiOddsSport(sport, id);
+    const oddsRes = await dohvatiOddsSport(sport, id, typeof data?.apiKey === "string" ? data.apiKey.trim() : undefined);
     const parsed = oddsRes.ok ? kvoteIzOdds(oddsRes.data, sport) : {
       kvote: {},
       linija: null,

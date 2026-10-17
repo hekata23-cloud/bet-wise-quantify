@@ -112,7 +112,7 @@ export function SportProStranica(props: {
     setUcitam(true);
     setStatus(`Učitavam utakmice za ${date}…`);
     try {
-      const r = await withTimeout(dohvatiSportUtakmiceServer({ data: { sport, date } }), 30_000);
+      const r = await withTimeout(dohvatiSportUtakmiceServer({ data: { sport, date, apiKey } }), 30_000);
       if (!r.ok && r.error) {
         setStatus(`Učitavanje nije uspjelo: ${r.error}`);
       } else {
@@ -138,7 +138,7 @@ export function SportProStranica(props: {
     setRadim(u.id);
     if (!tiho) setStatus(`Analiziram ${u.domacinNaziv} — ${u.gostNaziv}…`);
     try {
-      const res = await withTimeout(analizirajSportUtakmicuServer({ data: { sport, utakmica: u } }), 60_000);
+      const res = await withTimeout(analizirajSportUtakmicuServer({ data: { sport, utakmica: u, apiKey } }), 60_000);
       if (!res.ok || !res.izlaz) {
         const err = res.error || "Greška pri analizi";
         setStatus(`⚠️ ${err}`);

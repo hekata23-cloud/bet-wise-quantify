@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { testApiKey } from "@/lib/football.functions";
+import { getApiKey } from "@/lib/zlatni-guard";
+import { clearKey, setKey as saveKey } from "@/lib/storage";
 
 type Props = {
   open: boolean;
@@ -21,7 +23,7 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (open) {
-      const saved = localStorage.getItem("kr-football-api-key") || "";
+      const saved = getApiKey() || "";
       setKey(saved);
       setStatus(null);
     }
@@ -59,15 +61,18 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
   const spremi = () => {
     const k = key.trim();
     if (k) {
+      saveKey("apiFootball", k);
       localStorage.setItem("kr-football-api-key", k);
     } else {
-      localStorage.removeItem("kr-football-api-key");
+      clearKey("apiFootball");
+    localStorage.removeItem("kr-football-api-key");
     }
     onSaved?.();
     onClose();
   };
 
   const obrisi = () => {
+    clearKey("apiFootball");
     localStorage.removeItem("kr-football-api-key");
     setKey("");
     setStatus({ ok: true, msg: "Ključ uklonjen iz memorije." });
