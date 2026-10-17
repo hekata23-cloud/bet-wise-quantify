@@ -20,6 +20,7 @@ import { getBetaBundle, getBetaUtakmice, type BetaBundle, type BetaUtakmica } fr
 import { betaAnaliza, type BetaAnaliza } from "@/lib/htft-beta-motor";
 import { edge, kelly } from "@/lib/matematika";
 import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
+import { zapisiTip } from "@/lib/dnevnik";
 
 export const Route = createFileRoute("/ht-ft-beta")({
   head: () => ({
@@ -103,11 +104,11 @@ function HtFtBetaPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `htfb.bundle.${u.id}`;
+    const ck = `htfb.bundle.v3.${u.id}`;
     try {
       const keš = localStorage.getItem(ck);
       const b = keš ? (JSON.parse(keš) as BetaBundle)
-        : await getBetaBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } });
+        : await getBetaBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, leagueId: u.leagueId, season: u.season, apiKey } });
       if (!keš) localStorage.setItem(ck, JSON.stringify(b));
       setBundle(b);
       if (b.error) {
@@ -115,10 +116,25 @@ function HtFtBetaPage() {
       } else {
         const a = betaAnaliza({
           kvote: b.kvote,
-          formaDom: b.formaDom ? { odigrano: b.formaDom.odigrano, postignuti: b.formaDom.postignuti, primljeni: b.formaDom.primljeni } : null,
-          formaGost: b.formaGost ? { odigrano: b.formaGost.odigrano, postignuti: b.formaGost.postignuti, primljeni: b.formaGost.primljeni } : null,
+          formaDom: b.formaDom,
+          formaGost: b.formaGost,
+          liga: b.liga ?? null,
         });
         setAnaliza(a);
+        // Dnevnik: zapiši najjaču HT/FT ćeliju da Dnevnik može ocijeniti karticu.
+        const najD = [...a.celije].sort((x, y) => y.p - x.p)[0];
+        if (najD) {
+          zapisiTip({
+            kartica: "HT/FT Beta",
+            utakmica: `${u.home} — ${u.away}`,
+            liga: u.league,
+            fixtureId: u.id,
+            tip: najD.kod,
+            p: najD.p,
+            kvota: b.htft[najD.kod] ?? null,
+            provjera: { vrsta: "htft", kod: najD.kod },
+          });
+        }
         setStatus("");
       }
     } catch {
