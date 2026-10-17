@@ -23,6 +23,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "@/lib/goals.functions";
 import { goalsAnaliza, type GoalsIzlaz } from "@/lib/goals-motor";
 import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
+import { zapisiTip } from "@/lib/dnevnik";
 
 export const Route = createFileRoute("/over25-pro")({
   head: () => ({
@@ -107,14 +108,14 @@ function Over25ProPage() {
     setBundle(null);
     setAnaliza(null);
     setStatus(`Analiziram ${u.home} — ${u.away}…`);
-    const ck = `o25p.bundle.v4.${u.id}`;
+    const ck = `o25p.bundle.v5.${u.id}`;
 
     // v5: 90 s po pokušaju + jedan automatski ponovni pokušaj.
-    const dohvati = () =>
-      withTimeout(
+    const dohvati = async (): Promise<GoalsBundle> =>
+      (await withTimeout(
         getGoalsBundle({ data: { id: u.id, homeId: u.homeId, awayId: u.awayId, apiKey } }),
         90_000,
-      );
+      )) as GoalsBundle;
 
     try {
       const kes = localStorage.getItem(ck);
@@ -141,8 +142,26 @@ function Over25ProPage() {
           formaDom: b.formaDom,
           formaGost: b.formaGost,
           brojKladionica: b.knjigaOu,
+          liga: b.liga ?? null,
         });
         setAnaliza(a);
+        // Dnevnik: zapiši konkretnu stranu 2.5 linije da Dnevnik može ocijeniti karticu.
+        const stranaO: "over" | "under" =
+          (a.final["o25"] ?? 0) >= (a.final["u25"] ?? 0) ? "over" : "under";
+        const pTipO = stranaO === "over" ? a.final["o25"] : a.final["u25"];
+        const kvTipO = b.kvote[stranaO === "over" ? "o25" : "u25"];
+        if (pTipO != null) {
+          zapisiTip({
+            kartica: "2.5 Pro",
+            utakmica: `${u.home} — ${u.away}`,
+            liga: u.league,
+            fixtureId: u.id,
+            tip: kvTipO != null ? `${stranaO === "over" ? "OVER" : "UNDER"} 2.5 @ ${kvTipO.toFixed(2)}` : (stranaO === "over" ? "OVER 2.5" : "UNDER 2.5"),
+            p: pTipO,
+            kvota: kvTipO ?? null,
+            provjera: { vrsta: "ou", strana: stranaO, linija: 2.5 },
+          });
+        }
         if (b.error)
           setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
         else
@@ -465,4 +484,3 @@ function Over25ProPage() {
     </div>
   );
 }
-
