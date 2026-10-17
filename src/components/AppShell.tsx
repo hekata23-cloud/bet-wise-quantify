@@ -1,8 +1,10 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+mport { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
+  BookOpen,
   Brain,
+  CircleDot,
   Dribbble,
   Calculator,
   Clock,
@@ -48,6 +50,9 @@ const NAV = [
   { to: "/ai-prognoza", label: "AI Prognoza", icon: Brain },
   { to: "/chat", label: "AI Chat", icon: MessageCircle },
   { to: "/uzivo", label: "Uživo", icon: Radio },
+  { to: "/kosarka-pro", label: "Košarka Pro", icon: Dribbble },
+  { to: "/rukomet-pro", label: "Rukomet Pro", icon: CircleDot },
+  { to: "/dnevnik", label: "Dnevnik", icon: BookOpen },
   { to: "/postavke", label: "Postavke", icon: Settings },
 ] as const;
 
@@ -156,4 +161,3 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
