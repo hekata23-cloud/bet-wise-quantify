@@ -23,6 +23,7 @@ import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as KosarkaRouteImport } from './routes/kosarka'
 import { Route as KosarkaProRouteImport } from './routes/kosarka-pro'
 import { Route as ObrnuteKvoteRouteImport } from './routes/obrnute-kvote'
+import { Route as OuNiskiRouteImport } from './routes/ou-niski'
 import { Route as OverUnderRouteImport } from './routes/over-under'
 import { Route as Over25ProRouteImport } from './routes/over25-pro'
 import { Route as PostavkeRouteImport } from './routes/postavke'
@@ -108,6 +109,11 @@ const KosarkaProRoute = KosarkaProRouteImport.update({
 const ObrnuteKvoteRoute = ObrnuteKvoteRouteImport.update({
   id: '/obrnute-kvote',
   path: '/obrnute-kvote',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OuNiskiRoute = OuNiskiRouteImport.update({
+  id: '/ou-niski',
+  path: '/ou-niski',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverUnderRoute = OverUnderRouteImport.update({
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/kosarka': typeof KosarkaRoute
   '/kosarka-pro': typeof KosarkaProRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
+  '/ou-niski': typeof OuNiskiRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/kosarka': typeof KosarkaRoute
   '/kosarka-pro': typeof KosarkaProRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
+  '/ou-niski': typeof OuNiskiRoute
   '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/kosarka': typeof KosarkaRoute
   '/kosarka-pro': typeof KosarkaProRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
+  '/ou-niski': typeof OuNiskiRoute
   '/over-under': typeof OverUnderRouteWithChildren
   '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/kosarka'
     | '/kosarka-pro'
     | '/obrnute-kvote'
+    | '/ou-niski'
     | '/over-under'
     | '/over25-pro'
     | '/postavke'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/kosarka'
     | '/kosarka-pro'
     | '/obrnute-kvote'
+    | '/ou-niski'
     | '/over25-pro'
     | '/postavke'
     | '/prediktor'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/kosarka'
     | '/kosarka-pro'
     | '/obrnute-kvote'
+    | '/ou-niski'
     | '/over-under'
     | '/over25-pro'
     | '/postavke'
@@ -400,6 +412,7 @@ export interface RootRouteChildren {
   KosarkaRoute: typeof KosarkaRoute
   KosarkaProRoute: typeof KosarkaProRoute
   ObrnuteKvoteRoute: typeof ObrnuteKvoteRoute
+  OuNiskiRoute: typeof OuNiskiRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
   Over25ProRoute: typeof Over25ProRoute
   PostavkeRoute: typeof PostavkeRoute
@@ -514,6 +527,13 @@ declare module '@tanstack/react-router' {
       path: '/obrnute-kvote'
       fullPath: '/obrnute-kvote'
       preLoaderRoute: typeof ObrnuteKvoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ou-niski': {
+      id: '/ou-niski'
+      path: '/ou-niski'
+      fullPath: '/ou-niski'
+      preLoaderRoute: typeof OuNiskiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/over-under': {
@@ -660,6 +680,7 @@ const rootRouteChildren: RootRouteChildren = {
   KosarkaRoute: KosarkaRoute,
   KosarkaProRoute: KosarkaProRoute,
   ObrnuteKvoteRoute: ObrnuteKvoteRoute,
+  OuNiskiRoute: OuNiskiRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
   Over25ProRoute: Over25ProRoute,
   PostavkeRoute: PostavkeRoute,
