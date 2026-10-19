@@ -21,11 +21,12 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-import { SettingsModal } from "@/components/SettingsModal";
-import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "@/lib/goals.functions";
-import { goalsAnaliza, type GoalsIzlaz } from "@/lib/goals-motor";
-import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
-import { zapisiTip } from "@/lib/dnevnik";
+import { SettingsModal } from "../components/SettingsModal";
+import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "../lib/goals.functions";
+import { goalsAnaliza, type GoalsIzlaz } from "../lib/goals-motor";
+import { getApiKey, zagrebDay } from "../lib/zlatni-guard";
+import { zapisiTip } from "../lib/dnevnik";
+import { MatchInsightPanel } from "../components/MatchInsightPanel";
 
 export const Route = createFileRoute("/btts-ultra")({
   head: () => ({
@@ -482,6 +483,22 @@ function BttsUltraPage() {
                   Knjige ne nude BTTS tržište za ovu utakmicu — procjena je čisto modelna (fer kvote gore).
                 </div>
               )}
+              {/* ═══ SARP MATCH INSIGHT PANEL (9 sekcija) ═══ */}
+              <MatchInsightPanel
+                utakmica={{
+                  id: odabrana.id,
+                  home: odabrana.home,
+                  away: odabrana.away,
+                  league: odabrana.league,
+                  country: odabrana.country,
+                  time: odabrana.time,
+                }}
+                kvote={bundle?.kvote ?? {}}
+                brojKladionica={bundle ? bundle.knjigaBtts + bundle.knjigaOu : 0}
+                formaDom={bundle?.formaDom ?? null}
+                formaGost={bundle?.formaGost ?? null}
+                goals={analiza}
+              />
             </>
           )}
         </div>
