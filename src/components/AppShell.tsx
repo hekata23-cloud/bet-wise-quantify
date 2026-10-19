@@ -26,6 +26,8 @@ import {
 import { formatZagreb } from "@/lib/zagreb-time";
 import { SharpFilterToggle } from "@/components/SharpFilterToggle";
 import { useSharpFilter, SHARP_PRESETS } from "@/lib/sharp-filter";
+import { Korpa } from "@/components/Korpa";
+import { Orion } from "@/components/Orion";
 
 const NAV = [
   { to: "/", label: "Početna", icon: Sparkles },
@@ -158,6 +160,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
         Andromeda AI © 2026 · Kvantitativno modeliranje sportskih tržišta
       </footer>
+
+      {/* Dual-AI agenti + Bet Slip Korpa — dostupni na svakoj kartici */}
+      <Orion />
+      <Korpa />
     </div>
   );
 }
