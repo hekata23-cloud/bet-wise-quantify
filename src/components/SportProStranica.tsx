@@ -1,14 +1,17 @@
-
 /* ============================================================
    Zajednička stranica za Košarka Pro i Rukomet Pro.
    - učita utakmice dana (1 API poziv, keš 10 min)
    - analiza po utakmici: forme + kvote → motor → KONKRETAN TIP
-     za 1X2, ukupni zbroj, zbroj domaćina i zbroj gosta
-   - "Analiziraj prvih N" radi redom i STANE čim osigurač javi limit
+   - proširena tržišta: Spread/Handicap, četvrtine/poluvremena,
+     tempo (pace), ratingi napada/obrane
+   - svaki tip ide jednim klikom u Korpu (frakcijski Kelly tiket)
    - rezultati se pamte po danu (ponovno otvaranje = 0 poziva)
    ============================================================ */
 import { useEffect, useState, type ReactNode } from "react";
-import { AlertTriangle, Brain, CheckCircle2, RefreshCw, Sparkles, Target } from "lucide-react";
+import {
+  AlertTriangle, BarChart3, Brain, CheckCircle2, Gauge, Plus,
+  RefreshCw, Scale, ShoppingCart, Sparkles, Target,
+} from "lucide-react";
 import { SportSettingsModal } from "@/components/SportSettingsModal";
 import {
   dohvatiSportUtakmiceServer,
@@ -17,6 +20,11 @@ import {
   type SportIzlaz,
 } from "@/lib/sportovi.functions";
 import { type SportTipTrzista } from "@/lib/sportovi-motor";
+import {
+  handicapRedovi, raspadPeriodi, tempoIndeks, timRatingi, ratingLabel,
+  type SportDod,
+} from "@/lib/sport-dodatci";
+import { dodajUKorpu } from "@/lib/korpa";
 import { zapisiTip, type Provjera } from "@/lib/dnevnik";
 import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
 
@@ -52,6 +60,20 @@ function provjeraZa(sport: Sport, t: SportTipTrzista): Provjera | null {
   if ((strana !== "over" && strana !== "under") || t.linija == null) return null;
   if (t.trziste === "ukupno") return { vrsta: "ou", strana, linija: t.linija };
   return { vrsta: "tt", tim: t.trziste, strana, linija: t.linija };
+}
+
+/** Progress bar — vizualni prikaz vjerojatnosti / edge-a / povjerenja. */
+function UlogBar({ p, boja = "bg-emerald-500", label }: { p: number; boja?: string; label?: string }) {
+  const w = Math.max(0, Math.min(100, p * 100));
+  return (
+    <div className="flex items-center gap-2">
+      {label && <span className="w-16 shrink-0 text-[10px] text-muted-foreground">{label}</span>}
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+        <div className={`h-full rounded-full ${boja}`} style={{ width: `${w}%` }} />
+      </div>
+      <span className="w-12 shrink-0 text-right font-mono text-[10px] text-foreground">{w.toFixed(1)}%</span>
+    </div>
+  );
 }
 
 export function SportProStranica(props: {
@@ -257,12 +279,20 @@ export function SportProStranica(props: {
                 </div>
                 <div className="text-xs text-muted-foreground">{u.ligaZemlja ? `${u.ligaZemlja} · ` : ""}{u.ligaNaziv} · {vrijeme(u.datumIso)}</div>
                 {r && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {r.analiza.tipovi.map((t) => (
-                      <span key={t.trziste} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${t.vrijednost ? "bg-emerald-500/20 text-emerald-300" : "bg-muted text-muted-foreground"}`}>
-                        {t.label}
-                      </span>
-                    ))}
+                  <div className="mt-1.5">
+                    <div className="h-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full ${r.analiza.povjerenje >= 70 ? "bg-emerald-500" : r.analiza.povjerenje >= 50 ? "bg-amber-500" : "bg-red-500"}`}
+                        style={{ width: `${r.analiza.povjerenje}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {r.analiza.tipovi.map((t) => (
+                        <span key={t.trziste} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${t.vrijednost ? "bg-emerald-500/20 text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                          {t.label}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </button>
@@ -293,9 +323,31 @@ export function SportProStranica(props: {
   );
 }
 
+/** Dodavanje tipa u Korpu (Bet Slip). */
+function ubaciUKorpu(sport: Sport, u: SportUtakmica, trziste: string, tip: string, kvota: number, p: number) {
+  dodajUKorpu({
+    sport: sport === "kosarka" ? "košarka" : "rukomet",
+    utakmica: `${u.domacinNaziv} - ${u.gostNaziv}`,
+    liga: u.ligaNaziv,
+    trziste,
+    tip,
+    kvota,
+    vjerojatnost: p,
+  });
+}
+
 function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport }) {
   const a = r.analiza;
   const jed = sport === "kosarka" ? "poena" : "golova";
+  const dod: SportDod = sport;
+
+  const handi = handicapRedovi(dod, a.lambdaDom, a.lambdaGost);
+  const rasp = raspadPeriodi(dod, a.ukupnoOcekivano, a.sigmaUkupno);
+  const tempo = tempoIndeks(dod, a.ukupnoOcekivano);
+  const ratingi = timRatingi(dod, a.lambdaDom, a.lambdaGost);
+  const handicapNaziv = sport === "kosarka" ? "Spread / Handicap" : "Azijski handicap";
+  const raspadNaziv = sport === "kosarka" ? "Raspad po četvrtinama" : "Golovi po poluvremenima";
+
   return (
     <>
       <div className="rounded-xl border border-border bg-card p-4">
@@ -303,6 +355,7 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
           <span className="text-sm font-semibold text-foreground">{u.domacinNaziv} — {u.gostNaziv}</span>
           <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${ocjenaBoja(a.ocjena)}`}>{a.ocjena} · {a.povjerenje}/100</span>
         </div>
+        <div className="mb-2"><UlogBar p={a.povjerenje / 100} label="Povjerenje" boja={a.povjerenje >= 70 ? "bg-emerald-500" : a.povjerenje >= 50 ? "bg-amber-500" : "bg-red-500"} /></div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div className="rounded-lg bg-muted/40 p-2"><div className="text-muted-foreground">Domaćin</div><div className="text-lg font-bold text-foreground">{a.lambdaDom.toFixed(1)}</div></div>
           <div className="rounded-lg bg-muted/40 p-2"><div className="text-muted-foreground">Ukupno</div><div className="text-lg font-bold text-foreground">{a.ukupnoOcekivano.toFixed(1)}</div></div>
@@ -315,10 +368,23 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
 
       {a.tip && (
         <div className="rounded-xl border border-primary/40 bg-primary/10 p-4">
-          <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-primary"><Target className="h-4 w-4" /> NAJJAČI TIP (vrijednost)</div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-primary"><Target className="h-4 w-4" /> NAJJAČI TIP (vrijednost)</div>
+            <button
+              onClick={() => ubaciUKorpu(sport, u, "Glavni tip", a.tip!.label, a.tip!.kvota ?? 1 / Math.max(0.02, a.tip!.p), a.tip!.p)}
+              className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-500"
+            >
+              <ShoppingCart className="h-3 w-3" /> + Korpa
+            </button>
+          </div>
           <div className="text-lg font-bold text-foreground">{a.tip.label}{a.tip.kvota ? ` @ ${a.tip.kvota.toFixed(2)}` : ""}</div>
+          <div className="mt-2 space-y-1.5">
+            <UlogBar p={a.tip.p} label="Vjerojatnost" />
+            <UlogBar p={Math.max(0, a.tip.edge)} label="Edge" boja={a.tip.edge >= 0.02 ? "bg-emerald-500" : "bg-amber-500"} />
+            <UlogBar p={Math.max(0, a.tip.kellyPct) / 100} label="¼ Kelly" boja="bg-sky-500" />
+          </div>
           <div className="mt-1 text-sm text-muted-foreground">
-            Vjerojatnost {fmtPct(a.tip.p)} · edge {(a.tip.edge * 100).toFixed(1)}% · ulog ¼ Kelly {a.tip.kellyPct.toFixed(1)}% banke
+            EV {a.tip.ev >= 0 ? "+" : ""}{(a.tip.ev * 100).toFixed(1)}% · preporučeni ulog {a.tip.kellyPct.toFixed(1)}% banke
           </div>
         </div>
       )}
@@ -326,21 +392,110 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
       <div className="grid gap-2 sm:grid-cols-2">
         {a.tipovi.map((t) => (
           <div key={t.trziste} className={`rounded-xl border p-3 ${t.vrijednost ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-card"}`}>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t.naslov}</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{t.naslov}</div>
+              <button
+                onClick={() => ubaciUKorpu(sport, u, t.naslov, t.label, t.kvota ?? t.fer, t.p)}
+                title="Dodaj u Korpu"
+                className="rounded p-1 text-emerald-400 hover:bg-emerald-500/10"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <div className="mt-0.5 text-base font-bold text-foreground">
               {t.label === "Pobjeda domaćina" ? `1 · ${u.domacinNaziv}` : t.label === "Pobjeda gosta" ? `2 · ${u.gostNaziv}` : t.label}
             </div>
+            <div className="mt-1.5 space-y-1">
+              <UlogBar p={t.p} label="Vjerojatnost" />
+              {t.edge != null && <UlogBar p={Math.max(0, t.edge)} label="Edge" boja={t.edge >= 0.02 ? "bg-emerald-500" : "bg-amber-500"} />}
+            </div>
             <div className="mt-1 grid grid-cols-2 gap-x-2 text-xs text-muted-foreground">
-              <span>Vjerojatnost <b className="text-foreground">{fmtPct(t.p)}</b></span>
               <span>Kvota <b className="text-foreground">{t.kvota?.toFixed(2) ?? "—"}</b></span>
               <span>Fer kvota <b className="text-foreground">{t.fer.toFixed(2)}</b></span>
-              <span>Edge <b className={t.edge != null && t.edge >= 0.02 ? "text-emerald-400" : "text-foreground"}>{t.edge != null ? `${(t.edge * 100).toFixed(1)}%` : "—"}</b></span>
             </div>
             <div className="mt-1 text-[10px] text-muted-foreground">
               {t.izvor === "model" && t.kvota == null ? "Linija modela (kladionice nisu objavile tržište)" : t.vrijednost ? "Vrijednost u kvoti ✓" : "Najvjerojatniji ishod — bez vrijednosti u kvoti"}
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Prošireno tržište: Spread / Azijski handicap */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground"><Scale className="h-4 w-4 text-sky-400" /> {handicapNaziv}</div>
+        <div className="space-y-1">
+          {handi.map((h) => (
+            <div key={h.linija} className="grid grid-cols-[64px_1fr_1fr] items-center gap-2 rounded-lg bg-muted/30 px-2 py-1.5 text-xs">
+              <span className="font-mono font-bold text-foreground">{h.linija > 0 ? `+${h.linija}` : h.linija}</span>
+              <button
+                onClick={() => ubaciUKorpu(sport, u, handicapNaziv, `${u.domacinNaziv} ${h.linija > 0 ? `+${h.linija}` : h.linija}`, h.ferDom, h.pDom)}
+                className={`rounded-md border px-2 py-1 text-left transition hover:brightness-125 ${h.najbolji === "dom" ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/40"}`}
+              >
+                <span className="block truncate font-medium text-foreground">{u.domacinNaziv}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{fmtPct(h.pDom)} · fer {h.ferDom.toFixed(2)}</span>
+              </button>
+              <button
+                onClick={() => ubaciUKorpu(sport, u, handicapNaziv, `${u.gostNaziv} ${-h.linija > 0 ? `+${-h.linija}` : -h.linija}`, h.ferGost, h.pGost)}
+                className={`rounded-md border px-2 py-1 text-left transition hover:brightness-125 ${h.najbolji === "gost" ? "border-emerald-500/40 bg-emerald-500/10" : "border-border/40"}`}
+              >
+                <span className="block truncate font-medium text-foreground">{u.gostNaziv}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{fmtPct(h.pGost)} · fer {h.ferGost.toFixed(2)}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-1 text-[10px] text-muted-foreground">Model linija (fer kvote) — kladionice često kasne s ovim tržištima. Klik dodaje tip u Korpu.</p>
+      </div>
+
+      {/* Prošireno tržište: raspad po periodima */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground"><BarChart3 className="h-4 w-4 text-amber-400" /> {raspadNaziv}</div>
+        <div className="space-y-1.5">
+          {rasp.map((rr) => (
+            <div key={rr.label} className="rounded-lg bg-muted/30 px-2 py-1.5">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="font-semibold text-foreground">{rr.label}</span>
+                <span className="text-muted-foreground">
+                  očekivano <b className="text-foreground">{rr.ocekivano.toFixed(1)}</b> {jed} · linija <b className="text-foreground">{rr.linija}</b>
+                </span>
+                <button
+                  onClick={() => ubaciUKorpu(sport, u, raspadNaziv, `${rr.label} Over ${rr.linija}`, 1 / Math.max(0.02, rr.pOver), rr.pOver)}
+                  className="flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 hover:brightness-125"
+                >
+                  Over <ShoppingCart className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="mt-1"><UlogBar p={rr.pOver} label={`P(Over)`} boja={rr.pOver >= 0.55 ? "bg-emerald-500" : "bg-sky-500"} /></div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          Težine perioda: {sport === "kosarka" ? "Q1 24.5% · Q2 25.5% · Q3 24.5% · Q4 25.5%" : "1. pol. 48% · 2. pol. 52%"} — varijanca se točno sabira u ukupnu.
+        </p>
+      </div>
+
+      {/* Tempo i ratingi */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground"><Gauge className="h-4 w-4 text-purple-400" /> Tempo & ratingi (1.00 = prosjek lige)</div>
+        <div className="mb-2 flex items-center gap-2 text-xs">
+          <span className="w-24 shrink-0 font-medium text-foreground">{tempo.label}</span>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.min(100, (tempo.indeks / 1.2) * 100)}%` }} />
+          </div>
+          <span className="font-mono text-[10px] text-foreground">{tempo.indeks.toFixed(2)}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-lg bg-muted/30 px-2 py-1.5">
+            <div className="truncate font-medium text-foreground">{u.domacinNaziv}</div>
+            <div className="text-[10px] text-muted-foreground">Napad {ratingi.napadDom.toFixed(2)} · {ratingLabel(ratingi.napadDom, false)}</div>
+            <div className="text-[10px] text-muted-foreground">Obrana {ratingi.obranaDom.toFixed(2)} · {ratingLabel(ratingi.obranaDom, true)}</div>
+          </div>
+          <div className="rounded-lg bg-muted/30 px-2 py-1.5">
+            <div className="truncate font-medium text-foreground">{u.gostNaziv}</div>
+            <div className="text-[10px] text-muted-foreground">Napad {ratingi.napadGost.toFixed(2)} · {ratingLabel(ratingi.napadGost, false)}</div>
+            <div className="text-[10px] text-muted-foreground">Obrana {ratingi.obranaGost.toFixed(2)} · {ratingLabel(ratingi.obranaGost, true)}</div>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 text-sm">
@@ -369,3 +524,4 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
     </>
   );
 }
+
