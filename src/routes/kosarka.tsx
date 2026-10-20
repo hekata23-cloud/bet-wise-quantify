@@ -8,6 +8,8 @@ import { kosGuarded, readKosState, resetKosGuard, zagrebDay } from "@/lib/kosark
 import { getApiKey } from "@/lib/zlatni-guard";
 import { evaluatePredictionIntegrity, noVigProbability, twoWayMarginPercent, type IntegrityResult } from "@/lib/prediction-integrity";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
+import { SarpSportPanel } from "@/components/SarpSportPanel";
+import type { KosMarkets } from "@/lib/kosarka.functions";
 
 export const Route = createFileRoute("/kosarka")({
   head: () => ({
@@ -62,6 +64,7 @@ function KosarkaPage() {
   const [sel, setSel] = useState<KosGame | null>(null);
   const [an, setAn] = useState<KosAnalysis | null>(null);
   const [book, setBook] = useState<string | null>(null);
+  const [mk, setMk] = useState<KosMarkets | null>(null);
   const [settings, setSettings] = useState(false);
   const onWait = (ms: number, r: string) => setMsg(`Zaštita API-ja: ${r}. Čekam ${Math.ceil(ms / 1000)} s…`);
 
@@ -88,6 +91,7 @@ function KosarkaPage() {
       if (r.error) { setMsg(r.error === "RATE_LIMIT" ? "Limit API-ja — pričekaj 15 s." : r.error); return; }
       const a = analyzeKos(r.markets, g.league);
       setBook(r.bookmaker);
+      setMk(r.markets);
       if (!a) { setMsg("Nema kvota na pobjednika — analiza nije moguća."); return; }
       setAn(a); setMsg("");
     } catch (e: any) { setMsg(e?.message ?? "Greška"); } finally { setBusyId(null); }
@@ -155,6 +159,7 @@ function KosarkaPage() {
                   <Stat k="Pobjeda uklj. OT" v={`${pct(an.pHomeOT)} / ${pct(an.pAwayOT)}`} />
                 </div>
               </div>
+              <SarpSportPanel sport="kosarka" utakmica={{ id: sel.id, home: sel.home, away: sel.away, league: sel.league, time: sel.time }} an={an} mk={mk} book={book} />
               <div className="rounded-xl border-2 border-primary bg-primary/15 p-4">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Obavezan tip · zbroj koševa uklj. produžetke</div>
                 <div className="text-2xl font-bold">{an.totalPick.pick.startsWith("Više") ? "VIŠE OD" : "MANJE OD"} {an.totalPick.market.replace("Zbroj ", "")}</div>
