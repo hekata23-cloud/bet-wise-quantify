@@ -1,30 +1,35 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MATCH INSIGHT PANEL — profesionalna analiza u 9 sekcija
+   MATCH INSIGHT PANEL — profesionalna analiza (v2)
    ═══════════════════════════════════════════════════════════════════
-   1. Match Info        — timovi, liga, vrijeme, kvote (1X2, GG/NG, O2.5)
-   2. Predikcija Core   — glavni tip: sigurnost %, kvota, edge, ¼ Kelly
-   3. Alternativni tip  — sigurnija opcija ako glavni nije dovoljno siguran
-   4. Obrazloženje      — 3–6 rečenica (SARP faze, parametri, faktori)
-   5. Rizici/Upozorenja — kadrovi, motivacija, crveni karton scenariji
-   6. Model Confidence  — A/B/C ocjena + broj izvora podataka
-   7. Live Kvote Tracker— kretanje kvota: u tvoju korist ili protiv
-   8. CLV Indikator     — bolju li kvotu si uzeo od zatvarajuće linije
-   9. Simulacije MC     — najčešći rezultati iz 10.000 simulacija
+   0. Anti-Loss Filter  — SKIP / HIGH VOLATILITY ili GOLD (edge ≥ 5%)
+   1. Match Info        — timovi, liga, vrijeme, kvote
+   2. Predikcija Core   — glavni tip + EV + ¼ Kelly + "Why this pick?" drawer
+   3. Alternativni tip  — sigurnija opcija
+   4. Obrazloženje      — SARP faze
+   5. Rizici/Upozorenja
+   6. Model Confidence  — A/B/C + Brier kalibracija
+   7. Live Kvote Tracker — + Odds Radar (Smart Money Alert)
+   8. CLV Indikator
+   9. Simulacije MC
 
    Panel radi sam: prima utakmicu + kvote + goals-analizu, interni
-   poziva SARP (7 faza), vodi historiju kvota i Monte Carlo.
+   poziva SARP (7 faza), anti-loss engine, Brier kalibraciju,
+   odds-tracker historiju i Monte Carlo.
    ═══════════════════════════════════════════════════════════════════ */
 
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity, AlertTriangle, BookOpen, BrainCircuit, ChevronDown,
   Dices, Info, LineChart, ShieldCheck, Target, TrendingDown, TrendingUp,
+  Ban, HelpCircle,
 } from "lucide-react";
 import { sarpBrain, type SarpIzlaz } from "@/lib/sarp-brain";
 import {
   clvZaTip, kretanjeKvota, spremiSnapshot, snapshoti,
   type KretanjeKvote,
 } from "@/lib/odds-tracker";
+import { evaluirajAntiLoss, brierKalibracija } from "@/lib/anti-loss";
+import { OddsRadar } from "@/components/OddsRadar";
 import type { GoalsIzlaz } from "@/lib/goals-motor";
 import type { FormaGolovi } from "@/lib/math-engine";
 
@@ -88,9 +93,74 @@ export function MatchInsightPanel(props: MatchInsightProps) {
 
   const clv = clvZaTip(utakmica.id, sarp.coreTip.kljuc);
   const [otvoreneFaze, setOtvoreneFaze] = useState(false);
+  const [otvoriZasto, setOtvoriZasto] = useState(false);
+
+  /* ── ANTI-LOSS ENGINE ──
+     sukob modela: Skellam vs grid + MC vs analitički model (O2.5) */
+  const mcO25 = sarp.mc.o25;
+  const modelO25 = goals?.final["o25"] ?? sarp.konsenzus["o25"] ?? mcO25;
+  const mcRaz = Math.abs(mcO25 - modelO25);
+  const antiLoss = useMemo(
+    () =>
+      evaluirajAntiLoss({
+        kvote,
+        edge: sarp.coreTip.edge,
+        povjerenje: sarp.povjerenje,
+        suglasnostModela: sarp.suglasnostSkellam,
+        mcVsModelRazlika: mcRaz,
+      }),
+    [kvote, sarp.coreTip.edge, sarp.povjerenje, sarp.suglasnostSkellam, mcRaz],
+  );
+
+  /* ── MODEL AGREEMENT (koliko od 3 kvantitativna modela se slažu) ── */
+  const slazu = 1
+    + (sarp.suglasnostSkellam >= 0.85 ? 1 : 0)
+    + (mcRaz <= 0.10 ? 1 : 0);
+
+  /* ── BRIER KALIBRACIJA ── */
+  const kal = brierKalibracija();
+
+  const faktori: string[] = [
+    ...(goals?.faktori ?? []).slice(0, 4),
+    ...sarp.faze
+      .filter((f) => f.broj >= 2 && f.broj <= 5)
+      .map((f) => `${f.naziv}: ${f.sazetak}`),
+  ].slice(0, 6);
 
   return (
     <div className="space-y-3">
+      {/* 0 · ANTI-LOSS FILTER */}
+      <section className={`rounded-xl border p-4 ${
+        antiLoss.status === "SKIP" ? "border-red-500/40 bg-red-500/10"
+        : antiLoss.status === "GOLD" ? "border-emerald-500/40 bg-emerald-500/10"
+        : antiLoss.status === "VALUE" ? "border-amber-500/40 bg-amber-500/10"
+        : "border-border bg-card"
+      }`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {antiLoss.status === "SKIP"
+              ? <><Ban className="h-4 w-4 text-red-400" /> Anti-Loss Filter</>
+              : <><ShieldCheck className="h-4 w-4 text-emerald-400" /> Anti-Loss Filter</>}
+          </div>
+          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${antiLoss.badgeClass}`}>
+            {antiLoss.badge}
+          </span>
+        </div>
+        {antiLoss.status === "SKIP" && (
+          <ul className="mt-1.5 space-y-1 text-xs text-red-200/90">
+            {antiLoss.razlozi.map((r, i) => <li key={i}>• {r}</li>)}
+            <li>• Predikcija dolje je INFORMACIJA — anti-loss pravilo kaže: PROĐI (no bet).</li>
+          </ul>
+        )}
+        {antiLoss.status !== "SKIP" && antiLoss.entropija != null && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Entropija ishoda: {Math.round(antiLoss.entropija * 100)}%
+            {antiLoss.edgePct != null ? ` · edge glavnog tipa: ${antiLoss.edgePct.toFixed(1)}%` : ""}
+            {" "}— konflikt signala nije detektiran.
+          </p>
+        )}
+      </section>
+
       {/* 1 · MATCH INFO */}
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
@@ -125,6 +195,40 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           </b></span>
           <span>¼ Kelly ulog: <b className="text-foreground">{sarp.coreTip.kellyPct.toFixed(1)}%</b> banke</span>
         </div>
+
+        {/* WHY THIS PICK? — drawer s ključnim faktorima, rizikom i slaganjem modela */}
+        <button
+          onClick={() => setOtvoriZasto((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-background/60 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-background"
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          {otvoriZasto ? "Sakrij analizu" : "Why this pick?"}
+          <ChevronDown className={`h-3.5 w-3.5 transition ${otvoriZasto ? "rotate-180" : ""}`} />
+        </button>
+        {otvoriZasto && (
+          <div className="mt-2 space-y-2 rounded-lg border border-border bg-background/60 p-3 text-xs">
+            <div>
+              <div className="font-semibold text-foreground">Ključni faktori</div>
+              <ul className="mt-1 space-y-1 text-muted-foreground">
+                {faktori.length > 0
+                  ? faktori.map((f, i) => <li key={i}>• {f}</li>)
+                  : <li>• Premalo podataka — forma/kvote nisu učitani.</li>}
+              </ul>
+            </div>
+            <div>
+              <div className="font-semibold text-foreground">Top rizik</div>
+              <div className="text-amber-300">{sarp.rizici[0] ?? "Nema istaknutog rizika."}</div>
+            </div>
+            <div>
+              <div className="font-semibold text-foreground">Slaganje modela</div>
+              <div className="text-muted-foreground">
+                <b className={slazu >= 2 ? "text-emerald-400" : "text-amber-400"}>{slazu} od 3</b> kvantitativna modela
+                (Poisson/DC grid · Skellam · Monte Carlo) slaže se na glavnom tržištu
+                {" "}(MC vs model razlika: {(mcRaz * 100).toFixed(1)}pp, suglasnost: {fmtPct(sarp.suglasnostSkellam)}).
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 3 · ALTERNATIVNI TIP */}
@@ -156,6 +260,20 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <span>Suglasnost Skellam: <b className="text-foreground">{fmtPct(sarp.suglasnostSkellam)}</b></span>
           <span>MC vs model (O2.5): <b className="text-foreground">{fmtPct(sarp.mc.o25)}</b></span>
         </div>
+        {/* Brier kalibracija — pokazuje se kad ima dovoljno označenih tipova */}
+        {kal.n >= 10 && kal.brier != null && kal.hitRate != null && (
+          <div className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+            Brier kalibracija (historijska točnost): {kal.n} označenih tipova · hit-rate{" "}
+            <b className="text-foreground">{fmtPct(kal.hitRate)}</b> vs najavljeno{" "}
+            <b className="text-foreground">{fmtPct(kal.najavljeno ?? 0)}</b> · Brier score{" "}
+            <b className="text-foreground">{kal.brier.toFixed(3)}</b> (0 = savršeno, 0.25 = moneta)
+            {kal.hitRate < kal.najavljeno - 0.03
+              ? " — model je PRETJERANO samouvjeren: navedeni % su malo pogođeni nego što tvrde."
+              : kal.hitRate > kal.najavljeno + 0.03
+                ? " — model je konzervativan: pogađa više nego što najavljuje."
+                : " — postoci su dobro kalibrirani."}
+          </div>
+        )}
       </section>
 
       {/* 4 · OBRAZLOŽENJE */}
@@ -195,46 +313,50 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         </ul>
       </section>
 
-      {/* 7 · LIVE KVOTE TRACKER */}
-      <section className="rounded-xl border border-border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
-          <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-400" /> Live Kvote Tracker</span>
-          <span className="text-[10px] font-normal text-muted-foreground">{nSnimaka} snimak(a) kvota</span>
-        </div>
-        {kretanje.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Još samo jedan snimak kvota — otvori analizu ponovno kasnije (ili prije početka) pa se tu vidi kuda tržište kreće.
-          </p>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/40 text-[10px] uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-2 py-1.5 text-left">Tržište</th>
-                  <th className="px-2 py-1.5 text-right">Prva</th>
-                  <th className="px-2 py-1.5 text-right">Sad</th>
-                  <th className="px-2 py-1.5 text-right">Δ%</th>
-                  <th className="px-2 py-1.5 text-left">Tumačenje</th>
-                </tr>
-              </thead>
-              <tbody>
-                {kretanje.slice(0, 8).map((k) => (
-                  <tr key={k.kljuc} className="border-t border-border">
-                    <td className="px-2 py-1.5 font-medium">{LABELI[k.kljuc] ?? k.kljuc}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{k.prva?.toFixed(2) ?? "—"}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{k.zadnja?.toFixed(2) ?? "—"}</td>
-                    <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${
-                      k.smjer === "gore" ? "text-red-400" : k.smjer === "dolje" ? "text-emerald-400" : "text-muted-foreground"
-                    }`}>
-                      {k.deltaPct != null ? `${k.deltaPct > 0 ? "+" : ""}${k.deltaPct}` : "—"}
-                    </td>
-                    <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{k.tumanenje}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* 7 · LIVE KVOTE TRACKER + ODDS RADAR */}
+      <section className="space-y-2">
+        <OddsRadar fixtureId={utakmica.id} kljuc={sarp.coreTip.kljuc} />
+
+        <section className="rounded-xl border border-border bg-card p-4">
+          <div className="mb-2 flex items-center justify-between gap-2 text-sm font-semibold">
+            <span className="inline-flex items-center gap-2"><Activity className="h-4 w-4 text-cyan-400" /> Live Kvote Tracker</span>
+            <span className="text-[10px] font-normal text-muted-foreground">{nSnimaka} snimak(a) kvota</span>
           </div>
-        )}
+          {kretanje.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Još samo jedan snimak kvota — otvori analizu ponovno kasnije (ili prije početka) pa se tu vidi kuda tržište kreće.
+            </p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 text-[10px] uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-2 py-1.5 text-left">Tržište</th>
+                    <th className="px-2 py-1.5 text-right">Prva</th>
+                    <th className="px-2 py-1.5 text-right">Sad</th>
+                    <th className="px-2 py-1.5 text-right">Δ%</th>
+                    <th className="px-2 py-1.5 text-left">Tumačenje</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kretanje.slice(0, 8).map((k) => (
+                    <tr key={k.kljuc} className="border-t border-border">
+                      <td className="px-2 py-1.5 font-medium">{LABELI[k.kljuc] ?? k.kljuc}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{k.prva?.toFixed(2) ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{k.zadnja?.toFixed(2) ?? "—"}</td>
+                      <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${
+                        k.smjer === "gore" ? "text-red-400" : k.smjer === "dolje" ? "text-emerald-400" : "text-muted-foreground"
+                      }`}>
+                        {k.deltaPct != null ? `${k.deltaPct > 0 ? "+" : ""}${k.deltaPct}` : "—"}
+                      </td>
+                      <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{k.tumanenje}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </section>
 
       {/* 8 · CLV INDIKATOR */}
@@ -300,3 +422,4 @@ export function MatchInsightPanel(props: MatchInsightProps) {
     </div>
   );
 }
+
