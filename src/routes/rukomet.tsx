@@ -8,6 +8,7 @@ import { rukometGuarded, readRukometState, resetRukometGuard, zagrebDay } from "
 import { getApiKey } from "@/lib/zlatni-guard";
 import { evaluatePredictionIntegrity, noVigProbability, twoWayMarginPercent, type IntegrityResult } from "@/lib/prediction-integrity";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
+import { SarpSportPanel } from "@/components/SarpSportPanel";
 
 export const Route = createFileRoute("/rukomet")({
   head: () => ({
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/rukomet")({
       {
         name: "description",
         content:
-          "Profesionalna analiza rukometnih utakmica: Bet365 kvote, 1X2, 1 2 pobjednik, ukupni zbroj golova i timske margine po zagrebačkom vremenu.",
+          "Profesionalna analiza rukometnih utakmica: Bet365 kvote, 1 2 pobjednik, ukupni zbroj golova i timske margine po zagrebačkom vremenu.",
       },
       { property: "og:title", content: "Rukomet Sharp · Andromeda AI" },
       {
@@ -501,6 +502,8 @@ function RukometPage() {
             </div>
           </div>
 
+          <SarpSportPanel sport="rukomet" utakmica={{ id: sel.id, home: sel.home, away: sel.away, league: sel.league, time: sel.time }} an={an} book={book} />
+
           {/* 🎯 KONKRETIZIRANI TIPOVI ZA OKLADU */}
           <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -748,5 +751,4 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
     </div>
   );
 }
-
 
