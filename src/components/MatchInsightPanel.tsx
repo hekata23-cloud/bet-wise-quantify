@@ -1,5 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MATCH INSIGHT PANEL — profesionalna analiza (v2)
+   MATCH INSIGHT PANEL — profesionalna analiza (v3)
+   NOVO v3: Lineup Radar (postave + pomak λ) · Live Engine (uživo
+   preračunavanje) · SGP Builder (copula) · AI kontekst za Lunu/Oriona
    ═══════════════════════════════════════════════════════════════════
    0. Anti-Loss Filter  — SKIP / HIGH VOLATILITY ili GOLD (edge ≥ 5%)
    1. Match Info        — timovi, liga, vrijeme, kvote
@@ -30,6 +32,10 @@ import {
 } from "@/lib/odds-tracker";
 import { evaluirajAntiLoss, brierKalibracija } from "@/lib/anti-loss";
 import { OddsRadar } from "@/components/OddsRadar";
+import { LineupRadar, type LineupInfo } from "@/components/LineupRadar";
+import { LiveMotorPanel } from "@/components/LiveMotorPanel";
+import { SgpBuilder } from "@/components/SgpBuilder";
+import { spremiKontekstMeca } from "@/lib/ai-context";
 import type { GoalsIzlaz } from "@/lib/goals-motor";
 import type { FormaGolovi } from "@/lib/math-engine";
 
@@ -94,6 +100,46 @@ export function MatchInsightPanel(props: MatchInsightProps) {
   const clv = clvZaTip(utakmica.id, sarp.coreTip.kljuc);
   const [otvoreneFaze, setOtvoreneFaze] = useState(false);
   const [otvoriZasto, setOtvoriZasto] = useState(false);
+  const [lineupInfo, setLineupInfo] = useState<LineupInfo | null>(null);
+
+  /* ── AI KONTEKST — najsvježija analiza ide Lunama/Orionu u prompt ── */
+  useEffect(() => {
+    if (!utakmica.id || !sarp.coreTip) return;
+    spremiKontekstMeca({
+      naslov: sarp.matchInfo.naslov,
+      liga: sarp.matchInfo.liga,
+      vrijeme: sarp.matchInfo.vrijeme,
+      kvote,
+      lambdaDom: sarp.lambdaDom,
+      lambdaGost: sarp.lambdaGost,
+      lambdaUkupno: sarp.lambdaUkupno,
+      konsenzus: sarp.konsenzus,
+      coreTip: {
+        label: sarp.coreTip.label, kljuc: sarp.coreTip.kljuc, p: sarp.coreTip.p,
+        kvota: sarp.coreTip.kvota, edge: sarp.coreTip.edge, kellyPct: sarp.coreTip.kellyPct,
+      },
+      altTip: sarp.altTip
+        ? { label: sarp.altTip.label, p: sarp.altTip.p, kvota: sarp.altTip.kvota }
+        : null,
+      mc: {
+        btts: sarp.mc.btts, o15: sarp.mc.o15, o25: sarp.mc.o25, o35: sarp.mc.o35,
+        p1: sarp.mc.p1, pX: sarp.mc.pX, p2: sarp.mc.p2,
+      },
+      ocjena: sarp.ocjena,
+      povjerenje: sarp.povjerenje,
+      brojIzvora: sarp.brojIzvora,
+      rizici: sarp.rizici,
+      postave: lineupInfo
+        ? {
+            potvrdjene: lineupInfo.potvrdjene,
+            izasli: lineupInfo.utjecaj?.opisi ?? [],
+            procenatPomaka: lineupInfo.utjecaj?.imaUtjecaj ? lineupInfo.utjecaj.procenat : null,
+          }
+        : null,
+      live: null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [utakmica.id, JSON.stringify(kvote), sarp, lineupInfo]);
 
   /* ── ANTI-LOSS ENGINE ──
      sukob modela: Skellam vs grid + MC vs analitički model (O2.5) */
@@ -160,6 +206,14 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           </p>
         )}
       </section>
+
+      {/* 0.5 · POSTAVE — Lineup Radar */}
+      <LineupRadar
+        fixtureId={utakmica.id}
+        dom={utakmica.home}
+        gost={utakmica.away}
+        onImpact={setLineupInfo}
+      />
 
       {/* 1 · MATCH INFO */}
       <section className="rounded-xl border border-border bg-card p-4">
@@ -422,4 +476,3 @@ export function MatchInsightPanel(props: MatchInsightProps) {
     </div>
   );
 }
-
