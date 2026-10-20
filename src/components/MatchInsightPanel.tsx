@@ -215,6 +215,23 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         onImpact={setLineupInfo}
       />
 
+      {/* 0.6 · LIVE ENGINE — preračunavanje u tijeku utakmice */}
+      <LiveMotorPanel
+        fixtureId={utakmica.id}
+        dom={utakmica.home}
+        gost={utakmica.away}
+        lambdaDom={sarp.lambdaDom}
+        lambdaGost={sarp.lambdaGost}
+      />
+
+      {/* 0.7 · SGP BUILDER — kombinacije unutar istog meča (copula) */}
+      <SgpBuilder
+        naslov={sarp.matchInfo.naslov}
+        liga={sarp.matchInfo.liga}
+        kvote={kvote}
+        konsenzus={sarp.konsenzus}
+      />
+
       {/* 1 · MATCH INFO */}
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
