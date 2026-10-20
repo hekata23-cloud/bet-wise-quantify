@@ -5,7 +5,7 @@
 // Logika je u src/lib/korpa.ts (baza) + src/lib/korpa-smart.ts.
 // ============================================================
 import { useCallback, useEffect, useState } from "react";
-import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers } from "lucide-react";
+import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers, Share2, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadKorpa, ukloniIzKorpe, ocistiKorpu,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/korpa";
 import { izracunajKorpuSmart } from "@/lib/korpa-smart";
 import { loadJSON, saveJSON } from "@/lib/storage";
+import { podijeliTiket, preuzmiTiket } from "@/lib/tiket-slika";
 
 const BANKROLL_KEY = "andromeda.bankroll";
 const KELLY_KEY = "andromeda.kelly.frac";
@@ -43,6 +44,24 @@ export function Korpa() {
 
   const r = izracunajKorpuSmart(tipovi, { bankroll, kellyFrac });
   const korekcija = r.n > 0 && Math.abs(r.pKorigirana - r.pNaive) > 0.0001;
+
+  async function podijeliListic() {
+    try {
+      const r2 = await podijeliTiket(tipovi, bankroll, kellyFrac);
+      toast.success(r2 === "podijeljeno" ? "Tiket podijeljen" : "PNG spremljen u Preuzimanja");
+    } catch {
+      toast.error("Dijeljenje tiketa nije uspjelo");
+    }
+  }
+
+  async function preuzmiListic() {
+    try {
+      await preuzmiTiket(tipovi, bankroll, kellyFrac);
+      toast.success("PNG tiket preuzet");
+    } catch {
+      toast.error("Generiranje PNG-a nije uspjelo");
+    }
+  }
 
   function kopirajListic() {
     const linije = tipovi.map(
@@ -241,6 +260,22 @@ export function Korpa() {
                   <Copy className="h-3.5 w-3.5" /> Kopiraj listić
                 </button>
                 <button
+                  onClick={() => void podijeliListic()}
+                  className="flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-300 hover:bg-emerald-500/20"
+                  title="Podijeli tiket (PNG/Web Share)"
+                  aria-label="Podijeli tiket"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => void preuzmiListic()}
+                  className="flex items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-300 hover:bg-emerald-500/20"
+                  title="Preuzmi PNG tiket"
+                  aria-label="Preuzmi PNG tiket"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </button>
+                <button
                   onClick={() => { ocistiKorpu(); toast.success("Korpa očišćena"); }}
                   className="flex items-center justify-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-xs hover:bg-red-500/10 hover:text-red-400"
                 >
@@ -254,4 +289,3 @@ export function Korpa() {
     </>
   );
 }
-
