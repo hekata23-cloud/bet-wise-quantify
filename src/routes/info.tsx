@@ -1,14 +1,16 @@
 /* ============================================================
-   INFO & ARCHITECTURE — Transparency / About App (v1)
+   INFO & ARCHITECTURE — Transparency / About App (v2)
    Stranica objašnjava tko je AI, koju matematiku koristi,
    koje sigurnosne zaštite postoje i odgovorno igranje.
-   Statički sadržaj — bez API poziva, bez trošenja kvote.
+   v2: dodana sekcija "Automatski audit" (SelfTestPanel) koja
+   pokreće 18 matematičkih provjera motora direktno u pregledniku.
    ============================================================ */
 import { createFileRoute } from "@tanstack/react-router";
 import {
   BrainCircuit, Calculator, Dices, Goal, HeartPulse, Info,
   LineChart, ShieldCheck, Sigma, Users, Zap,
 } from "lucide-react";
+import { SelfTestPanel } from "@/components/SelfTestPanel";
 
 export const Route = createFileRoute("/info")({
   head: () => ({
@@ -34,6 +36,7 @@ const ALGORITMI = [
   { ikona: Goal, naziv: "Rukomet: GK učinkovitost & 2-min drag", opis: "Model isključenja 2 minute i golman-efikasnosti prilagođava tempo i ukupne golove." },
   { ikona: Calculator, naziv: "Frakcijski Kelly (0.25×)", opis: "Upravljanje ulogom: ¼ Kelly smanjuje rizik varijance, s ograničenjem po tipu." },
   { ikona: LineChart, naziv: "Shannon entropija", opis: "Mjeri kaotičnost meča; visoka entropija → niže povjerenje, SKIP preporuka." },
+  { ikona: Zap, naziv: "Empirical Bayes + Kopula (BTTS)", opis: "Mali uzorak forme se smanjuje prema ligaškom prosjeku (strop 55%); BTTS kroz DC + Bivarijantni Poisson (ρ=0.08) + Frank kopulu." },
 ];
 
 function Sekcija({ id, naslov, opis, children }: { id: string; naslov: string; opis?: string; children: React.ReactNode }) {
@@ -77,17 +80,14 @@ function InfoPage() {
           <div className="min-w-0 flex-1 space-y-2 text-sm leading-relaxed">
             <p>
               <span className="font-semibold text-violet-300">LUNA (alias Callisto)</span> je senior sportski analitičar
-              i full-stack AI konzultant unutar aplikacije. Njezina uloga: kombinirati kvantitativno sportsko
-              modeliranje (Poisson, Dixon–Coles, Monte Carlo, Kelly) s obradom podataka u stvarnom vremenu
-              (kvote, forma, postave) i davati odgovore u obliku: <em>predikcija → povjerenje → edge → obrazloženje</em>.
-            </p>
-            <p>
-              Pomoćni agent <span className="font-semibold text-cyan-300">Orion</span> radi kao taktički analitičar:
-              duboke statistike, kretanje linija, kontekst i alternativa — s istim fokusom na brojke, ne na osjećaje.
+              i kvantitativni modelar. Njeni odgovori se automatski povezuju s Match Engine-om: kad analizira
+              aktivnu utakmicu, u prompt dobije <span className="font-semibold">iste brojeve koje vidiš na kartici</span>
+              {" "}(λ matrica, Monte Carlo raspodjela, Kelly ulog, ključne izostanke) — pravilo nulte kontradikcije:
+              chatbot nikad ne izlazi s postotkom ili tipom koji odstupa od kartice.
             </p>
             <p className="text-muted-foreground">
-              AI odgovori prolaze kroz isti matematički temelj kao i kartice (SARP kontekst se injektira u prompt),
-              pa nema generičkih tekstova bez brojki.
+              Orion je sekundarni agent za duboku statistiku, kretanje linija i alternativne sportove — dijeli isti
+              kontekst i isto pravilo formata: prvo tip + sigurnost, pa matematičko obrazloženje.
             </p>
           </div>
         </div>
@@ -178,7 +178,16 @@ function InfoPage() {
         </ul>
       </Sekcija>
 
-      {/* d) ODGOVORNO IGRANJE */}
+      {/* d) AUTOMATSKI AUDIT (samotest) */}
+      <Sekcija
+        id="audit"
+        naslov="Automatski audit motora (samotest)"
+        opis="18 matematičkih provjera koje garantira unutarnju konzistentnost: O/U zbrojevi, BTTS kopule, monotonija linija, EB shrinkage i pravilo nulte kontradikcije. Pokreće se lokalno — bez API-ja i bez trošenja kvote."
+      >
+        <SelfTestPanel />
+      </Sekcija>
+
+      {/* e) ODGOVORNO IGRANJE */}
       <section className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 sm:p-6">
         <h2 className="mb-2 text-lg font-bold text-amber-300">Odgovorno igranje & pravna napomena</h2>
         <p className="text-sm leading-relaxed text-amber-100/90">
@@ -200,3 +209,4 @@ function InfoPage() {
     </div>
   );
 }
+
