@@ -1,13 +1,17 @@
 // ============================================================
-// KORPA.TSX — Bet Slip / Tiket (lebdeći panel, cijela aplikacija)
+// KORPA.TSX — Bet Slip / Tiket Optimizer (lebdeći panel)
+// v2 — Smart verzija: korelacijski motor, Accumulator Hazard,
+//      bankroll manager s ulogom u novcu (frakcijski Kelly).
+// Logika je u src/lib/korpa.ts (baza) + src/lib/korpa-smart.ts.
 // ============================================================
 import { useCallback, useEffect, useState } from "react";
-import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import {
-  loadKorpa, ukloniIzKorpe, ocistiKorpu, izracunajKorpu,
+  loadKorpa, ukloniIzKorpe, ocistiKorpu,
   type KorpaTip,
 } from "@/lib/korpa";
+import { izracunajKorpuSmart } from "@/lib/korpa-smart";
 import { loadJSON, saveJSON } from "@/lib/storage";
 
 const BANKROLL_KEY = "andromeda.bankroll";
@@ -37,7 +41,8 @@ export function Korpa() {
   useEffect(() => saveJSON(BANKROLL_KEY, bankroll), [bankroll]);
   useEffect(() => saveJSON(KELLY_KEY, kellyFrac), [kellyFrac]);
 
-  const r = izracunajKorpu(tipovi, { bankroll, kellyFrac });
+  const r = izracunajKorpuSmart(tipovi, { bankroll, kellyFrac });
+  const korekcija = r.n > 0 && Math.abs(r.pKorigirana - r.pNaive) > 0.0001;
 
   function kopirajListic() {
     const linije = tipovi.map(
@@ -48,10 +53,11 @@ export function Korpa() {
       ...linije,
       `──────────────`,
       `Ukupna kvota: ${r.kvota.toFixed(2)}`,
-      `Vjerojatnost modela: ${pct(r.vjerojatnost)}`,
-      `EV: ${pct(r.edge)}`,
+      `Vjerojatnost (korelacijski korigirana): ${pct(r.pKorigirana)}`,
+      korekcija ? `Naivna vjerojatnost (bez korelacije): ${pct(r.pNaive)}` : "",
+      `EV (korigirani): ${pct(r.edgeKorigirana)}`,
       `Preporučeni ulog (frakcijski Kelly): ${r.ulogPerc.toFixed(2)}% = ${r.ulogIznos.toFixed(2)} €`,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
     navigator.clipboard?.writeText(tekst).then(
       () => toast.success("Tiket kopiran u međuspremnik"),
       () => toast.error("Kopiranje nije uspjelo"),
@@ -64,7 +70,7 @@ export function Korpa() {
       <button
         onClick={() => setOpen((o) => !o)}
         className="fixed bottom-4 left-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-card shadow-xl shadow-black/40 transition-transform hover:scale-105"
-        title="Korpa — Tiket"
+        title="Korpa — Tiket Optimizer"
         aria-label="Korpa"
       >
         <ShoppingCart className="h-5 w-5 text-emerald-400" />
@@ -82,9 +88,9 @@ export function Korpa() {
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-emerald-400" />
               <div>
-                <div className="text-sm font-semibold">Korpa — Tiket</div>
+                <div className="text-sm font-semibold">Korpa — Tiket Optimizer</div>
                 <div className="text-[10px] text-muted-foreground">
-                  Frakcijski Kelly · EV · rizik varijance
+                  Frakcijski Kelly · korelacijski motor · bankroll manager
                 </div>
               </div>
             </div>
@@ -159,15 +165,49 @@ export function Korpa() {
                 <span className="font-mono font-bold">{r.kvota.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Vjerojatnost modela</span>
-                <span className="font-mono">{pct(r.vjerojatnost)}</span>
+                <span className="text-muted-foreground">Vjerojatnost {korekcija ? "(korelacijski korigirana)" : "modela"}</span>
+                <span className="font-mono">{pct(r.pKorigirana)}</span>
               </div>
+              {korekcija && (
+                <div className="flex justify-between text-[11px] text-muted-foreground">
+                  <span>Naivna (bez korelacije)</span>
+                  <span className="font-mono">{pct(r.pNaive)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">EV (edge)</span>
-                <span className={`font-mono font-bold ${r.edge >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {r.edge >= 0 ? "+" : ""}{pct(r.edge)}
+                <span className="text-muted-foreground">EV (korigirani)</span>
+                <span className={`font-mono font-bold ${r.edgeKorigirana >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {r.edgeKorigirana >= 0 ? "+" : ""}{pct(r.edgeKorigirana)}
                 </span>
               </div>
+
+              {/* ACCA HAZARD */}
+              {r.hazard && (
+                <div className="flex items-start gap-2 rounded-lg bg-orange-500/10 px-3 py-2 text-[11px] text-orange-300">
+                  <Layers className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{r.hazardPoruka}</span>
+                </div>
+              )}
+
+              {/* Korelacija iste utakmice */}
+              {r.korelacijaUpozorenje && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300">
+                  <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Više nogu iz iste utakmice — ishodi su povezani, pa je kombinirana vjerojatnost izračunata
+                    korelacijskim motorom (uzajamno isključivi ishodi → 0). Kelly je automatski smanjen na pola.
+                  </span>
+                </div>
+              )}
+
+              {/* Nemoguće noge */}
+              {r.nemoguceNoge && (
+                <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>NEMOGUĆ TIKET: sadrži uzajamno isključive noge (npr. 1 i 2 s iste utakmice, Over i Under iste linije). Ukloni jednu od njih.</span>
+                </div>
+              )}
+
               <div>
                 <div className="mb-1 flex justify-between">
                   <span className="text-muted-foreground">Rizik varijance</span>
@@ -180,23 +220,17 @@ export function Korpa() {
                   />
                 </div>
               </div>
+
               <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 px-3 py-2">
                 <span className="font-semibold text-emerald-300">Preporučeni ulog (Kelly)</span>
                 <span className="font-mono font-bold text-emerald-300">
                   {r.ulogPerc.toFixed(2)}% = {r.ulogIznos.toFixed(2)} €
                 </span>
               </div>
-              {(r.korelacijaUkorenje as unknown) || r.korelacijaUpozorenje ? null : null}
-              {r.korelacijaUpozorenje && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>Više nogu iz iste utakmice — ishodi su povezani. Ulog je automatski smanjen na pola.</span>
-                </div>
-              )}
               {!r.isplativo && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>Nema vrijednosti (EV ≤ 0) — preporučam ne igrati ovaj tiket ili ga smanjiti.</span>
+                  <span>{r.nemoguceNoge ? "Tiket ne može proći — ispravi noge." : "Nema vrijednosti (EV ≤ 0) — preporučam ne igrati ovaj tiket ili ga smanjiti."}</span>
                 </div>
               )}
               <div className="flex gap-2 pt-1">
