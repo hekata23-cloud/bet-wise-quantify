@@ -21,6 +21,7 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
+import { ucitajKontekstMeca, izgradiKontekstTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
 import { loadMastermind } from "@/lib/mastermind";
@@ -73,6 +74,13 @@ function ChatPage() {
   const [antiOn, setAntiOn] = useState(false);
   const [titanCount, setTitanCount] = useState(0);
   const [mmOn, setMmOn] = useState(false);
+  const [mecNaziv, setMecNaziv] = useState<string | null>(null);
+  useEffect(() => {
+    const osvjezi = () => setMecNaziv(ucitajKontekstMeca()?.naslov ?? null);
+    osvjezi();
+    window.addEventListener("andromeda:mec-kontekst", osvjezi);
+    return () => window.removeEventListener("andromeda:mec-kontekst", osvjezi);
+  }, []);
   useEffect(() => {
     setSniperCount(sniperActiveCount(loadSniper()));
     setAntiOn(loadAntiError().enabled);
@@ -142,7 +150,11 @@ function ChatPage() {
     setAttachments([]);
     setLoading(true);
     try {
-      const reply = await askAi(text, messages, attSnapshot, { voice: voiceMode });
+      // Match Engine kontekst (SARP analiza zadnje otvorene utakmice) ide
+      // automatski u prompt — pohranjena poruka ostaje čista.
+      const kontekst = ucitajKontekstMeca();
+      const tekstZaAI = kontekst ? `${text}\n\n${izgradiKontekstTekst(kontekst)}` : text;
+      const reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
         setSpeaking(true);
@@ -244,6 +256,11 @@ function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {mecNaziv && (
+            <span className="hidden rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 sm:inline">
+              MEC: {mecNaziv.length > 22 ? mecNaziv.slice(0, 22) + "…" : mecNaziv}
+            </span>
+          )}
           {mmOn && (
             <span className="rounded-lg border border-primary bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">
               MASTERMIND v11
