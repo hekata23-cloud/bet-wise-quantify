@@ -22,6 +22,8 @@ import {
   Trophy,
   Wrench,
   Zap,
+  TrendingUp,
+  Info,
 } from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
 import { SharpFilterToggle } from "@/components/SharpFilterToggle";
@@ -57,6 +59,8 @@ const NAV = [
   { to: "/kosarka-pro", label: "Košarka Pro", icon: Dribbble },
   { to: "/rukomet-pro", label: "Rukomet Pro", icon: CircleDot },
   { to: "/dnevnik", label: "Dnevnik", icon: BookOpen },
+  { to: "/track-record", label: "Track Record", icon: TrendingUp },
+  { to: "/info", label: "Info & Arhitektura", icon: Info },
   { to: "/postavke", label: "Postavke", icon: Settings },
 ] as const;
 
