@@ -15,6 +15,8 @@ import { Route as BttsOverRouteImport } from './routes/btts-over'
 import { Route as BttsUltraRouteImport } from './routes/btts-ultra'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as DnevnikRouteImport } from './routes/dnevnik'
+import { Route as InfoRouteImport } from './routes/info'
+import { Route as TrackRecordRouteImport } from './routes/track-record'
 import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as HtFtRouteImport } from './routes/ht-ft'
 import { Route as HtFtBetaRouteImport } from './routes/ht-ft-beta'
@@ -69,6 +71,16 @@ const ChatRoute = ChatRouteImport.update({
 const DnevnikRoute = DnevnikRouteImport.update({
   id: '/dnevnik',
   path: '/dnevnik',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InfoRoute = InfoRouteImport.update({
+  id: '/info',
+  path: '/info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrackRecordRoute = TrackRecordRouteImport.update({
+  id: '/track-record',
+  path: '/track-record',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoloviRoute = GoloviRouteImport.update({
@@ -204,6 +216,8 @@ export interface FileRoutesByFullPath {
   '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
   '/dnevnik': typeof DnevnikRoute
+  '/info': typeof InfoRoute
+  '/track-record': typeof TrackRecordRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
   '/ht-ft-beta': typeof HtFtBetaRoute
@@ -237,6 +251,8 @@ export interface FileRoutesByTo {
   '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
   '/dnevnik': typeof DnevnikRoute
+  '/info': typeof InfoRoute
+  '/track-record': typeof TrackRecordRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
   '/ht-ft-beta': typeof HtFtBetaRoute
@@ -270,6 +286,8 @@ export interface FileRoutesById {
   '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
   '/dnevnik': typeof DnevnikRoute
+  '/info': typeof InfoRoute
+  '/track-record': typeof TrackRecordRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
   '/ht-ft-beta': typeof HtFtBetaRoute
@@ -305,6 +323,8 @@ export interface FileRouteTypes {
     | '/btts-ultra'
     | '/chat'
     | '/dnevnik'
+    | '/info'
+    | '/track-record'
     | '/golovi'
     | '/ht-ft'
     | '/ht-ft-beta'
@@ -338,6 +358,8 @@ export interface FileRouteTypes {
     | '/btts-ultra'
     | '/chat'
     | '/dnevnik'
+    | '/info'
+    | '/track-record'
     | '/golovi'
     | '/ht-ft'
     | '/ht-ft-beta'
@@ -370,6 +392,8 @@ export interface FileRouteTypes {
     | '/btts-ultra'
     | '/chat'
     | '/dnevnik'
+    | '/info'
+    | '/track-record'
     | '/golovi'
     | '/ht-ft'
     | '/ht-ft-beta'
@@ -404,6 +428,8 @@ export interface RootRouteChildren {
   BttsUltraRoute: typeof BttsUltraRoute
   ChatRoute: typeof ChatRoute
   DnevnikRoute: typeof DnevnikRoute
+  InfoRoute: typeof InfoRoute
+  TrackRecordRoute: typeof TrackRecordRoute
   GoloviRoute: typeof GoloviRoute
   HtFtRoute: typeof HtFtRoute
   HtFtBetaRoute: typeof HtFtBetaRoute
@@ -471,6 +497,20 @@ declare module '@tanstack/react-router' {
       path: '/dnevnik'
       fullPath: '/dnevnik'
       preLoaderRoute: typeof DnevnikRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/info': {
+      id: '/info'
+      path: '/info'
+      fullPath: '/info'
+      preLoaderRoute: typeof InfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/track-record': {
+      id: '/track-record'
+      path: '/track-record'
+      fullPath: '/track-record'
+      preLoaderRoute: typeof TrackRecordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/golovi': {
@@ -672,6 +712,8 @@ const rootRouteChildren: RootRouteChildren = {
   BttsUltraRoute: BttsUltraRoute,
   ChatRoute: ChatRoute,
   DnevnikRoute: DnevnikRoute,
+  InfoRoute: InfoRoute,
+  TrackRecordRoute: TrackRecordRoute,
   GoloviRoute: GoloviRoute,
   HtFtRoute: HtFtRoute,
   HtFtBetaRoute: HtFtBetaRoute,
