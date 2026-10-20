@@ -1,21 +1,32 @@
 /* ═══════════════════════════════════════════════════════════════════
    GOALS-MOTOR — zajednički "mozak" za BTTS Ultra i 2.5 Pro karticu
    ═══════════════════════════════════════════════════════════════════
-   v6 — POPRAVCI TOČNOSTI (numericki testirani):
-    - distribucija golova (g0..g4, g5+) sada obuhvaća i rezultate s
-      ukupno 10+ golova (npr. 5:5, 7:6) — staro polje je gubilo masu;
-    - P(BTTS) ≤ P(Over 1.5) garancija vrijedi i nakon formsskog sloja.
+   v7 — DEEP AUDIT (numericki testirani):
+     - EMPIRICAL BAYES shrinkage: forma s < 5 utakmica se smanjuje
+       prema STVARNOM prosjeku lige (ne prema tvrdom globalnom 1.35);
+       mali uzorak → oznaka + strop povjerenja 55% (bez lažnog
+       samopouzdanja na timovima s 1–2 utakmice);
+     - BTTS kroz KOPULU: Dixon–Coles (50%) + Bivarijantni Poisson
+       (ρ = 0.08, 30%) + Frank kopula (θ fit na korelaciju 0.08, 20%)
+       — golovi su pozitivno korelirani kad tim povede;
+     - distribucija golova (g0..g4, g5+) obuhvaća i rezultate 10+
+       golova ukupno (npr. 5:5, 7:6);
+     - P(BTTS) ≤ P(Over 1.5) garancija vrijedi i nakon svih slojeva.
 
    Metodologija:
-   1) FORMA → očekivani golovi timova (λ domaćin, μ gost)
-   2) TRŽIŠTE → implicitni ukupni golovi iz de-margined O/U linija
-   3) MJEŠANJE: w·λ(tržište) + (1-w)·λ(forma)
-   4) RAZDVOBA λ domaćin/gost kalibrirana de-margined 1X2
-   5) DIXON-COLES korekcija (rho), fit na U 1.5
-   6) SVI izlazi iz jedne matrice rezultata (0..9 × 0..9)
-   7) BTTS i Over 2.5 dobiju mali formsski sloj (do 20% težine)
-   8) EDGE i KELLY spram stvarnih kvota; ocjena povjerenja A+..C
+    1) FORMA → očekivani golovi timova (λ domaćin, μ gost), EB shrinkage
+       prema ligaškom prioru (k = 5)
+    2) TRŽIŠTE → implicitni ukupni golovi iz de-margined O/U linija
+    3) MJEŠANJE: w·λ(tržište) + (1-w)·λ(forma)
+    4) RAZDVOBA λ domaćin/gost kalibrirana de-margined 1X2
+    5) DIXON-COLES korekcija (rho), fit na U 1.5
+    6) SVI izlazi iz jedne matrice rezultata (0..9 × 0..9)
+    7) BTTS i Over 2.5 dobiju mali formsski sloj (do 20% težine)
+    8) EDGE i KELLY spram stvarnih kvota; ocjena povjerenja A+..C
    ═══════════════════════════════════════════════════════════════════ */
+
+import { priorZaLigu, shrinkajStopu, jeMaliUzorak, stropPovjerenja, type LigaPrior } from "./eb-shrinkage";
+import { bttsIzKopule } from "./btts-copula";
 
 export type FormaGolovi = {
   odigrano: number;
@@ -34,6 +45,8 @@ export type GoalsUlaz = {
   formaDom: FormaGolovi | null;
   formaGost: FormaGolovi | null;
   brojKladionica?: number;
+  /** naziv lige — uključuje ligaški Empirical Bayes prior (opcionalno) */
+  liga?: string;
 };
 
 export type GoalsIzlaz = {
@@ -60,10 +73,16 @@ export type GoalsIzlaz = {
   faktori: string[];
   wMarket: number;
   rho: number;
+  /** EMPIRICAL BAYES: je li barem jedan tim imao < 5 utakmica u formi? */
+  maliUzorak: boolean;
+  /** koji ligaški prior je korišten za shrinkage */
+  ligaPrior: LigaPrior;
+  /** razložba BTTS-a po modelima zavisnosti */
+  kopula: { dc: number; bp: number; frank: number; theta: number };
 };
 
 const MAX_GOL = 9;
-const LIGA_PO_TIMU = 1.35; // prosječno golova po timu po utakmici (≈2.7 ukupno)
+const LIGA_PO_TIMU = 1.34; // rezervni prior kad naziv lige nije prepoznat (≈2.68 ukupno)
 function clamp(x: number, a: number, b: number): number {
   return Math.min(b, Math.max(a, x));
 }
@@ -167,24 +186,39 @@ function lambdaIzLinije(line: number, pOver: number): number | null {
   return (lo + hi) / 2;
 }
 
-/** Očekivani golovi timova iz forme (relativne snage × prednost domaćeg terena). */
-export function lambdaIzForme(dom: FormaGolovi | null, gost: FormaGolovi | null): { lam: number; mu: number } {
-  const napadDom = dom && dom.odigrano > 0 ? dom.postignuti / dom.odigrano : LIGA_PO_TIMU;
-  const obranaGost = gost && gost.odigrano > 0 ? gost.primljeni / gost.odigrano : LIGA_PO_TIMU;
-  const napadGost = gost && gost.odigrano > 0 ? gost.postignuti / gost.odigrano : LIGA_PO_TIMU;
-  const obranaDom = dom && dom.odigrano > 0 ? dom.primljeni / dom.odigrano : LIGA_PO_TIMU;
-  const sNapadDom = clamp(napadDom / LIGA_PO_TIMU, 0.35, 2.2);
-  const sObranaGost = clamp(obranaGost / LIGA_PO_TIMU, 0.35, 2.2);
-  const sNapadGost = clamp(napadGost / LIGA_PO_TIMU, 0.35, 2.2);
-  const sObranaDom = clamp(obranaDom / LIGA_PO_TIMU, 0.35, 2.2);
+/** EMPIRICAL BAYES: forma s malim uzorkom se smanjuje prema ligaškom prioru.
+ *  Vraća NOVU formu s prilagođenim postignutim/primljenim golovima. */
+function shrinkajFormu(f: FormaGolovi | null, priorPoTimu: number): FormaGolovi | null {
+  if (!f || f.odigrano <= 0) return f;
+  const n = f.odigrano;
+  const napad = shrinkajStopu(n, f.postignuti / n, priorPoTimu);
+  const obrana = shrinkajStopu(n, f.primljeni / n, priorPoTimu);
+  return { ...f, postignuti: napad * n, primljeni: obrana * n };
+}
+
+/** Očekivani golovi timova iz forme (relativne snage × prednost domaćeg terena).
+ *  priorPoTimu: ligaški prosjek golova po timu (Empirical Bayes prior). */
+export function lambdaIzForme(
+  dom: FormaGolovi | null,
+  gost: FormaGolovi | null,
+  priorPoTimu: number = LIGA_PO_TIMU,
+): { lam: number; mu: number } {
+  const napadDom = dom && dom.odigrano > 0 ? dom.postignuti / dom.odigrano : priorPoTimu;
+  const obranaGost = gost && gost.odigrano > 0 ? gost.primljeni / gost.odigrano : priorPoTimu;
+  const napadGost = gost && gost.odigrano > 0 ? gost.postignuti / gost.odigrano : priorPoTimu;
+  const obranaDom = dom && dom.odigrano > 0 ? dom.primljeni / dom.odigrano : priorPoTimu;
+  const sNapadDom = clamp(napadDom / priorPoTimu, 0.35, 2.2);
+  const sObranaGost = clamp(obranaGost / priorPoTimu, 0.35, 2.2);
+  const sNapadGost = clamp(napadGost / priorPoTimu, 0.35, 2.2);
+  const sObranaDom = clamp(obranaDom / priorPoTimu, 0.35, 2.2);
   // multiplikativni (Dixon-Coles stil) pomiješan s prosječnim — inače se
   // dva slaba omjera "kvadriraju" i defenzivni mečevi padnu premalo
   const multDom = sNapadDom * sObranaGost;
   const avgDom = (sNapadDom + sObranaGost) / 2;
   const multGost = sNapadGost * sObranaDom;
   const avgGost = (sNapadGost + sObranaDom) / 2;
-  const lam = clamp((0.55 * multDom + 0.45 * avgDom) * LIGA_PO_TIMU * 1.08, 0.25, 4.2);
-  const mu = clamp((0.55 * multGost + 0.45 * avgGost) * LIGA_PO_TIMU * 0.94, 0.2, 4.2);
+  const lam = clamp((0.55 * multDom + 0.45 * avgDom) * priorPoTimu * 1.08, 0.25, 4.2);
+  const mu = clamp((0.55 * multGost + 0.45 * avgGost) * priorPoTimu * 0.94, 0.2, 4.2);
   return { lam, mu };
 }
 
@@ -272,18 +306,32 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const kv = ulaz.kvote;
   const books = ulaz.brojKladionica ?? 0;
 
-  /* 1) forma */
+  /* 0) ligaški prior (Empirical Bayes) */
+  const prior = priorZaLigu(ulaz.liga);
+  const priorPoTimu = prior.poTimu;
+
+  /* 1) forma → EB shrinkage prema ligaškom prioru */
   const dom = ulaz.formaDom;
   const gost = ulaz.formaGost;
+  const domShr = shrinkajFormu(dom, priorPoTimu);
+  const gostShr = shrinkajFormu(gost, priorPoTimu);
   const odDom = dom?.odigrano ?? 0;
   const odGost = gost?.odigrano ?? 0;
-  const { lam: lamModel, mu: muModel } = lambdaIzForme(dom, gost);
-  if (odDom < 4 || odGost < 4)
+  const maliUzorak = jeMaliUzorak(Math.min(odDom === 0 ? 0 : odDom, odGost === 0 ? 0 : odGost));
+  const { lam: lamModel, mu: muModel } = lambdaIzForme(domShr, gostShr, priorPoTimu);
+  if (maliUzorak) {
+    upozorenja.push(
+      `⚠️ MALI UZORAK (< 5 utakmica barem jednog tima): forma je Empirical Bayes-om smanjena prema ligaškom prosjeku` +
+      `${prior.tocna ? ` ("${prior.naziv}", ${prior.ukupno.toFixed(2)} gola)` : ""} — strop povjerenja 55%.`,
+    );
+  } else if (odDom < 4 || odGost < 4) {
     upozorenja.push("Uzorak forme je mali (< 4 utakmice barem jednog tima) — procjena timova manje pouzdana.");
+  }
   if (!dom) upozorenja.push("Forma domaćina nije dostupna — uzet ligaški prosjek.");
   if (!gost) upozorenja.push("Forma gosta nije dostupna — uzet ligaški prosjek.");
   if (dom) faktori.push(`Domaćin: ${dom.postignuti}/${dom.odigrano} postignutih, ${dom.primljeni} primljenih u zadnjih ${dom.odigrano}.`);
   if (gost) faktori.push(`Gost: ${gost.postignuti}/${gost.odigrano} postignutih, ${gost.primljeni} primljenih u zadnjih ${gost.odigrano}.`);
+  if (prior.tocna) faktori.push(`Ligaški prior (EB): "${prior.naziv}" — ${prior.ukupno.toFixed(2)} golova ukupno, shrinkage k=5.`);
 
   /* 2+3) tržište i mješanje ukupnih golova */
   const trz = lambdaIzTrzista(kv, books);
@@ -316,19 +364,29 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   model["1"] = mModel.p1;
   model["X"] = mModel.pX;
   model["2"] = mModel.p2;
-  model["bttsDa"] = mModel.btts;
   model["o15"] = mModel.o15;
   model["o25"] = mModel.o25;
   model["o35"] = mModel.o35;
 
-  let bttsDa = M.btts;
+  /* BTTS kroz kopulu: DC (50%) + Bivarijantni Poisson ρ=0.08 (30%) + Frank (20%). */
+  const kopula = bttsIzKopule(lamH, lamA, M.btts);
+  const kopulaModel = bttsIzKopule(lamModel, muModel, mModel.btts);
+  model["bttsDa"] = kopulaModel.btts;
+  faktori.push(
+    `BTTS zavisnost: DC ${(kopula.dc * 100).toFixed(1)}% · BivPois(ρ=0.08) ${(kopula.bp * 100).toFixed(1)}% · ` +
+    `Frank(θ=${kopula.theta.toFixed(2)}) ${(kopula.frank * 100).toFixed(1)}% → mješavina ${(kopula.btts * 100).toFixed(1)}%.`,
+  );
+
+  let bttsDa = kopula.btts;
   const postotakBtts: number[] = [];
   if (dom && dom.odigrano > 0) postotakBtts.push(dom.btts / dom.odigrano);
   if (gost && gost.odigrano > 0) postotakBtts.push(gost.btts / gost.odigrano);
   if (postotakBtts.length === 2) {
-    const pf = (postotakBtts[0]! + postotakBtts[1]!) / 2;
+    // EB: udio BTTS-a u formi se također smanjuje prema prioru kad je uzorak mali
+    const nZaj = odDom + odGost;
+    const pf = shrinkajStopu(nZaj, (postotakBtts[0]! * odDom + postotakBtts[1]! * odGost) / nZaj, kopula.btts);
     bttsDa = 0.8 * bttsDa + 0.2 * pf;
-    faktori.push(`BTTS forma: domaćin ${Math.round(postotakBtts[0]! * 100)}%, gost ${Math.round(postotakBtts[1]! * 100)}% utakmica.`);
+    faktori.push(`BTTS forma: domaćin ${Math.round(postotakBtts[0]! * 100)}%, gost ${Math.round(postotakBtts[1]! * 100)}% utakmica (EB-mješavina ${(pf * 100).toFixed(1)}%).`);
   }
 
   let o25 = M.o25;
@@ -341,7 +399,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   o25 = clamp(o25, M.o35, M.o15);
   const o15 = M.o15;
   const o35 = M.o35;
-  // P(BTTS) ≤ P(Over 1.5) matematici mora vrijediti i nakon formsskog sloja.
+  // P(BTTS) ≤ P(Over 1.5) matematici mora vrijediti i nakon kopule i formsskog sloja.
   bttsDa = clamp(bttsDa, 0.001, Math.max(0.001, Math.min(0.999, M.o15)));
   const bttsNe = clamp(1 - bttsDa, 0.001, 0.999);
 
@@ -411,7 +469,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     }
   }
 
-  /* povjerenje */
+  /* povjerenje (s EB stropom za mali uzorak) */
   const linije = ["bttsDa", "o15", "o25", "o35"].filter((k) =>
     kv[k] != null && kv[k === "bttsDa" ? "bttsNe" : `u${k.slice(1)}`] != null,
   ).length;
@@ -420,7 +478,8 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const uzorak = Math.min(odDom, odGost);
   const pokrForma = (clamp(uzorak, 0, 6) / 6) * 25;
   const pokrSugl = suglasnost * 25;
-  const povjerenje = Math.round(pokrTrz * 0.3 + pokrKnj * 0.25 + pokrForma * 0.2 + pokrSugl * 0.25);
+  const povjerenjeSirovo = pokrTrz * 0.3 + pokrKnj * 0.25 + pokrForma * 0.2 + pokrSugl * 0.25;
+  const povjerenje = stropPovjerenja(povjerenjeSirovo, maliUzorak);
 
   /* top rezultati */
   const top: { rezultat: string; p: number }[] = [];
@@ -449,5 +508,14 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     faktori,
     wMarket: Math.round(wMarket * 100) / 100,
     rho: Math.round(rho * 1000) / 1000,
+    maliUzorak,
+    ligaPrior: prior,
+    kopula: {
+      dc: Math.round(kopula.dc * 1000) / 1000,
+      bp: Math.round(kopula.bp * 1000) / 1000,
+      frank: Math.round(kopula.frank * 1000) / 1000,
+      theta: Math.round(kopula.theta * 1000) / 1000,
+    },
   };
 }
+
