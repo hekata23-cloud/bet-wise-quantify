@@ -238,6 +238,7 @@ function Panel({ linija, u, r, kvota05, setKvota05 }: {
 
   function uKorpu(trziste: string, tip: string, p: number, kvota: number) {
     dodajUKorpu({
+      id: `nogomet|${u.id}|${trziste}|${tip}`,
       sport: "nogomet",
       utakmica: `${u.home} - ${u.away}`,
       liga: u.league,
