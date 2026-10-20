@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send, ScanEye, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
+import { ucitajKontekstMeca, izgradiKontekstTekst } from "@/lib/ai-context";
 import { loadJSON, saveJSON, hasKey } from "@/lib/storage";
 import { ORION_PERSONA, ORION_PODSJETNIK, ORION_BRZI_UPITI, SPORT_PREDLOŠCI } from "@/lib/botovi";
 
@@ -16,8 +17,16 @@ export function Orion() {
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mecNaziv, setMecNaziv] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const osvjezi = () => setMecNaziv(ucitajKontekstMeca()?.naslov ?? null);
+    osvjezi();
+    window.addEventListener("andromeda:mec-kontekst", osvjezi);
+    return () => window.removeEventListener("andromeda:mec-kontekst", osvjezi);
+  }, []);
 
   useEffect(() => {
     setMessages(loadJSON<ChatTurn[]>(KEY, []));
@@ -47,10 +56,13 @@ export function Orion() {
     setLoading(true);
     try {
       // Prva poruka nosi punu personu; ostale kratki podsjetnik.
+      // Match Engine kontekst (SARP/λ/MC/SGP/live) se automatski ubrizgava.
+      const kontekst = ucitajKontekstMeca();
+      const blok = kontekst ? `\n\n${izgradiKontekstTekst(kontekst)}` : "";
       const poslano =
         messages.length === 0
-          ? `${ORION_PERSONA}\n\n──────────\n\nKorisnikovo pitanje: ${poruka}`
-          : `${ORION_PODSJETNIK}\n${poruka}`;
+          ? `${ORION_PERSONA}\n\n──────────\n\nKorisnikovo pitanje: ${poruka}${blok}`
+          : `${ORION_PODSJETNIK}\n${poruka}${blok}`;
       const odgovor = await askAi(poslano, nova.slice(0, -1), [], {});
       setMessages((m) => [...m, korisnik, { role: "assistant", content: odgovor, ts: Date.now() }]);
     } catch (e) {
@@ -78,7 +90,14 @@ export function Orion() {
             <div className="flex items-center gap-2">
               <ScanEye className="h-4 w-4 text-sky-400" />
               <div>
-                <div className="text-sm font-semibold">ORION</div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  ORION
+                  {mecNaziv && (
+                    <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-sky-300">
+                      MEC: {mecNaziv.length > 24 ? mecNaziv.slice(0, 24) + "…" : mecNaziv}
+                    </span>
+                  )}
+                </div>
                 <div className="text-[10px] text-muted-foreground">
                   Data & Taktički Analitičar · tip → edge → matematika
                 </div>
@@ -167,4 +186,3 @@ export function Orion() {
     </>
   );
 }
-
