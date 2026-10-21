@@ -27,6 +27,7 @@
 
 import { priorZaLigu, shrinkajStopu, jeMaliUzorak, stropPovjerenja, type LigaPrior } from "./eb-shrinkage";
 import { bttsIzKopule } from "./btts-copula";
+import { kalibrirajGoalsFinal, tezinaKalibracije } from "./global-calibration";
 
 export type FormaGolovi = {
   odigrano: number;
@@ -79,6 +80,8 @@ export type GoalsIzlaz = {
   ligaPrior: LigaPrior;
   /** razložba BTTS-a po modelima zavisnosti */
   kopula: { dc: number; bp: number; frank: number; theta: number };
+  /** GLOBALNA KALIBRACIJA: log-pool finala s de-margined tržištem (dijagnostika) */
+  kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
 };
 
 const MAX_GOL = 9;
@@ -403,7 +406,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   bttsDa = clamp(bttsDa, 0.001, Math.max(0.001, Math.min(0.999, M.o15)));
   const bttsNe = clamp(1 - bttsDa, 0.001, 0.999);
 
-  const final: Record<string, number> = {
+  let final: Record<string, number> = {
     "1": M.p1, "X": M.pX, "2": M.p2,
     bttsDa, bttsNe,
     o15, o25, o35,
@@ -453,6 +456,27 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const suglasnost = avgDiff == null ? 0.5 : clamp(1 - avgDiff * 5, 0, 1);
   if (avgDiff != null && avgDiff > 0.12)
     upozorenja.push("Model i tržište se znatno razilaze — ili tržište ima infu (povrede/postave), ili je kvota iskočila.");
+
+  /* 7b) GLOBALNA KALIBRACIJA — logaritamski pool finala s de-margined tržištem.
+     Težina raste s brojem kladionica i pokrivenošću tržišta (max 0.45);
+     bez kvota je w = 0 → final ostaje čisto modelno (identitet). */
+  const paroviKal = ["o15", "o25", "o35", "bttsDa"].filter((k) =>
+    market[k] != null ||
+    (k === "bttsDa" ? market["bttsNe"] != null : market[`u${k.slice(1)}`] != null),
+  ).length;
+  const wKal = tezinaKalibracije(books, paroviKal);
+  const kal = kalibrirajGoalsFinal(final, market, wKal);
+  if (kal.primijenjena) {
+    final = kal.final;
+    faktori.push(
+      `Globalna kalibracija: final pool-an s de-margined tržištem (težina ${(wKal * 100).toFixed(0)}%), ` +
+      `prosječni pomak ${kal.prosjecniPomak.toFixed(1)} pp.`,
+    );
+    if (kal.prosjecniPomak > 6)
+      upozorenja.push(
+        `Kalibracija je znatno povukla model prema tržištu (${kal.prosjecniPomak.toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+      );
+  }
 
   /* 8) fair kvote, edge, kelly */
   const fairOdds: Record<string, number> = {};
@@ -510,6 +534,11 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     rho: Math.round(rho * 1000) / 1000,
     maliUzorak,
     ligaPrior: prior,
+    kalibracija: {
+      primijenjena: kal.primijenjena,
+      tezina: kal.tezina,
+      prosjecniPomak: kal.prosjecniPomak,
+    },
     kopula: {
       dc: Math.round(kopula.dc * 1000) / 1000,
       bp: Math.round(kopula.bp * 1000) / 1000,
@@ -518,4 +547,3 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     },
   };
 }
-
