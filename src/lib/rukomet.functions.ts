@@ -71,7 +71,13 @@ export const getRukometGames = createServerFn({ method: "POST" })
 
 export type RukometMarkets = Record<string, Record<string, number>>;
 
-/** Dohvat kvota: /odds?game=ID s apsolutnim prioritetom za Bet365. */
+/**
+ * Dohvat kvota: /odds?game=ID s apsolutnim prioritetom za Bet365.
+ * v2: vraća i `brojKladionica` — stvaran broj kladionica s objavljenim
+ * kvotama u API odgovoru; ide u SARP panel pa u globalnu kalibraciju
+ * motora (težina log-poola ovisi o stvarnoj pokrivenosti, ne o
+ * pretpostavci od 3 knjige).
+ */
 export const getRukometOdds = createServerFn({ method: "POST" })
   .validator((d: { id: number; apiKey?: string }) =>
     z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d)
@@ -88,6 +94,7 @@ export const getRukometOdds = createServerFn({ method: "POST" })
         books = (resp as any).bookmakers;
       }
     }
+    const knjigeSKvotama = books.filter((b) => (b?.bets?.length ?? 0) > 0).length;
 
     // Pronađi Bet365 (ID 8 ili naziv Bet365)
     const b365 = books.find((b) => Number(b.id) === 8 || /bet ?365/i.test(String(b.name || "")));
@@ -145,7 +152,7 @@ export const getRukometOdds = createServerFn({ method: "POST" })
       markets,
       bookmaker: bookmakerName,
       isBet365,
+      brojKladionica: knjigeSKvotama,
     };
   });
-
 
