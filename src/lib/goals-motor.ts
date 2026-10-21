@@ -28,6 +28,7 @@
 import { priorZaLigu, shrinkajStopu, jeMaliUzorak, stropPovjerenja, type LigaPrior } from "./eb-shrinkage";
 import { bttsIzKopule } from "./btts-copula";
 import { kalibrirajGoalsFinal, tezinaKalibracije } from "./global-calibration";
+import type { EmpStanje } from "./accuracy-ledger";
 
 export type FormaGolovi = {
   odigrano: number;
@@ -48,6 +49,9 @@ export type GoalsUlaz = {
   brojKladionica?: number;
   /** naziv lige — uključuje ligaški Empirical Bayes prior (opcionalno) */
   liga?: string;
+  /** STVARNA TOČNOST: ručno ubrizgano empirijsko stanje (Samotest);
+   *  bez toga motor čita stvarni rekord iz Dnevnika (localStorage). */
+  empirijske?: EmpStanje;
 };
 
 export type GoalsIzlaz = {
@@ -82,6 +86,8 @@ export type GoalsIzlaz = {
   kopula: { dc: number; bp: number; frank: number; theta: number };
   /** GLOBALNA KALIBRACIJA: log-pool finala s de-margined tržištem (dijagnostika) */
   kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
+  /** STVARNA TOČNOST: temperiranje prema vlastitom rekordu (dijagnostika) */
+  empTocnost: { primijenjena: boolean; temp: Record<string, number>; uzorak: Record<string, number> };
 };
 
 const MAX_GOL = 9;
@@ -465,17 +471,31 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     (k === "bttsDa" ? market["bttsNe"] != null : market[`u${k.slice(1)}`] != null),
   ).length;
   const wKal = tezinaKalibracije(books, paroviKal);
-  const kal = kalibrirajGoalsFinal(final, market, wKal);
+  const kal = kalibrirajGoalsFinal(final, market, wKal, ulaz.empirijske);
   if (kal.primijenjena) {
     final = kal.final;
-    faktori.push(
-      `Globalna kalibracija: final pool-an s de-margined tržištem (težina ${(wKal * 100).toFixed(0)}%), ` +
-      `prosječni pomak ${kal.prosjecniPomak.toFixed(1)} pp.`,
-    );
-    if (kal.prosjecniPomak > 6)
-      upozorenja.push(
-        `Kalibracija je znatno povukla model prema tržištu (${kal.prosjecniPomak.toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+    if (wKal > 0) {
+      faktori.push(
+        `Globalna kalibracija: final pool-an s de-margined tržištem (težina ${(wKal * 100).toFixed(0)}%), ` +
+        `prosječni pomak ${kal.prosjecniPomak.toFixed(1)} pp.`,
       );
+      if (kal.prosjecniPomak > 6)
+        upozorenja.push(
+          `Kalibracija je znatno povukla model prema tržištu (${kal.prosjecniPomak.toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+        );
+    }
+    const empAktivne = Object.entries(kal.emp?.temp ?? {}).filter(([, T]) => Math.abs(T - 1) > 1e-9);
+    if (empAktivne.length > 0) {
+      faktori.push(
+        "Stvarna točnost (Dnevnik): vjerojatnosti temperirane prema vlastitom rekordu (" +
+        empAktivne.map(([k, T]) => `${k} ×${T.toFixed(2)}`).join(", ") + ").",
+      );
+      const maxUzorak = Math.max(0, ...Object.values(kal.emp?.uzorak ?? {}));
+      if (maxUzorak >= 10 && empAktivne.some(([, T]) => Math.abs(T - 1) >= 0.12))
+        upozorenja.push(
+          `Stvarna točnost se znatno razlikuje od najavljenih vjerojatnosti (uzorak ${maxUzorak} tipova) — tretirajte samopouzdanje s rezervom.`,
+        );
+    }
   }
 
   /* 8) fair kvote, edge, kelly */
@@ -538,6 +558,11 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
       primijenjena: kal.primijenjena,
       tezina: kal.tezina,
       prosjecniPomak: kal.prosjecniPomak,
+    },
+    empTocnost: {
+      primijenjena: kal.emp?.primijenjena ?? false,
+      temp: kal.emp?.temp ?? {},
+      uzorak: kal.emp?.uzorak ?? {},
     },
     kopula: {
       dc: Math.round(kopula.dc * 1000) / 1000,
