@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   SELFTEST — automatski auditor predikcijskih motora (v3)
+   SELFTEST — automatski auditor predikcijskih motora (v4)
    ═══════════════════════════════════════════════════════════════════
    Pokreće bateriju matematičkih provjera (bez mreže, bez API-ja):
 
@@ -19,6 +19,10 @@
          simetrija, konverzija HT vodstva)
      11) De-vig štit: Shin zbroj = 1, detekcija marže, POOR MARKET
          PRICE; pick badges: blokada suprotne strane, primarni ≥ 55%
+     13) STVARNA TOČNOST (accuracy-ledger): prag uzorka, smjer
+         temperiranja (preoptimističan → T>1, podzastavljen → T<1),
+         zbrojevi para i trojke, ignoriranje htft-a, invarijante
+         kalibracije s temperom, hlađenje u motoru
 
    Rezultat ide u panel "Samotest" na Info stranici. Ako ijedan test
    padne, motor ne smije objavljivati tipove — prijava je vidljiva.
@@ -32,7 +36,9 @@ import { analizaVig, losaCijena, VIG_PRAG } from "./devig-shield";
 import { izradiOznake, type Kandidat } from "./pick-badges";
 import { sarpKosarka } from "./sarp-kosarka";
 import { sarpRukomet } from "./sarp-rukomet";
-import { tezinaKalibracije as tezinaKalProvjera } from "./global-calibration";
+import { tezinaKalibracije as tezinaKalProvjera, kalibrirajGoalsFinal, tempPar, tempTrojku } from "./global-calibration";
+import { PRAZNO_EMP, izracunajEmp, tempZa } from "./accuracy-ledger";
+import type { DnevnikUnos } from "./dnevnik";
 import type { KosAnalysis, Tip as KosTipT } from "./kosarka-engine";
 import type { RukometAnalysis, Tip as RukTipT } from "./rukomet-engine";
 
@@ -95,7 +101,7 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
   for (const [lamH, lamA] of lamParovi) {
     for (const [fd, fg] of forme) {
       for (const liga of lige) {
-        const a = goalsAnaliza({ kvote: {}, formaDom: fd, formaGost: fg, brojKladionica: 0, liga });
+        const a = goalsAnaliza({ kvote: {}, empirijske: PRAZNO_EMP, formaDom: fd, formaGost: fg, brojKladionica: 0, liga });
         provjerenih++;
         const f = a.final;
         if (Math.abs(f.o25! + f.u25! - 1) > EPS || Math.abs(f.bttsDa! + f.bttsNe! - 1) > EPS) paoIdentitet = true;
@@ -119,7 +125,7 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
   t.push(ok("Nema kontradiktornih preporuka", !paoKontradikcija, "U1.5/O2.5, U2.5/2:2, U1.5/BTTS"));
 
   /* top rezultat uvijek unutar matrice i ≤ P(Over 2.5) ako total > 2.5 */
-  const a1 = goalsAnaliza({ kvote: {}, formaDom: forma(10, 18, 12, 7, 6), formaGost: forma(10, 15, 13, 6, 5), liga: "Premier League" });
+  const a1 = goalsAnaliza({ kvote: {}, empirijske: PRAZNO_EMP, formaDom: forma(10, 18, 12, 7, 6), formaGost: forma(10, 15, 13, 6, 5), liga: "Premier League" });
   const top0 = a1.topRezultati[0];
   const pTop = parseFloat(top0.rezultat.split(":")[0]!) + parseFloat(top0.rezultat.split(":")[1]!);
   t.push(ok("Top rezultat je unutar matrice", pTop <= 10 && top0.p > 0, `${top0.rezultat} @ ${(top0.p * 100).toFixed(1)}%`));
@@ -159,19 +165,19 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
     t.push(ok("Strop povjerenja 55% kod malog uzorka", strop === MAX_POVJERENJE_MALI, `90 → ${strop}`));
 
     // motor s malim uzorkom mora imati strop i oznaku
-    const b = goalsAnaliza({ kvote: {}, formaDom: forma(2, 6, 1, 2, 2), formaGost: forma(2, 3, 4, 1, 0), liga: "Serie A" });
+    const b = goalsAnaliza({ kvote: {}, empirijske: PRAZNO_EMP, formaDom: forma(2, 6, 1, 2, 2), formaGost: forma(2, 3, 4, 1, 0), liga: "Serie A" });
     t.push(ok("Motor: mali uzorak → povjerenje ≤ 55 + oznaka", b.maliUzorak && b.povjerenje <= MAX_POVJERENJE_MALI && b.upozorenja.some((w) => w.includes("MALI UZORAK")), `povjerenje ${b.povjerenje}, oznaka ${b.maliUzorak}`));
   }
 
   /* ── 9) Tržišna koherencija: kad su kvote = fer, suglasnost je visoka ── */
   {
-    const a = goalsAnaliza({ kvote: {}, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
+    const a = goalsAnaliza({ kvote: {}, empirijske: PRAZNO_EMP, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
     const kvoteFer: Record<string, number> = {};
     for (const k of ["1", "X", "2", "o15", "u15", "o25", "u25", "o35", "u35", "bttsDa", "bttsNe"]) {
       const p = a.final[k];
       if (p != null && p > 0.001) kvoteFer[k] = Math.max(1.01, 1 / p);
     }
-    const b = goalsAnaliza({ kvote: kvoteFer, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
+    const b = goalsAnaliza({ kvote: kvoteFer, empirijske: PRAZNO_EMP, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
     t.push(ok("Fer kvote → visoka suglasnost model/tržište", b.suglasnost >= 0.9, `suglasnost ${b.suglasnost}`));
     t.push(ok("Fer kvote → edge ≈ 0 (nema lažnih value tipova)", Object.values(b.edge).every((e) => Math.abs(e) < 0.05), `max |edge| = ${Math.max(0, ...Object.values(b.edge).map(Math.abs)).toFixed(4)}`));
   }
@@ -245,7 +251,7 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
       best: null, safest: null, totalPick: kt(`Zbroj ${line}`, `Više ${line}`, ou ? ou[0]! : null), notes: [],
     });
     const kosPozovi = (an: KosAnalysis) => sarpKosarka({
-      an, mk: null, home: "Dom", away: "Gost", league: "NBA", fixtureId: 1,
+      an, mk: null, home: "Dom", away: "Gost", league: "NBA", fixtureId: 1, empirijske: PRAZNO_EMP,
     });
 
     // a) identitet bez kvota
@@ -313,7 +319,7 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
       notes: [], source: "ALGORITAM", isBet365: true,
     });
     const rukPozovi = (an: RukometAnalysis) => sarpRukomet({
-      an, home: "Dom", away: "Gost", fixtureId: 1,
+      an, home: "Dom", away: "Gost", fixtureId: 1, empirijske: PRAZNO_EMP,
     });
 
     // e) identitet bez kvota
@@ -354,6 +360,120 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
       Math.abs(r1.htft.reduce((s, c) => s + c.p, 0) - 1) < 1e-9,
       `zbroj = ${r1.htft.reduce((s, c) => s + c.p, 0).toFixed(10)}`,
     ));
+  }
+
+  /* ── 13) STVARNA TOČNOST — empirijsko temperiranje iz Dnevnika ── */
+  {
+    const unosEmp = (p: number, hit: boolean, trz: "1x2" | "btts" | "ou", i: number): DnevnikUnos => ({
+      id: `st-${i}`,
+      sport: "nogomet",
+      kartica: "Test",
+      utakmica: "A — B",
+      liga: null,
+      datum: new Date().toISOString(),
+      fixtureId: i + 1,
+      tip: "t",
+      p,
+      kvota: null,
+      provjera:
+        trz === "1x2"
+          ? ({ vrsta: "1x2", strana: "1" } as const)
+          : trz === "btts"
+            ? ({ vrsta: "btts", strana: "da" } as const)
+            : ({ vrsta: "ou", strana: "over", linija: 2.5 } as const),
+      status: hit ? "pogodak" : "promasaj",
+    });
+    const paket = (n: number, p: number, hitRate: number, trz: "1x2" | "btts" | "ou"): DnevnikUnos[] =>
+      Array.from({ length: n }, (_, i) => unosEmp(p, i < Math.round(n * hitRate), trz, i));
+
+    // a) mali uzorak → identitet
+    const empMali = izracunajEmp(paket(5, 0.6, 0.2, "1x2"));
+    t.push(ok(
+      "Točnost: n < 10 → temp = 1 (identitet)",
+      tempZa("1x2", empMali) === 1,
+      `T = ${tempZa("1x2", empMali)}`,
+    ));
+
+    // b) preoptimističan model → T > 1 (hlađenje)
+    const empOver = izracunajEmp(paket(40, 0.6, 0.4, "1x2"));
+    const Tover = tempZa("1x2", empOver);
+    t.push(ok(
+      "Točnost: preoptimističan model → T > 1",
+      Tover > 1 && Tover <= 1.25,
+      `T = ${Tover.toFixed(3)}`,
+    ));
+
+    // c) podzastavljen model → T < 1 (oštrije)
+    const empUnder = izracunajEmp(paket(40, 0.55, 0.7, "ou"));
+    const Tunder = tempZa("ou", empUnder);
+    t.push(ok(
+      "Točnost: podzastavljen model → T < 1",
+      Tunder < 1 && Tunder >= 0.8,
+      `T = ${Tunder.toFixed(3)}`,
+    ));
+
+    // d) temp para: favorit se hladi, zbroj para = 1
+    t.push(ok(
+      "Točnost: temp para hladi favorita, zbroj = 1",
+      tempPar(0.6, Tover) < 0.6 && Math.abs(tempPar(0.6, Tover) + tempPar(0.4, Tover) - 1) < 1e-9,
+      `0.6 → ${tempPar(0.6, Tover).toFixed(4)}`,
+    ));
+
+    // e) temp trojke: zbroj = 1, poredak očuvan
+    const tr3 = tempTrojku([0.5, 0.3, 0.2], Tover);
+    t.push(ok(
+      "Točnost: temp trojke zbroj = 1 i poredak očuvan",
+      Math.abs(tr3.reduce((s, x) => s + x, 0) - 1) < 1e-9 && tr3[0]! > tr3[1]! && tr3[1]! > tr3[2]!,
+      `zbroj = ${tr3.reduce((s, x) => s + x, 0).toFixed(10)}`,
+    ));
+
+    // f) htft tipovi se ignoriraju (familija se ne može binarno kalibrirati)
+    const empHtft: DnevnikUnos[] = Array.from({ length: 30 }, (_, i) => ({
+      ...unosEmp(0.6, i % 3 === 0, "1x2", i),
+      provjera: { vrsta: "htft", kod: "1/1" },
+    }));
+    t.push(ok(
+      "Točnost: htft tipovi se ignoriraju",
+      tempZa("1x2", izracunajEmp(empHtft)) === 1,
+      "bez familije → temp 1",
+    ));
+
+    // g) kalibracija s temp čuva sve invarijante (bez tržišta, w = 0)
+    {
+      const finalUzorak: Record<string, number> = {
+        o15: 0.7, o25: 0.55, o35: 0.4, bttsDa: 0.52, "1": 0.5, X: 0.27, "2": 0.23,
+      };
+      const kal = kalibrirajGoalsFinal(finalUzorak, {}, 0, empOver);
+      const f = kal.final;
+      const inv =
+        Math.abs((f.o15 ?? 0) + (f.u15 ?? 1) - 1) < 1e-9 &&
+        Math.abs((f.o25 ?? 0) + (f.u25 ?? 1) - 1) < 1e-9 &&
+        Math.abs((f.o35 ?? 0) + (f.u35 ?? 1) - 1) < 1e-9 &&
+        (f.o15 ?? 0) >= (f.o25 ?? 1) && (f.o25 ?? 0) >= (f.o35 ?? 1) &&
+        (f.bttsDa ?? 1) <= (f.o15 ?? 0) &&
+        Math.abs((f["1"] ?? 0) + (f.X ?? 0) + (f["2"] ?? 0) - 1) < 1e-9 &&
+        kal.primijenjena === true;
+      t.push(ok(
+        "Točnost: kalibracija s temp čuva invarijante",
+        inv,
+        `T_1x2 = ${kal.emp?.temp["1x2"]?.toFixed(3)}, 1X2 zbroj = ${((f["1"] ?? 0) + (f.X ?? 0) + (f["2"] ?? 0)).toFixed(10)}`,
+      ));
+    }
+
+    // h) motor: preoptimističan O/U rekord hladi vjerojatnosti u finalu
+    {
+      const empOU = izracunajEmp(paket(40, 0.6, 0.4, "ou"));
+      const a = goalsAnaliza({ kvote: {}, empirijske: PRAZNO_EMP, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
+      const b = goalsAnaliza({ kvote: {}, empirijske: empOU, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
+      const o25A = a.final.o25 ?? 0;
+      const o25B = b.final.o25 ?? 0;
+      const smjerOk = o25A > 0.5 ? o25B < o25A : o25B > o25A;
+      t.push(ok(
+        "Točnost: motor s preoptimističnim rekordom hladi O2.5",
+        smjerOk && b.empTocnost.primijenjena === true && (b.empTocnost.temp.ou ?? 1) > 1,
+        `O2.5: ${(o25A * 100).toFixed(2)}% → ${(o25B * 100).toFixed(2)}% (T_ou = ${(b.empTocnost.temp.ou ?? 0).toFixed(3)})`,
+      ));
+    }
   }
 
   const brProslo = t.filter((x) => x.ok).length;
