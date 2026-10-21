@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   KORPA-SMART — Ticket Optimizer s korelacijskim motorom
+   KORPA-SMART — Ticket Optimizer s korelacijskim motorom (v2)
    ═══════════════════════════════════════════════════════════════════
    Nadograđuje korpa.ts (ne mijenja ga):
 
@@ -11,6 +11,12 @@
            = min(p) jer je viša linija podskup niže.
          - inače gausovska korelacija ρ (default 0.20):
              p_zajedno = p1·p2 + ρ·√(p1(1−p1)·p2(1−p2))
+     • NOVO v2 — KORELACIJA ISTE LIGE: noge iz RAZLIČITIH utakmica
+       iste lige (≈ isti vremenski termin, isti stil suđenja, isti
+       tempo i uvjeti) nisu potpuno nezavisne. Svaki par nogu iz
+       iste lige, a različitih utakmica, unosi mali pozitivni
+       dependency (ρ ≈ 0.05) → zajednička vjerojatnost se penali:
+           p *= (1 − 0.05)^nParaLige     (pod, 0.5)
      • ACCA HAZARD: > 3 noge → upozorenje o varijanci i dugoročnom ROI.
      • BANKROLL MANAGER: preporučeni ulog u novcu (frakcijski Kelly,
        cap 3% banke), svjestan korelacija.
@@ -40,6 +46,9 @@ export type KorpaSmartIzlaz = {
   hazardPoruka: string;
   korelacijaUpozorenje: boolean;
   nemoguceNoge: boolean;  // postoji grupa s uzajamno isključivim nogama
+  /** NOVO v2: postoji korelacija između različitih utakmica iste lige */
+  ligaKorelacija: boolean;
+  ligaPoruka: string | null;
   grupe: KorpaGrupa[];
   kellyPct: number;
   ulogPerc: number;
@@ -112,6 +121,10 @@ export function zajednickaVjerojatnost(a: KorpaTip, b: KorpaTip, rho = 0.2): num
   return Math.max(0.001, Math.min(Math.min(pa, pb), korel));
 }
 
+/** Penal po paru nogu iz RAZLIČITIH utakmica iste lige: p *= (1 − 0.04)^nPara. */
+const PENAL_LIGE = 0.04;
+const MIN_LIGA = 0.5;
+
 /**
  * Glavni proračun. Poziva se umjesto izracunajKorpu kad želiš
  * korelacijski korigirane brojke (korpa.ts se ne mijenja).
@@ -128,6 +141,7 @@ export function izracunajKorpuSmart(
   const prazno: KorpaSmartIzlaz = {
     n: 0, kvota: 1, pNaive: 0, pKorigirana: 0, edgeNaive: 0, edgeKorigirana: 0,
     hazard: false, hazardPoruka: "", korelacijaUpozorenje: false, nemoguceNoge: false,
+    ligaKorelacija: false, ligaPoruka: null,
     grupe: [], kellyPct: 0, ulogPerc: 0, ulogIznos: 0, rizikPerc: 0, isplativo: false,
   };
   if (tipovi.length === 0) return prazno;
@@ -167,6 +181,43 @@ export function izracunajKorpuSmart(
     });
   }
 
+  // ── NOVO v2: korelacija između RAZLIČITIH utakmica iste lige ──
+  // Svaki par (noga A iz utakmice X, noga B iz utakmice Y, X ≠ Y,
+  // ista liga) unosi ρ ≈ 0.05 → penal na zajedničku vjerojatnost.
+  const ligaBrojac = new Map<string, number>();
+  for (const t of tipovi) {
+    const liga = (t.liga ?? "").trim().toLowerCase();
+    if (!liga) continue;
+    // brojimo UTAKMICE po ligi, ne noge (noge iste utakmice su već korelirane)
+    ligaBrojac.set(liga, (ligaBrojac.get(liga) ?? 0) + 1);
+  }
+  // per-liga: koliko RAZLIČITIH utakmica imamo
+  const utakmicePoLigi = new Map<string, Set<string>>();
+  for (const t of tipovi) {
+    const liga = (t.liga ?? "").trim().toLowerCase();
+    if (!liga) continue;
+    const s = utakmicePoLigi.get(liga) ?? new Set<string>();
+    s.add(t.utakmica);
+    utakmicePoLigi.set(liga, s);
+  }
+  let nParaLige = 0;
+  const ligeKorelirane: string[] = [];
+  for (const [liga, skup] of utakmicePoLigi) {
+    const m = skup.size;
+    if (m >= 2) {
+      nParaLige += (m * (m - 1)) / 2;
+      ligeKorelirane.push(liga);
+    }
+  }
+  const ligaKorelacija = nParaLige > 0;
+  if (ligaKorelacija) {
+    const faktor = Math.max(MIN_LIGA, Math.pow(1 - PENAL_LIGE, nParaLige));
+    pKorigirana *= faktor;
+  }
+  const ligaPoruka = ligaKorelacija
+    ? `Korelacija iste lige: ${nParaLige} ${nParaLige === 1 ? "par" : nParaLige < 5 ? "para" : "parova"} nogu iz različitih utakmica${ligeKorelirane.length ? ` u ${ligeKorelirane.slice(0, 3).join(", ")}` : ""} dijele stil/tempo/termin — vjerojatnost smanjena za ${((1 - Math.max(MIN_LIGA, Math.pow(1 - PENAL_LIGE, nParaLige))) * 100).toFixed(1)}%.`
+    : null;
+
   const kvota = tipovi.reduce((a, t) => a * (t.kvota > 1 ? t.kvota : 1), 1);
   const pNaive = tipovi.reduce((a, t) => a * clamp01(t.vjerojatnost), 1);
   const edgeNaive = kvota * pNaive - 1;
@@ -180,7 +231,7 @@ export function izracunajKorpuSmart(
   const b = kvota - 1;
   const q = 1 - pKorigirana;
   const kelly = b > 0 ? (b * pKorigirana - q) / b : 0;
-  const korelacijaUpozorenje = mapa.size < tipovi.length || nemoguceNoge;
+  const korelacijaUpozorenje = mapa.size < tipovi.length || nemoguceNoge || ligaKorelacija;
   // korelirane grupe dijele sudbinu — Kelly na pola, uz upozorenje
   const kellyEff = korelacijaUpozorenje ? kelly * 0.5 : kelly;
 
@@ -202,6 +253,8 @@ export function izracunajKorpuSmart(
     hazardPoruka,
     korelacijaUpozorenje,
     nemoguceNoge,
+    ligaKorelacija,
+    ligaPoruka,
     grupe,
     kellyPct: Math.max(0, kelly) * kellyFrac * 100,
     ulogPerc,
@@ -210,4 +263,3 @@ export function izracunajKorpuSmart(
     isplativo: edgeKorigirana > 0 && ulogPerc > 0 && !nemoguceNoge,
   };
 }
-
