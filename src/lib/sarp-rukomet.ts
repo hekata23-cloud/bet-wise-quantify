@@ -12,7 +12,8 @@
 // ============================================================
 
 import type { RukometAnalysis } from "./rukomet-engine";
-import { poolPar, poolTrojku, tezinaKalibracije } from "./global-calibration";
+import { poolPar, poolTrojku, tezinaKalibracije, tempPar, tempTrojku } from "./global-calibration";
+import { tempZa, type EmpStanje } from "./accuracy-ledger";
 
 export interface HandballMatchStats {
   /** napadi (posjedi) po timu po utakmici — tipično 26-30 */
@@ -54,6 +55,8 @@ export interface HandballSARPPrediction {
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
   /** GLOBALNA KALIBRACIJA: log-pool 1X2 i O/U s de-margined tržištem (dijagnostika) */
   kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
+  /** STVARNA TOČNOST: temperiranje prema vlastitom rekordu (Dnevnik) */
+  empTocnost: { primijenjena: boolean; temp: Record<string, number> };
   povjerenje: number; razina: "A" | "B" | "C";
   core: SarpKandidat | null; alt: SarpKandidat | null;
   izvori: string[];
@@ -105,6 +108,8 @@ export function sarpRukomet(args: {
   stats?: HandballMatchStats;
   /** broj kladionica s kvotama — jača kalibraciju (opcionalno; default 3 kad kvote postoje) */
   brojKladionica?: number;
+  /** STVARNA TOČNOST: ručno ubrizgano empirijsko stanje (Samotest); bez toga čita Dnevnik */
+  empirijske?: EmpStanje;
 }): HandballSARPPrediction {
   const { an, fixtureId } = args;
   const s = args.stats ?? {};
@@ -190,16 +195,18 @@ export function sarpRukomet(args: {
   const books = args.brojKladionica ?? (imax12 || mlMkt != null || (overTip?.odd && underTip?.odd) ? 3 : 0);
   const parovi = (imax12 || mlMkt != null ? 1 : 0) + (overTip?.odd && underTip?.odd ? 1 : 0);
   const wKal = tezinaKalibracije(books, parovi);
+  const T_1x2 = tempZa("1x2", args.empirijske);
+  const T_OU = tempZa("ou", args.empirijske);
   let pHomeKal = pHome; let pDrawKal = pDraw; let pAwayKal = pAway; let pOverKal = pOverModel;
   const listaPomaka: number[] = [];
   if (wKal > 0) {
     if (imax12 && pHome > 0 && pDraw > 0 && pAway > 0) {
       const m = devig([o1!, oX!, o2!]);
-      const tr = poolTrojku([pHome, pDraw, pAway], [m[0]!, m[1]!, m[2]!], wKal);
+      const tr = poolTrojku([pHome, pDraw, pAway], [m[0]!, m[1]!, m[2]!], wKal, T_1x2);
       listaPomaka.push(Math.abs(tr[0]! - pHome), Math.abs(tr[1]! - pDraw), Math.abs(tr[2]! - pAway));
       pHomeKal = tr[0]!; pDrawKal = tr[1]!; pAwayKal = tr[2]!;
     } else if (mlMkt != null) {
-      const m = poolPar(pHome, mlMkt, wKal);
+      const m = poolPar(pHome, mlMkt, wKal, T_1x2);
       listaPomaka.push(Math.abs(m - pHome));
       const komp = Math.max(1e-9, pDraw + pAway);
       pDrawKal = (1 - m) * (pDraw / komp);
@@ -207,19 +214,40 @@ export function sarpRukomet(args: {
       pHomeKal = m;
     }
     if (pOverMkt != null) {
-      const o = poolPar(pOverModel, pOverMkt, wKal);
+      const o = poolPar(pOverModel, pOverMkt, wKal, T_OU);
       listaPomaka.push(Math.abs(o - pOverModel));
       pOverKal = o;
     }
+  } else {
+    // bez tržišta: čisto temperiranje prema stvarnoj točnosti
+    if (pHome > 0 && pDraw > 0 && pAway > 0 && T_1x2 !== 1) {
+      const tr = tempTrojku([pHome, pDraw, pAway], T_1x2);
+      listaPomaka.push(Math.abs(tr[0]! - pHome), Math.abs(tr[1]! - pDraw), Math.abs(tr[2]! - pAway));
+      pHomeKal = tr[0]!; pDrawKal = tr[1]!; pAwayKal = tr[2]!;
+    }
+    if (T_OU !== 1) {
+      pOverKal = tempPar(pOverModel, T_OU);
+      listaPomaka.push(Math.abs(pOverKal - pOverModel));
+    }
   }
   const kalPomak = listaPomaka.length ? listaPomaka.reduce((a, b) => a + b, 0) / listaPomaka.length : 0;
-  const kalPrimijenjena = listaPomaka.length > 0 && wKal > 0;
+  const empAktivno = T_1x2 !== 1 || T_OU !== 1;
+  const kalPrimijenjena = listaPomaka.length > 0 && (wKal > 0 || empAktivno);
   if (kalPrimijenjena) {
-    izvori.push(`Globalna kalibracija (log-pool, težina ${(wKal * 100).toFixed(0)}%)`);
-    if (kalPomak > 0.06)
-      upozorenja.push(
-        `Kalibracija je znatno povukla model prema tržištu (${(kalPomak * 100).toFixed(1)} pp) — model i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
-      );
+    if (wKal > 0) {
+      izvori.push(`Globalna kalibracija (log-pool, težina ${(wKal * 100).toFixed(0)}%)`);
+      if (kalPomak > 0.06)
+        upozorenja.push(
+          `Kalibracija je znatno povukla model prema tržištu (${(kalPomak * 100).toFixed(1)} pp) — model i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+        );
+    }
+    if (empAktivno) {
+      izvori.push("Stvarna točnost (Dnevnik): temperiranje prema vlastitom rekordu");
+      if (Math.abs(T_1x2 - 1) >= 0.12 || Math.abs(T_OU - 1) >= 0.12)
+        upozorenja.push(
+          "Stvarna točnost se znatno razlikuje od najavljenih vjerojatnosti — tretirajte samopouzdanje s rezervom.",
+        );
+    }
   }
 
   const discrep: number[] = [];
@@ -301,6 +329,10 @@ export function sarpRukomet(args: {
       primijenjena: kalPrimijenjena,
       tezina: Math.round(wKal * 1000) / 1000,
       prosjecniPomak: Math.round(kalPomak * 1000) / 1000,
+    },
+    empTocnost: {
+      primijenjena: empAktivno,
+      temp: { "1x2": T_1x2, ou: T_OU },
     },
     povjerenje, razina, core, alt, izvori, upozorenja,
   };
