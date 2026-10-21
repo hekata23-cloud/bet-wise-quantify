@@ -15,6 +15,8 @@ import type { KosMarkets } from "@/lib/kosarka.functions";
 import type { KosAnalysis } from "@/lib/kosarka-engine";
 import type { RukometAnalysis } from "@/lib/rukomet-engine";
 import { dodajUKorpu } from "@/lib/korpa";
+import { htftKosarka, htftRukomet, type HtFtKosarkaIzlaz, type HtFtRukometIzlaz } from "@/lib/htft-motor";
+import { losaCijena } from "@/lib/devig-shield";
 import { zapisiTip } from "@/lib/dnevnik";
 
 type Utakmica = { id: number; home: string; away: string; league: string; time: string };
@@ -68,8 +70,16 @@ export function SarpSportPanel(props: Props) {
     return sarpRukomet({ an: an as RukometAnalysis, home: utakmica.home, away: utakmica.away, fixtureId: utakmica.id, stats });
   }, [props.sport === "rukomet" ? an : null, suspH, suspA, utakmica.id]);
 
+  const htft = useMemo<HtFtKosarkaIzlaz | HtFtRukometIzlaz | null>(() => {
+    if (props.sport === "kosarka" && kos) return htftKosarka(kos.expHome, kos.expAway, kos.sigma);
+    if (props.sport === "rukomet" && ruk) return htftRukomet(ruk.lamHome, ruk.lamAway, ruk.suspenzije.home, ruk.suspenzije.away);
+    return null;
+  }, [props.sport, kos, ruk]);
+
   const pred = props.sport === "kosarka" ? kos : ruk;
   if (!pred) return null;
+
+  const cijena = pred.core ? losaCijena(pred.core.p, pred.core.kvota) : null;
 
   function uKorpu(k: NonNullable<(BasketballSARPPrediction | HandballSARPPrediction)["core"]>) {
     const sportKorpa = props.sport === "kosarka" ? "košarka" : "rukomet";
@@ -157,6 +167,37 @@ export function SarpSportPanel(props: Props) {
         )}
       </div>
 
+      {/* ——— HT/FT PRIJELAZI (PRO) ——— */}
+      {htft && (
+        <div className="mb-3 rounded-lg border border-indigo-500/40 bg-indigo-500/5 p-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">⚡ HT/FT prijelazi (Pro kopulo model)</span>
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+              htft.razinaPreokreta === "visoko" ? "border-red-500/50 bg-red-500/20 text-red-300"
+              : htft.razinaPreokreta === "srednje" ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
+              : "border-emerald-500/50 bg-emerald-500/20 text-emerald-300"}`}>
+              Reverse risk {pct(htft.preokreti)} · {htft.razinaPreokreta}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 text-xs sm:grid-cols-4">
+            {htft.kombinacije.slice(0, 4).map((k) => (
+              <div key={k.kod} className="rounded-lg bg-muted/50 p-2 text-center">
+                <div className="text-[10px] text-muted-foreground">{k.label}</div>
+                <div className="text-base font-bold text-indigo-200">{k.kod}</div>
+                <div className="font-bold tabular-nums text-foreground">{pct(k.p)}</div>
+                <div className="text-[9px] text-muted-foreground">fer {k.ferOdd.toFixed(1)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+            <span>HT: dom <b className="text-foreground">{pct(htft.pHTHome)}</b> · remi <b className="text-foreground">{pct(htft.pHTDraw)}</b> · gost <b className="text-foreground">{pct(htft.pHTAway)}</b></span>
+            <span>HT vodstvo → FT pobjeda: dom <b className="text-emerald-400">{pct(htft.konverzija.home)}</b> · gost <b className="text-emerald-400">{pct(htft.konverzija.away)}</b></span>
+            {props.sport === "kosarka" && <span>1H ~2.5% brži · σ₁p = σ/√2 = {(htft as HtFtKosarkaIzlaz).sigmaHT}</span>}
+            {props.sport === "rukomet" && <span>{(htft as HtFtRukometIzlaz).napomena}</span>}
+          </div>
+        </div>
+      )}
+
       {/* ——— TROSTRUKA VERIFIKACIJA ——— */}
       <div className="mb-3 rounded-lg border border-border bg-card/60 p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -180,6 +221,13 @@ export function SarpSportPanel(props: Props) {
         </div>
       </div>
 
+      {/* ——— POOR MARKET PRICE ——— */}
+      {pred.core && cijena?.losa && (
+        <div className="mb-2 rounded-lg border-2 border-red-500/60 bg-red-500/10 p-2.5 text-[11px] font-bold text-red-300">
+          🚫 {cijena.poruka}
+        </div>
+      )}
+
       {/* ——— CORE TIP ——— */}
       {pred.core ? (
         <div className="mb-2 rounded-lg border-2 border-purple-500/60 bg-purple-500/10 p-3">
@@ -193,6 +241,9 @@ export function SarpSportPanel(props: Props) {
                   <> · <span className="font-bold text-emerald-400">Value Edge {(pred.core.edge * 100).toFixed(1)}%</span></>
                 ) : (
                   <> · Edge ispod guarda 4.5% — samo sigurnost, ne vrijednost</>
+                )}
+                {pred.core.p < 0.55 && (
+                  <> · <span className="font-bold text-amber-400">⚠ VISOKA VARIJANCA — vjerojatnost ispod 55%, ne kao glavna preporuka</span></>
                 )}
               </div>
             </div>
@@ -264,4 +315,5 @@ export function SarpSportPanel(props: Props) {
     </div>
   );
 }
+
 
