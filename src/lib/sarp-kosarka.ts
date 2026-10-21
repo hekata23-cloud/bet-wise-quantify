@@ -6,10 +6,13 @@
 // i automatsko spuštanje povjerenja. Edge guard: value edge
 // prikazujemo samo ako je EV ≥ 4.5% (zaštita od marže i šuma).
 // Kelly: frakcijski 0.25x, cap 3% banke.
+// v2 — GLOBALNA KALIBRACIJA: finalne vjerojatnosti (ML i O/U) log-pool-
+// ane su s de-margined tržištem (težina max 0.45; bez kvota = identitet).
 // ============================================================
 
 import type { KosMarkets } from "./kosarka.functions";
 import type { KosAnalysis } from "./kosarka-engine";
+import { poolPar, tezinaKalibracije } from "./global-calibration";
 
 export interface BasketballMatchStats {
   /** posjedi po utakmici (pace) */
@@ -48,6 +51,8 @@ export interface BasketballSARPPrediction {
   mc: { n: number; pML1: number; pSpread1: number; pOver: number; pDraw: number };
   trziste: { pML1: number | null; pOver: number | null; devigIzvor: string | null };
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
+  /** GLOBALNA KALIBRACIJA: log-pool ML i O/U s de-margined tržištem (dijagnostika) */
+  kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
   povjerenje: number; razina: "A" | "B" | "C";
   core: SarpKandidat | null; alt: SarpKandidat | null;
   izvori: string[];
@@ -101,6 +106,8 @@ export function sarpKosarka(args: {
   an: KosAnalysis; mk: KosMarkets | null;
   home: string; away: string; league: string; fixtureId: number;
   stats?: BasketballMatchStats;
+  /** broj kladionica s kvotama — jača kalibraciju (opcionalno; default 3 kad kvote postoje) */
+  brojKladionica?: number;
 }): BasketballSARPPrediction | null {
   const { an, mk, fixtureId } = args;
   const s = args.stats ?? {};
@@ -213,6 +220,42 @@ export function sarpKosarka(args: {
   const pML2 = an.pAwayOT;
   const pDraw = an.pDraw;
 
+  // — 8b) GLOBALNA KALIBRACIJA — logaritamski pool modela s de-margined
+  // tržištem (ista matematika kao u goals-motoru). Težina raste s brojem
+  // kladionica i pokrivenošću tržišta (max 0.45); bez kvota je w = 0 →
+  // model ostaje nepromijenjen (identitet). Zbroj ML ishoda i O/U para
+  // ostaje točno 1 po konstrukciji.
+  const books = args.brojKladionica ?? ((mlHodd && mlAodd) || (overTip?.odd && underTip?.odd) ? 3 : 0);
+  const parovi = (mlHodd && mlAodd ? 1 : 0) + (overTip?.odd && underTip?.odd ? 1 : 0);
+  const wKal = tezinaKalibracije(books, parovi);
+  let pML1Kal = pML1; let pML2Kal = pML2; let pDrawKal = pDraw; let pOverKal = pOverModel;
+  const listaPomaka: number[] = [];
+  if (wKal > 0) {
+    if (pML1Market != null) {
+      const m = poolPar(pML1, pML1Market, wKal);
+      listaPomaka.push(Math.abs(m - pML1));
+      // komplement (2 + neriješeno) zadržava modelni omjer — zbroj ostaje 1
+      const komp = Math.max(1e-9, pML2 + pDraw);
+      pML2Kal = (1 - m) * (pML2 / komp);
+      pDrawKal = (1 - m) * (pDraw / komp);
+      pML1Kal = m;
+    }
+    if (pOverMarket != null) {
+      const o = poolPar(pOverModel, pOverMarket, wKal);
+      listaPomaka.push(Math.abs(o - pOverModel));
+      pOverKal = o;
+    }
+  }
+  const kalPomak = listaPomaka.length ? listaPomaka.reduce((a, b) => a + b, 0) / listaPomaka.length : 0;
+  const kalPrimijenjena = listaPomaka.length > 0 && wKal > 0;
+  if (kalPrimijenjena) {
+    izvori.push(`Globalna kalibracija (log-pool, težina ${(wKal * 100).toFixed(0)}%)`);
+    if (kalPomak > 0.06)
+      upozorenja.push(
+        `Kalibracija je znatno povukla model prema tržištu (${(kalPomak * 100).toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+      );
+  }
+
   const discrep: number[] = [];
   if (pML1Market != null) discrep.push(Math.abs(pML1 - pML1Market));
   if (pOverMarket != null) discrep.push(Math.abs(pOverModel - pOverMarket));
@@ -237,14 +280,14 @@ export function sarpKosarka(args: {
     const kelly = kv ? (b * pp - (1 - pp)) / b : 0;
     kand.push({ trziste, tip, label, p: pp, kvota: kv, fer: 1 / pp, edge, kellyPct: Math.min(3, Math.max(0, kelly) * 0.25 * 100), isplativo: edge != null && edge >= 0.045 });
   };
-  push("Moneyline", "1", `${args.home} pobjeda (uklj. OT)`, pML1, mlHodd);
-  push("Moneyline", "2", `${args.away} pobjeda (uklj. OT)`, pML2, mlAodd);
+  push("Moneyline", "1", `${args.home} pobjeda (uklj. OT)`, pML1Kal, mlHodd);
+  push("Moneyline", "2", `${args.away} pobjeda (uklj. OT)`, pML2Kal, mlAodd);
   if (spreadLinija != null) {
     const hcpOdd = hcpMk ? Object.entries(hcpMk).find(([k]) => /home/i.test(k))?.[1] ?? null : null;
     push("Spread", "1", `${args.home} pokriva ${spreadLinija > 0 ? "+" : ""}${spreadLinija}`, pSpread1, hcpOdd);
   }
-  push("O/U", "Over", `Više od ${linijaTotala}`, pOverModel, overTip?.odd ?? null);
-  push("O/U", "Under", `Manje od ${linijaTotala}`, 1 - pOverModel, underTip?.odd ?? null);
+  push("O/U", "Over", `Više od ${linijaTotala}`, pOverKal, overTip?.odd ?? null);
+  push("O/U", "Under", `Manje od ${linijaTotala}`, 1 - pOverKal, underTip?.odd ?? null);
 
   const valueList = kand.filter((k) => k.isplativo && k.p >= 0.45).sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
   const core = valueList[0]
@@ -259,14 +302,18 @@ export function sarpKosarka(args: {
     expHome, expAway, expTotal, expSpread, sigma, sigmaTotal,
     expTotal1H, sigmaTotal1H, p1HOver, linija1H,
     expTotal1Q, sigmaTotal1Q, p1QOver, linija1Q,
-    pML1, pML2, pDraw,
+    pML1: pML1Kal, pML2: pML2Kal, pDraw: pDrawKal,
     spread: { linija: spreadLinija, pCover1: pSpread1, izvor: spreadIzvor },
-    pOver: pOverModel, pUnder: 1 - pOverModel, linijaTotala,
+    pOver: pOverKal, pUnder: 1 - pOverKal, linijaTotala,
     umor: { homeB2B: !!s.homeB2B, awayB2B: !!s.awayB2B, home3in4: !!s.home3in4, away3in4: !!s.away3in4, indeks: umorH - umorA },
     fourFactors: { primijenjeno: ffH != null && ffA != null, tezine: "eFG 40% · TOV 25% · ORB 20% · FTR 15%", pomakMu: ffPomak },
     mc, trziste: { pML1: pML1Market, pOver: pOverMarket, devigIzvor },
     provjera: { maxDiscrepancy, volatility },
+    kalibracija: {
+      primijenjena: kalPrimijenjena,
+      tezina: Math.round(wKal * 1000) / 1000,
+      prosjecniPomak: Math.round(kalPomak * 1000) / 1000,
+    },
     povjerenje, razina, core, alt, izvori, upozorenja,
   };
 }
-
