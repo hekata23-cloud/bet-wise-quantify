@@ -132,13 +132,11 @@ function RukometPage() {
     homeTeam: string,
     awayTeam: string,
     sourceMode?: "API" | "ALGORITAM" | "RUČNO",
-    isBet365Flag = false,
-    brojKladionica?: number | null
+    isBet365Flag = false
   ) => {
     const a = analyzeRukomet(markets, leagueName, homeTeam, awayTeam, sourceMode, isBet365Flag);
     setBook(bookName);
     setIsB365(isBet365Flag);
-    setBrojKlad(brojKladionica ?? null);
     setAn(a);
 
     // Prilagodi ručna polja točno ovoj utakmici
@@ -180,7 +178,8 @@ function RukometPage() {
       };
     }
 
-    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO", false, 1);
+    setBrojKlad(1);
+    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO", false);
     setManualMode(false);
   };
 
@@ -203,14 +202,16 @@ function RukometPage() {
         () => getRukometOdds({ data: { id: g.id, apiKey } }),
         onWait
       );
+      setBrojKlad(r.error ? 0 : (r.brojKladionica ?? 0));
 
       if (r.error || !r.markets || Object.keys(r.markets).length === 0) {
-        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false, 0);
+        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false);
       } else {
-        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API", r.isBet365, r.brojKladionica);
+        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API", r.isBet365);
       }
     } catch {
-      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false, 0);
+      setBrojKlad(0);
+      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false);
     } finally {
       setBusyId(null);
     }
@@ -754,5 +755,4 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
     </div>
   );
 }
-
 
