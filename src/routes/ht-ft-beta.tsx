@@ -21,6 +21,9 @@ import { betaAnaliza, type BetaAnaliza } from "@/lib/htft-beta-motor";
 import { edge, kelly } from "@/lib/matematika";
 import { getApiKey, zagrebDay } from "@/lib/zlatni-guard";
 import { zapisiTip } from "@/lib/dnevnik";
+import HTFTProPanel from "@/components/HTFTProPanel";
+import PickBadgeBar from "@/components/PickBadgeBar";
+import { analizaVig } from "@/lib/devig-shield";
 
 export const Route = createFileRoute("/ht-ft-beta")({
   head: () => ({
@@ -148,6 +151,21 @@ function HtFtBetaPage() {
 
   const top3 = analiza ? [...analiza.celije].sort((a, b) => b.p - a.p).slice(0, 3) : [];
 
+  // DE-VIG štit: kolika je marža na HT/FT tržištu (distorzija > 7%)
+  const vig = bundle && analiza
+    ? analizaVig(analiza.celije.map((c) => bundle.htft[c.kod] ?? 0))
+    : null;
+
+  // Kandidati za oznake preporuke (55% pod / 65% safe / 4% value)
+  const badgeKandidati = analiza && bundle
+    ? analiza.celije
+        .map((c) => {
+          const o = bundle.htft[c.kod];
+          return { tip: c.kod, trziste: "HT/FT", p: c.p, odds: o && o > 1.01 ? o : null, edge: o && o > 1.01 ? c.p * o - 1 : null };
+        })
+        .filter((k) => k.odds != null)
+    : [];
+
   return (
     <div className="min-h-screen bg-slate-950 p-4 md:p-8 text-slate-100">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -265,6 +283,19 @@ function HtFtBetaPage() {
               )}
             </section>
 
+            {/* HT/FT PRO — bivarijantna nadogradnja */}
+            <HTFTProPanel lamH={analiza.lam} lamA={analiza.mu} kvote9={bundle.htft} />
+
+            {/* OZNAKE PREPORUKE + VIG ŠTIT */}
+            <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              {vig && (
+                <p className={`mb-2 rounded-lg px-3 py-2 text-xs ${vig.distorzija ? "bg-red-950/40 text-red-300" : "bg-slate-800/60 text-slate-300"}`}>
+                  Vig tržišta: <b>{(vig.vig * 100).toFixed(1)}%</b> ({vig.metoda} de-vig){vig.distorzija ? " — ⚠️ DISTORZIJA > 7%: kvote su teško natovarene maržom, pazi na cijenu." : " — tržište igrivo."}
+                </p>
+              )}
+              <PickBadgeBar kandidati={badgeKandidati} />
+            </section>
+
             {/* PRIJELAZNA MATRICA */}
             <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
               <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold">
@@ -380,4 +411,5 @@ function HtFtBetaPage() {
     </div>
   );
 }
+
 
