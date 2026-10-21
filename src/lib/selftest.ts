@@ -14,6 +14,11 @@
      6) Distribucija ukupnih golova zbraja se na 100%
      7) Kopule: grid zbroj = 1, korelacija = 0.08, BTTS raste s ρ
      8) Empirical Bayes: n=0 → ligaški prior; mali uzorak → strop 55%
+     10) HT/FT PRO motori: nogomet (9 stanja, HT raspored, preokreti),
+         košarka (egzaktna simetrija, σ_HT = σ/√2), rukomet (zbroj,
+         simetrija, konverzija HT vodstva)
+     11) De-vig štit: Shin zbroj = 1, detekcija marže, POOR MARKET
+         PRICE; pick badges: blokada suprotne strane, primarni ≥ 55%
 
    Rezultat ide u panel "Samotest" na Info stranici. Ako ijedan test
    padne, motor ne smije objavljivati tipove — prijava je vidljiva.
@@ -22,6 +27,9 @@
 import { goalsAnaliza, type FormaGolovi } from "./goals-motor";
 import { bivarPoissonGrid, bpBtts, frankThetaZaKorelaciju, frankJointGrid } from "./btts-copula";
 import { shrinkajStopu, jeMaliUzorak, stropPovjerenja, MAX_POVJERENJE_MALI, priorZaLigu } from "./eb-shrinkage";
+import { htftNogomet, htftKosarka, htftRukomet } from "./htft-motor";
+import { analizaVig, losaCijena, VIG_PRAG } from "./devig-shield";
+import { izradiOznake, type Kandidat } from "./pick-badges";
 
 export type SelfTest = { naziv: string; ok: boolean; detalj: string };
 export type SelfTestIzvjestaj = {
@@ -95,7 +103,7 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
         // kontradikcije
         if (f.u15! > 0.5 && f.o25! > 0.5) paoKontradikcija = true;      // U1.5 uz O2.5
         if (f.u15! > 0.5 && f.bttsDa! > 0.5) paoKontradikcija = true;   // U1.5 uz BTTS Da > 50%
-        if (f.u25! > 0.5 && (f.topRezultati?.[0]?.rezultat === "2:2")) paoKontradikcija = true; // U2.5 uz 2:2 top
+        if (f.u25! > 0.5 && (a.topRezultati[0]?.rezultat === "2:2")) paoKontradikcija = true; // U2.5 uz 2:2 top (a.topRezultati — FIX: bilo na final, tiho mrtvo)
       }
     }
   }
@@ -161,6 +169,58 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
     const b = goalsAnaliza({ kvote: kvoteFer, formaDom: forma(10, 16, 11, 6, 5), formaGost: forma(10, 14, 12, 5, 5), liga: "Bundesliga" });
     t.push(ok("Fer kvote → visoka suglasnost model/tržište", b.suglasnost >= 0.9, `suglasnost ${b.suglasnost}`));
     t.push(ok("Fer kvote → edge ≈ 0 (nema lažnih value tipova)", Object.values(b.edge).every((e) => Math.abs(e) < 0.05), `max |edge| = ${Math.max(0, ...Object.values(b.edge).map(Math.abs)).toFixed(4)}`));
+  }
+
+  /* ── 10) HT/FT PRO motori (nogomet / košarka / rukomet) ── */
+  {
+    // 10a) Nogomet: 9 stanja zbroj = 1, sidro 1.6/1.2, preokreti i HT raspored
+    const nogLamovi: Array<[number, number]> = [[0.9, 0.7], [1.3, 1.0], [1.6, 1.2], [2.4, 2.1], [3.0, 2.5]];
+    let nogZbroj = true, nogHT = true, nogPreokreti = true;
+    let sidro = htftNogomet(1.6, 1.2);
+    for (const [lh, la] of nogLamovi) {
+      const a = htftNogomet(lh, la);
+      if (Math.abs(a.stanja.reduce((s, c) => s + c.p, 0) - 1) > EPS) nogZbroj = false;
+      if (Math.abs(a.htGolovi.nula + a.htGolovi.jedan + a.htGolovi.dva + a.htGolovi.triPlus - 1) > EPS) nogHT = false;
+      if (Math.abs(a.preokret12 + a.preokret21 - a.preokreti) > EPS) nogPreokreti = false;
+    }
+    t.push(ok("HT/FT nogomet: 9 stanja zbroj = 1 (5 λ-parova)", nogZbroj, `npr. 1.6/1.2 → zbroj = ${(sidro.stanja.reduce((s, c) => s + c.p, 0)).toFixed(10)}`));
+    t.push(ok("HT/FT nogomet: HT golovi zbroj = 100%", nogHT, `λ_HT=0.44λ_FT: ${Object.values(sidro.htGolovi).map((v) => (v * 100).toFixed(1)).join("/")}`));
+    t.push(ok("HT/FT nogomet: preokreti = P(1/2) + P(2/1)", nogPreokreti, `${(sidro.preokreti * 100).toFixed(1)}% = ${(sidro.preokret12 * 100).toFixed(1)}% + ${(sidro.preokret21 * 100).toFixed(1)}%`));
+
+    const ravn = htftKosarka(100, 100, 12);
+    t.push(ok("HT/FT košarka: ravn. utakmica egzaktno simetrična", Math.abs(ravn.kombinacije[0]!.p - ravn.kombinacije[3]!.p) < 1e-9 && Math.abs(ravn.kombinacije[1]!.p - ravn.kombinacije[2]!.p) < 1e-9, `1/1=${(ravn.kombinacije[0]!.p * 100).toFixed(2)}% = 2/2, 1/2=${(ravn.kombinacije[1]!.p * 100).toFixed(2)}% = 2/1`));
+    t.push(ok("HT/FT košarka: 4 ishoda zbroj = 1", Math.abs(ravn.kombinacije.reduce((s, c) => s + c.p, 0) - 1) < 1e-6, `zbroj = ${ravn.kombinacije.reduce((s, c) => s + c.p, 0).toFixed(8)}`));
+    t.push(ok("HT/FT košarka: σ_HT = σ_FT/√2", Math.abs(ravn.sigmaHT - 12 / Math.SQRT2) < 0.1, `σ_HT = ${ravn.sigmaHT.toFixed(2)}`));
+
+    const asim = htftKosarka(112, 108, 11);
+    t.push(ok("HT/FT košarka: asimetrična utakmica zbroj = 1", Math.abs(asim.kombinacije.reduce((s, c) => s + c.p, 0) - 1) < 1e-6, `112−108: 1/1 ${(asim.kombinacije[0]!.p * 100).toFixed(1)}%, zbroj = ${asim.kombinacije.reduce((s, c) => s + c.p, 0).toFixed(6)}`));
+
+    const rukSidro = htftRukomet(31, 29, 1, 2);
+    const rukRavno = htftRukomet(30, 30, 1, 1);
+    t.push(ok("HT/FT rukomet: 9 stanja zbroj = 1", Math.abs(rukSidro.kombinacije.reduce((s, c) => s + c.p, 0) - 1) < 1e-6, `zbroj = ${rukSidro.kombinacije.reduce((s, c) => s + c.p, 0).toFixed(8)}`));
+    t.push(ok("HT/FT rukomet: ravna utakmica simetrična", Math.abs(rukRavno.kombinacije[0]!.p - rukRavno.kombinacije[1]!.p) < 0.001, `1/1=${(rukRavno.kombinacije[0]!.p * 100).toFixed(2)}%, 2/2=${(rukRavno.kombinacije[1]!.p * 100).toFixed(2)}%`));
+    t.push(ok("HT/FT rukomet: konverzija HT vodstva u granicama", rukSidro.konverzija.home > 0.6 && rukSidro.konverzija.home < 0.95 && rukSidro.konverzija.away > 0.5 && rukSidro.konverzija.away < 0.95, `dom → ${(rukSidro.konverzija.home * 100).toFixed(1)}%, gost → ${(rukSidro.konverzija.away * 100).toFixed(1)}%`));
+  }
+
+  /* ── 11) De-vig štit + pick badges ── */
+  {
+    const a = analizaVig([2.10, 3.40, 3.30]);
+    t.push(ok("De-vig: Shin fair vjerojatnosti zbroj = 1", a.metoda === "shin" && Math.abs(a.fair.reduce((s, x) => s + x, 0) - 1) < 1e-6, `[2.10, 3.40, 3.30]: metoda ${a.metoda}, zbroj = ${a.fair.reduce((s, x) => s + x, 0).toFixed(10)}`));
+    t.push(ok("De-vig: vig detekcija (7.33% → distorzija)", Math.abs(a.vig - 0.0733) < 0.001 && a.distorzija === true, `vig = ${(a.vig * 100).toFixed(2)}% > prag ${(VIG_PRAG * 100).toFixed(0)}%`));
+    t.push(ok("De-vig: POOR MARKET PRICE (p=54%, kvota 1.56)", losaCijena(0.54, 1.56).losa === true && losaCijena(0.54, 1.90).losa === false, `1.56 → loša cijena, 1.90 → OK`));
+
+    const kandidati: Kandidat[] = [
+      { tip: "U2.5", trziste: "Total", p: 0.54, odds: 1.95, edge: 0.052 },
+      { tip: "O2.5", trziste: "Total", p: 0.46, odds: 2.05, edge: -0.056 },
+      { tip: "U3.5", trziste: "T3.5", p: 0.75, odds: 1.4, edge: 0.05 },
+      { tip: "1", trziste: "1X2", p: 0.46, odds: 2.2, edge: 0.06 },
+    ];
+    const o = izradiOznake(kandidati);
+    t.push(ok("Badges: O2.5 blokiran kad je U2.5 sigurniji na istom tržištu", o.oznake["O2.5"] === "blokiran", `U2.5 54% vs O2.5 46% → O2.5 ${o.oznake["O2.5"]}`));
+    t.push(ok("Badges: primarni mora imati p ≥ 55% (U3.5 @ 75%)", o.primarni?.tip === "U3.5" && o.sigurnosni?.tip === "U3.5", `primarni = ${o.primarni?.tip ?? "nema"} @ ${((o.primarni?.p ?? 0) * 100).toFixed(0)}%`));
+    t.push(ok("Badges: 46% nikad nije primarni, samo value + varijanca", o.value?.tip === "1" && o.oznake["1"] === "value" && !o.poruke.some((x) => x.razina === "upozorenje" && x.tekst.includes("1")) === false, `tip "1" (46%, edge 6%) → value s upozorenjem na visoku varijancu`));
+    const o2 = izradiOznake([{ tip: "2", trziste: "1X2", p: 0.44, odds: 2.9, edge: 0.07 }]);
+    t.push(ok("Badges: nema primarnog kad ništa ne dođe do 55%", o2.nemaPrimarnog === true && o2.primarni === null, `najbolji kandidat 44% → nemaPrimarnog = ${o2.nemaPrimarnog}`));
   }
 
   const brProslo = t.filter((x) => x.ok).length;
