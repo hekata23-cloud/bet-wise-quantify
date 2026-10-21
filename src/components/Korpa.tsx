@@ -39,6 +39,16 @@ export function Korpa() {
     };
   }, [osvjezi]);
 
+  // High Variance Warning: događaj iz korpa.ts kad noga ima < 55% modela
+  useEffect(() => {
+    const w = (e: Event) => {
+      const poruka = (e as CustomEvent<{ poruka?: string }>).detail?.poruka;
+      toast.warning(poruka || "High Variance Warning: noga s manje od 55% vjerojatnosti je u korpi. Paraj je samo sa sigurnim nogama.");
+    };
+    window.addEventListener("andromeda:korpa-upozorenje", w);
+    return () => window.removeEventListener("andromeda:korpa-upozorenje", w);
+  }, []);
+
   useEffect(() => saveJSON(BANKROLL_KEY, bankroll), [bankroll]);
   useEffect(() => saveJSON(KELLY_KEY, kellyFrac), [kellyFrac]);
 
@@ -160,6 +170,11 @@ export function Korpa() {
                       <div className="truncate font-medium">{t.utakmica}</div>
                       <div className="truncate text-[10px] text-muted-foreground">
                         {t.trziste}: <span className="font-semibold text-emerald-400">{t.tip}</span> · model {pct(t.vjerojatnost)}
+                        {t.vjerojatnost < 0.55 && (
+                          <span className="ml-1 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-bold text-amber-300">
+                            ⚠ &lt;55%
+                          </span>
+                        )}
                       </div>
                     </div>
                     <span className="font-mono text-sm font-bold">{t.kvota.toFixed(2)}</span>
@@ -216,6 +231,14 @@ export function Korpa() {
                     Više nogu iz iste utakmice — ishodi su povezani, pa je kombinirana vjerojatnost izračunata
                     korelacijskim motorom (uzajamno isključivi ishodi → 0). Kelly je automatski smanjen na pola.
                   </span>
+                </div>
+              )}
+
+              {/* Korelacija iste lige / termina */}
+              {r.ligaKorelacija && (
+                <div className="flex items-start gap-2 rounded-lg bg-sky-500/10 px-3 py-2 text-[11px] text-sky-300">
+                  <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{r.ligaPoruka}</span>
                 </div>
               )}
 
@@ -289,3 +312,4 @@ export function Korpa() {
     </>
   );
 }
+
