@@ -79,6 +79,7 @@ function RukometPage() {
   const [an, setAn] = useState<RukometAnalysis | null>(null);
   const [book, setBook] = useState<string | null>(null);
   const [isB365, setIsB365] = useState(false);
+  const [brojKlad, setBrojKlad] = useState<number | null>(null);
   const [settings, setSettings] = useState(false);
 
   // Ručni unos kvota
@@ -131,11 +132,13 @@ function RukometPage() {
     homeTeam: string,
     awayTeam: string,
     sourceMode?: "API" | "ALGORITAM" | "RUČNO",
-    isBet365Flag = false
+    isBet365Flag = false,
+    brojKladionica?: number | null
   ) => {
     const a = analyzeRukomet(markets, leagueName, homeTeam, awayTeam, sourceMode, isBet365Flag);
     setBook(bookName);
     setIsB365(isBet365Flag);
+    setBrojKlad(brojKladionica ?? null);
     setAn(a);
 
     // Prilagodi ručna polja točno ovoj utakmici
@@ -177,7 +180,7 @@ function RukometPage() {
       };
     }
 
-    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO", false);
+    runAnalysis(mk, sel.league, "Ručni unos", sel.home, sel.away, "RUČNO", false, 1);
     setManualMode(false);
   };
 
@@ -202,12 +205,12 @@ function RukometPage() {
       );
 
       if (r.error || !r.markets || Object.keys(r.markets).length === 0) {
-        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false);
+        runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false, 0);
       } else {
-        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API", r.isBet365);
+        runAnalysis(r.markets, g.league, r.bookmaker, g.home, g.away, "API", r.isBet365, r.brojKladionica);
       }
     } catch {
-      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false);
+      runAnalysis({}, g.league, null, g.home, g.away, "ALGORITAM", false, 0);
     } finally {
       setBusyId(null);
     }
@@ -502,7 +505,7 @@ function RukometPage() {
             </div>
           </div>
 
-          <SarpSportPanel sport="rukomet" utakmica={{ id: sel.id, home: sel.home, away: sel.away, league: sel.league, time: sel.time }} an={an} book={book} />
+          <SarpSportPanel sport="rukomet" utakmica={{ id: sel.id, home: sel.home, away: sel.away, league: sel.league, time: sel.time }} an={an} book={book} brojKladionica={brojKlad ?? undefined} />
 
           {/* 🎯 KONKRETIZIRANI TIPOVI ZA OKLADU */}
           <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4 space-y-3">
@@ -751,4 +754,5 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
     </div>
   );
 }
+
 
