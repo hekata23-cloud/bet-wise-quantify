@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   SELFTEST — automatski auditor predikcijskih motora (v1)
+   SELFTEST — automatski auditor predikcijskih motora (v3)
    ═══════════════════════════════════════════════════════════════════
    Pokreće bateriju matematičkih provjera (bez mreže, bez API-ja):
 
@@ -30,6 +30,11 @@ import { shrinkajStopu, jeMaliUzorak, stropPovjerenja, MAX_POVJERENJE_MALI, prio
 import { htftNogomet, htftKosarka, htftRukomet } from "./htft-motor";
 import { analizaVig, losaCijena, VIG_PRAG } from "./devig-shield";
 import { izradiOznake, type Kandidat } from "./pick-badges";
+import { sarpKosarka } from "./sarp-kosarka";
+import { sarpRukomet } from "./sarp-rukomet";
+import { tezinaKalibracije as tezinaKalProvjera } from "./global-calibration";
+import type { KosAnalysis, Tip as KosTipT } from "./kosarka-engine";
+import type { RukometAnalysis, Tip as RukTipT } from "./rukomet-engine";
 
 export type SelfTest = { naziv: string; ok: boolean; detalj: string };
 export type SelfTestIzvjestaj = {
@@ -223,6 +228,134 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
     t.push(ok("Badges: nema primarnog kad ništa ne dođe do 55%", o2.nemaPrimarnog === true && o2.primarni === null, `najbolji kandidat 44% → nemaPrimarnog = ${o2.nemaPrimarnog}`));
   }
 
+
+  /* ── 12) Globalna kalibracija: košarka i rukomet ── */
+  {
+    const kt = (market: string, pick: string, odd: number | null): KosTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const kosBaza = (
+      p1: number, pX: number, p2: number,
+      ml: [number, number] | null, ou: [number, number] | null, line = 220.5,
+    ): KosAnalysis => ({
+      mu: 0, sigma: 12, total: 220, sigmaT: 16.5, nba: true,
+      pHome: p1, pDraw: pX, pAway: p2, pHomeOT: p1, pAwayOT: p2,
+      x12: [], dc: [],
+      ml: ml ? [kt("Home/Away", "Home", ml[0]!), kt("Home/Away", "Away", ml[1]!)] : [],
+      totals: ou ? [kt(`Zbroj ${line}`, `Više ${line}`, ou[0]!), kt(`Zbroj ${line}`, `Manje ${line}`, ou[1]!)] : [],
+      best: null, safest: null, totalPick: kt(`Zbroj ${line}`, `Više ${line}`, ou ? ou[0]! : null), notes: [],
+    });
+    const kosPozovi = (an: KosAnalysis) => sarpKosarka({
+      an, mk: null, home: "Dom", away: "Gost", league: "NBA", fixtureId: 1,
+    });
+
+    // a) identitet bez kvota
+    const a0 = kosPozovi(kosBaza(0.60, 0.01, 0.39, null, null));
+    t.push(ok(
+      "Kalibracija košarka: bez kvota = identitet",
+      a0 != null && a0.kalibracija.primijenjena === false && a0.pML1 === 0.60,
+      `primijenjena = ${a0?.kalibracija.primijenjena}, pML1 = ${a0?.pML1}`,
+    ));
+
+    // b) s kvotama: ML + O/U → primijenjena, težina u granicama, zbrojevi = 1
+    const a1 = kosPozovi(kosBaza(0.60, 0.01, 0.39, [1.80, 2.05], [1.90, 1.90]));
+    const zbrojKos = a1 ? a1.pML1 + a1.pML2 + a1.pDraw : -1;
+    t.push(ok(
+      "Kalibracija košarka: log-pool primijenjen s kvotama (težina ≤ 0.45)",
+      a1 != null && a1.kalibracija.primijenjena === true && a1.kalibracija.tezina > 0 && a1.kalibracija.tezina <= 0.45,
+      `tezina = ${a1?.kalibracija.tezina}, primijenjena = ${a1?.kalibracija.primijenjena}`,
+    ));
+    t.push(ok(
+      "Kalibracija košarka: ML ishodi zbroj = 1 nakon poola",
+      Math.abs(zbrojKos - 1) < 1e-9,
+      `zbroj = ${zbrojKos.toFixed(12)}`,
+    ));
+    t.push(ok(
+      "Kalibracija košarka: O/U komplement zbroj = 1 nakon poola",
+      a1 != null && Math.abs(a1.pOver + a1.pUnder - 1) < 1e-9,
+      `pOver = ${a1?.pOver.toFixed(4)}, pUnder = ${a1?.pUnder.toFixed(4)}`,
+    ));
+
+    // c) kalibrirana vrijednost leži IZMEĐU modela i tržišta
+    //    de-vig ML p1: (1/1.80)/((1/1.80)+(1/2.05)) ≈ 0.5325
+    const mktML = (1 / 1.80) / ((1 / 1.80) + (1 / 2.05));
+    t.push(ok(
+      "Kalibracija košarka: pomak između modela i tržišta",
+      a1 != null && a1.pML1 > mktML && a1.pML1 < 0.60,
+      `model 60.0% → kalibrirano ${(a1 ? a1.pML1 * 100 : 0).toFixed(2)}% (tržište ${(mktML * 100).toFixed(2)}%)`,
+    ));
+
+    // d) strop težine kalibracije
+    t.push(ok(
+      "Kalibracija: težina tržištu nikad ne prelazi 0.45",
+      tezinaKalProvjera(50, 50) <= 0.45,
+      `tezina(50 knjiga, 50 parova) = ${tezinaKalProvjera(50, 50)}`,
+    ));
+
+    // ── rukomet ──
+    const rt = (market: string, pick: string, odd: number | null): RukTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const rukBaza = (
+      p1: number, pX: number, p2: number,
+      x12: [number, number, number] | null, ou: [number, number] | null, line = 56.5,
+    ): RukometAnalysis => ({
+      muDiff: 2, sigmaDiff: 6.1, muTotal: 57, muHome: 29.5, muAway: 27.5,
+      pHome: p1, pDraw: pX, pAway: p2, pHomeML: p1, pAwayML: p2,
+      concrete: {
+        winner: { pick: "1", type: "1", prob: p1, fair: p1 > 0 ? 1 / p1 : 99, odd: x12 ? x12[0]! : null, ev: null, confidence: "SREDNJA", reason: "samotest" },
+        totalGoals: { pick: "VIŠE", line, choice: "VIŠE", prob: 0.5, fair: 2, odd: ou ? ou[0]! : null, ev: null, projected: 57, confidence: "SREDNJA", reason: "samotest" },
+        homeTotal: { pick: "VIŠE", line: 28.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 29.5 },
+        awayTotal: { pick: "VIŠE", line: 27.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 27.5 },
+      },
+      x12: x12 ? [rt("1X2", "1", x12[0]!), rt("1X2", "X", x12[1]!), rt("1X2", "2", x12[2]!)] : [],
+      dc: [], ml: [],
+      totals: ou ? [rt(`Zbroj ${line}`, `Više ${line}`, ou[0]!), rt(`Zbroj ${line}`, `Manje ${line}`, ou[1]!)] : [],
+      homeTotals: [], awayTotals: [], best: null, safest: null,
+      notes: [], source: "ALGORITAM", isBet365: true,
+    });
+    const rukPozovi = (an: RukometAnalysis) => sarpRukomet({
+      an, home: "Dom", away: "Gost", fixtureId: 1,
+    });
+
+    // e) identitet bez kvota
+    const r0 = rukPozovi(rukBaza(0.60, 0.05, 0.35, null, null));
+    t.push(ok(
+      "Kalibracija rukomet: bez kvota = identitet",
+      r0.kalibracija.primijenjena === false && r0.pHome === 0.60,
+      `primijenjena = ${r0.kalibracija.primijenjena}, pHome = ${r0.pHome}`,
+    ));
+
+    // f) 1X2 + O/U kvote → zbroj 1X2 = 1
+    const r1 = rukPozovi(rukBaza(0.60, 0.05, 0.35, [1.75, 8.00, 3.05], [1.85, 1.95]));
+    const zbrojRuk = r1.pHome + r1.pDraw + r1.pAway;
+    t.push(ok(
+      "Kalibracija rukomet: 1X2 zbroj = 1 nakon trojnog poola",
+      Math.abs(zbrojRuk - 1) < 1e-9 && r1.kalibracija.primijenjena === true,
+      `zbroj = ${zbrojRuk.toFixed(12)}, primijenjena = ${r1.kalibracija.primijenjena}`,
+    ));
+    t.push(ok(
+      "Kalibracija rukomet: O/U komplement zbroj = 1 nakon poola",
+      Math.abs(r1.pOver + r1.pUnder - 1) < 1e-9,
+      `pOver = ${r1.pOver.toFixed(4)}, pUnder = ${r1.pUnder.toFixed(4)}`,
+    ));
+
+    // g) kalibrirana vrijednost leži IZMEĐU modela i tržišta
+    //    de-vig 1X2 p1: (1/1.75)/Σ ≈ 0.558
+    const invR = (1 / 1.75) + (1 / 8.00) + (1 / 3.05);
+    const mktRuk = (1 / 1.75) / invR;
+    t.push(ok(
+      "Kalibracija rukomet: pomak između modela i tržišta",
+      r1.pHome > mktRuk && r1.pHome < 0.60,
+      `model 60.0% → kalibrirano ${(r1.pHome * 100).toFixed(2)}% (tržište ${(mktRuk * 100).toFixed(2)}%)`,
+    ));
+
+    // h) HT/FT matrica s kalibriranim FT vjerojatnostima zadržava zbroj 1
+    t.push(ok(
+      "Kalibracija rukomet: HT/FT matrica zadržava zbroj 1",
+      Math.abs(r1.htft.reduce((s, c) => s + c.p, 0) - 1) < 1e-9,
+      `zbroj = ${r1.htft.reduce((s, c) => s + c.p, 0).toFixed(10)}`,
+    ));
+  }
+
   const brProslo = t.filter((x) => x.ok).length;
   return {
     brTestova: t.length,
@@ -233,4 +366,3 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
     trajanjeMs: Date.now() - t0,
   };
 }
-
