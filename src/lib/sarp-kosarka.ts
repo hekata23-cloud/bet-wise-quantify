@@ -12,7 +12,8 @@
 
 import type { KosMarkets } from "./kosarka.functions";
 import type { KosAnalysis } from "./kosarka-engine";
-import { poolPar, tezinaKalibracije } from "./global-calibration";
+import { poolPar, tezinaKalibracije, tempPar } from "./global-calibration";
+import { tempZa, type EmpStanje } from "./accuracy-ledger";
 
 export interface BasketballMatchStats {
   /** posjedi po utakmici (pace) */
@@ -53,6 +54,8 @@ export interface BasketballSARPPrediction {
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
   /** GLOBALNA KALIBRACIJA: log-pool ML i O/U s de-margined tržištem (dijagnostika) */
   kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
+  /** STVARNA TOČNOST: temperiranje prema vlastitom rekordu (Dnevnik) */
+  empTocnost: { primijenjena: boolean; temp: Record<string, number> };
   povjerenje: number; razina: "A" | "B" | "C";
   core: SarpKandidat | null; alt: SarpKandidat | null;
   izvori: string[];
@@ -108,6 +111,8 @@ export function sarpKosarka(args: {
   stats?: BasketballMatchStats;
   /** broj kladionica s kvotama — jača kalibraciju (opcionalno; default 3 kad kvote postoje) */
   brojKladionica?: number;
+  /** STVARNA TOČNOST: ručno ubrizgano empirijsko stanje (Samotest); bez toga čita Dnevnik */
+  empirijske?: EmpStanje;
 }): BasketballSARPPrediction | null {
   const { an, mk, fixtureId } = args;
   const s = args.stats ?? {};
@@ -228,32 +233,53 @@ export function sarpKosarka(args: {
   const books = args.brojKladionica ?? ((mlHodd && mlAodd) || (overTip?.odd && underTip?.odd) ? 3 : 0);
   const parovi = (mlHodd && mlAodd ? 1 : 0) + (overTip?.odd && underTip?.odd ? 1 : 0);
   const wKal = tezinaKalibracije(books, parovi);
+  const T_ML = tempZa("1x2", args.empirijske);
+  const T_OU = tempZa("ou", args.empirijske);
   let pML1Kal = pML1; let pML2Kal = pML2; let pDrawKal = pDraw; let pOverKal = pOverModel;
   const listaPomaka: number[] = [];
-  if (wKal > 0) {
-    if (pML1Market != null) {
-      const m = poolPar(pML1, pML1Market, wKal);
-      listaPomaka.push(Math.abs(m - pML1));
-      // komplement (2 + neriješeno) zadržava modelni omjer — zbroj ostaje 1
-      const komp = Math.max(1e-9, pML2 + pDraw);
-      pML2Kal = (1 - m) * (pML2 / komp);
-      pDrawKal = (1 - m) * (pDraw / komp);
-      pML1Kal = m;
-    }
-    if (pOverMarket != null) {
-      const o = poolPar(pOverModel, pOverMarket, wKal);
-      listaPomaka.push(Math.abs(o - pOverModel));
-      pOverKal = o;
-    }
+  if (pML1Market != null && wKal > 0) {
+    const m = poolPar(pML1, pML1Market, wKal, T_ML);
+    listaPomaka.push(Math.abs(m - pML1));
+    // komplement (2 + neriješeno) zadržava modelni omjer — zbroj ostaje 1
+    const komp = Math.max(1e-9, pML2 + pDraw);
+    pML2Kal = (1 - m) * (pML2 / komp);
+    pDrawKal = (1 - m) * (pDraw / komp);
+    pML1Kal = m;
+  } else if (T_ML !== 1) {
+    // bez tržišta: čisto temperiranje prema stvarnoj točnosti
+    const m = tempPar(pML1, T_ML);
+    listaPomaka.push(Math.abs(m - pML1));
+    const komp = Math.max(1e-9, pML2 + pDraw);
+    pML2Kal = (1 - m) * (pML2 / komp);
+    pDrawKal = (1 - m) * (pDraw / komp);
+    pML1Kal = m;
+  }
+  if (pOverMarket != null && wKal > 0) {
+    const o = poolPar(pOverModel, pOverMarket, wKal, T_OU);
+    listaPomaka.push(Math.abs(o - pOverModel));
+    pOverKal = o;
+  } else if (T_OU !== 1) {
+    pOverKal = tempPar(pOverModel, T_OU);
+    listaPomaka.push(Math.abs(pOverKal - pOverModel));
   }
   const kalPomak = listaPomaka.length ? listaPomaka.reduce((a, b) => a + b, 0) / listaPomaka.length : 0;
-  const kalPrimijenjena = listaPomaka.length > 0 && wKal > 0;
+  const empAktivno = T_ML !== 1 || T_OU !== 1;
+  const kalPrimijenjena = listaPomaka.length > 0 && (wKal > 0 || empAktivno);
   if (kalPrimijenjena) {
-    izvori.push(`Globalna kalibracija (log-pool, težina ${(wKal * 100).toFixed(0)}%)`);
-    if (kalPomak > 0.06)
-      upozorenja.push(
-        `Kalibracija je znatno povukla model prema tržištu (${(kalPomak * 100).toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
-      );
+    if (wKal > 0) {
+      izvori.push(`Globalna kalibracija (log-pool, težina ${(wKal * 100).toFixed(0)}%)`);
+      if (kalPomak > 0.06)
+        upozorenja.push(
+          `Kalibracija je znatno povukla model prema tržištu (${(kalPomak * 100).toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+        );
+    }
+    if (empAktivno) {
+      izvori.push("Stvarna točnost (Dnevnik): temperiranje prema vlastitom rekordu");
+      if (Math.abs(T_ML - 1) >= 0.12 || Math.abs(T_OU - 1) >= 0.12)
+        upozorenja.push(
+          "Stvarna točnost se znatno razlikuje od najavljenih vjerojatnosti — tretirajte samopouzdanje s rezervom.",
+        );
+    }
   }
 
   const discrep: number[] = [];
@@ -313,6 +339,10 @@ export function sarpKosarka(args: {
       primijenjena: kalPrimijenjena,
       tezina: Math.round(wKal * 1000) / 1000,
       prosjecniPomak: Math.round(kalPomak * 1000) / 1000,
+    },
+    empTocnost: {
+      primijenjena: empAktivno,
+      temp: { "1x2": T_ML, ou: T_OU },
     },
     povjerenje, razina, core, alt, izvori, upozorenja,
   };
