@@ -6,9 +6,13 @@
 // 1) Model posjeda/efikasnosti, 2) Skellam Monte Carlo 5.000,
 // 3) De-vig tržišni konsenzus. Volatilnost >10 pp → spusti
 // povjerenje. Edge guard: EV ≥ 4.5%. Kelly 0.25x, cap 3%.
+// v2 — GLOBALNA KALIBRACIJA: finalne vjerojatnosti (1X2 i O/U) log-pool-
+// ane su s de-margined tržištem (težina max 0.45; bez kvota = identitet).
+// HT/FT matrica koristi kalibrirane FT vjerojatnosti (zbroj ostaje 1).
 // ============================================================
 
 import type { RukometAnalysis } from "./rukomet-engine";
+import { poolPar, poolTrojku, tezinaKalibracije } from "./global-calibration";
 
 export interface HandballMatchStats {
   /** napadi (posjedi) po timu po utakmici — tipično 26-30 */
@@ -48,6 +52,8 @@ export interface HandballSARPPrediction {
   mc: { n: number; pHome: number; pDraw: number; pAway: number; pOver: number };
   trziste: { pHome: number | null; pOver: number | null; devigIzvor: string | null };
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
+  /** GLOBALNA KALIBRACIJA: log-pool 1X2 i O/U s de-margined tržištem (dijagnostika) */
+  kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
   povjerenje: number; razina: "A" | "B" | "C";
   core: SarpKandidat | null; alt: SarpKandidat | null;
   izvori: string[];
@@ -97,6 +103,8 @@ export function sarpRukomet(args: {
   an: RukometAnalysis;
   home: string; away: string; fixtureId: number;
   stats?: HandballMatchStats;
+  /** broj kladionica s kvotama — jača kalibraciju (opcionalno; default 3 kad kvote postoje) */
+  brojKladionica?: number;
 }): HandballSARPPrediction {
   const { an, fixtureId } = args;
   const s = args.stats ?? {};
@@ -171,6 +179,49 @@ export function sarpRukomet(args: {
   const pHome = an.pHome; const pDraw = an.pDraw; const pAway = an.pAway;
   const pOverModel = 1 - Phi((linijaTotala - expTotal) / sigmaTotal);
 
+  // — 5b) GLOBALNA KALIBRACIJA — logaritamski pool modela s de-margined
+  // tržištem (ista matematika kao u goals-motoru). 1X2 ide kroz trojni
+  // pool (zbroj ostaje točno 1); kad tržište nema 1X2 nego samo ML,
+  // komplement (X + 2) zadržava modelni omjer. Težina raste s brojem
+  // kladionica i pokrivenošću tržišta (max 0.45); bez kvota je w = 0 →
+  // model ostaje nepromijenjen (identitet).
+  const mlMkt = an.ml[0]?.odd && an.ml[1]?.odd ? devig([an.ml[0]!.odd!, an.ml[1]!.odd!])[0]! : null;
+  const imax12 = !!(o1 && oX && o2);
+  const books = args.brojKladionica ?? (imax12 || mlMkt != null || (overTip?.odd && underTip?.odd) ? 3 : 0);
+  const parovi = (imax12 || mlMkt != null ? 1 : 0) + (overTip?.odd && underTip?.odd ? 1 : 0);
+  const wKal = tezinaKalibracije(books, parovi);
+  let pHomeKal = pHome; let pDrawKal = pDraw; let pAwayKal = pAway; let pOverKal = pOverModel;
+  const listaPomaka: number[] = [];
+  if (wKal > 0) {
+    if (imax12 && pHome > 0 && pDraw > 0 && pAway > 0) {
+      const m = devig([o1!, oX!, o2!]);
+      const tr = poolTrojku([pHome, pDraw, pAway], [m[0]!, m[1]!, m[2]!], wKal);
+      listaPomaka.push(Math.abs(tr[0]! - pHome), Math.abs(tr[1]! - pDraw), Math.abs(tr[2]! - pAway));
+      pHomeKal = tr[0]!; pDrawKal = tr[1]!; pAwayKal = tr[2]!;
+    } else if (mlMkt != null) {
+      const m = poolPar(pHome, mlMkt, wKal);
+      listaPomaka.push(Math.abs(m - pHome));
+      const komp = Math.max(1e-9, pDraw + pAway);
+      pDrawKal = (1 - m) * (pDraw / komp);
+      pAwayKal = (1 - m) * (pAway / komp);
+      pHomeKal = m;
+    }
+    if (pOverMkt != null) {
+      const o = poolPar(pOverModel, pOverMkt, wKal);
+      listaPomaka.push(Math.abs(o - pOverModel));
+      pOverKal = o;
+    }
+  }
+  const kalPomak = listaPomaka.length ? listaPomaka.reduce((a, b) => a + b, 0) / listaPomaka.length : 0;
+  const kalPrimijenjena = listaPomaka.length > 0 && wKal > 0;
+  if (kalPrimijenjena) {
+    izvori.push(`Globalna kalibracija (log-pool, težina ${(wKal * 100).toFixed(0)}%)`);
+    if (kalPomak > 0.06)
+      upozorenja.push(
+        `Kalibracija je znatno povukla model prema tržištu (${(kalPomak * 100).toFixed(1)} pp) — model i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
+      );
+  }
+
   const discrep: number[] = [];
   if (pHomeMkt != null) discrep.push(Math.abs(pHome - pHomeMkt));
   if (pOverMkt != null) discrep.push(Math.abs(pOverModel - pOverMkt));
@@ -186,6 +237,8 @@ export function sarpRukomet(args: {
   const p1HOver = 1 - Phi((linija1H - expTotal1H) / sigma1H);
 
   // — 7) HT/FT MATRICA (9 kombinacija, nezavisnost HT→FT aproksimacija) —
+  // FT vjerojatnosti su KALIBRIRANE (log-pool s tržištem), pa matrica
+  // zadržava zbroj 1 i odražava kalibraciju.
   const sigmaHT = sigmaDiff * Math.sqrt(halfShare);
   const muHT = expSpread * halfShare;
   const pHT1 = 1 - Phi((0.5 - muHT) / sigmaHT);
@@ -193,7 +246,7 @@ export function sarpRukomet(args: {
   const pHT2 = 1 - pHT1 - pHTX;
   const htft: HandballSARPPrediction["htft"] = [];
   for (const ht of [["1", pHT1], ["X", pHTX], ["2", pHT2]] as const) {
-    for (const ft of [["1", pHome], ["X", pDraw], ["2", pAway]] as const) {
+    for (const ft of [["1", pHomeKal], ["X", pDrawKal], ["2", pAwayKal]] as const) {
       htft.push({ kod: `${ht[0]}/${ft[0]}`, p: (ht[1] as number) * (ft[1] as number) });
     }
   }
@@ -216,17 +269,17 @@ export function sarpRukomet(args: {
     const kelly = kv ? (b * pp - (1 - pp)) / b : 0;
     kand.push({ trziste, tip, label, p: pp, kvota: kv, fer: 1 / pp, edge, kellyPct: Math.min(3, Math.max(0, kelly) * 0.25 * 100), isplativo: edge != null && edge >= 0.045 });
   };
-  push("1X2", "1", `${args.home} pobjeda`, pHome, o1);
-  push("1X2", "X", "Neriješeno", pDraw, oX);
-  push("1X2", "2", `${args.away} pobjeda`, pAway, o2);
-  push("O/U", "Over", `Više od ${linijaTotala}`, pOverModel, overTip?.odd ?? null);
-  push("O/U", "Under", `Manje od ${linijaTotala}`, 1 - pOverModel, underTip?.odd ?? null);
+  push("1X2", "1", `${args.home} pobjeda`, pHomeKal, o1);
+  push("1X2", "X", "Neriješeno", pDrawKal, oX);
+  push("1X2", "2", `${args.away} pobjeda`, pAwayKal, o2);
+  push("O/U", "Over", `Više od ${linijaTotala}`, pOverKal, overTip?.odd ?? null);
+  push("O/U", "Under", `Manje od ${linijaTotala}`, 1 - pOverKal, underTip?.odd ?? null);
 
   const valueList = kand.filter((k) => k.isplativo && k.p >= 0.45).sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
   const core = valueList[0] ?? kand.filter((k) => k.kvota && k.p >= 0.5).sort((a, b) => b.p - a.p)[0] ?? null;
   const alt = kand.filter((k) => k !== core && k.kvota).sort((a, b) => b.p - a.p)[0] ?? null;
   if (!valueList.length && core) upozorenja.push("Edge Guard: nema tipa s EV ≥ 4.5% — prikazan najsigurniji, ne isplativi tip.");
-  if (pDraw > 0.10) upozorenja.push(`Rizik remija: ${(pDraw * 100).toFixed(1)}% — kod azijskog hendikepa razmisli o zaštiti (X).`);
+  if (pDrawKal > 0.10) upozorenja.push(`Rizik remija: ${(pDrawKal * 100).toFixed(1)}% — kod azijskog hendikepa razmisli o zaštiti (X).`);
 
   const goloviNa50 = (lam: number, att: number) => clamp((lam / Math.max(10, att)) * 50, 15, 55);
 
@@ -240,11 +293,15 @@ export function sarpRukomet(args: {
     suspenzije: { home: suspH, away: suspA, utjecajGolova },
     lamHome, lamAway, expTotal, expSpread, sigmaTotal, sigmaDiff,
     p1HOver, linija1H, expTotal1H, htft,
-    pHome, pDraw, pAway,
-    pOver: pOverModel, pUnder: 1 - pOverModel, linijaTotala,
+    pHome: pHomeKal, pDraw: pDrawKal, pAway: pAwayKal,
+    pOver: pOverKal, pUnder: 1 - pOverKal, linijaTotala,
     mc, trziste: { pHome: pHomeMkt, pOver: pOverMkt, devigIzvor },
     provjera: { maxDiscrepancy, volatility },
+    kalibracija: {
+      primijenjena: kalPrimijenjena,
+      tezina: Math.round(wKal * 1000) / 1000,
+      prosjecniPomak: Math.round(kalPomak * 1000) / 1000,
+    },
     povjerenje, razina, core, alt, izvori, upozorenja,
   };
 }
-
