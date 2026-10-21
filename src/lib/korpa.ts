@@ -1,6 +1,8 @@
 // ============================================================
-// KORPA.TS — Bet Slip / Tiket motor (Andromeda AI)
+// KORPA.TS — Bet Slip / Tiket motor (Andromeda AI) — v2
 // Kombinirana kvota, EV, varijanca/rizik, frakcijski Kelly.
+// NOVO v2: High Variance Warning događaj kad model noga ima
+//          < 55% vjerojatnosti (Korpa.tsx prikazuje toast).
 // Čista logika — ne zove API. Pohrana: localStorage.
 // ============================================================
 
@@ -50,6 +52,16 @@ export function dodajUKorpu(tip: Omit<KorpaTip, "dodano">) {
   if (arr.some((t) => t.id === tip.id)) return; // već je u korpi
   arr.push({ ...tip, id: tip.id, vjerojatnost: k, dodano: Date.now() });
   spremiKorpu(arr);
+  // BET SLIP INTELLIGENCE: noga s < 55% win rate → modal/toast upozorenje
+  if (k < 0.55) {
+    window.dispatchEvent(
+      new CustomEvent("andromeda:korpa-upozorenje", {
+        detail: {
+          poruka: `High Variance Warning: "${tip.tip}" (${tip.utakmica}) ima ${Math.round(k * 100)}% win rate — manje od 55%. Preporuka: paraj samo sa sigurnim nogama ili smanji ulog.`,
+        },
+      }),
+    );
+  }
 }
 
 export function ukloniIzKorpe(id: string) {
