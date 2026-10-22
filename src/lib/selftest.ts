@@ -47,6 +47,9 @@ import { skellamPmf, ahSkellam, skellamUkupnoOver, hazardEfektivneLam, HAZARD_BE
 import { provjeriKonzistentnost } from "./konzistentnost";
 import { handicapRedovi } from "./sport-dodatci";
 import { asianHandicap } from "./pro-alati";
+import { okolisPomak, sudacProfil, VJETAR_PRAG_KMH, SUDAC_KARTONA_PRAG } from "./math-engine";
+import { varijancaTiketa, entropijaNozice, type KorpaTip } from "./korpa";
+import { sarpBrain } from "./sarp-brain";
 import type { DnevnikUnos } from "./dnevnik";
 import type { KosAnalysis, Tip as KosTipT } from "./kosarka-engine";
 import type { RukometAnalysis, Tip as RukTipT } from "./rukomet-engine";
@@ -685,6 +688,145 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
       "KVANT konzistentnost: kompatibilan par prolazi bez upozorenja",
       konOk.konzistentno === true && konOk.upozorenja.length === 0,
       "1 + Clean Sheet domaćin je dopuštena kombinacija",
+    ));
+  }
+
+  /* ── 15) OKOLIS / SUDAC / BLOWOUT / GARBAGE TIME / VARIJANSA TIKETA (v6) ── */
+  {
+    // a) okolis: identitet bez podataka, drag s vjetrom > 35 km/h
+    const oNula = okolisPomak(null);
+    const oVjetar = okolisPomak({ vjetarKmh: 40 });
+    const oMirno = okolisPomak({ vjetarKmh: VJETAR_PRAG_KMH - 5, kisa: false, teren: "dobro" });
+    t.push(ok(
+      "OKOLIS: bez podataka = identitet; vjetar > 35 km/h → λ −0.22 i korneri −1.5",
+      oNula.primijenjeno === false && oNula.pomakGolovi === 0 && oNula.pomakKornera === 0 &&
+        oVjetar.primijenjeno === true && oVjetar.pomakGolovi === -0.22 && oVjetar.pomakKornera === -1.5 &&
+        oMirno.primijenjeno === false,
+      `vjetar 40 → ${oVjetar.pomakGolovi} λ / ${oVjetar.pomakKornera} kornera; mirno = identitet`,
+    ));
+    const oKomb = okolisPomak({ kisa: true, teren: "lose" });
+    t.push(ok(
+      "OKOLIS: kiša ili loš teren aktiviraju drag (ne množe se)",
+      oKomb.primijenjeno === true && oKomb.razlozi.length === 2 && oKomb.pomakGolovi === -0.22,
+      `razlozi: ${oKomb.razlozi.join(", ")}`,
+    ));
+
+    // b) sudac: strog > 5.0 kartona ili > 0.4 penala → rizik crvena > 18%
+    const sNula = sudacProfil(null);
+    const sStrog = sudacProfil({ kartonaPoUtakmici: SUDAC_KARTONA_PRAG + 0.6 });
+    const sMirno = sudacProfil({ kartonaPoUtakmici: 4.0, penaliPoUtakmici: 0.2 });
+    const sPenal = sudacProfil({ penaliPoUtakmici: 0.5 });
+    t.push(ok(
+      "SUDAC: bez podataka = identitet; strog sudac (5.6 kartona ili 0.5 penala) → rizik crvena > 18%",
+      sNula.primijenjeno === false && sNula.strog === false &&
+        sStrog.strog === true && sStrog.rizikCrvena >= 0.18 &&
+        sMirno.strog === false && sMirno.rizikCrvena < 0.18 &&
+        sPenal.strog === true && sPenal.rizikCrvena >= 0.18,
+      `5.6 kartona → rizik ${(sStrog.rizikCrvena * 100).toFixed(0)}%; 4.0 kartona → ${(sMirno.rizikCrvena * 100).toFixed(0)}%`,
+    ));
+
+    // c) sarpBrain: okolis smanjuje λUkupno za 0.22 end-to-end
+    const sbKvote: Record<string, number> = { "1": 2.0, "X": 3.3, "2": 3.6, o25: 1.9, u25: 1.9, bttsDa: 1.85, bttsNe: 1.95 };
+    const sbUtz = { id: 1, home: "Dom", away: "Gost", league: "Test Liga" };
+    const sbBaza = sarpBrain({ utakmica: sbUtz, kvote: sbKvote });
+    const sbOkolis = sarpBrain({ utakmica: sbUtz, kvote: sbKvote, okolis: { vjetarKmh: 42, kisa: true } });
+    const sbSudac = sarpBrain({ utakmica: sbUtz, kvote: sbKvote, sudac: { kartonaPoUtakmici: 6.2 } });
+    t.push(ok(
+      "SARP nogomet: weather drag end-to-end (λUkupno −0.22) i kvant kontekst okoliša",
+      Math.abs(sbOkolis.lambdaUkupno - (sbBaza.lambdaUkupno - 0.22)) < 1e-9 &&
+        sbOkolis.kvant.okolis?.primijenjeno === true && sbOkolis.kvant.okolis.pomakKornera === -1.5,
+      `λUkupno ${sbBaza.lambdaUkupno.toFixed(3)} → ${sbOkolis.lambdaUkupno.toFixed(3)}`,
+    ));
+    t.push(ok(
+      "SARP nogomet: strogi sudac u kvant kontekstu, rizik crvena ≥ 18%",
+      sbSudac.kvant.sudac?.strog === true && sbSudac.kvant.sudac.rizikCrvena >= 0.18 &&
+        sbBaza.kvant.sudac?.strog === false,
+      `rizik crvena: ${((sbSudac.kvant.sudac?.rizikCrvena ?? 0) * 100).toFixed(0)}%`,
+    ));
+
+    // d) košarka: blowout/garbage time kad |spread| > 16.5
+    const kt6 = (market: string, pick: string, odd: number | null): KosTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const kosBaza6 = (mu: number): KosAnalysis => ({
+      mu, sigma: 12, total: 220, sigmaT: 16.5, nba: true,
+      pHome: 0.75, pDraw: 0.01, pAway: 0.24, pHomeOT: 0.75, pAwayOT: 0.24,
+      x12: [], dc: [], ml: [], totals: [], best: null, safest: null,
+      totalPick: kt6("Zbroj 220.5", "Više 220.5", null), notes: [],
+    });
+    const kosPoz6 = (an: KosAnalysis, stats?: Parameters<typeof sarpKosarka>[0]["stats"]) => {
+      const p = sarpKosarka({ an, mk: null, home: "Dom", away: "Gost", league: "NBA", fixtureId: 1, empirijske: PRAZNO_EMP, stats });
+      if (p == null) throw new Error("samotest: sarpKosarka vratio null");
+      return p;
+    };
+    const blowout = kosPoz6(kosBaza6(20));
+    const normalan = kosPoz6(kosBaza6(8));
+    const blizanac = kosPoz6(kosBaza6(30));
+    t.push(ok(
+      "BLOWOUT košarka: margina 20 → total +0.77; margina 30 → +2.97 (cap 3.0); margina 8 = identitet",
+      blowout.blowout.primijenjeno === true && Math.abs(blowout.expTotal - (220 + 0.77)) < 1e-9 &&
+        Math.abs(blizanac.blowout.pomakBodovi - 2.97) < 1e-9 && Math.abs(blizanac.expTotal - 222.97) < 1e-9 &&
+        normalan.blowout.primijenjeno === false && normalan.expTotal === 220,
+      `margina 20: +${blowout.blowout.pomakBodovi.toFixed(2)} · margina 30: +${blizanac.blowout.pomakBodovi.toFixed(2)} · margina 8: identitet`,
+    ));
+
+    // e) rukomet: garbage time kad razlika ≥ 8 od 40. min; bez live = identitet
+    const rt6 = (market: string, pick: string, odd: number | null): RukTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const rukBaza6 = (p1: number, pX: number, p2: number): RukometAnalysis => ({
+      muDiff: 2, sigmaDiff: 6.1, muTotal: 57, muHome: 29.5, muAway: 27.5,
+      pHome: p1, pDraw: pX, pAway: p2, pHomeML: p1, pAwayML: p2,
+      concrete: {
+        winner: { pick: "1", type: "1", prob: p1, fair: p1 > 0 ? 1 / p1 : 99, odd: null, ev: null, confidence: "SREDNJA", reason: "samotest" },
+        totalGoals: { pick: "VIŠE", line: 56.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, ev: null, projected: 57, confidence: "SREDNJA", reason: "samotest" },
+        homeTotal: { pick: "VIŠE", line: 28.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 29.5 },
+        awayTotal: { pick: "VIŠE", line: 27.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 27.5 },
+      },
+      x12: [], dc: [], ml: [], totals: [], homeTotals: [], awayTotals: [],
+      best: null, safest: null, notes: [], source: "ALGORITAM", isBet365: true,
+    });
+    const rukPoz6 = (an: RukometAnalysis, stats?: Parameters<typeof sarpRukomet>[0]["stats"]) => {
+      const p = sarpRukomet({ an, home: "Dom", away: "Gost", fixtureId: 1, empirijske: PRAZNO_EMP, stats });
+      if (p == null) throw new Error("samotest: sarpRukomet vratio null");
+      return p;
+    };
+    const garb = rukPoz6(rukBaza6(0.60, 0.05, 0.35), { liveMinuta: 46, liveDomGolovi: 34, liveGostGolovi: 24 });
+    const garbRano = rukPoz6(rukBaza6(0.60, 0.05, 0.35), { liveMinuta: 30, liveDomGolovi: 34, liveGostGolovi: 24 });
+    const garbBaza = rukPoz6(rukBaza6(0.60, 0.05, 0.35));
+    t.push(ok(
+      "GARBAGE TIME rukomet: razlika 10 u 46' → +2.1 gola; bez live ili rano = identitet",
+      garb.garbageTime.primijenjeno === true && garb.garbageTime.margina === 10 && garb.garbageTime.minut === 46 &&
+        Math.abs(garb.expTotal - (garbBaza.expTotal + 2.1)) < 1e-9 &&
+        garbRano.garbageTime.primijenjeno === false && Math.abs(garbRano.expTotal - garbBaza.expTotal) < 1e-9,
+      `razlika 10 @ 46' → +${garb.garbageTime.ekstraGolovi.toFixed(1)} gola; rano = identitet`,
+    ));
+
+    // f) korpa: Shannon entropija i remi/push detekcija
+    const leg6 = (id: string, trziste: string, tip: string, p: number): KorpaTip =>
+      ({ id, sport: "nogomet", utakmica: "U" + id, trziste, tip, kvota: 1.9, vjerojatnost: p });
+    t.push(ok(
+      "ENTROPIJA: p=0.5 → 1.0; p=0/1 → 0; monotona u p",
+      entropijaNozice(0.5) === 1 && entropijaNozice(0) === 0 && entropijaNozice(1) === 0 &&
+        entropijaNozice(0.7) < entropijaNozice(0.6),
+      `H(0.5) = 1, H(0.8) = ${entropijaNozice(0.8).toFixed(3)}`,
+    ));
+    const vLow = varijancaTiketa([leg6("a", "Moneyline", "1", 0.8), leg6("b", "Moneyline", "2", 0.8), leg6("c", "Moneyline", "1", 0.85), leg6("d", "O/U", "Over 2.5", 0.9)]);
+    const vHigh = varijancaTiketa([leg6("a", "1X2", "1", 0.55), leg6("b", "O/U 2.5", "Over 2.5", 0.55), leg6("c", "BTTS", "GG", 0.55)]);
+    t.push(ok(
+      "VARIJANSA TIKETA: 4 sigurne noge = Low; 3× 55% = High",
+      vLow.razina === "niska" && vLow.entropija < 0.75 && vHigh.razina === "visoka" && vHigh.entropija > 0.9,
+      `low ${(vLow.entropija * 100).toFixed(0)}% · high ${(vHigh.entropija * 100).toFixed(0)}%`,
+    ));
+    const vPush = varijancaTiketa([leg6("a", "O/U", "Over 2", 0.7), leg6("b", "1X2", "X", 0.3), leg6("c", "Moneyline", "1", 0.8), leg6("d", "Moneyline", "2", 0.8)]);
+    t.push(ok(
+      "VARIJANSA: remi/push noga detektirana (Over 2 cjelobrojna, X remi) → upozorenje s DNB preporukom",
+      vPush.remiPushNoge === 2 && vPush.upozorenje != null && vPush.upozorenje.includes("DNB") && vPush.upozorenje.includes("X"),
+      `remi/push noga: ${vPush.remiPushNoge}; upozorenje: "${vPush.upozorenje?.slice(0, 60)}…"`,
+    ));
+    const vHalf = varijancaTiketa([leg6("a", "O/U", "Over 2.5", 0.8), leg6("b", "1X2", "1", 0.8)]);
+    t.push(ok(
+      "VARIJANSA: polovične linije (Over 2.5) nisu push; < 3 noge = bez upozorenja",
+      vHalf.remiPushNoge === 0 && vHalf.upozorenje === null,
+      "2 noge: upozorenje ne izlazi (prag je 3+)",
     ));
   }
 
