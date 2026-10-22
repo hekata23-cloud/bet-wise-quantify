@@ -7,6 +7,19 @@
 // Spremište: localStorage (ključ andromeda.ai.mec-kontekst).
 // ============================================================
 
+/** KVANT NADGRADNJA (v5): egzaktni Skellam push, hazard β, OT model
+ *  i rukometna taktika (7v6 / golman-umor) — izravno u prompt chatova. */
+export interface KvantKontekst {
+  skellam?: {
+    p1: number; pX: number; p2: number;
+    ah: { linija: string; win: number; push: number; loss: number; fer: number }[];
+    pushRizikMax: number;
+  };
+  hazard?: { beta: number; primijenjen: boolean; scenarij: string; lamDomEf: number; lamGostEf: number };
+  ot?: { p: number; primijenjeno: boolean; pomakBodovi: number };
+  ht?: { ekstraGolovi7v6: number; primijenjeno: boolean; gkUmorDom: boolean; gkUmorGost: boolean };
+}
+
 export interface MecKontekst {
   naslov: string;
   liga?: string;
@@ -36,6 +49,8 @@ export interface MecKontekst {
     sljedeciDom: number;
     sljedeciGost: number;
   } | null;
+  /** v5: kvant nadogradnja (Skellam AH push, hazard, OT, 7v6) */
+  kvant?: KvantKontekst;
   spremljeno: number;
 }
 
@@ -126,6 +141,35 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
       `LIVE: ${c.live.minuta}' rezultat ${c.live.rezultat} — O2.5 ${pct(c.live.o25)}, BTTS ${pct(c.live.btts)}, ` +
       `sljedeći gol: dom ${pct(c.live.sljedeciDom)} / gost ${pct(c.live.sljedeciGost)}`,
     );
+  }
+  if (c.kvant) {
+    const q = c.kvant;
+    if (q.skellam) {
+      linije.push(
+        `KVANT Skellam (egzaktno): 1X2 bez marže ${pct(q.skellam.p1)}/${pct(q.skellam.pX)}/${pct(q.skellam.p2)} · azijski handicap: ` +
+        q.skellam.ah.map((a) => `AH ${a.linija} (dobitak ${pct(a.win)}${a.push > 0.001 ? `, PUSH RISK ${pct(a.push)}` : ""})`).join("; ") +
+        ` · maksimalni push rizik ${pct(q.skellam.pushRizikMax)}`,
+      );
+    }
+    if (q.hazard?.primijenjen) {
+      linije.push(
+        `KVANT Hazard: scenarij "${q.hazard.scenarij}" — obe efektivne λ ×β=${q.hazard.beta.toFixed(2)}: dom ${q.hazard.lamDomEf.toFixed(2)}, gost ${q.hazard.lamGostEf.toFixed(2)}`,
+      );
+    }
+    if (q.ot) {
+      linije.push(
+        q.ot.primijenjeno
+          ? `KVANT OT model: P(OT)=${pct(q.ot.p)} > 8.5% → totalu je dodano +${q.ot.pomakBodovi.toFixed(1)} poena (produžetak dodaje posjede i failove)`
+          : `KVANT OT model: P(OT)=${pct(q.ot.p)} — ispod praga 8.5%, total bez pomaka`,
+      );
+    }
+    if (q.ht?.primijenjeno) {
+      linije.push(
+        `KVANT rukomet: 7v6 prazna mreža +${q.ht.ekstraGolovi7v6.toFixed(1)} gola` +
+        (q.ht.gkUmorDom ? " · golman domaćina umoran (−4% obrana u 2H)" : "") +
+        (q.ht.gkUmorGost ? " · golman gosta umoran (−4% obrana u 2H)" : ""),
+      );
+    }
   }
   if (c.rizici?.length) linije.push(`Rizici: ${c.rizici.slice(0, 4).join("; ")}`);
   linije.push(FORMAT_PRAVILO);
