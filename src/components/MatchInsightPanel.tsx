@@ -37,7 +37,7 @@ import { LiveMotorPanel } from "@/components/LiveMotorPanel";
 import { SgpBuilder } from "@/components/SgpBuilder";
 import { spremiKontekstMeca } from "@/lib/ai-context";
 import type { GoalsIzlaz } from "@/lib/goals-motor";
-import type { FormaGolovi } from "@/lib/math-engine";
+import type { FormaGolovi, OkolisUlaz, SudacUlaz } from "@/lib/math-engine";
 
 export type MatchInsightProps = {
   utakmica: {
@@ -73,6 +73,34 @@ function ocjenaKlasa(o: string) {
 export function MatchInsightPanel(props: MatchInsightProps) {
   const { utakmica, kvote, goals } = props;
 
+  /* ── OKOLIS I SUDAC (v6) — opcionalni manualni unos. Prazno =
+     identitet: model se NIJE mijenja dok korisnik ne unese podatke. */
+  const [okolnostiOpen, setOkolnostiOpen] = useState(false);
+  const [vjetar, setVjetar] = useState("");
+  const [kisa, setKisa] = useState(false);
+  const [teren, setTeren] = useState<"dobro" | "mokro" | "lose">("dobro");
+  const [kartona, setKartona] = useState("");
+  const [penali, setPenali] = useState("");
+  const okolisUlaz: OkolisUlaz | null = useMemo(() => {
+    const v = parseFloat(vjetar.replace(",", "."));
+    const stariTeren = teren !== "dobro";
+    if (!(Number.isFinite(v) && v > 0) && !kisa && !stariTeren) return null;
+    return {
+      ...(Number.isFinite(v) && v > 0 ? { vjetarKmh: v } : {}),
+      ...(kisa ? { kisa: true } : {}),
+      ...(stariTeren ? { teren } : {}),
+    };
+  }, [vjetar, kisa, teren]);
+  const sudacUlaz: SudacUlaz | null = useMemo(() => {
+    const k = parseFloat(kartona.replace(",", "."));
+    const p = parseFloat(penali.replace(",", "."));
+    if (!Number.isFinite(k) && !Number.isFinite(p)) return null;
+    return {
+      ...(Number.isFinite(k) ? { kartonaPoUtakmici: k } : {}),
+      ...(Number.isFinite(p) ? { penaliPoUtakmici: p } : {}),
+    };
+  }, [kartona, penali]);
+
   const sarp: SarpIzlaz = useMemo(
     () =>
       sarpBrain({
@@ -82,8 +110,10 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         formaDom: props.formaDom ?? null,
         formaGost: props.formaGost ?? null,
         goals: goals ?? null,
+        okolis: okolisUlaz,
+        sudac: sudacUlaz,
       }),
-    [utakmica, kvote, props.brojKladionica, props.formaDom, props.formaGost, goals],
+    [utakmica, kvote, props.brojKladionica, props.formaDom, props.formaGost, goals, okolisUlaz, sudacUlaz],
   );
 
   // historija kvota: svaki novi dohvat = snapshot
@@ -232,6 +262,53 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         kvote={kvote}
         konsenzus={sarp.konsenzus}
       />
+
+      {/* 0.8 · OKOLNOSTI — vjetar/kiša/teren + profil suca (opcionalno) */}
+      <section className="rounded-xl border border-border bg-card p-4">
+        <button
+          className="flex w-full items-center justify-between text-sm font-semibold"
+          onClick={() => setOkolnostiOpen((o) => !o)}
+        >
+          <span className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-slate-400" /> Okolnosti (vjetar · kiša · sudac)
+          </span>
+          {(okolisUlaz || sudacUlaz)
+            ? <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">AKTIVNO</span>
+            : <span className="text-xs font-normal text-muted-foreground">bez podataka = identitet</span>}
+        </button>
+        {okolnostiOpen && (
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground">Vjetar (km/h)</span>
+              <input value={vjetar} onChange={(e) => setVjetar(e.target.value)} placeholder="npr. 38"
+                className="rounded-md border border-border bg-background px-2 py-1.5" inputMode="decimal" />
+            </label>
+            <label className="flex items-end gap-2 pb-1.5">
+              <input type="checkbox" checked={kisa} onChange={(e) => setKisa(e.target.checked)} className="h-4 w-4" />
+              <span>Jaka kiša</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground">Teren</span>
+              <select value={teren} onChange={(e) => setTeren(e.target.value as "dobro" | "mokro" | "lose")}
+                className="rounded-md border border-border bg-background px-2 py-1.5">
+                <option value="dobro">dobro</option>
+                <option value="mokro">mokro</option>
+                <option value="lose">loše</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground">Sudac: kartona/ut.</span>
+              <input value={kartona} onChange={(e) => setKartona(e.target.value)} placeholder="npr. 5.6"
+                className="rounded-md border border-border bg-background px-2 py-1.5" inputMode="decimal" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-foreground">Sudac: penali/ut.</span>
+              <input value={penali} onChange={(e) => setPenali(e.target.value)} placeholder="npr. 0.45"
+                className="rounded-md border border-border bg-background px-2 py-1.5" inputMode="decimal" />
+            </label>
+          </div>
+        )}
+      </section>
 
       {/* 1 · MATCH INFO */}
       <section className="rounded-xl border border-border bg-card p-4">
