@@ -18,6 +18,93 @@ export interface KvantKontekst {
   hazard?: { beta: number; primijenjen: boolean; scenarij: string; lamDomEf: number; lamGostEf: number };
   ot?: { p: number; primijenjeno: boolean; pomakBodovi: number };
   ht?: { ekstraGolovi7v6: number; primijenjeno: boolean; gkUmorDom: boolean; gkUmorGost: boolean };
+  /** v6 OKOLIS: weather drag (vjetar/kiša/teren) — pomak golova i kornera */
+  okolis?: {
+    primijenjeno: boolean; pomakGolovi: number; pomakKornera: number;
+    razlozi: string[]; opis: string;
+  };
+  /** v6 SUDAC: profil suca + rizik crvenog kartona */
+  sudac?: {
+    primijenjeno: boolean; strog: boolean; rizikCrvena: number; opis: string;
+  };
+  /** v6 BLOWOUT (košarka): garbage-time korekcija totala kod velikih margina */
+  blowout?: { primijenjeno: boolean; margina: number; pomakBodovi: number };
+  /** v6 GARBAGE TIME (rukomet): tempo-dolaziš kod velike live razlike */
+  garbageTime?: { primijenjeno: boolean; margina: number | null; minut: number | null; ekstraGolovi: number };
+}
+
+/* ── TIKET KONTEKST (v6) — Ticket Variance Score i korelacije u chat.
+   Korpa.tsx sprema posljednju analizu tiketa ovdje; Luna i Orion
+   je čitaju kada se korisnik pita o tiketu/korpi. */
+export interface TiketKontekst {
+  brojNoga: number;
+  kvota: number;
+  vjerojatnost: number;
+  edge: number;
+  korelacijaUpozorenje: boolean;
+  nemoguceNoge: boolean;
+  varijanca: {
+    razina: string;
+    entropija: number;
+    remiPushNoge: number;
+    upozorenje: string | null;
+  };
+  noge: { utakmica: string; trziste: string; tip: string; kvota: number; p: number }[];
+  spremljeno: number;
+}
+
+const TIKET_KEY = "andromeda.ai.tiket-kontekst";
+const TIKET_TTL = 12 * 60 * 60 * 1000;
+
+export function spremiKontekstTiketa(t: Omit<TiketKontekst, "spremljeno">): void {
+  try {
+    localStorage.setItem(TIKET_KEY, JSON.stringify({ ...t, spremljeno: Date.now() }));
+    window.dispatchEvent(new CustomEvent("andromeda:tiket-kontekst"));
+  } catch { /* puna memorija — ignoriraj */ }
+}
+
+export function ucitajKontekstTiketa(): TiketKontekst | null {
+  try {
+    const raw = localStorage.getItem(TIKET_KEY);
+    if (!raw) return null;
+    const t = JSON.parse(raw) as TiketKontekst;
+    if (!t || typeof t.brojNoga !== "number") return null;
+    if (Date.now() - (t.spremljeno ?? 0) > TIKET_TTL) return null;
+    return t;
+  } catch {
+    return null;
+  }
+}
+
+export function izbrisiKontekstTiketa(): void {
+  try { localStorage.removeItem(TIKET_KEY); } catch { /* ignoriraj */ }
+  window.dispatchEvent(new CustomEvent("andromeda:tiket-kontekst"));
+}
+
+/** Tiket blok za AI prompt — Ticket Variance Score, korelacije i noge. */
+export function izgradiTiketTekst(t: TiketKontekst): string {
+  const linije: string[] = [];
+  linije.push("── PODACI BET SLIP-a (Korpa) — kontekst tiketa ──");
+  linije.push(
+    `Tiket: ${t.brojNoga} noga · ukupna kvota ${t.kvota.toFixed(2)} · kombinirana vjerojatnost ${pct(t.vjerojatnost)} · ` +
+    `EV ${(t.edge * 100).toFixed(1)}%`,
+  );
+  linije.push(
+    `TICKET VARIANCE SCORE: ${t.varijanca.razina.toUpperCase()} (Shannon entropija ${(t.varijanca.entropija * 100).toFixed(0)}%)` +
+    ` · noga s remi/push rizikom: ${t.varijanca.remiPushNoge}`,
+  );
+  if (t.korelacijaUpozorenje)
+    linije.push("Korelacija: više noga iz iste utakmice — ishodi nisu nezavisni (korelacijski motor je korigira).");
+  if (t.nemoguceNoge)
+    linije.push("UPOZORENJE: tiket sadrži uzajamno isključive noge — ne može proći.");
+  if (t.varijanca.upozorenje) linije.push(t.varijanca.upozorenje);
+  if (t.noge?.length) {
+    linije.push(
+      "Noge: " + t.noge.map((n) => `${n.tip} @${n.kvota.toFixed(2)} (${n.utakmica}, ${n.trziste})`).join(" | "),
+    );
+  }
+  linije.push("(Ove podatke koristi samo ako se korisnik pita o tiketu, korpi ili ulozi.)");
+  return linije.join("\n");
 }
 
 export interface MecKontekst {
@@ -144,6 +231,28 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
   }
   if (c.kvant) {
     const q = c.kvant;
+    if (q.okolis?.primijenjeno) {
+      linije.push(
+        `KVANT Okolis: ${q.okolis.opis} — ukupna λ i korneri su ispravljeno niži; Under i U-kartonska tržišta su blago favorizirana`,
+      );
+    }
+    if (q.sudac?.primijenjeno) {
+      linije.push(
+        q.sudac.strog
+          ? `KVANT Sudac: ${q.sudac.opis} — očekuj više kartona: rizik crvenog kartona ${pct(q.sudac.rizikCrvena)} > 18%`
+          : `KVANT Sudac: ${q.sudac.opis}`,
+      );
+    }
+    if (q.blowout?.primijenjeno) {
+      linije.push(
+        `KVANT Blowout (košarka): očekivana margina ${q.blowout.margina.toFixed(1)} > 16.5 → total +${q.blowout.pomakBodovi.toFixed(1)} poena (garažna 4. četvrtina, DRtg +6%, klupe)`,
+      );
+    }
+    if (q.garbageTime?.primijenjeno) {
+      linije.push(
+        `KVANT Garbage time (rukomet): razlika ${q.garbageTime.margina?.toFixed(0)} golova u ${q.garbageTime.minut?.toFixed(0)}. min → tempo +${q.garbageTime.ekstraGolovi.toFixed(1)} gola (tranzicijske kontra)`,
+      );
+    }
     if (q.skellam) {
       linije.push(
         `KVANT Skellam (egzaktno): 1X2 bez marže ${pct(q.skellam.p1)}/${pct(q.skellam.pX)}/${pct(q.skellam.p2)} · azijski handicap: ` +
