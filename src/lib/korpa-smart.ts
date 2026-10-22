@@ -133,10 +133,15 @@ export function izracunajKorpuSmart(
   tipovi: KorpaTip[],
   opts: { bankroll?: number; kellyFrac?: number; maxUlogPerc?: number; rho?: number } = {},
 ): KorpaSmartIzlaz {
-  const bankroll = Math.max(0, opts.bankroll ?? 0);
-  const kellyFrac = Math.min(1, Math.max(0.05, opts.kellyFrac ?? 0.25));
-  const maxUlogPerc = Math.min(10, Math.max(0.5, opts.maxUlogPerc ?? 3));
-  const rho = Math.min(0.5, Math.max(0, opts.rho ?? 0.2));
+  const bankrollRaw = Number(opts.bankroll ?? 0);
+  const kellyRaw = Number(opts.kellyFrac ?? 0.25);
+  const maxRaw = Number(opts.maxUlogPerc ?? 3);
+  const rhoRaw = Number(opts.rho ?? 0.2);
+  const bankroll = Number.isFinite(bankrollRaw) ? Math.max(0, bankrollRaw) : 0;
+  const kellyFrac = Number.isFinite(kellyRaw) ? Math.min(1, Math.max(0.05, kellyRaw)) : 0.25;
+  const maxUlogPerc = Number.isFinite(maxRaw) ? Math.min(10, Math.max(0.5, maxRaw)) : 3;
+  const rho = Number.isFinite(rhoRaw) ? Math.min(0.5, Math.max(0, rhoRaw)) : 0.2;
+  const safeTips = tipovi.filter((t) => t && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost >= 0 && t.vjerojatnost <= 1);
 
   const prazno: KorpaSmartIzlaz = {
     n: 0, kvota: 1, pNaive: 0, pKorigirana: 0, edgeNaive: 0, edgeKorigirana: 0,
@@ -144,11 +149,11 @@ export function izracunajKorpuSmart(
     ligaKorelacija: false, ligaPoruka: null,
     grupe: [], kellyPct: 0, ulogPerc: 0, ulogIznos: 0, rizikPerc: 0, isplativo: false,
   };
-  if (tipovi.length === 0) return prazno;
+  if (safeTips.length === 0) return prazno;
 
   // grupe po utakmici (redoslijed zadrži)
   const mapa = new Map<string, KorpaTip[]>();
-  for (const t of tipovi) {
+  for (const t of safeTips) {
     const arr = mapa.get(t.utakmica) ?? [];
     arr.push(t);
     mapa.set(t.utakmica, arr);
@@ -176,7 +181,7 @@ export function izracunajKorpuSmart(
       utakmica,
       noge: noge.map((n) => `${n.trziste}: ${n.tip}`),
       pZajedno,
-      kvotaZajedno: noge.reduce((a, n) => a * Math.max(1, n.kvota), 1),
+      kvotaZajedno: noge.reduce((a, n) => Math.min(1e12, a * Math.max(1, n.kvota)), 1),
       nemoguca,
     });
   }
@@ -185,7 +190,7 @@ export function izracunajKorpuSmart(
   // Svaki par (noga A iz utakmice X, noga B iz utakmice Y, X ≠ Y,
   // ista liga) unosi ρ ≈ 0.05 → penal na zajedničku vjerojatnost.
   const ligaBrojac = new Map<string, number>();
-  for (const t of tipovi) {
+  for (const t of safeTips) {
     const liga = (t.liga ?? "").trim().toLowerCase();
     if (!liga) continue;
     // brojimo UTAKMICE po ligi, ne noge (noge iste utakmice su već korelirane)
@@ -193,7 +198,7 @@ export function izracunajKorpuSmart(
   }
   // per-liga: koliko RAZLIČITIH utakmica imamo
   const utakmicePoLigi = new Map<string, Set<string>>();
-  for (const t of tipovi) {
+  for (const t of safeTips) {
     const liga = (t.liga ?? "").trim().toLowerCase();
     if (!liga) continue;
     const s = utakmicePoLigi.get(liga) ?? new Set<string>();
@@ -218,12 +223,12 @@ export function izracunajKorpuSmart(
     ? `Korelacija iste lige: ${nParaLige} ${nParaLige === 1 ? "par" : nParaLige < 5 ? "para" : "parova"} nogu iz različitih utakmica${ligeKorelirane.length ? ` u ${ligeKorelirane.slice(0, 3).join(", ")}` : ""} dijele stil/tempo/termin — vjerojatnost smanjena za ${((1 - Math.max(MIN_LIGA, Math.pow(1 - PENAL_LIGE, nParaLige))) * 100).toFixed(1)}%.`
     : null;
 
-  const kvota = tipovi.reduce((a, t) => a * (t.kvota > 1 ? t.kvota : 1), 1);
-  const pNaive = tipovi.reduce((a, t) => a * clamp01(t.vjerojatnost), 1);
+  const kvota = safeTips.reduce((a, t) => Math.min(1e12, a * (t.kvota > 1 ? t.kvota : 1)), 1);
+  const pNaive = safeTips.reduce((a, t) => a * clamp01(t.vjerojatnost), 1);
   const edgeNaive = kvota * pNaive - 1;
   const edgeKorigirana = kvota * pKorigirana - 1;
 
-  const hazard = tipovi.length > 3;
+  const hazard = safeTips.length > 3;
   const hazardPoruka = hazard
     ? "Accumulator Hazard: visoka varijanca smanjuje dugoročni ROI — razmisli o manjem broju nogu ili manjem ulogu."
     : "";
@@ -231,19 +236,21 @@ export function izracunajKorpuSmart(
   const b = kvota - 1;
   const q = 1 - pKorigirana;
   const kelly = b > 0 ? (b * pKorigirana - q) / b : 0;
-  const korelacijaUpozorenje = mapa.size < tipovi.length || nemoguceNoge || ligaKorelacija;
+  const korelacijaUpozorenje = mapa.size < safeTips.length || nemoguceNoge || ligaKorelacija;
   // korelirane grupe dijele sudbinu — Kelly na pola, uz upozorenje
   const kellyEff = korelacijaUpozorenje ? kelly * 0.5 : kelly;
 
   const ulogPerc = Math.min(maxUlogPerc, Math.max(0, kellyEff) * kellyFrac * 100);
-  const ulogIznos = (bankroll * ulogPerc) / 100;
+  const ulogIznosRaw = (bankroll * ulogPerc) / 100;
+  const ulogIznos = Number.isFinite(ulogIznosRaw) ? ulogIznosRaw : 0;
 
   const q0 = 1 - pKorigirana;
-  const stdRet = Math.sqrt(Math.max(0, pKorigirana * q0)) * b;
+  const stdRetRaw = Math.sqrt(Math.max(0, pKorigirana * q0)) * b;
+  const stdRet = Number.isFinite(stdRetRaw) ? stdRetRaw : 0;
   const rizikPerc = Math.min(100, Math.round((stdRet / Math.max(0.01, kvota)) * 100));
 
   return {
-    n: tipovi.length,
+    n: safeTips.length,
     kvota,
     pNaive,
     pKorigirana,
