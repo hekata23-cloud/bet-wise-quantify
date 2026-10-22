@@ -420,10 +420,14 @@ export function sudacProfil(s?: SudacUlaz | null): SudacIzlaz {
   };
 }
 
-
 /* ── ENTERPRISE PRECISION — optional calculation modules ──────────── */
 export {
   calculateMotivation,
+  calculateCircadianAdjustment,
+  applyCircadianToFirstHalfLambda,
+  calculateBenchDepth,
+  applyDerbySuspensionShield,
+  formatEdgeCaseSignals,
   applyMotivationToLambdas,
   applyDerbyDrawAdjustment,
   calculateSetPieceXg,
@@ -431,6 +435,14 @@ export {
   calculateCalibrationMetrics,
   calibrateProbability,
   formatEnterpriseSignals,
+  type CircadianInput,
+  type CircadianResult,
+  type BenchDepthInput,
+  type BenchDepthResult,
+  type BenchSideResult,
+  type SuspensionPlayerInput,
+  type SuspensionPlayerResult,
+  type EdgeCaseMatchSignals,
   type MotivationInput,
   type MotivationResult,
   type SetPieceInput,
