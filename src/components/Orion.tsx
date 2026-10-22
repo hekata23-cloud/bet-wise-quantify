@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send, ScanEye, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
-import { ucitajKontekstMeca, izgradiKontekstTekst } from "@/lib/ai-context";
+import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadJSON, saveJSON, hasKey } from "@/lib/storage";
 import { ORION_PERSONA, ORION_PODSJETNIK, ORION_BRZI_UPITI, SPORT_PREDLOŠCI } from "@/lib/botovi";
 
@@ -58,11 +58,13 @@ export function Orion() {
       // Prva poruka nosi punu personu; ostale kratki podsjetnik.
       // Match Engine kontekst (SARP/λ/MC/SGP/live) se automatski ubrizgava.
       const kontekst = ucitajKontekstMeca();
+      const tiket = ucitajKontekstTiketa();
       const blok = kontekst ? `\n\n${izgradiKontekstTekst(kontekst)}` : "";
+      const blokTiket = tiket ? `\n\n${izgradiTiketTekst(tiket)}` : "";
       const poslano =
         messages.length === 0
-          ? `${ORION_PERSONA}\n\n──────────\n\nKorisnikovo pitanje: ${poruka}${blok}`
-          : `${ORION_PODSJETNIK}\n${poruka}${blok}`;
+          ? `${ORION_PERSONA}\n\n──────────\n\nKorisnikovo pitanje: ${poruka}${blok}${blokTiket}`
+          : `${ORION_PODSJETNIK}\n${poruka}${blok}${blokTiket}`;
       const odgovor = await askAi(poslano, nova.slice(0, -1), [], {});
       setMessages((m) => [...m, korisnik, { role: "assistant", content: odgovor, ts: Date.now() }]);
     } catch (e) {
