@@ -20,6 +20,7 @@ import {
   kellyUlogPct, metrikeIzGrida, monteCarlo, skellam1x2,
   type FormaGolovi, type McIzlaz,
 } from "./math-engine";
+import { HAZARD_BETA, ahSkellam } from "./skellam";
 import type { GoalsIzlaz } from "./goals-motor";
 
 export type SarpTip = {
@@ -77,6 +78,14 @@ export type SarpIzlaz = {
   konsenzus: Record<string, number>;
   mc: McIzlaz;
   suglasnostSkellam: number; // 0..1 koliko se model i Skellam slažu
+  /** KVANT NADGRADNJA (v5): egzaktni Skellam AH push + hazard scenarij */
+  kvant: KvantKontekst;
+};
+
+export type KvantAh = { linija: string; win: number; push: number; loss: number; fer: number };
+export type KvantKontekst = {
+  skellam: { p1: number; pX: number; p2: number; ah: KvantAh[]; pushRizikMax: number };
+  hazard: { beta: number; primijenjen: boolean; scenarij: string; lamDomEf: number; lamGostEf: number };
 };
 
 const TRZISTA: { kljuc: string; label: string; par?: [string, string] }[] = [
@@ -225,10 +234,45 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     1 - (Math.abs(M.p1 - sk.p1) + Math.abs(M.pX - sk.pX) + Math.abs(M.p2 - sk.p2)),
     0, 1,
   );
+
+  // KVANT NADGRADNJA (v5): egzaktni Skellam AH — ključne linije za
+  // domaćina i gosta s vidljivim PUSH RISK % na cjelobrojnim linijama.
+  const AH_LINIJE: Array<[string, number]> = [
+    ["−1.0", -1], ["−1.5", -1.5], ["+0.5", 0.5], ["+1.0", 1],
+  ];
+  const ahDom = AH_LINIJE.map(([label, L]) => {
+    const r = ahSkellam(lamH, lamA, L);
+    return { linija: label, win: r.win, push: r.push, loss: r.loss, fer: r.ferWin };
+  });
+  const ahGost = AH_LINIJE.map(([, L]) => {
+    const r = ahSkellam(lamA, lamH, L);
+    const labelGost = (L > 0 ? "−" : "+") + Math.abs(L).toFixed(1);
+    return { linija: labelGost, win: r.win, push: r.push, loss: r.loss, fer: r.ferWin };
+  });
+  const pushRizikMax = Math.max(...ahDom.map((a) => a.push), ...ahGost.map((a) => a.push));
+  // HAZARD scenarij: underdog = tim s manjom pred-meč λ; ako on da
+  // prvi gol u 0–20 min, obje efektivne λ rastu ×β = 1.18.
+  const underdogGost = lamA < lamH;
+  const kvant: KvantKontekst = {
+    skellam: {
+      p1: sk.p1, pX: sk.pX, p2: sk.p2,
+      ah: [...ahDom, ...ahGost],
+      pushRizikMax: Math.round(pushRizikMax * 1000) / 1000,
+    },
+    hazard: {
+      beta: HAZARD_BETA,
+      primijenjen: true,
+      scenarij: underdogGost
+        ? `prvi gol gosta (underdog, λ ${lamA.toFixed(2)}) u 0–20 min`
+        : `prvi gol domaćina (underdog, λ ${lamH.toFixed(2)}) u 0–20 min`,
+      lamDomEf: Math.round(lamH * HAZARD_BETA * 100) / 100,
+      lamGostEf: Math.round(lamA * HAZARD_BETA * 100) / 100,
+    },
+  };
   faze.push({
     broj: 4,
     naziv: "Model (Poisson + Dixon-Coles + Skellam)",
-    sazetak: `Matrica rezultata 10×10 daje 1 ${fmtPct(M.p1)} · X ${fmtPct(M.pX)} · 2 ${fmtPct(M.p2)}, BTTS ${fmtPct(M.btts)}, O2.5 ${fmtPct(M.o25)}. Skellam nezavisna provjera slaže se ${fmtPct(suglasnostSkellam)}.`,
+    sazetak: `Matrica rezultata 10×10 daje 1 ${fmtPct(M.p1)} · X ${fmtPct(M.pX)} · 2 ${fmtPct(M.p2)}, BTTS ${fmtPct(M.btts)}, O2.5 ${fmtPct(M.o25)}. Skellam nezavisna provjera slaže se ${fmtPct(suglasnostSkellam)}. AH push rizik (Skellam): najviše ${(pushRizikMax * 100).toFixed(1)}%.`,
     podaci: [
       `λ domaćin = ${lamH.toFixed(2)}, λ gost = ${lamA.toFixed(2)}, rho = ${rho.toFixed(2)}`,
       `Skellam: 1 ${fmtPct(sk.p1)} · X ${fmtPct(sk.pX)} · 2 ${fmtPct(sk.p2)}`,
@@ -425,5 +469,6 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     konsenzus,
     mc,
     suglasnostSkellam: Math.round(suglasnostSkellam * 1000) / 1000,
+    kvant,
   };
 }
