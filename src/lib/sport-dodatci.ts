@@ -1,6 +1,8 @@
 // ============================================================
 // SPORT-DODATCI.TS — proširena tržišta za Košarka Pro / Rukomet Pro
 // 1) Spread / Azijski handicap — normalna distribucija razlike
+//    v5: cjelobrojne linije dobivaju PUSH RIZIK % (razlika tačno na
+//    liniji → povrat uloga), fer kvote su push-neutralizirane
 // 2) Raspad zbroja po četvrtinama (košarka) / poluvremenima (rukomet)
 //    — varijanca perioda konzistentno se sabira u varijancu totala
 // 3) Tempo (pace) i ratingi napada/obrane — 1.00 = prosjek sporta
@@ -28,24 +30,47 @@ export type HandicapRed = {
   linija: number;       // handicap domaćina (npr. -4.5)
   pDom: number;
   pGost: number;
-  ferDom: number;       // 1/p — fer kvota
+  pushRizik: number;    // v5: P(razlika tačno na liniji) — samo cjelobrojne
+  ferDom: number;       // push-neutralizirana fer kvota (1 + loss/win)
   ferGost: number;
   najbolji: "dom" | "gost";
 };
 
-/** 5 ključnih handicap linija oko očekivane razlike (sve na .5 — bez neodlučenih). */
+/** 5 ključnih handicap linija oko očekivane razlike — mješavina pola i
+ *  pune linije: pune linije nose PUSH RIZIK %, polovične su bez neodlučenih. */
 export function handicapRedovi(sport: SportDod, lambdaDom: number, lambdaGost: number): HandicapRed[] {
   const sd = SIGMA_RAZLIKA[sport];
   const d = lambdaDom - lambdaGost;
   const korak = sport === "kosarka" ? 3 : 1;
-  const baza = Math.round(d / korak) * korak + (d >= 0 ? 0.5 : -0.5);
-  return [-2, -1, 0, 1, 2].map((k) => {
-    const linija = Math.round((baza + k * korak) * 10) / 10;
+  const baza = Math.round(d / korak) * korak;
+  return [-1.5, -1, -0.5, 0, 0.5].map((o) => {
+    const linija = Math.round((baza + o * korak) * 10) / 10;
+    const cjelobrojna = Math.abs((linija * 2) % 2) < 1e-9;
+    if (cjelobrojna) {
+      // win = P(K > L), push = P(K = L) ≈ P(L−0.5 < K < L+0.5), loss = ostatak
+      const win = Math.min(0.98, Math.max(0.02, pOver(d, sd, linija + 0.5)));
+      const push = Math.min(0.5, Math.max(0.001,
+        phi((linija + 0.5 - d) / sd) - phi((linija - 0.5 - d) / sd)));
+      const loss = Math.max(0, 1 - win - push);
+      return {
+        linija,
+        pDom: win,
+        pGost: loss,
+        pushRizik: push,
+        ferDom: win > 0 ? 1 + loss / win : Infinity,
+        ferGost: loss > 0 ? 1 + win / loss : Infinity,
+        najbolji: (win >= loss ? "dom" : "gost") as "dom" | "gost",
+      };
+    }
     const pDom = Math.min(0.98, Math.max(0.02, pOver(d, sd, linija)));
     const pGost = 1 - pDom;
     return {
-      linija, pDom, pGost,
-      ferDom: 1 / pDom, ferGost: 1 / pGost,
+      linija,
+      pDom,
+      pGost,
+      pushRizik: 0,
+      ferDom: 1 / pDom,
+      ferGost: 1 / pGost,
       najbolji: (pDom >= pGost ? "dom" : "gost") as "dom" | "gost",
     };
   });
@@ -106,4 +131,3 @@ export function ratingLabel(x: number, obrana: boolean): string {
   if (obrana) return x <= 0.93 ? "Jaka obrana" : x >= 1.07 ? "Slabija obrana" : "Prosječna obrana";
   return x >= 1.07 ? "Jak napad" : x <= 0.93 ? "Slabiji napad" : "Prosječan napad";
 }
-
