@@ -1,3 +1,5 @@
+import { HAZARD_BETA } from "./skellam";
+
 /* ═══════════════════════════════════════════════════════════════════
    HTFT-MOTOR — Prijelazni HT/FT engine za sva tri sporta (v1)
    ═══════════════════════════════════════════════════════════════════
@@ -91,6 +93,11 @@ export type HtFtNogometIzlaz = {
   preokret12: number;
   preokret21: number;
   razinaPreokreta: "nisko" | "srednje" | "visoko";
+  /** KONZISTENTNOST LOCK: zbroj svih 9 stanja (mora biti tačno 1) */
+  zbrojStanja: number;
+  /** HAZARD β=1.18: primijenjen na stanja u kojima UNDERDOG vodi */
+  hazardBeta: number;
+  hazardPrimijenjen: boolean;
 };
 
 /** Glavni nogometni HT/FT proračun iz očekivanih golova cijele utakmice. */
@@ -126,13 +133,22 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   const ht: { p1: number; pX: number; p2: number } = { p1: pHTs["1"], pX: pHTs["X"], p2: pHTs["2"] };
 
   // 2. poluvrijeme: prijelazna dinamika po HT stanju
+  // HAZARD MODEL (β=1.18, v5): ako UNDERDOG (tim s nižom pred-meč λ)
+  // vodi na HT (što je HT-slika scenarija "prvi gol underdog u 0–20
+  // min"), taktička ploča se otvara — OBA λ₂H dobivaju ×β na vrh
+  // postojeće dinamike (tlačenje ×1.25 / držanje ×0.90 se čuvaju, ne
+  // zamjenjuju — bez dvostruke kazne istog efekta).
+  const underdogGost = lamA < lamH; // slabiji tim s manjim λ
+  const underdogDom = lamH < lamA;
+  const betaDomVodi = underdogDom ? HAZARD_BETA : 1; // dom vodi na HT (stanje 1)
+  const betaGostVodi = underdogGost ? HAZARD_BETA : 1; // gost vodi na HT (stanje 2)
   const dinamika: Record<"1" | "X" | "2", { h: number; a: number }> = {
-    // dom vodi: gost tlači (A ×1.25), dom drži (H ×0.90)
-    "1": { h: lam2H_H * 0.90, a: lam2H_A * 1.25 },
+    // dom vodi: gost tlači (A ×1.25), dom drži (H ×0.90) [+ hazard ako je dom underdog]
+    "1": { h: lam2H_H * 0.90 * betaDomVodi, a: lam2H_A * 1.25 * betaDomVodi },
     // remi: oba otvoreno
     "X": { h: lam2H_H * 1.05, a: lam2H_A * 1.05 },
-    // gost vodi: dom tlači
-    "2": { h: lam2H_H * 1.25, a: lam2H_A * 0.90 },
+    // gost vodi: dom tlači [+ hazard ako je gost underdog]
+    "2": { h: lam2H_H * 1.25 * betaGostVodi, a: lam2H_A * 0.90 * betaGostVodi },
   };
 
   // P(2H razlika = d) za dato stanje (zbrajanje po gridu 0..N)
@@ -176,6 +192,8 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   }
   const zbroj = celije.reduce((a, c) => a + c.p, 0);
   for (const c of celije) c.p /= zbroj || 1;
+  // KONZISTENTNOST LOCK: nakon normalizacije zbroj 9 stanja je točno 1
+  const zbrojStanja = celije.reduce((a, c) => a + c.p, 0);
   celije.sort((a, b) => b.p - a.p);
 
   const drzanje =
@@ -199,6 +217,9 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
     preokret12,
     preokret21,
     razinaPreokreta,
+    zbrojStanja: Math.round(zbrojStanja * 1e12) / 1e12,
+    hazardBeta: HAZARD_BETA,
+    hazardPrimijenjen: underdogGost || underdogDom,
   };
 }
 
