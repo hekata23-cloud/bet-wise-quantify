@@ -299,3 +299,21 @@ export function lambdaIzForme(dom: FormaGolovi | null, gost: FormaGolovi | null)
   const mu = clamp((0.55 * multGost + 0.45 * avgGost) * LIGA_PO_TIMU * 0.94, 0.2, 4.2);
   return { lam, mu };
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SKELLAM AH + HAZARD NADGRADNJA (v5) — delegira na skellam.ts
+   ═══════════════════════════════════════════════════════════════════
+   skellam.ts drži egzaktnu implementaciju (BesselovI, AH win/push/
+   loss, gol-linija s pushom, hazard β = 1.18). Ovdje su izloženi pod
+   istim API-jem da svi postojeći pozivatelji math-engine imaju
+   pristup bez promjene importa. */
+export {
+  ahSkellam,
+  skellamUkupnoOver,
+  HAZARD_BETA,
+  hazardEfektivneLam,
+  type SkellamAhIshod,
+  type SkellamUkupnoIshod,
+  type HazardScenarij,
+  type HazardIzlaz,
+} from "./skellam";
