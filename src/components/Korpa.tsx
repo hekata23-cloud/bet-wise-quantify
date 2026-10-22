@@ -8,12 +8,13 @@ import { useCallback, useEffect, useState } from "react";
 import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers, Share2, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
-  loadKorpa, ukloniIzKorpe, ocistiKorpu,
+  loadKorpa, ukloniIzKorpe, ocistiKorpu, varijancaTiketa,
   type KorpaTip,
 } from "@/lib/korpa";
 import { izracunajKorpuSmart } from "@/lib/korpa-smart";
 import { loadJSON, saveJSON } from "@/lib/storage";
 import { podijeliTiket, preuzmiTiket } from "@/lib/tiket-slika";
+import { spremiKontekstTiketa } from "@/lib/ai-context";
 
 const BANKROLL_KEY = "andromeda.bankroll";
 const KELLY_KEY = "andromeda.kelly.frac";
@@ -54,6 +55,32 @@ export function Korpa() {
 
   const r = izracunajKorpuSmart(tipovi, { bankroll, kellyFrac });
   const korekcija = r.n > 0 && Math.abs(r.pKorigirana - r.pNaive) > 0.0001;
+  // TICKET VARIANCE SCORE (v3): Shannon entropija svih noga + remi/push upozorenje
+  const vj = varijancaTiketa(tipovi);
+
+  // TIKET KONTEKST za Lunu/Oriona: sprema se svaki put kad se korpa promijeni
+  useEffect(() => {
+    if (tipovi.length === 0) return;
+    spremiKontekstTiketa({
+      brojNoga: r.n,
+      kvota: r.kvota,
+      vjerojatnost: r.pKorigirana,
+      edge: r.edgeKorigirana,
+      korelacijaUpozorenje: r.korelacijaUpozorenje,
+      nemoguceNoge: r.nemoguceNoge,
+      varijanca: {
+        razina: vj.razina,
+        entropija: vj.entropija,
+        remiPushNoge: vj.remiPushNoge,
+        upozorenje: vj.upozorenje,
+      },
+      noge: tipovi.map((t) => ({
+        utakmica: t.utakmica, trziste: t.trziste, tip: t.tip,
+        kvota: t.kvota, p: t.vjerojatnost,
+      })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipovi]);
 
   async function podijeliListic() {
     try {
@@ -262,6 +289,32 @@ export function Korpa() {
                   />
                 </div>
               </div>
+
+              {/* TICKET VARIANCE SCORE (v3) — Shannon entropija noga */}
+              {r.n > 0 && (
+                <div>
+                  <div className="mb-1 flex justify-between">
+                    <span className="text-muted-foreground">Varijansa tiketa</span>
+                    <span className={`font-mono font-semibold ${vj.razina === "visoka" ? "text-red-400" : vj.razina === "balansirana" ? "text-amber-400" : "text-emerald-400"}`}>
+                      {vj.razina === "visoka" ? "HIGH VARIANCE" : vj.razina === "balansirana" ? "Balanced" : "Low Variance"}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${vj.razina === "visoka" ? "bg-red-500" : vj.razina === "balansirana" ? "bg-amber-500" : "bg-emerald-500"}`}
+                      style={{ width: `${(vj.entropija * 100).toFixed(0)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Remi/push upozorenje (3+ noge) */}
+              {vj.upozorenje && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{vj.upozorenje}</span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between rounded-lg bg-emerald-500/10 px-3 py-2">
                 <span className="font-semibold text-emerald-300">Preporučeni ulog (Kelly)</span>
