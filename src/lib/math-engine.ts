@@ -317,3 +317,105 @@ export {
   type HazardScenarij,
   type HazardIzlaz,
 } from "./skellam";
+
+/* ── OKOLIS I SUDAC (v6) ────────────────────────────────────────────
+   Environmental & Match Official modifikatori — čiste funkcije,
+   identitet bez podataka (nijedan broj se ne mijenja kad input
+   nema uvjet). Poziva ih sarp-brain prije gradnje grid/Skellam. */
+
+export type OkolisUlaz = {
+  /** brzina vjetra u km/h (mjereno ili prognoza) */
+  vjetarKmh?: number;
+  /** jaka/česta kiša (ne laka rosulja) */
+  kisa?: boolean;
+  /** stanje terena */
+  teren?: "dobro" | "mokro" | "lose";
+};
+
+export type OkolisIzlaz = {
+  primijenjeno: boolean;
+  /** pomak ukupne λ (negativan = manje golova) */
+  pomakGolovi: number;
+  /** pomak projekcije kornera */
+  pomakKornera: number;
+  razlozi: string[];
+  opis: string;
+};
+
+/** Pragovi — javni da UI/selftest i chat mogu citati iste brojke. */
+export const VJETAR_PRAG_KMH = 35;
+export const DRAG_GOLOVI = 0.22;
+export const DRAG_KORNERI = 1.5;
+
+/**
+ * WEATHER DRAG FACTOR: vjetar > 35 km/h, jaka kiša ili ekstremni
+ * teren smanjuju tempo i preciznost → ukupna λ −0.22 i −1.5 kornera.
+ * Svaki zadovoljen uvjet sam po sebi aktivira drag (ne množe se);
+ * razlozi se slažu u listu za prompt chatova.
+ */
+export function okolisPomak(v?: OkolisUlaz | null): OkolisIzlaz {
+  const razlozi: string[] = [];
+  if (v) {
+    if (v.vjetarKmh != null && v.vjetarKmh > VJETAR_PRAG_KMH)
+      razlozi.push(`vjetar ${v.vjetarKmh.toFixed(0)} km/h > ${VJETAR_PRAG_KMH}`);
+    if (v.kisa) razlozi.push("jaka kiša");
+    if (v.teren === "mokro" || v.teren === "lose") razlozi.push(`teren: ${v.teren}`);
+  }
+  const primijenjeno = razlozi.length > 0;
+  return {
+    primijenjeno,
+    pomakGolovi: primijenjeno ? -DRAG_GOLOVI : 0,
+    pomakKornera: primijenjeno ? -DRAG_KORNERI : 0,
+    razlozi,
+    opis: primijenjeno
+      ? `weather drag −${DRAG_GOLOVI.toFixed(2)} λ ukupno · −${DRAG_KORNERI.toFixed(1)} kornera (${razlozi.join(", ")})`
+      : "identitet (bez okolnosti)",
+  };
+}
+
+export type SudacUlaz = {
+  /** prosjek kartona po utakmici suca */
+  kartonaPoUtakmici?: number;
+  /** prosjek dodijeljenih penala po utakmici */
+  penaliPoUtakmici?: number;
+};
+
+export type SudacIzlaz = {
+  primijenjeno: boolean;
+  strog: boolean;
+  /** vjerojatnost ≥1 crvenog kartona u ovoj utakmici (0..1) */
+  rizikCrvena: number;
+  opis: string;
+};
+
+export const SUDAC_KARTONA_PRAG = 5.0;
+export const SUDAC_PENALI_PRAG = 0.4;
+export const RIZIK_CRVENA_MIN = 0.18;
+
+/**
+ * REFEREE PROFILE ENGINE: sudac s > 5.0 kartona/utakmici ili
+ * > 0.4 penala/utakmici je "strog" → rizik crvenog kartona ide na
+ * > 18%. Model rizika: ligaška baza ~13% za barem jedan crveni;
+ * raste 3 pp za svaki karton iznad 4.5 i 10 pp za svaki penal
+ * iznad 0.3; strogim sucu pod pod 18%, strop 35%.
+ */
+export function sudacProfil(s?: SudacUlaz | null): SudacIzlaz {
+  const k = s?.kartonaPoUtakmici ?? null;
+  const p = s?.penaliPoUtakmici ?? null;
+  if (k == null && p == null)
+    return { primijenjeno: false, strog: false, rizikCrvena: 0.13, opis: "identitet (bez podataka o sucu)" };
+  const strog = (k != null && k > SUDAC_KARTONA_PRAG) || (p != null && p > SUDAC_PENALI_PRAG);
+  let rizik = 0.13;
+  if (k != null) rizik += Math.max(0, k - 4.5) * 0.03;
+  if (p != null) rizik += Math.max(0, p - 0.3) * 0.10;
+  if (strog) rizik = Math.max(RIZIK_CRVENA_MIN, rizik);
+  rizik = clamp(rizik, strog ? RIZIK_CRVENA_MIN : 0.05, 0.35);
+  return {
+    primijenjeno: true,
+    strog,
+    rizikCrvena: Math.round(rizik * 1000) / 1000,
+    opis: strog
+      ? `STROG SUDAC — kartona ${k != null ? k.toFixed(1) : "—"}/utakmici · penali ${p != null ? p.toFixed(2) : "—"}/utakmici → rizik crvenog kartona ${(rizik * 100).toFixed(0)}%`
+      : `sudac u granicama — rizik crvenog kartona ${(rizik * 100).toFixed(0)}%`,
+  };
+}
