@@ -1,3 +1,4 @@
+import { ahSkellam, skellamUkupnoOver } from "./skellam";
 // Čisti matematički alati za karticu "Pro Alati" (bez API poziva).
 const fact = (k: number) => { let f = 1; for (let i = 2; i <= k; i++) f *= i; return f; };
 export const poisson = (l: number, k: number) => (Math.exp(-l) * Math.pow(l, k)) / fact(k);
@@ -21,18 +22,19 @@ const halves = (line: number) => (Math.abs((line * 4) % 2) === 1 ? [line - 0.25,
 export interface LineResult { win: number; push: number; loss: number; fairOdds: number }
 
 /** Fer kvota za koju je očekivana dobit 0: o = 1 + E[gubitak] / E[dobitak]. */
-function settle(m: number[][], val: (i: number, j: number) => number, line: number): LineResult {
-  const parts = halves(line); let fw = 0, fl = 0, win = 0, push = 0, loss = 0;
-  m.forEach((r, i) => r.forEach((p, j) => {
-    for (const l of parts) {
-      const x = val(i, j) + l, w = p / parts.length;
-      if (x > 1e-9) { fw += w; win += w; } else if (x < -1e-9) { fl += w; loss += w; } else push += w;
-    }
-  }));
-  return { win, push, loss, fairOdds: fw > 0 ? 1 + fl / fw : Infinity };
+export function asianHandicap(lh: number, la: number, homeLine: number): LineResult {
+  // Egzaktna Skellamova raspodjela gol-razlike (v5): win/push/loss za
+  // svaku liniju, push vidljiv na cjelobrojnim linijama. Rezanje
+  // matrice na 10 golova više nije granica točnosti.
+  const r = ahSkellam(lh, la, homeLine);
+  return { win: r.win, push: r.push, loss: r.loss, fairOdds: r.ferWin };
 }
-export const asianHandicap = (lh: number, la: number, homeLine: number) => settle(matrix(lh, la), (i, j) => i - j, homeLine);
-export const goalLineOver = (lh: number, la: number, line: number) => settle(matrix(lh, la), (i, j) => i + j, -line);
+export function goalLineOver(lh: number, la: number, line: number): LineResult {
+  // Egzaktna Poissonova raspodjela ukupno preko skellam.ts (v5):
+  // over/push/under + fer kvota (1 − push)/over.
+  const r = skellamUkupnoOver(lh, la, line);
+  return { win: r.over, push: r.push, loss: r.under, fairOdds: r.ferOver };
+}
 
 /** Over/Under za kornere/kartone: Poisson ukupnog broja. */
 export function countOver(lambda: number, line: number) {
