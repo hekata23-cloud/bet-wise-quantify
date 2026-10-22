@@ -51,6 +51,8 @@ export interface BasketballSARPPrediction {
   fourFactors: { primijenjeno: boolean; tezine: string; pomakMu: number; clutch: boolean };
   /** OT MODEL: vjerojatnost produžetka + uvjetni pomak totala (+5.2) */
   ot: { p: number; primijenjeno: boolean; pomakBodovi: number };
+  /** BLOWOUT/GARBAGE TIME (v6): korekcija totala kod velikih margina */
+  blowout: { primijenjeno: boolean; margina: number; pomakBodovi: number };
   mc: { n: number; pML1: number; pSpread1: number; pOver: number; pDraw: number };
   trziste: { pML1: number | null; pOver: number | null; devigIzvor: string | null };
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
@@ -209,6 +211,30 @@ export function sarpKosarka(args: {
     upozorenja.push(`Bliska utakmica (P(OT) = ${(pOT * 100).toFixed(1)}%) — produžetak je moguć: Over/Under nosi dodatnu varijancu OT perioda (+5.2 poena u totalu).`);
   }
   const ot = { p: Math.round(pOT * 1000) / 1000, primijenjeno: otTrigger, pomakBodovi: otPomak };
+
+  // — 5c) BLOWOUT / GARBAGE TIME (v6) —
+  // Kod velikih margina (|spread| > 16.5) četvrta četvrtina postaje
+  // garažna: klupe dobivaju minute, obrana pada (DRtg +6%), failovi
+  // i tranzicije daju bodove — "pogrešan Under" je česta pogreška.
+  // Korigiramo total prema gore: do +3.0 poena (0.22 × poena margine
+  // iznad praga 16.5); σ totala slijedi novi expTotal.
+  const marginaPre = Math.abs(expSpread);
+  const blowoutTrigger = marginaPre > 16.5;
+  const blowoutPomak = blowoutTrigger
+    ? Math.min(3.0, 0.22 * (marginaPre - 16.5))
+    : 0;
+  if (blowoutTrigger) {
+    expTotal += blowoutPomak;
+    expHome += blowoutPomak / 2;
+    expAway += blowoutPomak / 2;
+    sigmaTotal = clamp(expTotal * 0.075, 14, 18);
+    izvori.push(`Blowout/garbage time: margina ${marginaPre.toFixed(1)} > 16.5 → total +${blowoutPomak.toFixed(1)} (DRtg +6% u Q4, klupe u igri)`);
+  }
+  const blowout = {
+    primijenjeno: blowoutTrigger,
+    margina: Math.round(marginaPre * 100) / 100,
+    pomakBodovi: Math.round(blowoutPomak * 100) / 100,
+  };
 
   // — 6) PODJELE: 1. poluvrijeme ≈ 46.2% poena, 1. četvrtina ≈ 23.5% —
   const expTotal1H = expTotal * 0.462; const sigmaTotal1H = sigmaTotal * 0.68;
@@ -377,6 +403,7 @@ export function sarpKosarka(args: {
     fourFactors: { primijenjeno: ffH != null && ffA != null, pomakMu: ffPomak, clutch,
       tezine: clutch ? "eFG 35% · TOV 22% · ORB 18% · FTR 25% (Q4 clutch)" : "eFG 40% · TOV 25% · ORB 20% · FTR 15%" },
     ot,
+    blowout,
     mc, trziste: { pML1: pML1Market, pOver: pOverMarket, devigIzvor },
     provjera: { maxDiscrepancy, volatility },
     kalibracija: {
