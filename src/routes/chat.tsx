@@ -62,7 +62,7 @@ export const Route = createFileRoute("/chat")({
 const KEY = "tm.chat.history";
 
 function ChatPage() {
-  const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [messages, setMessages] = useState<ChatTurn[]>(() => loadJSON<ChatTurn[]>(KEY, []));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -95,7 +95,6 @@ function ChatPage() {
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
   useEffect(() => {
-    setMessages(loadJSON<ChatTurn[]>(KEY, []));
     inputRef.current?.focus();
     warmUpVoices();
     if (loadVoicePrefs().autoSpeak) setVoiceMode(true);
@@ -145,7 +144,9 @@ function ChatPage() {
       ts: Date.now(),
       attachments: attSnapshot.map((a) => ({ name: a.name, kind: a.kind, path: a.path })),
     };
-    setMessages((m) => [...m, userTurn]);
+    const nextMessages = [...messages, userTurn];
+    saveJSON(KEY, nextMessages); // Persist before network work so a tab switch cannot lose the turn.
+    setMessages(nextMessages);
     setInput("");
     setAttachments([]);
     setLoading(true);
