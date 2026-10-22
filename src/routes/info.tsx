@@ -6,11 +6,13 @@
    pokreće 18 matematičkih provjera motora direktno u pregledniku.
    ============================================================ */
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   BrainCircuit, Calculator, Dices, Goal, HeartPulse, Info,
   LineChart, ShieldCheck, Sigma, Users, Zap,
 } from "lucide-react";
 import { SelfTestPanel } from "@/components/SelfTestPanel";
+import { dnevnikUnosi } from "@/lib/dnevnik";
 
 export const Route = createFileRoute("/info")({
   head: () => ({
@@ -49,6 +51,43 @@ function Sekcija({ id, naslov, opis, children }: { id: string; naslov: string; o
   );
 }
 
+function ModelCalibrationBadge() {
+  const [metrics, setMetrics] = useState<{ n: number; brier: number | null; gap: number | null }>({
+    n: 0, brier: null, gap: null,
+  });
+
+  useEffect(() => {
+    const settled = dnevnikUnosi().filter(
+      (entry) => (entry.status === "pogodak" || entry.status === "promasaj") &&
+        Number.isFinite(entry.p) && entry.p >= 0 && entry.p <= 1,
+    );
+    if (!settled.length) return;
+    const n = settled.length;
+    const sumP = settled.reduce((sum, entry) => sum + entry.p, 0);
+    const sumOutcome = settled.reduce((sum, entry) => sum + (entry.status === "pogodak" ? 1 : 0), 0);
+    const brier = settled.reduce(
+      (sum, entry) => sum + (entry.p - (entry.status === "pogodak" ? 1 : 0)) ** 2,
+      0,
+    ) / n;
+    setMetrics({ n, brier, gap: Math.abs(sumP / n - sumOutcome / n) });
+  }, []);
+
+  const calibrated = metrics.n >= 100 && metrics.brier != null && metrics.brier < 0.18 &&
+    metrics.gap != null && metrics.gap <= 0.05;
+
+  return (
+    <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/50 px-3 py-1 text-xs">
+      <span className={`h-2 w-2 rounded-full ${calibrated ? "bg-emerald-400" : "bg-amber-400"}`} />
+      <span>
+        Model Calibration Status: {calibrated ? "Calibrated" : "Not yet calibrated"}
+        {metrics.brier != null
+          ? ` (Brier ${metrics.brier.toFixed(3)}, n=${metrics.n})`
+          : " (nema settled podataka)"}
+      </span>
+    </div>
+  );
+}
+
 function InfoPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
@@ -63,6 +102,7 @@ function InfoPage() {
             <p className="text-sm text-muted-foreground">
               Kako Andromeda AI razmišlja — modeli, zaštite i transparentnost. Bez skrivanja: svaki tip je zapisan u Dnevniku i provjeriv.
             </p>
+            <ModelCalibrationBadge />
           </div>
         </div>
       </div>
