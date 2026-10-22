@@ -419,3 +419,25 @@ export function sudacProfil(s?: SudacUlaz | null): SudacIzlaz {
       : `sudac u granicama — rizik crvenog kartona ${(rizik * 100).toFixed(0)}%`,
   };
 }
+
+
+/* ── ENTERPRISE PRECISION — optional calculation modules ──────────── */
+export {
+  calculateMotivation,
+  applyMotivationToLambdas,
+  applyDerbyDrawAdjustment,
+  calculateSetPieceXg,
+  calculateTravelFatigue,
+  calculateCalibrationMetrics,
+  calibrateProbability,
+  formatEnterpriseSignals,
+  type MotivationInput,
+  type MotivationResult,
+  type SetPieceInput,
+  type SetPieceResult,
+  type TravelInput,
+  type TravelResult,
+  type CalibrationSample,
+  type CalibrationMetrics,
+  type EnterpriseMatchSignals,
+} from "./enterprise-precision";
