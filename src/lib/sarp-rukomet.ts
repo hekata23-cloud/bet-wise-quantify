@@ -26,6 +26,15 @@ export interface HandballMatchStats {
   suspHome?: number; suspAway?: number;
   /** udio golova u 1. poluvremenu (default 0.47) */
   halfShare?: number;
+
+  /** 7v6 PRAZNA MREŽA: udio situacija (0..1) u kojima tim igra s igračem
+   *  više kada zaostaje (moderni taktički faktor — dodatni golovi). */
+  koristi7v6Home?: number;
+  koristi7v6Away?: number;
+  /** GOLMAN-UMOR: broj UZASTOPNIH minuta golmana na terenu; > 45 min →
+   *  −4% efikasnost obrana u 2. poluvremenu. */
+  gkMinutaHome?: number;
+  gkMinutaAway?: number;
 }
 
 export type SarpKandidat = {
@@ -44,6 +53,8 @@ export interface HandballSARPPrediction {
   };
   gk: { saveHome: number; saveAway: number; diff: number; procijenjeno: boolean };
   suspenzije: { home: number; away: number; utjecajGolova: number };
+  /** TAKTIKA (v5): 7v6 prazna mreža + golman-umor (opcionalno, identitet bez inputa) */
+  taktika: { primijenjeno: boolean; ekstraGolovi7v6: number; tim7v6: "dom" | "gost" | null; gkUmorDom: boolean; gkUmorGost: boolean };
   lamHome: number; lamAway: number; expTotal: number; expSpread: number;
   sigmaTotal: number; sigmaDiff: number;
   p1HOver: number; linija1H: number; expTotal1H: number;
@@ -101,6 +112,9 @@ function poisson(lambda: number, r: () => number): number {
 const GK_LIGA = 0.27;      // prosječan postotak obrana golmana u ligi
 const SUSP_GOL = 0.25;     // svako isključenje preko baznog ≈ 0.25 primljenog gola
 const SUSP_NAPAD = 0.15;   // ... i ≈ 0.15 gola manje vlastitog napada
+const RU_BAZA_1H = 0.47;    // udio golova u 1. poluvremenu (ista baza kao HT/FT motor)
+const GK_UMOR_PENAL = 0.04; // −4% efikasnost obrana golmana > 45 min (u 2H)
+const PRAZNA_MREZA_SHIFT = 3.2; // max +3.2 gola ukupno pri punoj upotrebi 7v6
 
 export function sarpRukomet(args: {
   an: RukometAnalysis;
@@ -147,6 +161,48 @@ export function sarpRukomet(args: {
   lamAway += (suspH - 1) * SUSP_GOL; lamHome -= (suspH - 1) * SUSP_NAPAD;
   lamHome += (suspA - 1) * SUSP_GOL; lamAway -= (suspA - 1) * SUSP_NAPAD;
   lamHome = clamp(lamHome, 8, 45); lamAway = clamp(lamAway, 8, 45);
+
+  // — 4b) 7v6 PRAZNA MREŽA (moderni taktički faktor, v5) —
+  // Tim koji zaostaje skida golmana (7 na 6). Udio upotrebe > 0.35
+  // (ligaški prosjek) dodaje ekstra golove ukupnoj očekivanoj vrijed-
+  // nosti: do +3.2 gola pri punoj upotrebi (≥ 0.65). 70% ekstre ide
+  // timu koji igra 7v6, 30% protivniku (kontranapadi). Bez inputa:
+  // identitet (nijedan broj se ne mijenja).
+  const u7v6H = s.koristi7v6Home; const u7v6A = s.koristi7v6Away;
+  let ekstra7v6 = 0; let tim7v6: "dom" | "gost" | null = null;
+  if (u7v6H != null || u7v6A != null) {
+    const uH = clamp(u7v6H ?? 0.35, 0, 1);
+    const uA = clamp(u7v6A ?? 0.35, 0, 1);
+    const maxU = Math.max(uH, uA);
+    const tezina = clamp((maxU - 0.35) / 0.3, 0, 1);
+    ekstra7v6 = PRAZNA_MREZA_SHIFT * tezina;
+    tim7v6 = uH >= uA ? "dom" : "gost";
+    if (ekstra7v6 > 0.01) {
+      if (tim7v6 === "dom") { lamHome += ekstra7v6 * 0.7; lamAway += ekstra7v6 * 0.3; }
+      else { lamAway += ekstra7v6 * 0.7; lamHome += ekstra7v6 * 0.3; }
+      lamHome = clamp(lamHome, 8, 45); lamAway = clamp(lamAway, 8, 45);
+      izvori.push(`7v6 faktor: +${ekstra7v6.toFixed(1)} gola ukupno (${tim7v6 === "dom" ? args.home : args.away} igra s igračem više u zaostatku)`);
+    }
+  }
+
+  // — 4c) GOLMAN-UMOR (v5) —
+  // Golman koji drži > 45 UZASTOPNIH minuta gubi −4% efikasnosti obrana
+  // u 2. poluvremenu → protivnik dobiva ~4% od svojih 2H golova.
+  const gkUmorDom = s.gkMinutaHome != null && s.gkMinutaHome > 45;
+  const gkUmorGost = s.gkMinutaAway != null && s.gkMinutaAway > 45;
+  if (gkUmorDom) { lamAway += lamAway * (1 - RU_BAZA_1H) * GK_UMOR_PENAL; izvori.push(`Golman domaćina: ${(s.gkMinutaHome ?? 0).toFixed(0)} min bez odmora → −4% obrana u 2H`); }
+  if (gkUmorGost) { lamHome += lamHome * (1 - RU_BAZA_1H) * GK_UMOR_PENAL; izvori.push(`Golman gosta: ${(s.gkMinutaAway ?? 0).toFixed(0)} min bez odmora → −4% obrana u 2H`); }
+  if (gkUmorDom) lamAway = clamp(lamAway, 8, 45);
+  if (gkUmorGost) lamHome = clamp(lamHome, 8, 45);
+  if (gkUmorDom || gkUmorGost) {
+    upozorenja.push(`Golman-umor model: golman${gkUmorDom && gkUmorGost ? "i oba tima" : gkUmorDom ? " domaćina" : " gosta"} igra dugo bez odmora — 2H očekivano brži.`);
+  }
+  const taktika = {
+    primijenjeno: ekstra7v6 > 0.01 || gkUmorDom || gkUmorGost,
+    ekstraGolovi7v6: Math.round(ekstra7v6 * 100) / 100,
+    tim7v6,
+    gkUmorDom, gkUmorGost,
+  };
 
   const expTotal = lamHome + lamAway;
   const expSpread = lamHome - lamAway;
@@ -319,6 +375,7 @@ export function sarpRukomet(args: {
     },
     gk: { saveHome: saveH, saveAway: saveA, diff: saveH - saveA, procijenjeno },
     suspenzije: { home: suspH, away: suspA, utjecajGolova },
+    taktika,
     lamHome, lamAway, expTotal, expSpread, sigmaTotal, sigmaDiff,
     p1HOver, linija1H, expTotal1H, htft,
     pHome: pHomeKal, pDraw: pDrawKal, pAway: pAwayKal,
