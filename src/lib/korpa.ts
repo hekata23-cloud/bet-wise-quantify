@@ -33,7 +33,7 @@ export function loadKorpa(): KorpaTip[] {
   try {
     const raw = localStorage.getItem(KORPA_KEY);
     const arr = raw ? (JSON.parse(raw) as KorpaTip[]) : [];
-    return Array.isArray(arr) ? arr.filter((t) => t && t.id && t.kvota > 1) : [];
+    return Array.isArray(arr) ? arr.filter((t) => t && typeof t.id === "string" && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost > 0 && t.vjerojatnost <= 1).slice(0, 15) : [];
   } catch {
     return [];
   }
@@ -96,10 +96,14 @@ export function izracunajKorpu(
   tipovi: KorpaTip[],
   opts: { bankroll?: number; kellyFrac?: number; maxUlogPerc?: number } = {},
 ): IzracunKorpe {
-  const bankroll = Math.max(0, opts.bankroll ?? 0);
-  const kellyFrac = Math.min(1, Math.max(0.05, opts.kellyFrac ?? 0.25));
-  const maxUlogPerc = Math.min(10, Math.max(0.5, opts.maxUlogPerc ?? 3));
-  const n = tipovi.length;
+  const bankrollRaw = Number(opts.bankroll ?? 0);
+  const kellyRaw = Number(opts.kellyFrac ?? 0.25);
+  const maxRaw = Number(opts.maxUlogPerc ?? 3);
+  const bankroll = Number.isFinite(bankrollRaw) ? Math.max(0, bankrollRaw) : 0;
+  const kellyFrac = Number.isFinite(kellyRaw) ? Math.min(1, Math.max(0.05, kellyRaw)) : 0.25;
+  const maxUlogPerc = Number.isFinite(maxRaw) ? Math.min(10, Math.max(0.5, maxRaw)) : 3;
+  const safeTips = tipovi.filter((t) => t && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost >= 0 && t.vjerojatnost <= 1);
+  const n = safeTips.length;
   const prazno: IzracunKorpe = {
     n: 0, kvota: 1, vjerojatnost: 0, edge: 0, kelly: 0, ulogPerc: 0, ulogIznos: 0,
     stdRet: 0, rizikPerc: 0, jedinstvenihUtakmica: 0, korelacijaUpozorenje: false, isplativo: false,
@@ -107,23 +111,25 @@ export function izracunajKorpu(
   };
   if (n === 0) return prazno;
 
-  const kvota = tipovi.reduce((a, t) => a * (t.kvota > 1 ? t.kvota : 1), 1);
-  const p = tipovi.reduce((a, t) => a * clamp01(t.vjerojatnost), 1);
+  const kvota = safeTips.reduce((a, t) => Math.min(1e12, a * t.kvota), 1);
+  const p = safeTips.reduce((a, t) => a * clamp01(t.vjerojatnost), 1);
   const edge = kvota * p - 1;
 
   const b = kvota - 1;
   const q = 1 - p;
   const kelly = b > 0 ? (b * p - q) / b : 0;
 
-  const jedinstvenihUtakmica = new Set(tipovi.map((t) => t.utakmica)).size;
+  const jedinstvenihUtakmica = new Set(safeTips.map((t) => t.utakmica)).size;
   const korelacijaUpozorenje = jedinstvenihUtakmica < n;
   // Korelirane noge (isti par dvaput) dijele sudbinu — Kelly ide na pola.
   const kellyEff = korelacijaUpozorenje ? kelly * 0.5 : kelly;
 
   const ulogPerc = Math.min(maxUlogPerc, Math.max(0, kellyEff) * kellyFrac * 100);
-  const ulogIznos = (bankroll * ulogPerc) / 100;
+  const ulogIznosRaw = (bankroll * ulogPerc) / 100;
+  const ulogIznos = Number.isFinite(ulogIznosRaw) ? ulogIznosRaw : 0;
 
-  const stdRet = Math.sqrt(p * q) * b;
+  const stdRetRaw = Math.sqrt(p * q) * b;
+  const stdRet = Number.isFinite(stdRetRaw) ? stdRetRaw : 0;
   const rizikPerc = Math.min(100, Math.round((stdRet / Math.max(0.01, kvota)) * 100));
 
   return {
@@ -131,7 +137,7 @@ export function izracunajKorpu(
     ulogPerc, ulogIznos, stdRet, rizikPerc,
     jedinstvenihUtakmica, korelacijaUpozorenje,
     isplativo: edge > 0 && ulogPerc > 0,
-    varijanca: varijancaTiketa(tipovi),
+    varijanca: varijancaTiketa(safeTips),
   };
 }
 
