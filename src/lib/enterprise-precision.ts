@@ -227,6 +227,161 @@ export function calculateTravelFatigue(input: TravelInput): TravelResult {
   };
 }
 
+
+
+/* ── FINE-GRAINED MATCH EDGE CASES ───────────────────────────────────
+   Optional pure functions. They are neutral unless the caller supplies
+   measured/localized inputs; thresholds are explicit, not inferred.
+*/
+
+export interface CircadianInput {
+  /** Local kickoff minute of day, 0..1439. Supply venue-local time. */
+  localKickoffMinutes: number;
+  /** True only when reliable itinerary data confirms away-team road travel. */
+  awayHadRoadTravel?: boolean;
+}
+
+export interface CircadianResult {
+  earlyKickoffApplied: boolean;
+  firstHalfLambdaDelta: number;
+  lateNightRoadFatigueApplied: boolean;
+  secondHalfDefensiveFatigueRate: number;
+  notes: string[];
+}
+
+/** Early kickoff is 12:00–13:30 inclusive; late-night road fatigue starts at 21:00. */
+export function calculateCircadianAdjustment(input: CircadianInput): CircadianResult {
+  const minutes = input.localKickoffMinutes;
+  const valid = Number.isFinite(minutes) && minutes >= 0 && minutes < 1440;
+  const earlyKickoffApplied = valid && minutes >= 12 * 60 && minutes <= 13 * 60 + 30;
+  const lateNightRoadFatigueApplied = valid && minutes >= 21 * 60 && Boolean(input.awayHadRoadTravel);
+  const notes: string[] = [];
+  if (earlyKickoffApplied) notes.push("Early local kickoff (12:00–13:30): first-half lambda delta −0.10.");
+  if (lateNightRoadFatigueApplied) notes.push("Kickoff at/after 21:00 after away-team road travel: second-half defensive fatigue +3.5%.");
+  return {
+    earlyKickoffApplied,
+    firstHalfLambdaDelta: earlyKickoffApplied ? -0.10 : 0,
+    lateNightRoadFatigueApplied,
+    secondHalfDefensiveFatigueRate: lateNightRoadFatigueApplied ? 0.035 : 0,
+    notes,
+  };
+}
+
+/** Apply the early-kickoff adjustment without allowing a negative first-half lambda. */
+export function applyCircadianToFirstHalfLambda(lambdaHT: number, result: CircadianResult): number {
+  const base = Number.isFinite(lambdaHT) ? Math.max(0, lambdaHT) : 0;
+  return Math.max(0, base + result.firstHalfLambdaDelta);
+}
+
+export interface BenchDepthInput {
+  homeSubstituteXgContribution: number;
+  awaySubstituteXgContribution: number;
+  /** Explicit provider/model thresholds in xG; high must be greater than thin. */
+  highBenchThresholdXg: number;
+  thinBenchThresholdXg: number;
+  homeExpectedLateXga?: number;
+  awayExpectedLateXga?: number;
+}
+
+export interface BenchSideResult {
+  substituteXgContribution: number;
+  benchClass: "high" | "adequate" | "thin";
+  lateGoalLambdaMultiplier: number;
+  lateXgaMultiplier: number;
+  adjustedLateXga: number | null;
+  pressingEfficiencyMaintainedAfter70: boolean;
+}
+
+export interface BenchDepthResult {
+  home: BenchSideResult;
+  away: BenchSideResult;
+  notes: string[];
+}
+
+/** Compare supplied substitute xG. No player-quality data is guessed. */
+export function calculateBenchDepth(input: BenchDepthInput): BenchDepthResult {
+  const values = [input.homeSubstituteXgContribution, input.awaySubstituteXgContribution,
+    input.highBenchThresholdXg, input.thinBenchThresholdXg];
+  if (values.some((value) => !Number.isFinite(value) || value < 0) || input.highBenchThresholdXg <= input.thinBenchThresholdXg) {
+    throw new RangeError("Bench xG values must be finite/non-negative and highBenchThresholdXg must exceed thinBenchThresholdXg.");
+  }
+  const makeSide = (xg: number, expectedLateXga?: number): BenchSideResult => {
+    const benchClass = xg >= input.highBenchThresholdXg ? "high" : xg < input.thinBenchThresholdXg ? "thin" : "adequate";
+    const lateGoalLambdaMultiplier = benchClass === "high" ? 1.12 : 1;
+    const lateXgaMultiplier = benchClass === "thin" ? 1.12 : 1;
+    const validXga = expectedLateXga != null && Number.isFinite(expectedLateXga) && expectedLateXga >= 0;
+    return {
+      substituteXgContribution: xg,
+      benchClass,
+      lateGoalLambdaMultiplier,
+      lateXgaMultiplier,
+      adjustedLateXga: validXga ? expectedLateXga! * lateXgaMultiplier : null,
+      pressingEfficiencyMaintainedAfter70: benchClass === "high",
+    };
+  };
+  const home = makeSide(input.homeSubstituteXgContribution, input.homeExpectedLateXga);
+  const away = makeSide(input.awaySubstituteXgContribution, input.awayExpectedLateXga);
+  const notes = [
+    `Bench substitute xG comparison: home ${home.substituteXgContribution.toFixed(2)} (${home.benchClass}), away ${away.substituteXgContribution.toFixed(2)} (${away.benchClass}).`,
+  ];
+  if (home.benchClass === "high") notes.push("Home high-quality bench: maintain late pressing efficiency and apply 1.12 multiplier to supplied 75–90 minute goal lambda.");
+  if (away.benchClass === "high") notes.push("Away high-quality bench: maintain late pressing efficiency and apply 1.12 multiplier to supplied 75–90 minute goal lambda.");
+  if (home.benchClass === "thin") notes.push("Home thin bench: apply 1.12 multiplier to supplied late xGA.");
+  if (away.benchClass === "thin") notes.push("Away thin bench: apply 1.12 multiplier to supplied late xGA.");
+  return { home, away, notes };
+}
+
+export interface SuspensionPlayerInput {
+  playerId: string;
+  team: "home" | "away";
+  isKeyPlayer: boolean;
+  /** Cards remaining before suspension, as defined by the competition rules. */
+  yellowsUntilSuspension: number;
+  subsequentFixtureIsMajorDerby: boolean;
+  expectedFouls: number;
+  expectedBookingPoints: number;
+}
+
+export interface SuspensionPlayerResult extends SuspensionPlayerInput {
+  cautionShieldApplied: boolean;
+  adjustedExpectedFouls: number;
+  adjustedExpectedBookingPoints: number;
+}
+
+/** Applies −18% only for key players one yellow from suspension before a confirmed major derby. */
+export function applyDerbySuspensionShield(players: SuspensionPlayerInput[]): SuspensionPlayerResult[] {
+  return players.map((player) => {
+    const eligible = player.isKeyPlayer && player.yellowsUntilSuspension === 1 && player.subsequentFixtureIsMajorDerby;
+    const foulBase = Number.isFinite(player.expectedFouls) ? Math.max(0, player.expectedFouls) : 0;
+    const bookingBase = Number.isFinite(player.expectedBookingPoints) ? Math.max(0, player.expectedBookingPoints) : 0;
+    const multiplier = eligible ? 0.82 : 1;
+    return {
+      ...player,
+      cautionShieldApplied: eligible,
+      adjustedExpectedFouls: foulBase * multiplier,
+      adjustedExpectedBookingPoints: bookingBase * multiplier,
+    };
+  });
+}
+
+export interface EdgeCaseMatchSignals {
+  circadian?: CircadianResult;
+  benchDepth?: BenchDepthResult;
+  suspensionShield?: SuspensionPlayerResult[];
+}
+
+/** Format only caller-supplied edge-case outputs for the shared AI prompt. */
+export function formatEdgeCaseSignals(signals: EdgeCaseMatchSignals): string[] {
+  const lines: string[] = [];
+  if (signals.circadian) lines.push(...signals.circadian.notes);
+  if (signals.benchDepth) lines.push(...signals.benchDepth.notes);
+  const shielded = signals.suspensionShield?.filter((player) => player.cautionShieldApplied) ?? [];
+  for (const player of shielded) {
+    lines.push(`Derby suspension caution: key ${player.team} player ${player.playerId} is one yellow from suspension before a confirmed major derby; fouls and booking points reduced 18% (${player.adjustedExpectedFouls.toFixed(2)} expected fouls, ${player.adjustedExpectedBookingPoints.toFixed(2)} booking points).`);
+  }
+  return lines;
+}
+
 export interface CalibrationSample {
   /** Model's original probability, in [0,1]. */
   probability: number;
@@ -308,6 +463,7 @@ export function calibrateProbability(
 
 /** A compact, serializable object intended for the existing Luna/Orion match context. */
 export interface EnterpriseMatchSignals {
+  edgeCases?: EdgeCaseMatchSignals;
   motivation?: MotivationResult;
   homeSetPieceXg?: SetPieceResult;
   awaySetPieceXg?: SetPieceResult;
@@ -318,6 +474,7 @@ export interface EnterpriseMatchSignals {
 /** Format signals for the shared AI context without asserting absent data. */
 export function formatEnterpriseSignals(signals: EnterpriseMatchSignals): string[] {
   const lines: string[] = [];
+  if (signals.edgeCases) lines.push(...formatEdgeCaseSignals(signals.edgeCases));
   if (signals.motivation) {
     const m = signals.motivation;
     lines.push(`Motivation index (0-10): home ${m.homeIndex.toFixed(1)}, away ${m.awayIndex.toFixed(1)}, match ${m.matchIndex.toFixed(1)}.`);
