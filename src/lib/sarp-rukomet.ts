@@ -35,6 +35,12 @@ export interface HandballMatchStats {
    *  −4% efikasnost obrana u 2. poluvremenu. */
   gkMinutaHome?: number;
   gkMinutaAway?: number;
+
+  /** GARBAGE TIME (v6): trenutno stanje utakmice (živo). Bez svih
+   *  triju podataka model je identitet — nijedan broj se ne mijenja. */
+  liveMinuta?: number;
+  liveDomGolovi?: number;
+  liveGostGolovi?: number;
 }
 
 export type SarpKandidat = {
@@ -55,6 +61,8 @@ export interface HandballSARPPrediction {
   suspenzije: { home: number; away: number; utjecajGolova: number };
   /** TAKTIKA (v5): 7v6 prazna mreža + golman-umor (opcionalno, identitet bez inputa) */
   taktika: { primijenjeno: boolean; ekstraGolovi7v6: number; tim7v6: "dom" | "gost" | null; gkUmorDom: boolean; gkUmorGost: boolean };
+  /** GARBAGE TIME (v6): tempo-dolaziš kad je razlika velika u 2. poluvremenu */
+  garbageTime: { primijenjeno: boolean; margina: number | null; minut: number | null; ekstraGolovi: number };
   lamHome: number; lamAway: number; expTotal: number; expSpread: number;
   sigmaTotal: number; sigmaDiff: number;
   p1HOver: number; linija1H: number; expTotal1H: number;
@@ -202,6 +210,31 @@ export function sarpRukomet(args: {
     ekstraGolovi7v6: Math.round(ekstra7v6 * 100) / 100,
     tim7v6,
     gkUmorDom, gkUmorGost,
+  };
+
+  // — 4d) GARBAGE TIME (v6) —
+  // Kad razlika prelazi 8 golova oko pola 2. poluvremena (40. min+),
+  // obrana se gubi u tranzicijskim protunapadima i tempo raste: ukupna
+  // λ dobiva do +2.2 gola (1.0 na pragu + 0.55 × gol razlike iznad 8),
+  // veći dio vodećem timu (0.6/0.4). Bez live stanja: identitet.
+  const liveStanje =
+    s.liveMinuta != null && s.liveDomGolovi != null && s.liveGostGolovi != null
+      ? { min: s.liveMinuta, raz: Math.abs(s.liveDomGolovi - s.liveGostGolovi), domVodi: s.liveDomGolovi > s.liveGostGolovi }
+      : null;
+  const garbageTrigger = liveStanje != null && liveStanje.min >= 40 && liveStanje.raz >= 8;
+  let ekstraGarbage = 0;
+  if (liveStanje && garbageTrigger) {
+    ekstraGarbage = Math.min(2.2, 1.0 + 0.55 * (liveStanje.raz - 8));
+    if (liveStanje.domVodi) { lamHome += ekstraGarbage * 0.6; lamAway += ekstraGarbage * 0.4; }
+    else { lamAway += ekstraGarbage * 0.6; lamHome += ekstraGarbage * 0.4; }
+    lamHome = clamp(lamHome, 8, 45); lamAway = clamp(lamAway, 8, 45);
+    izvori.push(`Garbage time: razlika ${liveStanje.raz.toFixed(0)} golova u ${liveStanje.min.toFixed(0)}. min → tempo +${ekstraGarbage.toFixed(1)} gola (brz tempo kontra)`);
+  }
+  const garbageTime = {
+    primijenjeno: garbageTrigger,
+    margina: liveStanje ? Math.round(liveStanje.raz * 100) / 100 : null,
+    minut: liveStanje ? Math.round(liveStanje.min) : null,
+    ekstraGolovi: Math.round(ekstraGarbage * 100) / 100,
   };
 
   const expTotal = lamHome + lamAway;
@@ -376,6 +409,7 @@ export function sarpRukomet(args: {
     gk: { saveHome: saveH, saveAway: saveA, diff: saveH - saveA, procijenjeno },
     suspenzije: { home: suspH, away: suspA, utjecajGolova },
     taktika,
+    garbageTime,
     lamHome, lamAway, expTotal, expSpread, sigmaTotal, sigmaDiff,
     p1HOver, linija1H, expTotal1H, htft,
     pHome: pHomeKal, pDraw: pDrawKal, pAway: pAwayKal,
