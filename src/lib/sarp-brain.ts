@@ -18,7 +18,9 @@
 import {
   clamp, deMargin2, deMargin3, izgradiGrid, lambdaIzForme,
   kellyUlogPct, metrikeIzGrida, monteCarlo, skellam1x2,
-  type FormaGolovi, type McIzlaz,
+  okolisPomak, sudacProfil,
+  type FormaGolovi, type McIzlaz, type OkolisIzlaz, type OkolisUlaz,
+  type SudacIzlaz, type SudacUlaz,
 } from "./math-engine";
 import { HAZARD_BETA, ahSkellam } from "./skellam";
 import type { GoalsIzlaz } from "./goals-motor";
@@ -55,6 +57,10 @@ export type SarpUlaz = {
   formaGost?: FormaGolovi | null;
   /** izlaz goals-motora (BTTS Ultra / 2.5 Pro) ako postoji — fuzionira se */
   goals?: GoalsIzlaz | null;
+  /** OKOLIS (v6): vjetar/kiša/teren — opcionalno, identitet bez podataka */
+  okolis?: OkolisUlaz | null;
+  /** SUDAC (v6): prosjek kartona/penala suca — opcionalno */
+  sudac?: SudacUlaz | null;
 };
 
 export type SarpIzlaz = {
@@ -86,6 +92,10 @@ export type KvantAh = { linija: string; win: number; push: number; loss: number;
 export type KvantKontekst = {
   skellam: { p1: number; pX: number; p2: number; ah: KvantAh[]; pushRizikMax: number };
   hazard: { beta: number; primijenjen: boolean; scenarij: string; lamDomEf: number; lamGostEf: number };
+  /** OKOLIS (v6): weather drag — pomak golova i kornera */
+  okolis?: OkolisIzlaz;
+  /** SUDAC (v6): strog sudac i rizik crvenog kartona */
+  sudac?: SudacIzlaz;
 };
 
 const TRZISTA: { kljuc: string; label: string; par?: [string, string] }[] = [
@@ -214,8 +224,20 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     }
     razd = best;
   }
-  const lamH = clamp(lamUk * razd, 0.1, 4.5);
-  const lamA = clamp(lamUk * (1 - razd), 0.1, 4.5);
+  // OKOLIS (v6): weather drag — vjetar > 35 km/h / jaka kiša / loš teren
+  // skida ukupnu λ za −0.22 (proporcionalno po timovima) i −1.5
+  // kornera. Bez inputa: identitet.
+  const okolis = okolisPomak(ulaz.okolis);
+  let lamH = clamp(lamUk * razd, 0.1, 4.5);
+  let lamA = clamp(lamUk * (1 - razd), 0.1, 4.5);
+  if (okolis.primijenjeno) {
+    const uk = lamH + lamA;
+    lamH = clamp(lamH + okolis.pomakGolovi * (lamH / uk), 0.05, 4.5);
+    lamA = clamp(lamA + okolis.pomakGolovi * (lamA / uk), 0.05, 4.5);
+  }
+  // SUDAC (v6): profil suca — strog sudac ( > 5.0 kartona ili > 0.4
+  // penala /utakmici) diže rizik crvenog kartona na > 18%.
+  const sudac = sudacProfil(ulaz.sudac);
   // rho: fit na tržište U 1.5 kad postoji
   let rho = -0.05;
   if (dmO15) {
@@ -268,6 +290,19 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
       lamDomEf: Math.round(lamH * HAZARD_BETA * 100) / 100,
       lamGostEf: Math.round(lamA * HAZARD_BETA * 100) / 100,
     },
+    okolis: {
+      primijenjeno: okolis.primijenjeno,
+      pomakGolovi: okolis.pomakGolovi,
+      pomakKornera: okolis.pomakKornera,
+      razlozi: okolis.razlozi,
+      opis: okolis.opis,
+    },
+    sudac: {
+      primijenjeno: sudac.primijenjeno,
+      strog: sudac.strog,
+      rizikCrvena: sudac.rizikCrvena,
+      opis: sudac.opis,
+    },
   };
   faze.push({
     broj: 4,
@@ -277,6 +312,8 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
       `λ domaćin = ${lamH.toFixed(2)}, λ gost = ${lamA.toFixed(2)}, rho = ${rho.toFixed(2)}`,
       `Skellam: 1 ${fmtPct(sk.p1)} · X ${fmtPct(sk.pX)} · 2 ${fmtPct(sk.p2)}`,
       `Najvjerojatniji rezultat: ${M.topRezultati[0]?.rezultat ?? "—"} (${fmtPct(M.topRezultati[0]?.p ?? 0)})`,
+      ...(okolis.primijenjeno ? [`Okolis: ${okolis.opis}`] : []),
+      ...(sudac.primijenjeno ? [`Sudac: ${sudac.opis}`] : []),
     ],
   });
 
@@ -398,6 +435,8 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   rizici.push("Model ne vidi ozljede, suspenzije ni postave — provjeri tim vijesti prije uloga.");
   rizici.push("Crveni karton ili rani gol dramatično mijenjaju tok — planiraj ulog koji takav scenarij ne slama.");
   if (books > 0 && books < 3) rizici.push(`Samo ${books} kladionica daje kvote — tržišni signal je slabiji.`);
+  if (sudac.strog) rizici.push(`STROG SUDAC: ${sudac.opis} — HT/FT i tržišta kartona nose dodatnu varijancu.`);
+  if (okolis.primijenjeno) rizici.push(`Okolis: ${okolis.opis} — projekcija ukupnih golova i kornera smanjena.`);
   if (suglasnostSkellam < 0.85) rizici.push("Poisson i Skellam (bez korelacije) se razilaze — visoka varijanca u ishodu.");
 
   /* obrazloženje (3–6 rečenica) */
@@ -465,7 +504,7 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     brojIzvora,
     lambdaDom: Math.round(lamH * 100) / 100,
     lambdaGost: Math.round(lamA * 100) / 100,
-    lambdaUkupno: Math.round(lamUk * 100) / 100,
+    lambdaUkupno: Math.round((lamH + lamA) * 100) / 100,
     konsenzus,
     mc,
     suglasnostSkellam: Math.round(suglasnostSkellam * 1000) / 1000,
