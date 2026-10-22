@@ -10,6 +10,9 @@
      • 1 i 2 istovremeno visoki = uzajamno isključivi.
      • P(Over 3.5) ≤ P(Over 2.5) ≤ P(Over 1.5) — monotonija linija.
      • HT/FT 2/2 protivi se tipu 1 (1X2).
+     • HT/FT 1/1 protivi se Clean Sheet GOST — 1/1 znači da domaćin
+       vodi na oba poluvremena, pa gost ne može ne primiti gol.
+     • HT/FT 2/2 protivi se Clean Sheet DOMAĆIN (simetrično).
 
    Dodatno: evKelly() — jedinstven EV + frakcijski Kelly (0.25×)
    koji svaka kartica koristi za "koliko banke riskirati".
@@ -94,6 +97,49 @@ export function provjeriKonzistentnost(tipovi: TipZaProvjeru[]): KonzistentnostI
     upozorenja.push(`KONTRADIKCIJA: Tip 2 uz HT/FT 1/1 — 1/1 znači pobjedu domaćina.`);
   }
 
+  // ── CLEAN SHEET LOCK (v5) ──
+  // Clean Sheet tržište: "tim NE PRIMA gol". Detekcija strane i DA/NE
+  // tolerantna na nazive ("Away Clean Sheet", "Clean Sheet — Domaćin",
+  // "Domaćin bez primljenog gola"…).
+  const csStrana = (trziste: string, tip: string): "dom" | "gost" | null => {
+    const jeCs = /clean\s*sheet|bez\s*primljen|ne\s*prima/.test(trziste) || /clean\s*sheet/.test(tip);
+    if (!jeCs) return null;
+    if (/gost|away/.test(tip)) return "gost";
+    if (/dom|home/.test(tip)) return "dom";
+    if (/gost|away/.test(trziste)) return "gost";
+    if (/dom|home/.test(trziste)) return "dom";
+    return null;
+  };
+  const csDa = (tip: string): boolean => /\bda\b|\byes\b|^da$|^yes$|da\s*$|yes\s*$/.test(tip);
+  let csGostDa: number | null = null;
+  let csDomDa: number | null = null;
+  for (const t of T) {
+    const strana = csStrana(t.trziste, t.tip);
+    if (strana == null || !csDa(t.tip)) continue;
+    if (strana === "gost") csGostDa = csGostDa == null ? t.p : Math.max(csGostDa, t.p);
+    else csDomDa = csDomDa == null ? t.p : Math.max(csDomDa, t.p);
+  }
+  if (htft11 != null && htft11 >= 0.25 && csGostDa != null && csGostDa >= 0.50) {
+    upozorenja.push(
+      `KONTRADIKCIJA: HT/FT 1/1 (${Math.round(htft11 * 100)}%) uz Clean Sheet gost (${Math.round(csGostDa * 100)}%) — 1/1 znači da domaćin vodi na OBA poluvremena, pa gost ne može ostati bez primljenog gola.`,
+    );
+  }
+  if (htft22 != null && htft22 >= 0.25 && csDomDa != null && csDomDa >= 0.50) {
+    upozorenja.push(
+      `KONTRADIKCIJA: HT/FT 2/2 (${Math.round(htft22 * 100)}%) uz Clean Sheet domaćin (${Math.round(csDomDa * 100)}%) — 2/2 znači da gost vodi na OBA poluvremena, pa domaćin ne može ostati bez primljenog gola.`,
+    );
+  }
+  if (p1 != null && p1 >= 0.55 && csGostDa != null && csGostDa >= 0.60) {
+    upozorenja.push(
+      `NAPETOST: Tip 1 (${Math.round(p1 * 100)}%) uz Clean Sheet gost (${Math.round(csGostDa * 100)}%) — ako domaćin pobjeđuje, gost najčešće ipak prima gol; za razmatranje koristi "Win to nil".`,
+    );
+  }
+  if (p2 != null && p2 >= 0.55 && csDomDa != null && csDomDa >= 0.60) {
+    upozorenja.push(
+      `NAPETOST: Tip 2 (${Math.round(p2 * 100)}%) uz Clean Sheet domaćin (${Math.round(csDomDa * 100)}%) — koristi "Win to nil" za ovu kombinaciju.`,
+    );
+  }
+
   return { konzistentno: upozorenja.length === 0, upozorenja };
 }
 
@@ -127,4 +173,3 @@ export function evKelly(
   const kellyPct = Math.max(0, Math.min(capPerc, kelly * kellyFrac * 100));
   return { evPct, kellyPct, isplativo: evPct > 0 && kellyPct > 0 };
 }
-
