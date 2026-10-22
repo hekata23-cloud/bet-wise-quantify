@@ -6,7 +6,7 @@
 // Luna i Orion je automatski pročitaju i ubace u prompt.
 // Spremište: localStorage (ključ andromeda.ai.mec-kontekst).
 // ============================================================
-import { formatEnterpriseSignals, type EnterpriseMatchSignals } from "./enterprise-precision";
+import { formatEdgeCaseSignals, formatEnterpriseSignals, type EnterpriseMatchSignals, type EdgeCaseMatchSignals } from "./enterprise-precision";
 
 /** KVANT NADGRADNJA (v5): egzaktni Skellam push, hazard β, OT model
  *  i rukometna taktika (7v6 / golman-umor) — izravno u prompt chatova. */
@@ -141,6 +141,8 @@ export interface MecKontekst {
   kvant?: KvantKontekst;
   /** Dodatne izmjerene Enterprise Precision vrijednosti; prazno = bez korekcije. */
   enterprise?: EnterpriseMatchSignals;
+  /** Opcionalni izmjereni cirkadijalni/klupa/suspenzija signali za Luna i Orion. */
+  edgeCases?: EdgeCaseMatchSignals;
   spremljeno: number;
 }
 
@@ -281,6 +283,13 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
         (q.ht.gkUmorDom ? " · golman domaćina umoran (−4% obrana u 2H)" : "") +
         (q.ht.gkUmorGost ? " · golman gosta umoran (−4% obrana u 2H)" : ""),
       );
+    }
+  }
+  if (c.edgeCases) {
+    const edgeCaseLines = formatEdgeCaseSignals(c.edgeCases);
+    if (edgeCaseLines.length) {
+      linije.push("── MATCH EDGE-CASE SIGNALS (samo dostavljeni/izmjereni ulazi) ──");
+      linije.push(...edgeCaseLines);
     }
   }
   if (c.enterprise) {
