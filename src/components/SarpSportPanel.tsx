@@ -117,13 +117,28 @@ export function SarpSportPanel(props: Props) {
       postave: null,
       live: null,
       kvant: isKos
-        ? { ot: { p: kos!.ot.p, primijenjeno: kos!.ot.primijenjeno, pomakBodovi: kos!.ot.pomakBodovi } }
-        : { ht: {
-            ekstraGolovi7v6: ruk!.taktika.ekstraGolovi7v6,
-            primijenjeno: ruk!.taktika.primijenjeno,
-            gkUmorDom: ruk!.taktika.gkUmorDom,
-            gkUmorGost: ruk!.taktika.gkUmorGost,
-          } },
+        ? {
+            ot: { p: kos!.ot.p, primijenjeno: kos!.ot.primijenjeno, pomakBodovi: kos!.ot.pomakBodovi },
+            blowout: {
+              primijenjeno: kos!.blowout.primijenjeno,
+              margina: kos!.blowout.margina,
+              pomakBodovi: kos!.blowout.pomakBodovi,
+            },
+          }
+        : {
+            ht: {
+              ekstraGolovi7v6: ruk!.taktika.ekstraGolovi7v6,
+              primijenjeno: ruk!.taktika.primijenjeno,
+              gkUmorDom: ruk!.taktika.gkUmorDom,
+              gkUmorGost: ruk!.taktika.gkUmorGost,
+            },
+            garbageTime: {
+              primijenjeno: ruk!.garbageTime.primijenjeno,
+              margina: ruk!.garbageTime.margina,
+              minut: ruk!.garbageTime.minut,
+              ekstraGolovi: ruk!.garbageTime.ekstraGolovi,
+            },
+          },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [utakmica.id, pred]);
