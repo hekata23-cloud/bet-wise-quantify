@@ -48,7 +48,9 @@ export interface BasketballSARPPrediction {
   spread: { linija: number | null; pCover1: number; izvor: "market" | "model" };
   pOver: number; pUnder: number; linijaTotala: number;
   umor: { homeB2B: boolean; awayB2B: boolean; home3in4: boolean; away3in4: boolean; indeks: number };
-  fourFactors: { primijenjeno: boolean; tezine: string; pomakMu: number };
+  fourFactors: { primijenjeno: boolean; tezine: string; pomakMu: number; clutch: boolean };
+  /** OT MODEL: vjerojatnost produžetka + uvjetni pomak totala (+5.2) */
+  ot: { p: number; primijenjeno: boolean; pomakBodovi: number };
   mc: { n: number; pML1: number; pSpread1: number; pOver: number; pDraw: number };
   trziste: { pML1: number | null; pOver: number | null; devigIzvor: string | null };
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
@@ -96,13 +98,18 @@ const B2B_PENAL = 3.0;   // Bayesian B2B korekcija (−2.5..−3.5 → srednja v
 const IN4_PENAL = 2.0;   // dodatno 3 utakmice u 4 noći
 const HCA = 2.8;         // prednost domaćeg terena (poena)
 
-function fourFactorIndex(s: BasketballMatchStats, tim: "h" | "a"): number | null {
+/** Four Factors indeks (Dean Oliver). U Q4 CLUTCH modu (bliska
+ *  završnica) FTR ima veću težinu — failovi produžavaju utakmicu i
+ *  dodaju poene iz crte, pa je slobodno bacanje kvalitetniji faktor. */
+function fourFactorIndex(s: BasketballMatchStats, tim: "h" | "a", clutch: boolean): number | null {
   const efg = tim === "h" ? s.efgHome : s.efgAway;
   const tov = tim === "h" ? s.tovHome : s.tovAway;
   const orb = tim === "h" ? s.orbHome : s.orbAway;
   const ftr = tim === "h" ? s.ftrHome : s.ftrAway;
   if (efg == null || tov == null || orb == null || ftr == null) return null;
-  return 0.4 * efg - 0.25 * tov + 0.2 * orb + 0.15 * ftr;
+  return clutch
+    ? 0.35 * efg - 0.22 * tov + 0.18 * orb + 0.25 * ftr  // Q4 clutch
+    : 0.40 * efg - 0.25 * tov + 0.20 * orb + 0.15 * ftr; // baza
 }
 
 export function sarpKosarka(args: {
@@ -157,19 +164,51 @@ export function sarpKosarka(args: {
     expAway = (expTotal - expSpread) / 2;
   }
 
-  // — 4) FOUR FACTORS (Dean Oliver: eFG 40%, TOV 25%, ORB 20%, FTR 15%) —
-  const ffH = fourFactorIndex(s, "h"); const ffA = fourFactorIndex(s, "a");
+  // — 4) FOUR FACTORS (Dean Oliver) s Q4 CLUTCH modom —
+  // Clutch mod: projicirana marża ≤ 6 poena → bliska završnica →
+  // FTR dobiva težinu 0.25 (failovi produžavaju utakmicu).
+  const spreadPreFf = expSpread;
+  const clutch = Math.abs(spreadPreFf) <= 6;
+  const ffH = fourFactorIndex(s, "h", clutch); const ffA = fourFactorIndex(s, "a", clutch);
   let ffPomak = 0;
   if (ffH != null && ffA != null) {
     ffPomak = clamp((ffH - ffA) * 12, -3, 3);
     expSpread += ffPomak * 0.5;
     expHome += ffPomak * 0.25; expAway -= ffPomak * 0.25;
-    izvori.push("Four Factors (eFG/TOV/ORB/FTR)");
+    izvori.push(clutch
+      ? "Four Factors Q4 clutch (eFG 35% · TOV 22% · ORB 18% · FTR 25%)"
+      : "Four Factors (eFG 40% · TOV 25% · ORB 20% · FTR 15%)");
   }
 
   // — 5) DINAMIČKE SIGME (tempo ovisne; σ razlike ≈ 9.5–12.5) —
   const sigma = clamp(expTotal * 0.052, 9.5, 12.5);
-  const sigmaTotal = clamp(expTotal * 0.075, 14, 18);
+  let sigmaTotal = clamp(expTotal * 0.075, 14, 18);
+
+  // — 5b) OT MODEL: produžetak i njegov utjecaj na total (v5) —
+  // Zaostala varijanca marže u zadnjih 6 min ≈ σ·√(6/48). P(OT) =
+  // P(|kraj marže| ≤ 0.5). SPEC: ako je |spread| ≤ 3.0, total blizu
+  // linije i P(OT) > 8.5% → total dobiva +5.2 očekivana poena (OT
+  // period donosi dodatne posjede i failove). Inače je model identitet.
+  const sigmaFin = sigma * Math.sqrt(6 / 48);
+  const pOT = clamp(
+    Phi((0.5 - expSpread) / sigmaFin) - Phi((-0.5 - expSpread) / sigmaFin),
+    0.0005, 0.999,
+  );
+  const linijaTrzPre = an.totals.length
+    ? Number(an.totals[0]!.market.replace(/[^\d.]/g, "")) || null
+    : null;
+  const totalBlizuLinije =
+    linijaTrzPre != null ? Math.abs(expTotal - linijaTrzPre) <= 2.0 : true;
+  const otTrigger = Math.abs(expSpread) <= 3.0 && totalBlizuLinije && pOT > 0.085;
+  const otPomak = otTrigger ? 5.2 : 0;
+  if (otTrigger) {
+    expTotal += otPomak;
+    expHome += otPomak / 2; expAway += otPomak / 2;
+    sigmaTotal = clamp(expTotal * 0.075, 14, 18);
+    izvori.push(`OT model: P(OT) = ${(pOT * 100).toFixed(1)}% > 8.5% → total +${otPomak.toFixed(1)}`);
+    upozorenja.push(`Bliska utakmica (P(OT) = ${(pOT * 100).toFixed(1)}%) — produžetak je moguć: Over/Under nosi dodatnu varijancu OT perioda (+5.2 poena u totalu).`);
+  }
+  const ot = { p: Math.round(pOT * 1000) / 1000, primijenjeno: otTrigger, pomakBodovi: otPomak };
 
   // — 6) PODJELE: 1. poluvrijeme ≈ 46.2% poena, 1. četvrtina ≈ 23.5% —
   const expTotal1H = expTotal * 0.462; const sigmaTotal1H = sigmaTotal * 0.68;
@@ -221,9 +260,12 @@ export function sarpKosarka(args: {
   if (overTip?.odd && underTip?.odd) { pOverMarket = devig([overTip.odd, underTip.odd])[0]!; devigIzvor = devigIzvor ? `${devigIzvor} + O/U` : "O/U"; }
 
   const mc = { n: N, pML1: ml1 / N, pSpread1: sp1 / N, pOver: ov2 / N, pDraw: dr / N };
-  const pML1 = an.pHomeOT;
-  const pML2 = an.pAwayOT;
-  const pDraw = an.pDraw;
+  // ML trojka mora zbrajati na 1 — kad pozivatelj pošalje malo pomaknut
+  // ulaz, normaliziramo (identitet kad je zbroj već 1).
+  const zbrojML = an.pHomeOT + an.pAwayOT + an.pDraw;
+  const pML1 = zbrojML > 0 && Math.abs(zbrojML - 1) > 1e-12 ? an.pHomeOT / zbrojML : an.pHomeOT;
+  const pML2 = zbrojML > 0 && Math.abs(zbrojML - 1) > 1e-12 ? an.pAwayOT / zbrojML : an.pAwayOT;
+  const pDraw = zbrojML > 0 && Math.abs(zbrojML - 1) > 1e-12 ? an.pDraw / zbrojML : an.pDraw;
 
   // — 8b) GLOBALNA KALIBRACIJA — logaritamski pool modela s de-margined
   // tržištem (ista matematika kao u goals-motoru). Težina raste s brojem
@@ -332,7 +374,9 @@ export function sarpKosarka(args: {
     spread: { linija: spreadLinija, pCover1: pSpread1, izvor: spreadIzvor },
     pOver: pOverKal, pUnder: 1 - pOverKal, linijaTotala,
     umor: { homeB2B: !!s.homeB2B, awayB2B: !!s.awayB2B, home3in4: !!s.home3in4, away3in4: !!s.away3in4, indeks: umorH - umorA },
-    fourFactors: { primijenjeno: ffH != null && ffA != null, tezine: "eFG 40% · TOV 25% · ORB 20% · FTR 15%", pomakMu: ffPomak },
+    fourFactors: { primijenjeno: ffH != null && ffA != null, pomakMu: ffPomak, clutch,
+      tezine: clutch ? "eFG 35% · TOV 22% · ORB 18% · FTR 25% (Q4 clutch)" : "eFG 40% · TOV 25% · ORB 20% · FTR 15%" },
+    ot,
     mc, trziste: { pML1: pML1Market, pOver: pOverMarket, devigIzvor },
     provjera: { maxDiscrepancy, volatility },
     kalibracija: {
