@@ -137,6 +137,7 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           }
         : null,
       live: null,
+      kvant: sarp.kvant,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [utakmica.id, JSON.stringify(kvote), sarp, lineupInfo]);
