@@ -21,7 +21,7 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
-import { ucitajKontekstMeca, izgradiKontekstTekst } from "@/lib/ai-context";
+import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
 import { loadMastermind } from "@/lib/mastermind";
@@ -153,7 +153,11 @@ function ChatPage() {
       // Match Engine kontekst (SARP analiza zadnje otvorene utakmice) ide
       // automatski u prompt — pohranjena poruka ostaje čista.
       const kontekst = ucitajKontekstMeca();
-      const tekstZaAI = kontekst ? `${text}\n\n${izgradiKontekstTekst(kontekst)}` : text;
+      const tiket = ucitajKontekstTiketa();
+      const tekstZaAI =
+        [text, kontekst ? izgradiKontekstTekst(kontekst) : "", tiket ? izgradiTiketTekst(tiket) : ""]
+          .filter((s) => s)
+          .join("\n\n");
       const reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
