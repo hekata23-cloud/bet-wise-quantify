@@ -1,6 +1,9 @@
 // ============================================================
-// KORPA.TS — Bet Slip / Tiket motor (Andromeda AI) — v2
+// KORPA.TS — Bet Slip / Tiket motor (Andromeda AI) — v3
 // Kombinirana kvota, EV, varijanca/rizik, frakcijski Kelly.
+// NOVO v3: TICKET VARIANCE SCORE — kombinirana Shannon entropija
+//          svih noga (Low / Balanced / High Variance) + upozorenje
+//          na remi/push noga ("Consider DNB or Asian lines").
 // NOVO v2: High Variance Warning događaj kad model noga ima
 //          < 55% vjerojatnosti (Korpa.tsx prikazuje toast).
 // Čista logika — ne zove API. Pohrana: localStorage.
@@ -85,6 +88,8 @@ export interface IzracunKorpe {
   jedinstvenihUtakmica: number;
   korelacijaUpozorenje: boolean;
   isplativo: boolean;
+  /** v3: TICKET VARIANCE SCORE (Shannon entropija) */
+  varijanca: VarijansaTiketa;
 }
 
 export function izracunajKorpu(
@@ -98,6 +103,7 @@ export function izracunajKorpu(
   const prazno: IzracunKorpe = {
     n: 0, kvota: 1, vjerojatnost: 0, edge: 0, kelly: 0, ulogPerc: 0, ulogIznos: 0,
     stdRet: 0, rizikPerc: 0, jedinstvenihUtakmica: 0, korelacijaUpozorenje: false, isplativo: false,
+    varijanca: varijancaTiketa([]),
   };
   if (n === 0) return prazno;
 
@@ -125,6 +131,7 @@ export function izracunajKorpu(
     ulogPerc, ulogIznos, stdRet, rizikPerc,
     jedinstvenihUtakmica, korelacijaUpozorenje,
     isplativo: edge > 0 && ulogPerc > 0,
+    varijanca: varijancaTiketa(tipovi),
   };
 }
 
@@ -132,3 +139,76 @@ export function korpaBroj(): number {
   return loadKorpa().length;
 }
 
+/* ── TICKET VARIANCE SCORE (v3) — Shannon entropija tiketa ─────────
+   Svaka noga je Bernoulli(p) → binarna entropija
+       H(p) = −p·ln p − (1−p)·ln(1−p)   (u natsima, 0..ln 2)
+   Normalizirana na 0..1 dijeljenjem s ln 2. Tiket score = prosjek
+   svih noga: 1.00 znači "novčić" (maksimalna varijanca), 0 znači
+   sigurnu nogu. Granice: > 0.90 VISOKA, ≥ 0.75 BALANSIRANA, inače NISKA. */
+
+export type VarijansaRazina = "niska" | "balansirana" | "visoka";
+
+export interface VarijansaTiketa {
+  razina: VarijansaRazina;
+  /** prosječna normalizirana entropija noga (0..1) */
+  entropija: number;
+  /** broj noga s visokom rizikom remi/push ishoda */
+  remiPushNoge: number;
+  /** jedno-rečična preporuka kad n ≥ 3 i postoji remi/push noga */
+  upozorenje: string | null;
+}
+
+const LN2 = Math.LN2;
+
+/** Binarna Shannon entropija, normalizirana na 0..1 (0·ln0 = 0). */
+export function entropijaNozice(p: number): number {
+  const x = clamp01(p);
+  const h = x <= 0 || x >= 1
+    ? 0
+    : -x * Math.log(x) - (1 - x) * Math.log(1 - x);
+  return h / LN2;
+}
+
+const REMI_TRZISTA = /1x2|ht\/ft|htft|remi|draw/i;
+const REMI_TIP = /(^|\/)x(\/|$)|remi|draw/i;
+const PUSH_TRZISTA = /o\/u|total|spread|handicap|ah\b|korner|karton/i;
+const CELBROJ_LINIJA = /(?:^|[^\d.])([+-]?\d+)(?:\s|$|[^.\d])/;
+
+/** Noga s materijalnim rizikom remija (1X2/HT/FT) ili pusha
+ *  (cjelobrojna AH/total/spread linija — kvota vraćena, ne izgubljena,
+ *  ali tiket pada). */
+export function nogaRemiIliPush(t: KorpaTip): boolean {
+  const trz = t.trziste || "";
+  const tip = t.tip || "";
+  if (REMI_TRZISTA.test(trz) && REMI_TIP.test(tip)) return true;
+  if (PUSH_TRZISTA.test(trz)) {
+    const m = tip.match(CELBROJ_LINIJA);
+    if (m && !tip.includes(".")) {
+      // "Over 2" / "Domaćin -1" / "Više od 9" → cjelobrojna linija
+      if (/[+-]?\d/.test(m[1]!)) return true;
+    }
+  }
+  return false;
+}
+
+/** Ticket Variance Score cijelog tiketa. */
+export function varijancaTiketa(tipovi: KorpaTip[]): VarijansaTiketa {
+  const n = tipovi.length;
+  if (n === 0)
+    return { razina: "niska", entropija: 0, remiPushNoge: 0, upozorenje: null };
+  const ent = tipovi.reduce((a, t) => a + entropijaNozice(t.vjerojatnost), 0) / n;
+  const razina: VarijansaRazina = ent > 0.9 ? "visoka" : ent >= 0.75 ? "balansirana" : "niska";
+  const remiPush = tipovi.filter(nogaRemiIliPush);
+  let upozorenje: string | null = null;
+  if (n >= 3 && remiPush.length > 0) {
+    const najlosija = remiPush.reduce((a, b) => (b.vjerojatnost < a.vjerojatnost ? b : a));
+    upozorenje =
+      `Variance warning: visoka vjerojatnost remi/push ishoda na selekciji "${najlosija.tip}" (${najlosija.utakmica}). Razmotri DNB (Draw No Bet) ili azijske linije.`;
+  }
+  return {
+    razina,
+    entropija: Math.round(ent * 1000) / 1000,
+    remiPushNoge: remiPush.length,
+    upozorenje,
+  };
+}
