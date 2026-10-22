@@ -23,6 +23,11 @@
          temperiranja (preoptimističan → T>1, podzastavljen → T<1),
          zbrojevi para i trojke, ignoriranje htft-a, invarijante
          kalibracije s temperom, hlađenje u motoru
+     14) KVANT NADGRADNJA (v5): egzaktni Skellam (PMF, AH win/push/
+         loss, četvrtinske linije, gol-linija s pushom), hazard β=1.18,
+         HT/FT zbroj-lock, OT model košarke (trigger + identitet),
+         Q4 clutch FTR težine, rukomet 7v6 i golman-umor, PUSH RIZIK
+         u sport-dodacima i pro-alatima, Clean Sheet kontradikcije
 
    Rezultat ide u panel "Samotest" na Info stranici. Ako ijedan test
    padne, motor ne smije objavljivati tipove — prijava je vidljiva.
@@ -38,6 +43,10 @@ import { sarpKosarka } from "./sarp-kosarka";
 import { sarpRukomet } from "./sarp-rukomet";
 import { tezinaKalibracije as tezinaKalProvjera, kalibrirajGoalsFinal, tempPar, tempTrojku } from "./global-calibration";
 import { PRAZNO_EMP, izracunajEmp, tempZa } from "./accuracy-ledger";
+import { skellamPmf, ahSkellam, skellamUkupnoOver, hazardEfektivneLam, HAZARD_BETA } from "./skellam";
+import { provjeriKonzistentnost } from "./konzistentnost";
+import { handicapRedovi } from "./sport-dodatci";
+import { asianHandicap } from "./pro-alati";
 import type { DnevnikUnos } from "./dnevnik";
 import type { KosAnalysis, Tip as KosTipT } from "./kosarka-engine";
 import type { RukometAnalysis, Tip as RukTipT } from "./rukomet-engine";
@@ -474,6 +483,209 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
         `O2.5: ${(o25A * 100).toFixed(2)}% → ${(o25B * 100).toFixed(2)}% (T_ou = ${(b.empTocnost.temp.ou ?? 0).toFixed(3)})`,
       ));
     }
+  }
+
+  /* ── 14) KVANT NADGRADNJA — Skellam AH, hazard, OT, 7v6, Clean Sheet ── */
+  {
+    // a) Skellam PMF zbroj = 1
+    let zSk = 0;
+    for (let k = -60; k <= 60; k++) zSk += skellamPmf(k, 1.6, 1.2);
+    t.push(ok(
+      "KVANT Skellam: PMF zbroj = 1 (λ 1.6/1.2)",
+      Math.abs(zSk - 1) < 1e-9,
+      `zbroj = ${zSk.toFixed(10)}`,
+    ));
+
+    // b) AH linija 0: zbroj ishoda = 1, push = P(remi)
+    const r0 = ahSkellam(1.6, 1.2, 0);
+    t.push(ok(
+      "KVANT Skellam AH 0: zbroj = 1 i PUSH = P(remi)",
+      Math.abs(r0.win + r0.push + r0.loss - 1) < 1e-9 &&
+        Math.abs(r0.push - skellamPmf(0, 1.6, 1.2)) < 1e-9,
+      `win ${(r0.win * 100).toFixed(1)}% · PUSH ${(r0.push * 100).toFixed(2)}% · loss ${(r0.loss * 100).toFixed(1)}%`,
+    ));
+
+    // c) AH simetričan par: win = loss = (1 − push)/2
+    const rs = ahSkellam(1.4, 1.4, 0);
+    t.push(ok(
+      "KVANT Skellam AH: simetričan par je egzaktno simetričan",
+      Math.abs(rs.win - rs.loss) < 1e-12 && Math.abs(rs.win - (1 - rs.push) / 2) < 1e-9,
+      `push = ${(rs.push * 100).toFixed(2)}%`,
+    ));
+
+    // d) AH −1.5: bez pusha, fer = 1 + loss/win
+    const r15 = ahSkellam(1.6, 1.2, -1.5);
+    t.push(ok(
+      "KVANT Skellam AH −1.5: bez pusha, fer kvota = 1 + loss/win",
+      r15.push === 0 && Math.abs(r15.ferWin - (1 + r15.loss / r15.win)) < 1e-9,
+      `win ${(r15.win * 100).toFixed(1)}% · fer ${r15.ferWin.toFixed(3)}`,
+    ));
+
+    // e) AH četvrtinska linija −0.25: pola uloga, push moguć
+    const rq = ahSkellam(1.6, 1.2, -0.25);
+    t.push(ok(
+      "KVANT Skellam AH −0.25: kombinacija pola uloga zbraja se na 1",
+      Math.abs(rq.win + rq.push + rq.loss - 1) < 1e-9 && rq.push > 0.01,
+      `push = ${(rq.push * 100).toFixed(2)}%`,
+    ));
+
+    // f) gol-linija s pushom: zbroj = 1, push = P(ukupno = linija)
+    const gl = skellamUkupnoOver(1.6, 1.2, 3);
+    t.push(ok(
+      "KVANT gol-linija 3: zbroj = 1 i PUSH = P(ukupno tačno 3)",
+      Math.abs(gl.over + gl.push + gl.under - 1) < 1e-9 &&
+        Math.abs(gl.push - Math.exp(-2.8) * Math.pow(2.8, 3) / 6) < 1e-9 &&
+        Math.abs(gl.ferOver - (1 - gl.push) / gl.over) < 1e-9,
+      `over ${(gl.over * 100).toFixed(1)}% · PUSH ${(gl.push * 100).toFixed(2)}%`,
+    ));
+
+    // g) hazard β = 1.18: primijenjen samo za prvi gol underdog 0–20 min
+    const hz = hazardEfektivneLam(1.6, 1.2, { prviGolUnderdog: true, minuta: 15 });
+    const hzNe = hazardEfektivneLam(1.6, 1.2, { prviGolUnderdog: true, minuta: 35 });
+    t.push(ok(
+      "KVANT hazard: β = 1.18 na obje λ (underdog, 0–20 min)",
+      HAZARD_BETA === 1.18 &&
+        Math.abs(hz.lamDomEf - 1.6 * 1.18) < 1e-9 &&
+        Math.abs(hz.lamGostEf - 1.2 * 1.18) < 1e-9 &&
+        hz.primijenjen === true,
+      `1.6 → ${hz.lamDomEf.toFixed(3)}, 1.2 → ${hz.lamGostEf.toFixed(3)}`,
+    ));
+    t.push(ok(
+      "KVANT hazard: izvan scenarija = identitet",
+      hazardEfektivneLam(1.6, 1.2, { prviGolUnderdog: false, minuta: 15 }).lamDomEf === 1.6 &&
+        hzNe.lamDomEf === 1.6 && hzNe.primijenjen === false,
+      "kasni gol (35') i bez-underdog scenarij ne mijenjaju λ",
+    ));
+
+    // h) HT/FT nogomet: zbroj 9 stanja = 1 (konzistentnost lock)
+    const htftLock = htftNogomet(1.6, 1.2);
+    t.push(ok(
+      "KVANT HT/FT nogomet: zbrojStanja lock = tačno 1",
+      Math.abs(htftLock.zbrojStanja - 1) < 1e-9 && htftLock.hazardBeta === 1.18,
+      `zbroj = ${htftLock.zbrojStanja}`,
+    ));
+
+    // i) OT model košarke: bliska utakmica triggera (+5.2), široka ne
+    const kt14 = (market: string, pick: string, odd: number | null): KosTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const kosBazaMu = (mu: number, p1: number, pX: number, p2: number): KosAnalysis => ({
+      mu, sigma: 12, total: 220, sigmaT: 16.5, nba: true,
+      pHome: p1, pDraw: pX, pAway: p2, pHomeOT: p1, pAwayOT: p2,
+      x12: [], dc: [], ml: [], totals: [], best: null, safest: null,
+      totalPick: kt14(`Zbroj 220.5`, `Više 220.5`, null), notes: [],
+    });
+    const kosPoz = (an: KosAnalysis, stats?: Parameters<typeof sarpKosarka>[0]["stats"]) => {
+      const p = sarpKosarka({ an, mk: null, home: "Dom", away: "Gost", league: "NBA", fixtureId: 1, empirijske: PRAZNO_EMP, stats });
+      if (p == null) throw new Error("samotest: sarpKosarka vratio null");
+      return p;
+    };
+    const otClose = kosPoz(kosBazaMu(0, 0.50, 0.01, 0.49));
+    const otWide = kosPoz(kosBazaMu(8, 0.75, 0.01, 0.24));
+    t.push(ok(
+      "KVANT OT košarka: bliska utakmica → P(OT) > 8.5% i total +5.2",
+      otClose.ot.primijenjeno === true && otClose.ot.p > 0.085 &&
+        Math.abs(otClose.expTotal - 225.2) < 1e-9 && otClose.ot.pomakBodovi === 5.2,
+      `P(OT) = ${(otClose.ot.p * 100).toFixed(1)}%, total 220 → ${otClose.expTotal}`,
+    ));
+    t.push(ok(
+      "KVANT OT košarka: široka utakmica = identitet",
+      otWide.ot.primijenjeno === false && otWide.ot.p < 0.085 &&
+        Math.abs(otWide.expTotal - 220) < 1e-9 && otWide.ot.pomakBodovi === 0,
+      `P(OT) = ${(otWide.ot.p * 100).toFixed(1)}%, total nepromijenjen`,
+    ));
+
+    // j) Q4 clutch FTR: bliska završnica mijenja težine
+    const ff = { efgHome: 0.52, efgAway: 0.50, tovHome: 0.13, tovAway: 0.14, orbHome: 0.26, orbAway: 0.24, ftrHome: 0.30, ftrAway: 0.25 };
+    const clutchBliz = kosPoz(kosBazaMu(0, 0.50, 0.01, 0.49), ff);
+    const clutchSirok = kosPoz(kosBazaMu(20, 0.92, 0.01, 0.07), ff);
+    t.push(ok(
+      "KVANT Four Factors: Q4 clutch FTR 25%, široka utakmica baza FTR 15%",
+      clutchBliz.fourFactors.clutch === true && clutchBliz.fourFactors.tezine.includes("Q4 clutch") &&
+        clutchSirok.fourFactors.clutch === false && clutchSirok.fourFactors.tezine.includes("FTR 15%"),
+      `bliska: "${clutchBliz.fourFactors.tezine}" · široka: "${clutchSirok.fourFactors.tezine}"`,
+    ));
+
+    // k) 7v6 prazna mreža: puna upotreba 0.7 → +3.2 gola ukupno
+    const rt14 = (market: string, pick: string, odd: number | null): RukTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const rukBazaMu = (p1: number, pX: number, p2: number): RukometAnalysis => ({
+      muDiff: 2, sigmaDiff: 6.1, muTotal: 57, muHome: 29.5, muAway: 27.5,
+      pHome: p1, pDraw: pX, pAway: p2, pHomeML: p1, pAwayML: p2,
+      concrete: {
+        winner: { pick: "1", type: "1", prob: p1, fair: p1 > 0 ? 1 / p1 : 99, odd: null, ev: null, confidence: "SREDNJA", reason: "samotest" },
+        totalGoals: { pick: "VIŠE", line: 56.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, ev: null, projected: 57, confidence: "SREDNJA", reason: "samotest" },
+        homeTotal: { pick: "VIŠE", line: 28.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 29.5 },
+        awayTotal: { pick: "VIŠE", line: 27.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 27.5 },
+      },
+      x12: [], dc: [], ml: [], totals: [], homeTotals: [], awayTotals: [],
+      best: null, safest: null, notes: [], source: "ALGORITAM", isBet365: true,
+    });
+    const rukPoz = (an: RukometAnalysis, stats?: Parameters<typeof sarpRukomet>[0]["stats"]) => {
+      const p = sarpRukomet({ an, home: "Dom", away: "Gost", fixtureId: 1, empirijske: PRAZNO_EMP, stats });
+      if (p == null) throw new Error("samotest: sarpRukomet vratio null");
+      return p;
+    };
+    const r7v6 = rukPoz(rukBazaMu(0.60, 0.05, 0.35), { koristi7v6Home: 0.7 });
+    const r7v6Baza = rukPoz(rukBazaMu(0.60, 0.05, 0.35));
+    t.push(ok(
+      "KVANT 7v6: upotreba 0.7 → +3.2 gola ukupno (70% timu s igračem više)",
+      r7v6.taktika.primijenjeno === true &&
+        Math.abs(r7v6.taktika.ekstraGolovi7v6 - 3.2) < 1e-9 &&
+        Math.abs(r7v6.expTotal - r7v6Baza.expTotal - 3.2) < 1e-9 &&
+        Math.abs(r7v6.lamHome - (r7v6Baza.lamHome + 2.24)) < 1e-9,
+      `total ${r7v6Baza.expTotal.toFixed(2)} → ${r7v6.expTotal.toFixed(2)}`,
+    ));
+
+    // l) golman-umor: > 45 min povećava protivnički λ, ≤ 45 ne dira ništa
+    const gkUmor = rukPoz(rukBazaMu(0.60, 0.05, 0.35), { gkMinutaHome: 60 });
+    const gkSvjez = rukPoz(rukBazaMu(0.60, 0.05, 0.35), { gkMinutaHome: 40 });
+    t.push(ok(
+      "KVANT golman-umor: 60 min → gost +4% 2H golova; 40 min = identitet",
+      gkUmor.taktika.gkUmorDom === true &&
+        Math.abs(gkUmor.lamAway - (r7v6Baza.lamAway * (1 + 0.53 * 0.04))) < 1e-9 &&
+        Math.abs(gkSvjez.lamAway - r7v6Baza.lamAway) < 1e-9 &&
+        gkSvjez.taktika.primijenjeno === false,
+      `λ gost: ${r7v6Baza.lamAway.toFixed(3)} → ${gkUmor.lamAway.toFixed(3)}`,
+    ));
+
+    // m) sport-dodatci: cjelobrojne linije nose push, zbroj = 1
+    const hr = handicapRedovi("kosarka", 88, 84);
+    const cjel = hr.find((x) => Math.abs((x.linija * 2) % 2) < 1e-9);
+    t.push(ok(
+      "KVANT sport-dodatci: cjelobrojna linija ima PUSH RIZIK i zbroj = 1",
+      cjel != null && cjel.pushRizik > 0.001 &&
+        Math.abs(cjel.pDom + cjel.pGost + cjel.pushRizik - 1) < 1e-9,
+      `linija ${cjel?.linija}: push ${((cjel?.pushRizik ?? 0) * 100).toFixed(1)}%`,
+    ));
+
+    // n) pro-alati: asianHandicap = Skellam (push na liniji 0)
+    const ahPa = asianHandicap(1.6, 1.2, 0);
+    t.push(ok(
+      "KVANT pro-alati: AH bez marže = Skellam push",
+      Math.abs(ahPa.push - skellamPmf(0, 1.6, 1.2)) < 1e-9 &&
+        Math.abs(ahPa.win + ahPa.push + ahPa.loss - 1) < 1e-9,
+      `push = ${(ahPa.push * 100).toFixed(2)}%`,
+    ));
+
+    // o) Clean Sheet lock: HT/FT 1/1 ne može uz Clean Sheet gosta
+    const konCs = provjeriKonzistentnost([
+      { trziste: "HT/FT", tip: "1/1", p: 0.30 },
+      { trziste: "Clean Sheet", tip: "Gost — DA", p: 0.55 },
+    ]);
+    t.push(ok(
+      "KVANT konzistentnost: HT/FT 1/1 × Clean Sheet gost = KONTRADIKCIJA",
+      konCs.konzistentno === false && konCs.upozorenja.length > 0,
+      konCs.upozorenja[0]?.slice(0, 90) ?? "",
+    ));
+    const konOk = provjeriKonzistentnost([
+      { trziste: "1x2", tip: "1", p: 0.55 },
+      { trziste: "Clean Sheet", tip: "Domaćin — DA", p: 0.60 },
+    ]);
+    t.push(ok(
+      "KVANT konzistentnost: kompatibilan par prolazi bez upozorenja",
+      konOk.konzistentno === true && konOk.upozorenja.length === 0,
+      "1 + Clean Sheet domaćin je dopuštena kombinacija",
+    ));
   }
 
   const brProslo = t.filter((x) => x.ok).length;
