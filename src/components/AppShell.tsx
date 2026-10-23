@@ -58,6 +58,7 @@ const NAV = [
   { to: "/uzivo", label: "Uživo", icon: Radio },
   { to: "/kosarka-pro", label: "Košarka Pro", icon: Dribbble },
   { to: "/rukomet-pro", label: "Rukomet Pro", icon: CircleDot },
+  { to: "/listici", label: "Moji listići", icon: Ticket },
   { to: "/dnevnik", label: "Dnevnik", icon: BookOpen },
   { to: "/track-record", label: "Track Record", icon: TrendingUp },
   { to: "/info", label: "Info & Arhitektura", icon: Info },
