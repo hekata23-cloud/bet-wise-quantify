@@ -26,6 +26,7 @@ import {
 import { getStatusUtakmice, getFiksatureDana, type KandidatFiksatura } from "@/lib/listici.functions";
 import { getApiKey } from "@/lib/zlatni-guard";
 import { EfektiSwitch, pokreniKonfete, svirajDobitak } from "@/components/DobitakEfekti";
+import { kreditirajVirtualniTiket } from "@/lib/virtualna";
 import { SettingsModal } from "@/components/SettingsModal";
 
 export const Route = createFileRoute("/listici")({
@@ -233,6 +234,7 @@ function ListiciPage() {
         if (promijenjen) azurirajListic(t);
       }
     } catch { /* mreža — javi ispod */ }
+    kreditirajVirtualne();
     osvjezi();
     const novi = noviDobitniTiketi(ucitajListice());
     if (novi.length) {
@@ -250,6 +252,14 @@ function ListiciPage() {
     setProveravam(false);
   }, [osvjezi]);
 
+  /** Kreditiraj poravnate virtualne listiće na bankroll (idempotentno). */
+  function kreditirajVirtualne() {
+    for (const t of ucitajListice()) {
+      const t2 = kreditirajVirtualniTiket(t);
+      if (t2 !== t) azurirajListic(t2);
+    }
+  }
+
   function naNogu(tiketId: string, nogaId: string, ishod: "dobitna" | "izgubljena" | "void" | "cekaj") {
     if (ishod === "cekaj") {
       const svi = ucitajListice();
@@ -264,6 +274,7 @@ function ListiciPage() {
       const ishodNoge = ishod === "void" ? "povrat" : ishod;
       postaviNoguIshod(tiketId, nogaId, ishodNoge, ishod === "void" ? "Ručno void — kvota 1.00" : "Ručno ✓/✗");
     }
+    kreditirajVirtualne();
     osvjezi();
   }
 
