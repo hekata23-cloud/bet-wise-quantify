@@ -243,6 +243,7 @@ function Panel({ linija, u, r, kvota05, setKvota05 }: {
       utakmica: `${u.home} - ${u.away}`,
       liga: u.league,
       trziste, tip, kvota, vjerojatnost: p,
+      fixtureId: u.id,
     });
     zapisiTip({
       sport: "nogomet",
@@ -363,4 +364,3 @@ function PreciznostPanel({ preciznost, a, bundle }: { preciznost: ReturnType<typ
     </div>
   );
 }
-
