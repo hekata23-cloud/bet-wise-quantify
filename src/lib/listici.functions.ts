@@ -38,7 +38,7 @@ export type StatusUtakmice = {
   gostHT: number | null;
 };
 
-export type KandidatFiksatura = { id: number; dom: string; gost: string; status: string };
+export type KandidatFiksatura = { id: number; dom: string; gost: string; status: string; vrijeme?: string | null };
 export type FiksatureDana = { error: string | null; fiksature: KandidatFiksatura[] };
 
 const ZAVRSENI_FOOTBALL = ["FT", "AET", "PEN"];
@@ -159,6 +159,9 @@ export const getFiksatureDana = createServerFn({ method: "GET" })
             dom: String(g?.teams?.home?.name ?? ""),
             gost: String(g?.teams?.away?.name ?? ""),
             status: String(g?.status?.short ?? ""),
+            vrijeme: typeof g?.timestamp === "number" && Number.isFinite(g.timestamp)
+              ? new Date(g.timestamp * 1000).toISOString()
+              : g?.date && g?.time ? `${String(g.date)}T${String(g.time)}:00Z` : null,
           })),
       };
     }
@@ -174,6 +177,7 @@ export const getFiksatureDana = createServerFn({ method: "GET" })
           dom: String(f?.teams?.home?.name ?? ""),
           gost: String(f?.teams?.away?.name ?? ""),
           status: String(f?.fixture?.status?.short ?? f?.status?.short ?? ""),
+          vrijeme: String(f?.fixture?.date ?? "") || null,
         })),
     };
   });
