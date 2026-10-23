@@ -1,26 +1,30 @@
 /* ============================================================
-   VIRTUALNA KLADIONICA — Virtual Sportsbook (v1)
+   VIRTUALNA KLADIONICA — Virtual Sportsbook (v1.1)
    • Bankroll: virtuelni euri, start €10.000, "Dodaj još eura" + "Reset"
-     — praktički neograničeno, uz dnevnik transakcija.
+      — praktički neograničeno, uz dnevnik transakcija.
    • Listić do 30 nogu preko nogomet + košarka + rukomet istovremeno;
-     ukupna kvota = umnožak; moguća isplata = ulog × kvota; gubitak €0.00.
+      ukupna kvota = umnožak; moguća isplata = ulog × kvota; gubitak €0.00.
    • Tržišta SuperSport stila: 1X2, Dvostruka šansa, O/U 0.5–3.5,
-     BTTS, DNB, HT/FT (nogomet); Moneyline uklj. OT, Regularno 1X2,
-     AH, Total poena (košarka); 1X2 60', AH, Totali, 1. poluvrijeme (rukomet).
+      BTTS, DNB, HT/FT (nogomet); Moneyline uklj. OT, Regularno 1X2,
+      AH, Total poena (košarka); 1X2 60', AH, Totali, 1. poluvrijeme (rukomet).
    • Kvote: API-Sports kad su dostupne (batch po danu, keš 12 h),
-     inače deterministički "virtualni" model (marža 5,5%, ista utakmica
-     = iste kvote). Odabir klik gumba — klik opet briše s listića.
+      inače deterministički "virtualni" model (marža 5,5%, ista utakmica
+      = iste kvote). Odabir klik gumba — klik opet briše s listića.
+   • API KLJUČ NA KARTICI: inline panel (unos / Testiraj / Aktiviraj /
+      Ukloni) — aktivacija automatski ponovno učitava utakmice i kvote,
+      bez osvježavanja stranice. Razlog svake API greške se prikazuje
+      točno (dnevni limit / limit po minuti / nevažeći ključ / mreža).
    • Vrijeme isključivo Europe/Zagreb: "DD.MM.YYYY. HH:mm".
    • Poravnanje: "Uplati" sprema tiket u postojeće "Moji listići"
-     (settlement motor: void 1.00, sport-pravila) i debita bankroll;
-     dobitak se automatski kreditira kad listić poravna.
+      (settlement motor: void 1.00, sport-pravila) i debita bankroll;
+      dobitak se automatski kreditira kad listić poravna.
    • ORION AI Analiza Listića: kombinirana vjerojatnost, najveći
-     rizik, Kelly ulog — analizira bilo koju kombinaciju sportova.
+      rizik, Kelly ulog — analizira bilo koju kombinaciju sportova.
    ============================================================ */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Coins, Euro, Plus, RefreshCw, RotateCcw, ScanEye, Ticket, Trash2, X,
+  Coins, Euro, KeyRound, Plus, RefreshCw, RotateCcw, ScanEye, Ticket, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getFiksatureDana, type KandidatFiksatura } from "@/lib/listici.functions";
@@ -35,7 +39,7 @@ import {
   type SlipNoga, type Sport,
 } from "@/lib/virtualna";
 import { spremiKontekstTiketa } from "@/lib/ai-context";
-import { SettingsModal } from "@/components/SettingsModal";
+import { ApiKljucPanel } from "@/components/ApiKljucPanel";
 
 export const Route = createFileRoute("/virtualna")({
   head: () => ({
@@ -59,6 +63,21 @@ function sportApi(s: Sport): "nogomet" | "kosarka" | "rukomet" {
   return s === "košarka" ? "kosarka" : s;
 }
 
+/** Tehničku API grešku prevedi u točan razlog koji korisnik razumije. */
+function prijevodGreske(e: string): string {
+  if (/Nedostaje API ključ/i.test(e))
+    return "API ključ nije unesen — klikni 🔑 API ključ iznad, zalijepi besplatni ključ i klikni Aktiviraj.";
+  if (/DNEVNI_LIMIT/i.test(e))
+    return "Potrošen je dnevni limit API-Footballa (100 poziva/dan na free planu) — obnova u ponoć UTC.";
+  if (/RATE_LIMIT/i.test(e))
+    return "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa klikni Pokušaj ponovno.";
+  if (/ACCOUNT/i.test(e))
+    return "API ključ nije važeći ili račun nije aktivan — otvori 🔑 API ključ iznad i provjeri/aktiviraj ključ.";
+  if (/Mrežna greška/i.test(e))
+    return `${e} — provjeri internetsku vezu pa klikni Pokušaj ponovno.`;
+  return e;
+}
+
 /** Merge "model" kvota s API kvotama: API pobjeđuje po (trziste,tip). */
 function ponudeZaFiksaturu(sport: Sport, f: KandidatFiksatura, apiOpcije: KvoteOpcija[] | undefined) {
   const model = virtualneKvote(sport, f.id);
@@ -77,11 +96,15 @@ function VirtualnaStranica() {
   const [fiksature, setFiksature] = useState<KandidatFiksatura[]>([]);
   const [apiKvote, setApiKvote] = useState<Record<number, KvoteOpcija[]>>({});
   const [apiKvotaInfo, setApiKvotaInfo] = useState<"nema" | "ima" | "greska">("nema");
+  const [greskaFiksature, setGreskaFiksature] = useState<string | null>(null);
+  const [greskaKvote, setGreskaKvote] = useState<string | null>(null);
   const [ucitavam, setUcitavam] = useState(false);
   const [slip, setSlip] = useState<SlipNoga[]>([]);
   const [balans, setBalans] = useState(POCETNI_BANKROLL);
   const [ulogUnos, setUlogUnos] = useState("10");
-  const [postavke, setPostavke] = useState(false);
+  const [apiPanel, setApiPanel] = useState(false);
+  const [kljucVerzija, setKljucVerzija] = useState(0); // bump → prisilno ponovno učitavanje nakon aktivacije
+  const [pokusaj, setPokusaj] = useState(0); // bump → "Pokušaj ponovno"
 
   // SSR-safe load
   useEffect(() => {
@@ -89,31 +112,49 @@ function VirtualnaStranica() {
     setBalans(citajBankroll());
   }, []);
 
-  const apiKey = getApiKey();
+  const apiKey = getApiKey(); // ključ čitaj pri svakom renderu (localStorage)
 
-  // Učitaj utakmice + kvote (batch po danu, keš na serveru)
+  // Učitaj utakmice + kvote (batch po danu, keš na serveru).
+  // KLJUČNO: apiKey, kljucVerzija i pokusaj su u ovisnostima — aktivacija
+  // ključa na kartici ODMAH ponovno učitava podatke (bez promjene sporta/dana).
   useEffect(() => {
     let mrtav = false;
     (async () => {
       setUcitavam(true);
-      const fRes = await getFiksatureDana({ data: { sport: sportApi(sport), dan, apiKey } });
-      if (mrtav) return;
-      setFiksature(fRes.fiksature ?? []);
-      if (!apiKey) { setApiKvote({}); setApiKvotaInfo("nema"); setUcitavam(false); return; }
-      const kRes = await getKvoteDana({ data: { sport: sportApi(sport), dan, apiKey } });
-      if (mrtav) return;
-      if (kRes.error) { setApiKvote({}); setApiKvotaInfo("greska"); }
-      else {
-        const mapa: Record<number, KvoteOpcija[]> = {};
-        for (const u of kRes.utakmice) mapa[u.fixtureId] = u.opcije;
-        setApiKvote(mapa);
-        setApiKvotaInfo(Object.keys(mapa).length > 0 ? "ima" : "nema");
+      setGreskaFiksature(null);
+      setGreskaKvote(null);
+      try {
+        const kljuc = apiKey ?? "";
+        const fRes = await getFiksatureDana({ data: { sport: sportApi(sport), dan, apiKey: kljuc } });
+        if (mrtav) return;
+        setFiksature(fRes.fiksature ?? []);
+        if (fRes.error) setGreskaFiksature(fRes.error);
+        const kRes = await getKvoteDana({ data: { sport: sportApi(sport), dan, apiKey: kljuc } });
+        if (mrtav) return;
+        if (kRes.error) {
+          setApiKvote({});
+          setApiKvotaInfo("greska");
+          setGreskaKvote(kRes.error);
+        } else {
+          const mapa: Record<number, KvoteOpcija[]> = {};
+          for (const u of kRes.utakmice) mapa[u.fixtureId] = u.opcije;
+          setApiKvote(mapa);
+          setApiKvotaInfo(Object.keys(mapa).length > 0 ? "ima" : "nema");
+        }
+      } catch {
+        if (!mrtav) setGreskaFiksature("Učitavanje nije uspjelo (neočekivana greška) — klikni Pokušaj ponovno.");
+      } finally {
+        if (!mrtav) setUcitavam(false);
       }
-      setUcitavam(false);
     })();
     return () => { mrtav = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sport, dan]);
+  }, [sport, dan, apiKey, kljucVerzija, pokusaj]);
+
+  /** Nakon aktivacije/uklanjanja ključa na kartici: odmah osvježi podatke. */
+  function osvjeziNakonKljuca() {
+    setKljucVerzija((v) => v + 1);
+  }
 
   const ponudeByFixture = useMemo(() => {
     const mapa: Record<number, ReturnType<typeof ponudeZaFiksaturu>> = {};
@@ -262,22 +303,48 @@ function VirtualnaStranica() {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> API AKTIVAN
           </span>
         ) : (
-          <button onClick={() => setPostavke(true)} className="rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-400 hover:bg-red-500/20">
-            API KLJUČ NIJE POSTAVLJEN → Postavke
-          </button>
+          <span className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-400" /> API KLJUČ NIJE POSTAVLJEN
+          </span>
         )}
+        <button
+          onClick={() => setApiPanel((o) => !o)}
+          className="flex items-center gap-1 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-400 hover:bg-amber-500/20"
+          title="Unesi / testiraj / aktiviraj API ključ"
+        >
+          <KeyRound className="h-3 w-3" /> API ključ
+        </button>
         <button onClick={() => setDan(danasZagreb())} className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-secondary px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
           <RefreshCw className={`h-3 w-3 ${ucitavam ? "animate-spin" : ""}`} /> Danas
         </button>
       </div>
 
-      {apiKvotaInfo === "greska" && (
+      {/* ── Inline API ključ panel (unos / Testiraj / Aktiviraj / Ukloni) ── */}
+      <ApiKljucPanel open={apiPanel} onClose={() => setApiPanel(false)} onAktivirano={osvjeziNakonKljuca} />
+
+      {/* ── Status kvota i utakmica — točan razlog, ne generična poruka ── */}
+      {greskaFiksature && (
         <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
-          API kvote nisu dostupne (plan bez odds pristupa ili greška) — koriste se virtualne kvote modela (marža 5,5%).
+          Utakmice: {prijevodGreske(greskaFiksature)}{" "}
+          <button onClick={() => setPokusaj((p) => p + 1)} className="font-bold underline hover:no-underline">Pokušaj ponovno</button>
         </p>
       )}
-      {apiKvotaInfo === "nema" && apiKey && (
-        <p className="mb-3 text-[11px] text-muted-foreground">Kvote: virtualni model (deterministički, marža 5,5%). API kvote za ovaj dan nisu dostupne.</p>
+      {greskaKvote && (
+        <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+          API kvote: {prijevodGreske(greskaKvote)} — trenutno se koriste virtualne kvote modela (marža 5,5%).{" "}
+          <button onClick={() => setPokusaj((p) => p + 1)} className="font-bold underline hover:no-underline">Pokušaj ponovno</button>
+        </p>
+      )}
+      {apiKvotaInfo === "ima" && !greskaKvote && (
+        <p className="mb-3 text-[11px] text-emerald-400">✅ API kvote učitane — preko model-kvota napisane su stvarne knjižarske kvote.</p>
+      )}
+      {apiKvotaInfo === "nema" && !greskaKvote && !greskaFiksature && (
+        <p className="mb-3 text-[11px] text-muted-foreground">
+          Kvote: virtualni model (deterministički, marža 5,5%).
+          {apiKey
+            ? " API za ovaj dan nije vratio kvote — kvote postoje samo za buduće utakmice (sljedećih ~7 dana); započete utakmice nemaju kvote."
+            : " Za stvarne knjižarske kvote unesi besplatni API-Football ključ: klikni 🔑 API ključ iznad."}
+        </p>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -441,8 +508,6 @@ function VirtualnaStranica() {
           </Link>
         </div>
       </div>
-
-      <SettingsModal open={postavke} onClose={() => setPostavke(false)} />
     </div>
   );
 }
