@@ -326,6 +326,7 @@ export function SportProStranica(props: {
 /** Dodavanje tipa u Korpu (Bet Slip). */
 function ubaciUKorpu(sport: Sport, u: SportUtakmica, trziste: string, tip: string, kvota: number, p: number) {
   dodajUKorpu({
+    id: `${sport}|${u.id}|${trziste}|${tip}`,
     sport: sport === "kosarka" ? "košarka" : "rukomet",
     utakmica: `${u.domacinNaziv} - ${u.gostNaziv}`,
     liga: u.ligaNaziv,
@@ -333,6 +334,7 @@ function ubaciUKorpu(sport: Sport, u: SportUtakmica, trziste: string, tip: strin
     tip,
     kvota,
     vjerojatnost: p,
+    fixtureId: u.id,
   });
 }
 
@@ -524,4 +526,5 @@ function Analiza({ u, r, sport }: { u: SportUtakmica; r: Rezultat; sport: Sport 
     </>
   );
 }
+
 
