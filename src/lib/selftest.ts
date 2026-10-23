@@ -49,6 +49,11 @@ import { handicapRedovi } from "./sport-dodatci";
 import { asianHandicap } from "./pro-alati";
 import { okolisPomak, sudacProfil, VJETAR_PRAG_KMH, SUDAC_KARTONA_PRAG } from "./math-engine";
 import { varijancaTiketa, entropijaNozice, type KorpaTip } from "./korpa";
+import {
+  statusTiketa, ukupnaKvotaTiketa, isplataTiketa, statistikaListica, ocijeniNogu,
+  jeVoidStatus, pogodiFiksaturu, vrstaTrzista,
+  type Tiket, type TiketNoga, type RezultatUtakmice,
+} from "./listici";
 import { sarpBrain } from "./sarp-brain";
 import type { DnevnikUnos } from "./dnevnik";
 import type { KosAnalysis, Tip as KosTipT } from "./kosarka-engine";
@@ -827,6 +832,123 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
       "VARIJANSA: polovične linije (Over 2.5) nisu push; < 3 noge = bez upozorenja",
       vHalf.remiPushNoge === 0 && vHalf.upozorenje === null,
       "2 noge: upozorenje ne izlazi (prag je 3+)",
+    ));
+  }
+
+  /* ── 16) MOJI LISTIĆI — settlement: void 1.00, sport-pravila, push, analitika (v7) ── */
+  {
+    const noga7 = (id: string, sport: TiketNoga["sport"], trziste: string, tip: string, kvota: number, status: TiketNoga["status"] = "cekaj"): TiketNoga =>
+      ({ id, sport, utakmica: "U" + id, trziste, tip, kvota, vjerojatnost: 0.5, status });
+    const rez7 = (status: string, dom: number | null, gost: number | null, domReg: number | null = dom, gostReg: number | null = gost, domHT: number | null = null, gostHT: number | null = null): RezultatUtakmice =>
+      ({ status, zavrsena: ["FT", "AET", "PEN", "AOT"].includes(status), dom, gost, domReg, gostReg, domHT, gostHT });
+
+    // a) VOID: kvota 1.00, tiket NE pada
+    const voidTiket = [
+      noga7("v1", "nogomet", "1X2", "1", 1.8, "void"),
+      noga7("v2", "nogomet", "O/U 2.5", "Over 2.5", 2.0, "dobitna"),
+    ];
+    t.push(ok(
+      "VOID: PST/CANC/ABD noga = kvota 1.00 → ukupna kvota 2.00, tiket DOBITAN, isplata ulog×2 (ne pada!)",
+      jeVoidStatus("PST") && jeVoidStatus("CANC") && jeVoidStatus("ABD") && !jeVoidStatus("FT") &&
+        Math.abs(ukupnaKvotaTiketa(voidTiket) - 2.0) < 1e-9 &&
+        statusTiketa(voidTiket) === "dobitno" &&
+        Math.abs(isplataTiketa(voidTiket, 10) - 20) < 1e-9,
+      `kvota ${ukupnaKvotaTiketa(voidTiket).toFixed(2)} · isplata ${isplataTiketa(voidTiket, 10).toFixed(2)} €`,
+    ));
+    // b) sve noge void → povrat uloga
+    const sviVoid = [noga7("w1", "nogomet", "1X2", "1", 1.8, "void"), noga7("w2", "nogomet", "1X2", "X", 3.4, "void")];
+    t.push(ok(
+      "VOID: sve noge void → status POVRAT, isplata = ulog",
+      statusTiketa(sviVoid) === "povrat" && isplataTiketa(sviVoid, 10) === 10,
+      "puni povrat kad su sve noge odgođene/otkazane",
+    ));
+    // c) nogomet 90' — AET odlučuje regularni rezultat
+    const aet7 = rez7("AET", 2, 1, 1, 1);
+    t.push(ok(
+      "NOGOMET 90': AET (reg 1:1, final 2:1) → X dobitan, '1' izgubljen",
+      ocijeniNogu("nogomet", { trziste: "1X2", tip: "X", kvota: 3.2 }, aet7) === "dobitna" &&
+        ocijeniNogu("nogomet", { trziste: "1X2", tip: "1", kvota: 2.0 }, aet7) === "izgubljena",
+      "90 minuta + nadoknada, produžetak se ne računa",
+    ));
+    // d) košarka: 1X2 regularno, Moneyline uklj. OT
+    const otKos = rez7("AOT", 105, 104, 100, 100);
+    t.push(ok(
+      "KOŠARKA OT: 1X2 'X' dobitan (100:100 reg), '1' izgubljen; Moneyline '1' dobitan (105:104 uklj. OT)",
+      ocijeniNogu("košarka", { trziste: "1X2", tip: "X", kvota: 12 }, otKos) === "dobitna" &&
+        ocijeniNogu("košarka", { trziste: "1X2", tip: "1", kvota: 1.5 }, otKos) === "izgubljena" &&
+        ocijeniNogu("košarka", { trziste: "Moneyline", tip: "1", kvota: 1.5 }, otKos) === "dobitna",
+      "1X2 i Spread = 40/48 min; Moneyline = uklj. produžetak",
+    ));
+    // e) košarka total uklj. OT
+    t.push(ok(
+      "KOŠARKA TOTAL: Over 205.5 s 105:104 (209 uklj. OT) → dobitan",
+      ocijeniNogu("košarka", { trziste: "O/U", tip: "Over 205.5", kvota: 1.9 }, otKos) === "dobitna",
+      "totali uključuju produžetak",
+    ));
+    // f) rukomet: 1X2 striktno 60', pobjednik meča uklj. produžetak
+    const otRuk = rez7("AOT", 21, 22, 20, 20);
+    t.push(ok(
+      "RUKOMET 60': 1X2 'X' dobitan (20:20 reg); '1' izgubljen; pobjednik meča '2' dobitan (22:21 uklj. OT)",
+      ocijeniNogu("rukomet", { trziste: "1X2", tip: "X", kvota: 5 }, otRuk) === "dobitna" &&
+        ocijeniNogu("rukomet", { trziste: "1X2", tip: "1", kvota: 1.6 }, otRuk) === "izgubljena" &&
+        ocijeniNogu("rukomet", { trziste: "Moneyline", tip: "2", kvota: 1.7 }, otRuk) === "dobitna",
+      "1X2/AH/Total Goals = 60 minuta; pobjednik meča uklj. produžetak",
+    ));
+    // g) push linije
+    const ft21 = rez7("FT", 2, 1);
+    const ft11 = rez7("FT", 1, 1);
+    t.push(ok(
+      "PUSH: Over 2.0 (1:1 = 2 gola) = povrat; Domaćin −1.0 (2:1) = povrat; −1.5 = izgubljen; Gost +1.5 = dobitan",
+      ocijeniNogu("nogomet", { trziste: "O/U", tip: "Over 2.0", kvota: 1.9 }, ft11) === "povrat" &&
+        ocijeniNogu("nogomet", { trziste: "Azijski handicap", tip: "Domaćin -1.0", kvota: 2.1 }, ft21) === "povrat" &&
+        ocijeniNogu("nogomet", { trziste: "Azijski handicap", tip: "Domaćin -1.5", kvota: 2.3 }, ft21) === "izgubljena" &&
+        ocijeniNogu("nogomet", { trziste: "Azijski handicap", tip: "Gost +1.5", kvota: 1.8 }, ft21) === "dobitna",
+      "cjelobrojna linija → povrat uloga na toj nozi",
+    ));
+    // h) GG i DNB
+    t.push(ok(
+      "GG/DNB: 1:1 GG da = dobitan, 2:0 GG da = izgubljen; DNB remi = povrat, DNB pobjeda = dobitan",
+      ocijeniNogu("nogomet", { trziste: "BTTS", tip: "GG", kvota: 1.8 }, rez7("FT", 1, 1)) === "dobitna" &&
+        ocijeniNogu("nogomet", { trziste: "BTTS", tip: "GG", kvota: 1.8 }, rez7("FT", 2, 0)) === "izgubljena" &&
+        ocijeniNogu("nogomet", { trziste: "DNB", tip: "DNB Domaćin", kvota: 1.6 }, rez7("FT", 1, 1)) === "povrat" &&
+        ocijeniNogu("nogomet", { trziste: "DNB", tip: "DNB Domaćin", kvota: 1.6 }, rez7("FT", 2, 1)) === "dobitna",
+      "standardna tržišta ispravno ocijenjena",
+    ));
+    // i) analitika listića
+    const tiketi7: Tiket[] = [
+      { id: "t1", datum: "2026-01-01", ulog: 10, noge: [noga7("a", "nogomet", "O/U 2.5", "Over 2.5", 2.0, "dobitna")] },
+      { id: "t2", datum: "2026-01-02", ulog: 10, noge: [noga7("b", "košarka", "Moneyline", "1", 1.9, "izgubljena")] },
+      { id: "t3", datum: "2026-01-03", ulog: 10, noge: [noga7("c", "nogomet", "1X2", "X", 2.0, "void")] },
+    ];
+    const stat7 = statistikaListica(tiketi7);
+    t.push(ok(
+      "ANALITIKA: 3 listića (1 dobitan, 1 izgubljen, 1 povrat) → ROI 0%, Win Rate 33.3%, najjači sport nogomet (+10), najveća pogođena kvota 2.00",
+      stat7.odigrani === 3 && stat7.dobitni === 1 && stat7.izgubljeni === 1 && stat7.povrati === 1 &&
+        Math.abs(stat7.roi) < 1e-9 && Math.abs(stat7.winRate - 100 / 3) < 0.01 &&
+        stat7.najjaciSport === "nogomet" && Math.abs(stat7.najjaciSportProfit - 10) < 1e-9 &&
+        stat7.najvecaKvota != null && Math.abs(stat7.najvecaKvota - 2) < 1e-9,
+      `ROI ${stat7.roi.toFixed(1)}% · WR ${stat7.winRate.toFixed(1)}% · najjači ${stat7.najjaciSport ?? "?"} +${stat7.najjaciSportProfit.toFixed(2)}`,
+    ));
+    // j) fuzzy uparivanje imena utakmica
+    const kand7 = [
+      { id: 11, dom: "Dinamo Zagreb", gost: "Hajduk Split", status: "FT" },
+      { id: 12, dom: "Osijek", gost: "Rijeka", status: "FT" },
+    ];
+    t.push(ok(
+      "UPARIVANJE: 'Dinamo Zagreb - Hajduk Split' → 11; 'Osijek — Rijeka' → 12; nepoznat par → null",
+      pogodiFiksaturu("Dinamo Zagreb - Hajduk Split", kand7) === 11 &&
+        pogodiFiksaturu("Osijek — Rijeka", kand7) === 12 &&
+        pogodiFiksaturu("Lokomotiva - Varaždin", kand7) == null,
+      "dijakritika, crtica i različiti crtani podnose se",
+    ));
+    // k) klasifikacija tržišta
+    t.push(ok(
+      "TRŽIŠTA: košarka 1X2→1x2reg; Moneyline→moneyline; rukomet Azijski handicap→handicap; nogomet O/U 2.5→total",
+      vrstaTrzista("košarka", "1X2", "1") === "1x2reg" &&
+        vrstaTrzista("košarka", "Moneyline", "1") === "moneyline" &&
+        vrstaTrzista("rukomet", "Azijski handicap", "Domaćin -3.5") === "handicap" &&
+        vrstaTrzista("nogomet", "O/U 2.5", "Over 2.5") === "total",
+      "kontrola klasifikacije isplata",
     ));
   }
 
