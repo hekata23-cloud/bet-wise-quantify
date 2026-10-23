@@ -9,87 +9,139 @@ type Props = {
   onSaved?: () => void;
 };
 
+type Status = {
+  ok?: boolean;
+  msg: string;
+  plan?: string;
+  used?: number;
+  limit?: number;
+  aktiviran?: boolean;
+} | null;
+
 export function SettingsModal({ open, onClose, onSaved }: Props) {
   const [key, setKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [status, setStatus] = useState<{
-    ok?: boolean;
-    msg: string;
-    plan?: string;
-    used?: number;
-    limit?: number;
-  } | null>(null);
+  const [status, setStatus] = useState<Status>(null);
 
   useEffect(() => {
     if (open) {
       const saved = getApiKey() || "";
       setKey(saved);
-      setStatus(null);
+      setStatus(
+        saved
+          ? { ok: true, msg: "Ključ je spremljen — aplikacija koristi API-Football podatke.", aktiviran: true }
+          : null,
+      );
     }
   }, [open]);
 
   if (!open) return null;
 
-  const testiraj = async () => {
-    if (!key.trim()) {
-      setStatus({ ok: false, msg: "Prvo upiši API ključ." });
-      return;
-    }
+  const potvrda = (s: Status) => setStatus(s);
+
+  // AKTIVIRAJ: spremi ključ i odmah testiraj vezu
+  const aktiviraj = async () => {
+    const k = key.trim();
+    if (!k) { potvrda({ ok: false, msg: "Prvo upiši API ključ." }); return; }
     setTesting(true);
-    setStatus(null);
+    potvrda({ ok: true, msg: "Aktiviram — provjeravam vezu…" });
     try {
-      const res = await testApiKey({ data: { apiKey: key.trim() } });
+      const res = await testApiKey({ data: { apiKey: k } });
       if (res.ok) {
-        setStatus({
-          ok: true,
-          msg: `Veza uspješna! Plan: ${res.plan} (${res.active ? "Aktivan" : "Neaktivan"})`,
-          plan: res.plan,
-          used: res.current,
-          limit: res.limit,
+        saveKey("apiFootball", k);
+        try { localStorage.setItem("kr-football-api-key", k); } catch { /* ignoriraj */ }
+        potvrda({
+          ok: true, aktiviran: true,
+          msg: `Povezano / API Aktivan — plan ${res.plan}${res.active ? " (aktivan)" : " (neaktivan)"}. Ključ je spremljen.`,
+          plan: res.plan, used: res.current, limit: res.limit,
         });
+        onSaved?.();
       } else {
-        setStatus({ ok: false, msg: `Greška: ${res.error}` });
+        potvrda({ ok: false, msg: `Greška: ${res.error} — ključ nije spremljen.` });
       }
-    } catch (e: any) {
-      setStatus({ ok: false, msg: `Mrežna greška: ${e.message || "Nepoznato"}` });
+    } catch (e) {
+      potvrda({ ok: false, msg: `Mrežna greška: ${e instanceof Error ? e.message : "nepoznato"}` });
     } finally {
       setTesting(false);
     }
   };
 
+  // TESTIRAJ VEZU: testira upisani ključ bez spremanja
+  const testiraj = async () => {
+    const k = key.trim();
+    if (!k) { potvrda({ ok: false, msg: "Prvo upiši API ključ." }); return; }
+    setTesting(true);
+    potvrda({ ok: true, msg: "Testiram vezu…" });
+    try {
+      const res = await testApiKey({ data: { apiKey: k } });
+      if (res.ok) {
+        potvrda({
+          ok: true,
+          msg: `Veza uspješna! Plan: ${res.plan} (${res.active ? "Aktivan" : "Neaktivan"})`,
+          plan: res.plan, used: res.current, limit: res.limit,
+        });
+      } else {
+        potvrda({ ok: false, msg: `Greška: ${res.error}` });
+      }
+    } catch (e) {
+      potvrda({ ok: false, msg: `Mrežna greška: ${e instanceof Error ? e.message : "nepoznato"}` });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  // SPREMI: spremi ključ u postavke (bez obaveznog testa)
   const spremi = () => {
     const k = key.trim();
     if (k) {
       saveKey("apiFootball", k);
-      localStorage.setItem("kr-football-api-key", k);
+      try { localStorage.setItem("kr-football-api-key", k); } catch { /* ignoriraj */ }
+      potvrda({ ok: true, msg: "Ključ spremljen. Klikni 'Aktiviraj' za potvrdu veze.", aktiviran: true });
+      onSaved?.();
     } else {
       clearKey("apiFootball");
-    localStorage.removeItem("kr-football-api-key");
+      try { localStorage.removeItem("kr-football-api-key"); } catch { /* ignoriraj */ }
+      potvrda({ ok: true, msg: "Ključ uklonjen iz memorije." });
+      onSaved?.();
     }
-    onSaved?.();
-    onClose();
   };
 
   const obrisi = () => {
     clearKey("apiFootball");
-    localStorage.removeItem("kr-football-api-key");
+    try { localStorage.removeItem("kr-football-api-key"); } catch { /* ignoriraj */ }
     setKey("");
-    setStatus({ ok: true, msg: "Ključ uklonjen iz memorije." });
+    potvrda({ ok: true, msg: "Ključ uklonjen iz memorije." });
     onSaved?.();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-border">
-          <h3 className="text-lg font-bold text-card-foreground">⚙️ Postavke Football API-ja</h3>
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="text-lg font-bold text-card-foreground">⚙️ API-Football Configuration</h3>
           <button onClick={onClose} className="rounded-lg p-1 text-muted-foreground hover:bg-secondary">
             ✕
           </button>
         </div>
 
         <div className="mt-4 space-y-4">
+          {/* Status indikator: zeleni puls = Povezano, crveno = Greška */}
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                status?.ok
+                  ? "animate-pulse bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]"
+                  : status && status.ok === false
+                    ? "bg-red-500"
+                    : "bg-muted-foreground/40"
+              }`}
+            />
+            <span className={`text-xs font-semibold ${status?.ok ? "text-emerald-400" : status && status.ok === false ? "text-red-400" : "text-muted-foreground"}`}>
+              {status?.ok ? "Povezano / API Aktivan" : status && status.ok === false ? "Greška / Nevažeći ključ" : "Nije povezano"}
+            </span>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               API-Sports / API-Football Ključ
@@ -100,7 +152,7 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
                 placeholder="Unesi svoj API ključ..."
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground pr-16"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 pr-16 text-sm text-foreground"
               />
               <button
                 type="button"
@@ -136,17 +188,24 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
 
           <div className="flex flex-wrap gap-2 pt-2">
             <button
+              onClick={aktiviraj}
+              disabled={testing}
+              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
+            >
+              ⚡ Aktiviraj
+            </button>
+            <button
               onClick={testiraj}
               disabled={testing}
               className="flex-1 rounded-lg border border-input bg-secondary px-3 py-2 text-sm font-semibold text-foreground hover:bg-secondary/80 disabled:opacity-50"
             >
-              {testing ? "Testiram..." : "🔍 Testiraj ključ"}
+              {testing ? "Testiram..." : "🔍 Testiraj vezu"}
             </button>
             <button
               onClick={spremi}
               className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
             >
-              💾 Spremi i aktiviraj
+              💾 Spremi
             </button>
           </div>
 
@@ -163,4 +222,3 @@ export function SettingsModal({ open, onClose, onSaved }: Props) {
     </div>
   );
 }
-
