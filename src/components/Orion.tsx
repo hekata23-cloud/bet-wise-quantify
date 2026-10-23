@@ -28,6 +28,24 @@ export function Orion() {
     return () => window.removeEventListener("andromeda:mec-kontekst", osvjezi);
   }, []);
 
+  // Auto-analiza listića: Virtualna kladionica / Korpa postave pitanje u
+  // localStorage ("pc.orion.pitanje") i pošalju događaj — Orion se otvori
+  // i pitanje pošalje JEDNOM (ključ se odmah briše).
+  useEffect(() => {
+    const autoPitanje = () => {
+      let q: string | null = null;
+      try { q = window.localStorage.getItem("pc.orion.pitanje"); } catch { q = null; }
+      if (!q) return;
+      try { window.localStorage.removeItem("pc.orion.pitanje"); } catch { /* ignoriraj */ }
+      setOpen(true);
+      // mali odmak da se "send" veže na aktualni state nakon otvaranja
+      setTimeout(() => { void send(q!); }, 120);
+    };
+    autoPitanje();
+    window.addEventListener("andromeda:orion-pitanje", autoPitanje);
+    return () => window.removeEventListener("andromeda:orion-pitanje", autoPitanje);
+  }, []);
+
   useEffect(() => {
     setMessages(loadJSON<ChatTurn[]>(KEY, []));
   }, []);
