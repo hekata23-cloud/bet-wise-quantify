@@ -5,7 +5,8 @@
 // Logika je u src/lib/korpa.ts (baza) + src/lib/korpa-smart.ts.
 // ============================================================
 import { useCallback, useEffect, useState } from "react";
-import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers, Share2, Download } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers, Share2, Download, Play, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadKorpa, ukloniIzKorpe, ocistiKorpu, varijancaTiketa,
@@ -15,6 +16,7 @@ import { izracunajKorpuSmart } from "@/lib/korpa-smart";
 import { loadJSON, saveJSON } from "@/lib/storage";
 import { podijeliTiket, preuzmiTiket } from "@/lib/tiket-slika";
 import { spremiKontekstTiketa } from "@/lib/ai-context";
+import { spremiListic, nogaIzKorpe } from "@/lib/listici";
 
 const BANKROLL_KEY = "andromeda.bankroll";
 const KELLY_KEY = "andromeda.kelly.frac";
@@ -26,6 +28,8 @@ export function Korpa() {
   const [tipovi, setTipovi] = useState<KorpaTip[]>([]);
   const [bankroll, setBankroll] = useState<number>(() => loadJSON<number>(BANKROLL_KEY, 100));
   const [kellyFrac, setKellyFrac] = useState<number>(() => loadJSON<number>(KELLY_KEY, 0.25));
+  const [ulog, setUlog] = useState<string>("");
+  const navigate = useNavigate();
 
   const osvjezi = useCallback(() => setTipovi(loadKorpa()), []);
 
@@ -81,6 +85,33 @@ export function Korpa() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipovi]);
+
+  // VIRTUALNO ODIGRAVANJE: sprema listić u "Moji listići" s unesenim ulogom
+  function odigraj() {
+    if (tipovi.length === 0) return;
+    const iznos = Number(ulog.replace(",", "."));
+    const kandidat = iznos > 0 ? iznos : r.ulogIznos;
+    if (!(kandidat > 0)) { toast.error("Unesi ulog u € (npr. 5)."); return; }
+    const tiket = spremiListic(tipovi.map(nogaIzKorpe), kandidat);
+    if (!tiket) { toast.error("Listić nije spremljen — provjeri noge i ulog."); return; }
+    ocistiKorpu();
+    setUlog("");
+    toast.success(`Listić spremljen — ulog ${kandidat.toFixed(2)} € · prati ga u "Moji listići"`);
+    navigate({ to: "/listici" });
+  }
+
+  // PITAJ LUNU: šalje aktivni listić u Lunin chat (kontekst je već spremljen)
+  function pitajLunu() {
+    if (tipovi.length === 0) return;
+    const pitanje =
+      `Analiziraj moj aktivni listić (podaci su ti u kontekstu tiketa): ${r.n} noga, ukupna kvota ${r.kvota.toFixed(2)}, ` +
+      `korelacijski korigirana vjerojatnost ${(r.pKorigirana * 100).toFixed(1)}%. Daj mi: ` +
+      `1) ukupnu vjerojatnost prolaza u % i koliko je realna uz maržu kvota, ` +
+      `2) NOGU S NAJVEĆIM RIZIKOM (najniža sigurnost) i zašto je slaba, ` +
+      `3) preporučeni ulog po frakcijskom Kellyju i jasno "igraj" ili "preskoči" odluku.`;
+    try { localStorage.setItem("pc.luna.pitanje", pitanje); } catch { /* ignoriraj */ }
+    navigate({ to: "/chat" });
+  }
 
   async function podijeliListic() {
     try {
@@ -322,6 +353,45 @@ export function Korpa() {
                   {r.ulogPerc.toFixed(2)}% = {r.ulogIznos.toFixed(2)} €
                 </span>
               </div>
+
+              {/* VIRTUALNO ODIGRAVANJE — listić ide u "Moji listići" s isplatom i void zaštitom */}
+              {(() => {
+                const iznosUloga = Number(ulog.replace(",", ".")) || (r.ulogIznos > 0 ? r.ulogIznos : 0);
+                return (
+                  <div className="flex items-end gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                    <label className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+                      Ulog (€)
+                      <input
+                        inputMode="decimal"
+                        value={ulog}
+                        onChange={(e) => setUlog(e.target.value)}
+                        placeholder={r.ulogIznos > 0 ? r.ulogIznos.toFixed(2) : "5"}
+                        className="mt-0.5 w-full rounded-lg border border-input bg-background/60 px-2 py-1 text-sm text-foreground"
+                      />
+                    </label>
+                    <div className="text-right text-[11px] text-muted-foreground">
+                      Dobitak ako padne
+                      <div className="font-mono text-sm font-bold text-emerald-300">
+                        {(iznosUloga * r.kvota).toFixed(2)} €
+                      </div>
+                    </div>
+                    <button
+                      onClick={odigraj}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
+                    >
+                      <Play className="h-3.5 w-3.5" /> Odigraj
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* PITAJ LUNU — AI pregled tiketa */}
+              <button
+                onClick={pitajLunu}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/10 px-3 py-2 text-xs font-semibold text-fuchsia-300 hover:bg-fuchsia-500/20"
+              >
+                <MessageCircle className="h-3.5 w-3.5" /> Pitaj Lunu za mišljenje o listiću
+              </button>
               {!r.isplativo && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -365,4 +435,3 @@ export function Korpa() {
     </>
   );
 }
-
