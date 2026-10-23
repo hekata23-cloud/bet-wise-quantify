@@ -50,6 +50,13 @@ import { asianHandicap } from "./pro-alati";
 import { okolisPomak, sudacProfil, VJETAR_PRAG_KMH, SUDAC_KARTONA_PRAG } from "./math-engine";
 import { varijancaTiketa, entropijaNozice, type KorpaTip } from "./korpa";
 import {
+  bankroll as vbBankroll, dodajEure as vbDodaj, resetBankroll as vbReset, skiniUlog as vbSkini,
+  isplatiDobitak as vbIsplati, transakcije as vbTransakcije, ukupnaKvotaSlipa as vbKvota,
+  mogucaIsplata as vbIsplata, analizirajSlip as vbAnaliza, virtualneKvote as vbKvote,
+  trzistaZaSport as vbTrzista, uplatiVirtualniListic as vbUplati, kreditirajVirtualniTiket as vbKredit,
+  formatZagrebStamp, type SlipNoga,
+} from "./virtualna";
+import {
   statusTiketa, ukupnaKvotaTiketa, isplataTiketa, statistikaListica, ocijeniNogu,
   jeVoidStatus, pogodiFiksaturu, vrstaTrzista,
   type Tiket, type TiketNoga, type RezultatUtakmice,
@@ -949,6 +956,131 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
         vrstaTrzista("rukomet", "Azijski handicap", "Domaćin -3.5") === "handicap" &&
         vrstaTrzista("nogomet", "O/U 2.5", "Over 2.5") === "total",
       "kontrola klasifikacije isplata",
+    ));
+  }
+
+  /* ── 17) VIRTUALNA KLADIONICA — bankroll, 30 noga, kvote, Zagreb vrijeme, Orion analiza ── */
+  {
+    // a) bankroll: reset → 10.000, ulog → dobitak, dnevnik transakcija
+    const s0 = vbReset();
+    const s1 = vbSkini(50, "test ulog");
+    const s2 = vbIsplati(200, "test dobitak");
+    const s3 = vbDodaj(500, "test dodano");
+    const tr = vbTransakcije();
+    t.push(ok(
+      "BANKROLL: reset=10.000; ulog 50 → 9.950; dobitak 200 → 10.150; dodano 500 → 10.650; dnevnik 4 transakcije",
+      s0 === 10000 && s1 === 9950 && s2 === 10150 && s3 === 10650 && tr.length === 4 &&
+        tr[0]!.stanje === 10650 && tr.every((x) => typeof x.stanje === "number" && Number.isFinite(x.stanje)),
+      "virtuelni euri: dodavanje/reset neograničeno, dnevnik konzistentan",
+    ));
+
+    // b) ulog preko stanja → odbijeno
+    const s4 = vbSkini(999999, "preko stanja");
+    t.push(ok("BANKROLL: ulog veći od stanja je odbijen (null)", s4 == null, "zaštita bankrolla"));
+
+    // c) kvota listića: umnožak + moguća isplata + €0.00 na gubitku
+    const noge2: SlipNoga[] = [
+      { id: "1", sport: "nogomet", utakmica: "A - B", trziste: "1X2", tip: "1", label: "1", kvota: 2, vjerojatnost: 0.5, izvorKvote: "model" },
+      { id: "2", sport: "nogomet", utakmica: "C - D", trziste: "O/U", tip: "Over 2.5", label: "O2.5", kvota: 1.5, vjerojatnost: 0.7, izvorKvote: "model" },
+    ];
+    const isplata2 = vbIsplata(10, noge2);
+    t.push(ok(
+      "SLIP: ukupna kvota 2.0×1.5=3.0; isplata 10€×3=30€; gubitak = strogo €0.00 (settlement motor)",
+      Math.abs(vbKvota(noge2) - 3) < 1e-9 && isplata2 === 30 && isplataTiketa(noge2.map((n) => ({ id: n.id, sport: n.sport, utakmica: n.utakmica, trziste: n.trziste, tip: n.tip, kvota: n.kvota, vjerojatnost: n.vjerojatnost, status: "izgubljena" as const })), 10) === 0,
+      "umnožak kvota i isplate",
+    ));
+
+    // d) uplata: debita bankroll, sprema tiket izvor "virtualna", čisti listić
+    vbReset();
+    const up = vbUplati(noge2, 100);
+    t.push(ok(
+      "UPLATA: ulog 100 skinut (10.000→9.900), tiket spremljen s izvorom 'virtualna'",
+      up.ok && up.ok && (up as { novoStanje: number }).novoStanje === 9900,
+      "poravnanje na 'Moji listići' i bankroll",
+    ));
+
+    // e) kredit: dobitni tiket (bez voida) → isplata 300, kreditirano=true; ponovni poziv idempotentan
+    const tiketUp = (up as { tiket: import("./listici").Tiket }).tiket;
+    const dobiven = { ...tiketUp, noge: tiketUp.noge.map((n) => ({ ...n, status: "dobitna" as const })) };
+    const poslije1 = vbKredit(dobiven);
+    const stanje1 = vbBankroll();
+    const poslije2 = vbKredit(poslije1);
+    t.push(ok(
+      "KREDIT: dobitak 100×3=300€ kreditiran (9.900→10.200); drugi poziv ne duplira",
+      poslije1.kreditirano === true && stanje1 === 10200 && poslije2 === poslije1 && vbBankroll() === 10200,
+      "idempotentno kreditiranje dobitka",
+    ));
+
+    // f) analiza listića: kombinirana p = produkt; najveći rizik = najniža p; Kelly granice
+    const n3: SlipNoga[] = [
+      { id: "1", sport: "nogomet", utakmica: "A - B", trziste: "1X2", tip: "1", label: "1", kvota: 1.8, vjerojatnost: 0.55, izvorKvote: "model" },
+      { id: "2", sport: "nogomet", utakmica: "C - D", trziste: "O/U", tip: "Over 2.5", label: "O2.5", kvota: 2.0, vjerojatnost: 0.5, izvorKvote: "model" },
+      { id: "3", sport: "nogomet", utakmica: "E - F", trziste: "BTTS", tip: "GG", label: "GG", kvota: 1.7, vjerojatnost: 0.6, izvorKvote: "model" },
+    ];
+    const an = vbAnaliza(n3, 10000);
+    t.push(ok(
+      "ORION: kombinirana p=0.55·0.5·0.6=16.5%; najveći rizik=O2.5 (p=50%); Kelly>0; 1/4 Kelly ≤ bankroll",
+      Math.abs(an.kombiniranaVjerojatnost - 0.165) < 1e-9 && an.najveciRizik?.tip === "Over 2.5" &&
+        an.kellyUdio > 0 && an.preporuceniUlog <= 10000 && an.brojNogu === 3,
+      "kombinirana vjerojatnost, najveći rizik, Kelly preporuka",
+    ));
+
+    // g) virtualne kvote: >1, determinizam, monotonija O/U, katalog kompletan
+    const kvo1 = vbKvote("nogomet", 777);
+    const kvo2 = vbKvote("nogomet", 777);
+    const uzmi = (arr: ReturnType<typeof vbKvote>, trz: string, tip: string) => arr.find((x) => x.trziste === trz && x.tip === tip)?.kvota ?? 0;
+    const tpo = vbKvote("nogomet", 777).length;
+    t.push(ok(
+      "KVOTE (nogomet): sve >1; determinističke (ista utakmica = iste kvote); O/U monotonija; katalog 27 opcija",
+      kvo1.length === 27 && kvo1.every((x) => x.kvota > 1 && x.kvota <= 50) &&
+        kvo1.length === kvo2.length && kvo1.every((x, i) => Math.abs(x.kvota - kvo2[i]!.kvota) < 1e-9) &&
+        uzmi(kvo1, "O/U", "Over 0.5") < uzmi(kvo1, "O/U", "Over 3.5") &&
+        uzmi(kvo1, "O/U", "Under 0.5") > uzmi(kvo1, "O/U", "Under 3.5") && tpo === 27,
+      "sinteza kvota s maržom 5,5%",
+    ));
+
+    // h) katalozi po sportu: nogomet 24 (9 HT/FT), košarka, rukomet; validna tržišta za settlement
+    const kn = vbTrzista("nogomet"), kk = vbTrzista("košarka"), kr = vbTrzista("rukomet");
+    const htft = kn.filter((x) => x.grupa === "HT/FT").length;
+    t.push(ok(
+      "KATALOG: nogomet 27 opcija (uklj. 9 HT/FT); košarka Moneyline+R1X2+AH+totali (15); rukomet 18",
+      kn.length === 27 && htft === 9 && kk.length === 15 && kr.length === 18 &&
+        vbKvote("košarka", 5).every((x) => x.kvota > 1) && vbKvote("rukomet", 5).every((x) => x.kvota > 1),
+      "pun pokrivenost tržišta po sportu",
+    ));
+
+    // i) nova tržišta settlement: Dvostruka šansa, HT/FT, 1. poluvrijeme
+    const rezHT = { status: "FT", zavrsena: true, dom: 2, gost: 1, domReg: 2, gostReg: 1, domHT: 1, gostHT: 0 };
+    const rezHX = { status: "FT", zavrsena: true, dom: 1, gost: 1, domReg: 1, gostReg: 1, domHT: 1, gostHT: 1 };
+    const ev = (n: { trziste: string; tip: string; kvota: number }, r: typeof rezHT) => ocijeniNogu("nogomet", n, r);
+    t.push(ok(
+      "NOVA TRŽIŠTA: 1X (2:1)=dobitna, X2 (2:1)=gubitna, 12 (1:1)=gubitna; HT/FT '1/1' (1:0→2:1)=dobitna; HT/FT 'X/1'=gubitna",
+      ev({ trziste: "Dvostruka šansa", tip: "1X", kvota: 1.3 }, rezHT) === "dobitna" &&
+        ev({ trziste: "Dvostruka šansa", tip: "X2", kvota: 1.7 }, rezHT) === "izgubljena" &&
+        ev({ trziste: "Dvostruka šansa", tip: "12", kvota: 1.25 }, rezHX) === "izgubljena" &&
+        ev({ trziste: "HT/FT", tip: "1/1", kvota: 3.2 }, rezHT) === "dobitna" &&
+        ev({ trziste: "HT/FT", tip: "X/1", kvota: 4.5 }, rezHT) === "izgubljena",
+      "dvostruka šansa i HT/FT po pravilima",
+    ));
+
+    // j) 1. poluvrijeme: pobjednik i total po HT rezultatu (nogomet i rukomet)
+    const poluRuk = { status: "FT", zavrsena: true, dom: 24, gost: 21, domReg: 24, gostReg: 21, domHT: 12, gostHT: 13 };
+    t.push(ok(
+      "1. POLUVRIJEME: 1H '2' (12:13)=dobitna; 1H 'X' =gubitna; 1H Over 25.5 (25 golova)=dobitna; 1H Over 24.5 (2×12=24? ne — 25)→25>24.5 dobitna; push cjelobrojna",
+      ocijeniNogu("rukomet", { trziste: "1. poluvrijeme", tip: "2", kvota: 2.2 }, poluRuk) === "dobitna" &&
+        ocijeniNogu("rukomet", { trziste: "1. poluvrijeme", tip: "X", kvota: 4.0 }, poluRuk) === "izgubljena" &&
+        ocijeniNogu("rukomet", { trziste: "O/U 1. poluvrijeme", tip: "Over 24.5", kvota: 1.9 }, poluRuk) === "dobitna" &&
+        ocijeniNogu("nogomet", { trziste: "O/U 1. poluvrijeme", tip: "Over 2.0", kvota: 3.5 }, rezHX) === "povrat",
+      "poluvrijeme tržišta koriste domHT/gostHT",
+    ));
+
+    // k) Zagreb vrijeme: "DD.MM.YYYY. HH:mm" (zima UTC+1, ljeto UTC+2)
+    const zima = formatZagrebStamp(new Date("2026-01-24T17:00:00Z")); // 18:00 Zagreb
+    const ljeto = formatZagrebStamp(new Date("2026-07-24T16:00:00Z")); // 18:00 Zagreb (DST)
+    t.push(ok(
+      "ZAGREB: 24.01.2026. 18:00 (UTC+1) i 24.07.2026. 18:00 (UTC+2 DST)",
+      zima === "24.01.2026. 18:00" && ljeto === "24.07.2026. 18:00",
+      "Europe/Zagreb enforcement",
     ));
   }
 
