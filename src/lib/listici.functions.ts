@@ -7,6 +7,9 @@
      nogu bez fixtureId-a po imenima momčadi).
    Nogomet preko api-guarda, košarka/rukomet preko sportovi-guarda.
    Rezultat se kešira 10 minuta da provjera ne troši pozive uzalud.
+   KLJUČ: prvo ključ s klijenta; ako nema, pokušaj poslužiteljev env
+   ključ (API_FOOTBALL_KEY) — kartice rade i bez unesenog ključa kad
+   poslužitelj ima ključ; inače jasan "Nedostaje API ključ" error.
    ============================================================ */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -143,9 +146,11 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
 export const getFiksatureDana = createServerFn({ method: "GET" })
   .inputValidator((d) => schemaDan.parse(d))
   .handler(async ({ data }): Promise<FiksatureDana> => {
+    // ključ s klijenta ili env fallback — kartice rade i bez unesenog ključa
+    const kljuc = (data.apiKey || process.env["API_FOOTBALL_KEY"] || "").trim().replace(/^["']|["']$/g, "");
     if (data.sport === "kosarka" || data.sport === "rukomet") {
       const r: GuardResult = await sportoviGet(data.sport, `/games?date=${data.dan}`, {
-        apiKey: data.apiKey,
+        apiKey: kljuc,
         ttlMs: 10 * 60_000,
       });
       if (r.error) return { error: r.error, fiksature: [] };
@@ -165,7 +170,7 @@ export const getFiksatureDana = createServerFn({ method: "GET" })
           })),
       };
     }
-    const r = await guardGet(`/fixtures?date=${data.dan}`, { apiKey: data.apiKey, ttlMs: 10 * 60_000 });
+    const r = await guardGet(`/fixtures?date=${data.dan}`, { apiKey: kljuc, ttlMs: 10 * 60_000 });
     if (r.error) return { error: r.error, fiksature: [] };
     const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
     return {
