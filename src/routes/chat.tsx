@@ -88,6 +88,18 @@ function ChatPage() {
     setMmOn(loadMastermind().enabled);
   }, []);
 
+  // PITAJ LUNU (v7): pitanje iz Korpe ("Pitaj Lunu za mišljenje o listiću")
+  // šalje se automatski jednom pri otvaranju chata — kontekst tiketa je već spremljen.
+  useEffect(() => {
+    try {
+      const q = localStorage.getItem("pc.luna.pitanje");
+      if (!q) return;
+      localStorage.removeItem("pc.luna.pitanje");
+      setTimeout(() => void send(q), 400);
+    } catch { /* ignoriraj */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
