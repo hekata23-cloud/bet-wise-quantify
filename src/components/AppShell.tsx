@@ -23,6 +23,7 @@ import {
   Wrench,
   Zap,
   TrendingUp,
+  Coins,
   Info,
 } from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
@@ -58,6 +59,7 @@ const NAV = [
   { to: "/uzivo", label: "Uživo", icon: Radio },
   { to: "/kosarka-pro", label: "Košarka Pro", icon: Dribbble },
   { to: "/rukomet-pro", label: "Rukomet Pro", icon: CircleDot },
+  { to: "/virtualna", label: "Virtualna", icon: Coins },
   { to: "/listici", label: "Moji listići", icon: Ticket },
   { to: "/dnevnik", label: "Dnevnik", icon: BookOpen },
   { to: "/track-record", label: "Track Record", icon: TrendingUp },
