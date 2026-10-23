@@ -39,6 +39,8 @@ export interface Tiket {
   datum: string;         // ISO — kad je listić odigran
   noge: TiketNoga[];
   ulog: number;          // u novcu
+  izvor?: "korpa" | "virtualna"; // virtualna = Virtualna Kladionica (bankroll kredit)
+  kreditirano?: boolean; // dobitak/povrat je već uplaćen na bankroll (virtualna)
 }
 
 /* ── Prepoznavanje void statusa (API-Football / API-Sports short kodovi) ── */
@@ -49,7 +51,7 @@ export function jeVoidStatus(short: string | null | undefined): boolean {
 }
 
 /* ── Klasifikacija tržišta ── */
-export type VrstaTrzista = "1x2reg" | "moneyline" | "handicap" | "total" | "timtotal" | "ostalo";
+export type VrstaTrzista = "1x2reg" | "moneyline" | "handicap" | "total" | "timtotal" | "dvostruka" | "htft" | "polu1x2" | "polutotal" | "ostalo";
 
 export function vrstaTrzista(sport: Sport, trziste: string, tip: string): VrstaTrzista {
   const t = trziste.toLowerCase();
@@ -57,6 +59,9 @@ export function vrstaTrzista(sport: Sport, trziste: string, tip: string): VrstaT
   if (t.includes("moneyline") || t.includes("pobjednik meča") || t.includes("pobjednik meca")) return "moneyline";
   if (t.includes("1x2") || t.includes("1×2") || t.includes("1x2reg")) return "1x2reg";
   if (t.includes("spread") || t.includes("handicap") || t.includes("hendikep") || t.includes("azijski")) return "handicap";
+  if (t.includes("ht/ft") || (t.includes("ht") && t.includes("ft"))) return "htft";
+  if (t.includes("polu")) return (t.includes("over") || t.includes("under") || ti.includes("over") || ti.includes("under")) ? "polutotal" : "polu1x2";
+  if (t.includes("dvostruka") || /^(1x|x2|12)$/.test(ti)) return "dvostruka";
   if (t.includes("timtotal") || t.startsWith("dom") || t.startsWith("gost")) {
     if (t.includes("over") || t.includes("under") || t.includes("ukupno")) return "timtotal";
   }
@@ -81,6 +86,7 @@ export interface RezultatUtakmice {
 
 /** Koje rezultate tržište koristi: "reg" (regularno vrijeme) ili "full" (uklj. OT). */
 export function izvorRezultata(sport: Sport, vrsta: VrstaTrzista): "reg" | "full" {
+  if (vrsta === "htft" || vrsta === "polu1x2" || vrsta === "polutotal") return "reg";
   if (sport === "nogomet") return "reg";                    // 90' + nadoknada; domReg = fulltime
   // rukomet: 1X2 / AH / Total Goals striktno 60 minuta; "pobjednik meča" uklj. produžetak
   if (sport === "rukomet") return vrsta === "moneyline" ? "full" : "reg";
@@ -141,26 +147,60 @@ export function ocijeniNogu(sport: Sport, noga: { trziste: string; tip: string; 
   if (!r.zavrsena) return "nepoznato";
   const vrsta = vrstaTrzista(sport, noga.trziste, noga.tip);
   const { dom, gost } = rezultatZa(sport, vrsta, r);
-  if (dom == null || gost == null) return "nepoznato";
+  // poluvrijeme grane ne koriste puni rezultat; reg. grane garantirano imaju brojeve (guard gore)
+  const domR = dom ?? 0;
+  const gostR = gost ?? 0;
+  // poluvrijeme tržišta ocjenjuju se po domHT/gostHT — puni rezultat im nije nužan
+  if (vrsta !== "polu1x2" && vrsta !== "polutotal" && (domR == null || gostR == null)) return "nepoznato";
+  if (vrsta === "dvostruka") {
+    const iz = noga.tip.replace(/\s/g, "").toUpperCase().replace("×", "X");
+    const stvarno = domR > gostR ? "1" : domR < gostR ? "2" : "X";
+    if (iz === "1X") return stvarno === "2" ? "izgubljena" : "dobitna";
+    if (iz === "X2") return stvarno === "1" ? "izgubljena" : "dobitna";
+    if (iz === "12") return stvarno === "X" ? "izgubljena" : "dobitna";
+    return "nepoznato";
+  }
+  if (vrsta === "htft") {
+    if (r.domHT == null || r.gostHT == null || domR == null || gostR == null) return "nepoznato";
+    const m = noga.tip.trim().toUpperCase().match(/^([12X])\/([12X])$/);
+    if (!m) return "nepoznato";
+    const polu = r.domHT > r.gostHT ? "1" : r.domHT < r.gostHT ? "2" : "X";
+    const kraj = domR > gostR ? "1" : domR < gostR ? "2" : "X";
+    return m[1] === polu && m[2] === kraj ? "dobitna" : "izgubljena";
+  }
+  if (vrsta === "polu1x2" || vrsta === "polutotal") {
+    if (r.domHT == null || r.gostHT == null) return "nepoznato";
+    if (vrsta === "polu1x2") {
+      const s = strana1x2(noga.tip);
+      if (!s) return "nepoznato";
+      const stv = r.domHT > r.gostHT ? "1" : r.domHT < r.gostHT ? "2" : "X";
+      return s === stv ? "dobitna" : "izgubljena";
+    }
+    const tot = totalIz(noga.tip, noga.trziste);
+    if (!tot) return "nepoznato";
+    const vrijednost = r.domHT + r.gostHT;
+    if (vrijednost === tot.linija) return "povrat";
+    return (vrijednost > tot.linija) === tot.over ? "dobitna" : "izgubljena";
+  }
 
   if (vrsta === "1x2reg") {
     const s = strana1x2(noga.tip);
     if (!s) return "nepoznato";
-    const stvarno = dom > gost ? "1" : dom < gost ? "2" : "X";
+    const stvarno = domR > gostR ? "1" : domR < gostR ? "2" : "X";
     return s === stvarno ? "dobitna" : "izgubljena";
   }
   if (vrsta === "moneyline") {
     const s = stranaDvorna(noga.tip);
     if (!s) return "nepoznato";
-    const stvarno = dom > gost ? "1" : dom < gost ? "2" : null;
+    const stvarno = domR > gostR ? "1" : domR < gostR ? "2" : null;
     if (stvarno == null) return "izgubljena"; // 2-načina: neriješeno = gubitak (DNB je odvojeno tržište)
     return s === stvarno ? "dobitna" : "izgubljena";
   }
   if (vrsta === "handicap") {
     const h = handicapIz(noga.tip);
     if (!h) return "nepoznato";
-    const domH = h.tim === "1" ? dom + h.margina : dom;
-    const gostH = h.tim === "2" ? gost + h.margina : gost;
+    const domH = h.tim === "1" ? domR + h.margina : domR;
+    const gostH = h.tim === "2" ? gostR + h.margina : gostR;
     if (domH === gostH) return "povrat"; // cjelobrojna linija → push
     const pobjednik = domH > gostH ? "1" : "2";
     return h.tim === pobjednik ? "dobitna" : "izgubljena";
@@ -170,8 +210,8 @@ export function ocijeniNogu(sport: Sport, noga: { trziste: string; tip: string; 
     if (!tot) return "nepoznato";
     const vrijednost =
       vrsta === "timtotal"
-        ? noga.trziste.toLowerCase().startsWith("dom") ? dom : gost
-        : dom + gost;
+        ? noga.trziste.toLowerCase().startsWith("domR") ? domR : gostR
+        : domR + gostR;
     if (vrijednost === tot.linija) return "povrat"; // push
     const over = vrijednost > tot.linija;
     return over === tot.over ? "dobitna" : "izgubljena";
@@ -180,14 +220,14 @@ export function ocijeniNogu(sport: Sport, noga: { trziste: string; tip: string; 
   const ti = noga.tip.toLowerCase();
   if (/^(gg|btts)/.test(ti)) {
     const da = !ti.includes("ne") && !ti.includes("ng") && !ti.includes("nema");
-    const btts = dom > 0 && gost > 0;
+    const btts = domR > 0 && gostR > 0;
     return da === btts ? "dobitna" : "izgubljena";
   }
   if (ti.includes("dnb") || ti.includes("bez remi")) {
     const s = stranaDvorna(ti.replace(/dnb|bez remi/g, "").trim());
     if (!s) return "nepoznato";
-    if (dom === gost) return "povrat";
-    return s === (dom > gost ? "1" : "2") ? "dobitna" : "izgubljena";
+    if (domR === gostR) return "povrat";
+    return s === (domR > gostR ? "1" : "2") ? "dobitna" : "izgubljena";
   }
   return "nepoznato"; // HT/FT, SGP, točan rezultat → ručna provjera
 }
@@ -314,7 +354,7 @@ function spremi(tiketi: Tiket[]) {
   } catch { /* puna memorija — ignoriraj */ }
 }
 
-export function spremiListic(noge: TiketNoga[], ulog: number, datum?: string): Tiket | null {
+export function spremiListic(noge: TiketNoga[], ulog: number, datum?: string, izvor?: Tiket["izvor"]): Tiket | null {
   const ciste = noge.filter((n) => n && n.kvota > 1 && n.tip && n.utakmica);
   if (ciste.length === 0 || !(ulog > 0)) return null;
   const tiket: Tiket = {
@@ -322,6 +362,7 @@ export function spremiListic(noge: TiketNoga[], ulog: number, datum?: string): T
     datum: datum ?? new Date().toISOString(),
     noge: ciste,
     ulog: Math.max(0, Number(ulog) || 0),
+    izvor,
   };
   spremi([tiket, ...ucitajListice()]);
   return tiket;
