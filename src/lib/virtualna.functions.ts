@@ -8,6 +8,9 @@
 //   razmak 2.5s i hlađenje na HTTP 429 (zlatni-guard) — ovdje se samo
 //   dohvaća rjeđe (12h keš) i u batchu po danu.
 // • Nedostajuće opcije klijent dopuni "model" kvotama (virtualna.ts).
+// • KLJUČ: prvo ključ s klijenta; ako nema, pokušaj poslužiteljev env
+//   ključ (API_FOOTBALL_KEY); ako ni toga nema — tiho "nista" (klijent
+//   prikazuje vlastitu uputu za unos ključa, bez lažne greške).
 // ============================================================
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -25,6 +28,12 @@ export type KvoteUtakmice = { fixtureId: number; opcije: KvoteOpcija[] };
 export type KvoteDana = { error: string | null; utakmice: KvoteUtakmice[] };
 
 const KEŠ_MS = 12 * 60 * 60 * 1000; // 12 sati — statične pred-utrka kvote
+
+/** Ključ s klijenta ili poslužiteljev env ključ ("" = nema ključa). */
+function rezolucijaKljuca(clientKey?: string | null): string {
+  const k = (clientKey ?? "").trim() || process.env["API_FOOTBALL_KEY"]?.trim() || "";
+  return k.replace(/^["']|["']$/g, "").trim();
+}
 
 /** Prosjek kvote kroz knjižare (konsenzus). */
 function prosjekKvota(vrijednosti: number[]): number | null {
@@ -112,12 +121,16 @@ export const getKvoteDana = createServerFn({ method: "GET" })
   .inputValidator((d) => schema.parse(d))
   .handler(async ({ data }): Promise<KvoteDana> => {
     const nista: KvoteDana = { error: null, utakmice: [] };
+    const kljuc = rezolucijaKljuca(data.apiKey);
+    // Bez ključa nema ni greške ni poziva — klijent koristi model-kvote i
+    // prikazuje vlastitu uputu za unos besplatnog ključa.
+    if (!kljuc) return nista;
 
     if (data.sport !== "nogomet") {
       // košarka / rukomet — vlastita API kvota (kad postoji); greška = tiho → model kvote
       let r: GuardResult;
       try {
-        r = await sportoviGet(data.sport, `/odds?date=${data.dan}`, { apiKey: data.apiKey, ttlMs: KEŠ_MS });
+        r = await sportoviGet(data.sport, `/odds?date=${data.dan}`, { apiKey: kljuc, ttlMs: KEŠ_MS });
       } catch {
         return nista;
       }
@@ -137,7 +150,7 @@ export const getKvoteDana = createServerFn({ method: "GET" })
     // nogomet — jedan batch poziv za cijeli dan
     let r: Awaited<ReturnType<typeof guardGet>>;
     try {
-      r = await guardGet(`/odds?date=${data.dan}`, { apiKey: data.apiKey, ttlMs: KEŠ_MS });
+      r = await guardGet(`/odds?date=${data.dan}`, { apiKey: kljuc, ttlMs: KEŠ_MS });
     } catch {
       return nista;
     }
