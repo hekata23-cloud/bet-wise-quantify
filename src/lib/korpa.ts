@@ -20,6 +20,7 @@ export interface KorpaTip {
   tip: string;           // "GG", "Over 2.5", "1/1", "Domaćin -5.5"...
   kvota: number;         // > 1
   vjerojatnost: number;  // 0..1 — koliko model vjeruje
+  fixtureId?: number;    // API ID utakmice — za automatsko poravnanje u "Moji listići"
   dodano?: number;
 }
 
