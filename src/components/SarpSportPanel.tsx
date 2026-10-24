@@ -20,6 +20,7 @@ import { htftKosarka, htftRukomet, type HtFtKosarkaIzlaz, type HtFtRukometIzlaz 
 import { losaCijena } from "@/lib/devig-shield";
 import { zapisiTip } from "@/lib/dnevnik";
 import { spremiKontekstMeca } from "@/lib/ai-context";
+import { normalizirajKontekst } from "@/lib/safe-math";
 
 type Utakmica = { id: number; home: string; away: string; league: string; time: string };
 
@@ -60,17 +61,33 @@ export function SarpSportPanel(props: Props) {
   const [suspA, setSuspA] = useState(1);
   const [dodano, setDodano] = useState<string | null>(null);
 
+  // UNIVERSAL MATCH CONTEXT (v7): normalizirani kontekst utakmice —
+  // dopunjuje podatke koji fale (pace/ORtg/DRtg/B2B za košarku,
+  // efikasnost/golmani/7v6 za rukomet) i ide u AI prompt.
+  const universalKontekst = useMemo(
+    () =>
+      normalizirajKontekst({
+        sport: props.sport,
+        fixtureId: utakmica.id,
+        domacin: utakmica.home,
+        gost: utakmica.away,
+        liga: utakmica.league,
+        brojKladionica: props.brojKladionica ?? 0,
+      }),
+    [props.sport, utakmica.id, utakmica.home, utakmica.away, utakmica.league, props.brojKladionica],
+  );
+
   const kos = useMemo<BasketballSARPPrediction | null>(() => {
     if (props.sport !== "kosarka") return null;
     const stats: BasketballMatchStats = { homeB2B: b2bH, awayB2B: b2bA, home3in4: t34H, away3in4: t34A };
-    return sarpKosarka({ an: an as KosAnalysis, mk: props.mk, home: utakmica.home, away: utakmica.away, league: utakmica.league, fixtureId: utakmica.id, brojKladionica: props.brojKladionica ?? undefined, stats });
-  }, [props.sport === "kosarka" ? an : null, props.sport === "kosarka" ? props.mk : null, props.sport === "kosarka" ? props.brojKladionica : null, b2bH, b2bA, t34H, t34A, utakmica.id]);
+    return sarpKosarka({ an: an as KosAnalysis, mk: props.mk, home: utakmica.home, away: utakmica.away, league: utakmica.league, fixtureId: utakmica.id, brojKladionica: props.brojKladionica ?? undefined, stats, kontekst: universalKontekst });
+  }, [props.sport === "kosarka" ? an : null, props.sport === "kosarka" ? props.mk : null, props.sport === "kosarka" ? props.brojKladionica : null, b2bH, b2bA, t34H, t34A, utakmica.id, universalKontekst]);
 
   const ruk = useMemo<HandballSARPPrediction | null>(() => {
     if (props.sport !== "rukomet") return null;
     const stats: HandballMatchStats = { suspHome: suspH, suspAway: suspA };
-    return sarpRukomet({ an: an as RukometAnalysis, home: utakmica.home, away: utakmica.away, fixtureId: utakmica.id, brojKladionica: props.brojKladionica ?? undefined, stats });
-  }, [props.sport === "rukomet" ? an : null, props.sport === "rukomet" ? props.brojKladionica : null, suspH, suspA, utakmica.id]);
+    return sarpRukomet({ an: an as RukometAnalysis, home: utakmica.home, away: utakmica.away, fixtureId: utakmica.id, brojKladionica: props.brojKladionica ?? undefined, stats, kontekst: universalKontekst });
+  }, [props.sport === "rukomet" ? an : null, props.sport === "rukomet" ? props.brojKladionica : null, suspH, suspA, utakmica.id, universalKontekst]);
 
   const htft = useMemo<HtFtKosarkaIzlaz | HtFtRukometIzlaz | null>(() => {
     if (props.sport === "kosarka" && kos) return htftKosarka(kos.expHome, kos.expAway, kos.sigma);
@@ -139,9 +156,10 @@ export function SarpSportPanel(props: Props) {
               ekstraGolovi: ruk!.garbageTime.ekstraGolovi,
             },
           },
+      universal: universalKontekst,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [utakmica.id, pred]);
+  }, [utakmica.id, pred, universalKontekst]);
   if (!pred) return null;
 
   const cijena = pred.core ? losaCijena(pred.core.p, pred.core.kvota) : null;
@@ -381,4 +399,3 @@ export function SarpSportPanel(props: Props) {
     </div>
   );
 }
-
