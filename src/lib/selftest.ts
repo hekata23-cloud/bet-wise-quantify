@@ -65,6 +65,17 @@ import { sarpBrain } from "./sarp-brain";
 import type { DnevnikUnos } from "./dnevnik";
 import type { KosAnalysis, Tip as KosTipT } from "./kosarka-engine";
 import type { RukometAnalysis, Tip as RukTipT } from "./rukomet-engine";
+import {
+  broj, kvota as kvotaSafe, golovi, sigurnoLam, sigurneLambde, postotak,
+  normalizirajKontekst, LIGA_PROSJEK_GOLI,
+} from "./safe-math";
+import {
+  izgradiGrid, skellam1x2, deMargin3, deMargin2, kellyUlogPct, evPct,
+  monteCarlo, lambdaIzForme,
+} from "./math-engine";
+import { izracunajFormu } from "./kvote-servis.server";
+import { analyzeKos } from "./kosarka-engine";
+import { analyzeRukomet } from "./rukomet-engine";
 
 export type SelfTest = { naziv: string; ok: boolean; detalj: string };
 export type SelfTestIzvjestaj = {
@@ -906,7 +917,7 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
     const ft11 = rez7("FT", 1, 1);
     t.push(ok(
       "PUSH: Over 2.0 (1:1 = 2 gola) = povrat; Domaćin −1.0 (2:1) = povrat; −1.5 = izgubljen; Gost +1.5 = dobitan",
-      ocijeniNogu("nogomet", { trziste: "O/U", tip: "Over 2.0", kvota: 1.9 }, ft11) === "povrat" &&
+ocijeniNogu("nogomet", { trziste: "O/U", tip: "Over 2.0", kvota: 1.9 }, ft11) === "povrat" &&
         ocijeniNogu("nogomet", { trziste: "Azijski handicap", tip: "Domaćin -1.0", kvota: 2.1 }, ft21) === "povrat" &&
         ocijeniNogu("nogomet", { trziste: "Azijski handicap", tip: "Domaćin -1.5", kvota: 2.3 }, ft21) === "izgubljena" &&
         ocijeniNogu("nogomet", { trziste: "Azijski handicap", tip: "Gost +1.5", kvota: 1.8 }, ft21) === "dobitna",
@@ -1081,6 +1092,182 @@ export function pokreniSelftest(): SelfTestIzvjestaj {
       "ZAGREB: 24.01.2026. 18:00 (UTC+1) i 24.07.2026. 18:00 (UTC+2 DST)",
       zima === "24.01.2026. 18:00" && ljeto === "24.07.2026. 18:00",
       "Europe/Zagreb enforcement",
+    ));
+  }
+
+  /* ── 18) SAFE-MATH — neprobojni ulazni sloj, UniversalMatchContext i NaN-otpornost ── */
+  {
+    const konacan = (x: unknown) => typeof x === "number" && Number.isFinite(x);
+
+    // a) koercija ulaza: string, zarez, null, NaN, objekt { value }
+    t.push(ok(
+      "SAFE-MATH broj: '1.45'→1.45, '1,45'→1.45, 'abc'→fallback, null→fallback, NaN→fallback, {value:'2.10'}→2.10",
+      broj("1.45") === 1.45 && broj("1,45") === 1.45 && broj("abc", 2) === 2 &&
+        broj(null, 3) === 3 && broj(NaN, 4) === 4 && broj({ value: "2.10" }, 0) === 2.1,
+      "svaki oblik podatka forsira se u čisti broj s fallbackom",
+    ));
+    t.push(ok(
+      "SAFE-MATH kvota/postotak: '2.10'→2.10; kvota ≤ 1 → null; postotak '55'→0.55; postotak 0.55→0.55; golovi '3.0'→3",
+      kvotaSafe("2.10") === 2.1 && kvotaSafe(1) == null && kvotaSafe(-3) == null &&
+        postotak("55") === 0.55 && postotak(0.55) === 0.55 && golovi("3.0") === 3,
+      "kvote i postotci iz stringova i brojeva",
+    ));
+
+    // b) sigurne λ: NaN → ligaški prior; besmisleni par (0.02, 8) → ligaški prior
+    const lNaN = sigurneLambde(NaN, NaN);
+    const lBes = sigurneLambde(0.02, 8);
+    t.push(ok(
+      "SAFE-MATH λ: NaN → ligaški prior; λ=0.02/μ=8 (besmislen par) → ligaški prior; ispravan par prolazi netaknut",
+      konacan(lNaN.lam) && konacan(lNaN.mu) && lNaN.lam > 0 && lNaN.mu > 0 &&
+        konacan(lBes.lam) && konacan(lBes.mu) && lBes.lam > 0 && lBes.mu > 0 &&
+        sigurnoLam("2.1", 1.35) === 2.1,
+      `NaN → ${lNaN.lam.toFixed(2)}/${lNaN.mu.toFixed(2)}; liga ${LIGA_PROSJEK_GOLI} ukupno`,
+    ));
+
+    // c) UniversalMatchContext: pokvaren ulaz → sigurni defaulti; sport detekcija
+    const k1 = normalizirajKontekst({
+      sport: "Basketball", fixtureId: "abc", homePace: "1.2", vjetarKmh: "40", kisa: true,
+      refCardsPerGame: "6.1", homeXG: "1.45",
+    });
+    const k2 = normalizirajKontekst(null);
+    t.push(ok(
+      "UNIVERZALNI KONTEKST: 'Basketball'→kosarka; string brojevi ('1.2', '40', '6.1', '1.45') parse; fixtureId 'abc'→null; null ulaz → neutralni defaulti",
+      k1.sport === "kosarka" && k1.fixtureId == null && k1.homePace === 1.2 &&
+        k1.vjetarKmh === 40 && k1.kisa === true && k1.refCardsPerGame === 6.1 && k1.homeXG === 1.45 &&
+        k2.sport === "nogomet" && k2.homePace === 1 && k2.motivationIndex === 0.5 && k2.domacin === "Domaćin",
+      "nema više 'oblik objekta' nesuglasja — kontekst je uvijek potpuno ispunjen",
+    ));
+
+    // d) alternativni nazivi polja (xgHome, windKmh, sevenVsSix, kladionice)
+    const k3 = normalizirajKontekst({ xgHome: "0.9", awayXG: "1.1", windKmh: 40, sevenVsSix: "0.3", kladionice: 7 });
+    t.push(ok(
+      "UNIVERZALNI KONTEKST: alternativna polja xgHome/windKmh/sevenVsSix/kladionice prepoznata",
+      k3.homeXG === 0.9 && k3.awayXG === 1.1 && k3.vjetarKmh === 40 &&
+        k3.sevenVsSixFactor === 0.3 && k3.brojKladionica === 7,
+      "API varijante naziva polja prolaze u isti kontekst",
+    ));
+
+    // e) NaN-otpornost matematike: grid, Skellam, de-margin, Kelly, MC
+    const G = izgradiGrid(NaN, NaN);
+    const gSum = G.reduce((s, r) => s + r.reduce((a, b) => a + b, 0), 0);
+    const skNaN = skellam1x2(NaN, 2);
+    const mcNaN = monteCarlo([[NaN, 0], [0, NaN]] as unknown as number[][], 2000, 42);
+    t.push(ok(
+      "NaN-ŠTIT matematike: izgradiGrid(NaN,NaN) → validna matrica zbroja 1; skellam1x2(NaN,2) → 1/3 trojke; deMargin3/deMargin2 s NaN → null; kellyUlogPct(NaN)→0; evPct(NaN)→0; MC s NaN matricom → konačni izlaz",
+      konacan(gSum) && Math.abs(gSum - 1) < 1e-9 && G.every((r) => r.every(konacan)) &&
+        konacan(skNaN.p1) && Math.abs(skNaN.p1 + skNaN.pX + skNaN.p2 - 1) < 1e-6 &&
+        deMargin3(NaN, 3, 4) == null && deMargin2(undefined, NaN) == null &&
+        kellyUlogPct(NaN, 2) === 0 && evPct(NaN, 2) === 0 &&
+        konacan(mcNaN.p1) && konacan(mcNaN.o25),
+      "NaN ulazi ne mogu više 'raspasti' karticu",
+    ));
+
+    // f) goalsAnaliza s pokvarenim podacima (string kvote, NaN forma, null forma)
+    const goalsKv = goalsAnaliza({
+      kvote: { "1": "2.10", X: NaN, "2": 3.4, o25: "1.90", u25: undefined } as unknown as Record<string, number>,
+      formaDom: { odigrano: NaN, postignuti: "4", primljeni: null, btts: NaN, over15: NaN, over25: NaN, under35: NaN, penali: NaN } as unknown as FormaGolovi,
+      formaGost: null,
+    });
+    t.push(ok(
+      "NaN-ŠTIT goals-motor: string/NAN/undefined kvote i NaN forma → sve λ i vjerojatnosti konačni",
+      konacan(goalsKv.lambdaDom) && konacan(goalsKv.lambdaGost) && konacan(goalsKv.lambdaUkupno) &&
+        Object.values(goalsKv.final).every(konacan),
+      `λ dom ${goalsKv.lambdaDom.toFixed(2)} · gost ${goalsKv.lambdaGost.toFixed(2)} · ukupno ${goalsKv.lambdaUkupno.toFixed(2)}`,
+    ));
+
+    // g) sarpBrain s pokvarenim ulazom + učinak UniversalMatchContext
+    const sarpUlaz = {
+      utakmica: { id: 1, home: "A", away: "B", league: "HNL" },
+      kvote: { "1": NaN, X: "3.2", "2": 3.4 } as unknown as Record<string, number>,
+      formaDom: { odigrano: NaN, postignuti: "4", primljeni: null, btts: NaN, over15: NaN, over25: NaN, under35: NaN, penali: NaN } as unknown as FormaGolovi,
+      formaGost: null,
+    } as Parameters<typeof sarpBrain>[0];
+    const sbNan = sarpBrain(sarpUlaz);
+    const sbMot = sarpBrain({ ...sarpUlaz, kontekst: normalizirajKontekst({ sport: "nogomet", motivationIndex: 0.9 }) });
+    t.push(ok(
+      "NaN-ŠTIT SARP: pokvareni ulaz → coreTip konačan; motivacija 0.9 diže λ domaćina",
+      konacan(sbNan.coreTip.p) && konacan(sbNan.lambdaDom) && konacan(sbNan.lambdaGost) &&
+        sbMot.lambdaDom > sbNan.lambdaDom && konacan(sbMot.lambdaDom),
+      `λ dom bez konteksta ${sbNan.lambdaDom.toFixed(3)} → s motivacijom 0.9: ${sbMot.lambdaDom.toFixed(3)}`,
+    ));
+
+    // h) sarpKosarka i sarpRukomet s NaN statistikom → konačni izlazi
+    const kt18 = (market: string, pick: string, odd: number | null): KosTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null });
+    const anKos18: KosAnalysis = {
+      mu: 0, sigma: 12, total: NaN as unknown as number, sigmaT: 16.5, nba: true,
+      pHome: 0.6, pDraw: 0.01, pAway: 0.39, pHomeOT: 0.6, pAwayOT: 0.4,
+      x12: [], dc: [], ml: [], totals: [], best: null, safest: null,
+      totalPick: kt18("Zbroj", "Više", null), notes: [],
+    };
+    const kosNan = sarpKosarka({
+      an: anKos18, mk: null, home: "Dom", away: "Gost", league: "NBA", fixtureId: 1,
+      empirijske: PRAZNO_EMP,
+      stats: { homePace: NaN, awayPace: "mnogo" as unknown as number, leagueAvgPace: null, efgHome: NaN } as unknown as Parameters<typeof sarpKosarka>[0]["stats"],
+    });
+    const rt18 = (market: string, pick: string, odd: number | null): RukTipT =>
+      ({ market, pick, prob: odd ? 1 / odd : 0, fair: odd ? odd : 99, odd, ev: null, projected: 57, confidence: "SREDNJA", reason: "t18" } as unknown as RukTipT);
+    const anRuk18 = {
+      muDiff: 2, sigmaDiff: 6.1, muTotal: NaN as unknown as number, muHome: 29.5, muAway: 27.5,
+      pHome: 0.6, pDraw: 0.05, pAway: 0.35, pHomeML: 0.6, pAwayML: 0.4,
+      concrete: {
+        winner: { pick: "1", type: "1", prob: 0.6, fair: 1.7, odd: null, ev: null, confidence: "SREDNJA", reason: "t18" },
+        totalGoals: { pick: "VIŠE", line: 56.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, ev: null, projected: 57, confidence: "SREDNJA", reason: "t18" },
+        homeTotal: { pick: "VIŠE", line: 28.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 29.5 },
+        awayTotal: { pick: "VIŠE", line: 27.5, choice: "VIŠE", prob: 0.5, fair: 2, odd: null, projected: 27.5 },
+      },
+      x12: [rt18("1X2", "1", null)], dc: [], ml: [], totals: [],
+      homeTotals: [], awayTotals: [], best: null, safest: null,
+      notes: [], source: "ALGORITAM", isBet365: true,
+    } as unknown as RukometAnalysis;
+    const rukNan = sarpRukomet({
+      an: anRuk18, home: "Dom", away: "Gost", fixtureId: 1, empirijske: PRAZNO_EMP,
+      stats: { gkSaveHome: NaN, attacksHome: "mnogo" as unknown as number, koristi7v6Home: null } as unknown as Parameters<typeof sarpRukomet>[0]["stats"],
+    });
+    t.push(ok(
+      "NaN-ŠTIT košarka/rukomet: NaN total/marža + NaN statistika → SARP izlaz konačan (total, λ, vjerojatnosti)",
+      kosNan != null && konacan(kosNan.expTotal) && konacan(kosNan.expHome) && konacan(kosNan.pML1) &&
+        konacan(rukNan.expTotal) && konacan(rukNan.lamHome) && konacan(rukNan.pHome),
+      `košarka expTotal ${kosNan?.expTotal.toFixed(1)} · rukomet expTotal ${rukNan.expTotal.toFixed(1)}`,
+    ));
+
+    // i) analyzeKos i analyzeRukomet s NaN kvotama → null ili konačno
+    const kosA = analyzeKos({ "home/away": { Home: NaN, Away: 2.1 }, "over/under": {} } as never, "NBA");
+    t.push(ok(
+      "NaN-ŠTIT kosarka-engine: Home=NaN više NIJE truthy prolaz → analiza null (sigurnosno) ili konačna",
+      kosA == null || (konacan(kosA.total) && konacan(kosA.mu) && konacan(kosA.pHome)),
+      kosA == null ? "analyzeKos vraća null kod neispravnih kvota" : `total ${kosA.total.toFixed(1)}`,
+    ));
+    const rukA = analyzeRukomet({ "1x2": { Home: NaN, Draw: "3.2", Away: 3.4 }, "over/under": {} } as never, "HNL");
+    t.push(ok(
+      "NaN-ŠTIT rukomet-engine: Home=NaN → ALGORITAM fallback s konačnim vjerojatnostima",
+      rukA != null && konacan(rukA.muTotal) && konacan(rukA.pHome) && rukA.pHome > 0 && rukA.pHome < 1,
+      `source = ${rukA.source}, pHome = ${rukA.pHome.toFixed(3)}`,
+    ));
+
+    // j) parser golova (kvote-servis.server): svi oblici API polja + NaN → 0
+    const forme = izracunajFormu([
+      { fixture: { status: { short: "FT" } }, goals: { home: "2", away: "1" } },
+      { fixture: { status: { short: "FT" } }, homeGoals: 1, awayGoals: 0 },
+      { fixture: { status: { short: "FT" } }, goals: { home: NaN, away: NaN }, score: { fulltime: { home: 2, away: 2 } } },
+      { fixture: { status: { short: "FT" } }, goals: { home: "x", away: null }, score: { current: { home: 0, away: 1 } } },
+    ]);
+    t.push(ok(
+      "PARSER GOLOVA: goals.home='2'/'1', homeGoals/awayGoals, score.fulltime, score.current → postignuti 2+1+2+0=5, primljeni 1+0+2+1=4, odigrano 4",
+      forme != null && forme.odigrano === 4 && forme.postignuti === 5 && forme.primljeni === 4 &&
+        forme.btts === 2,
+      `odigrano ${forme?.odigrano} · postignuti ${forme?.postignuti} · primljeni ${forme?.primljeni} · BTTS ${forme?.btts}`,
+    ));
+
+    // k) lambdaIzForme s NaN formom → ligaški defaulti (nikad NaN)
+    const lf = lambdaIzForme(
+      { odigrano: NaN, postignuti: NaN, primljeni: NaN, btts: NaN, over15: NaN, over25: NaN, under35: NaN, penali: NaN },
+      null,
+    );
+    t.push(ok(
+      "NaN-ŠTIT lambdaIzForme: NaN forma → ligaški default λ (1.35 stil), konačno i u granicama",
+      konacan(lf.lam) && konacan(lf.mu) && lf.lam > 0.2 && lf.lam < 4.3 && lf.mu > 0.2 && lf.mu < 4.3,
+      `λ dom ${lf.lam.toFixed(2)} · μ gost ${lf.mu.toFixed(2)}`,
     ));
   }
 
