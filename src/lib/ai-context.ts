@@ -7,6 +7,7 @@
 // Spremište: localStorage (ključ andromeda.ai.mec-kontekst).
 // ============================================================
 import { formatEdgeCaseSignals, formatEnterpriseSignals, type EnterpriseMatchSignals, type EdgeCaseMatchSignals } from "./enterprise-precision";
+import type { UniversalMatchContext } from "./safe-math";
 
 /** KVANT NADGRADNJA (v5): egzaktni Skellam push, hazard β, OT model
  *  i rukometna taktika (7v6 / golman-umor) — izravno u prompt chatova. */
@@ -143,6 +144,10 @@ export interface MecKontekst {
   enterprise?: EnterpriseMatchSignals;
   /** Opcionalni izmjereni cirkadijalni/klupa/suspenzija signali za Luna i Orion. */
   edgeCases?: EdgeCaseMatchSignals;
+  /** v7: UNIVERSAL MATCH CONTEXT — normalizirani kontekst utakmice iz
+   *  safe-math (xG, forma, vrijeme, sudac, pace/ORtg/DRtg, golmani, 7v6,
+   *  motivacija). Luna i Orion čitaju iste brojke koje koriste motori. */
+  universal?: UniversalMatchContext | null;
   spremljeno: number;
 }
 
@@ -283,6 +288,42 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
         (q.ht.gkUmorDom ? " · golman domaćina umoran (−4% obrana u 2H)" : "") +
         (q.ht.gkUmorGost ? " · golman gosta umoran (−4% obrana u 2H)" : ""),
       );
+    }
+  }
+  if (c.universal) {
+    const u = c.universal;
+    const uLinije: string[] = [];
+    if (u.sport === "nogomet") {
+      if (u.homeXG > 0 || u.awayXG > 0)
+        uLinije.push(`xG: domaćin ${u.homeXG.toFixed(2)} · gost ${u.awayXG.toFixed(2)} (uloženo 20% težine u model)`);
+      if (u.homeFormN > 0 || u.awayFormN > 0)
+        uLinije.push(`forma: domaćin ${u.homeForm.toFixed(2)} gola u ${u.homeFormN} utakmica · gost ${u.awayForm.toFixed(2)} u ${u.awayFormN}`);
+      if (u.vjetarKmh > 35 || u.kisa)
+        uLinije.push(`okoliš: vjetar ${u.vjetarKmh.toFixed(0)} km/h${u.kisa ? " · jaka kiša" : ""} → ukupna λ niža (weather drag)`);
+      if (u.refCardsPerGame > 0)
+        uLinije.push(`sudac: kartona ${u.refCardsPerGame.toFixed(1)}/meč · penala ${u.refPensPerGame.toFixed(2)}/meč${u.refCardsPerGame > 5 || u.refPensPerGame > 0.4 ? " → STROG sudac" : ""}`);
+      if (Math.abs(u.motivationIndex - 0.5) > 1e-9)
+        uLinije.push(`motivacija: index ${u.motivationIndex.toFixed(2)} (0.5 = neutralno)`);
+    }
+    if (u.sport === "kosarka") {
+      if (Math.abs(u.homePace - 1) > 1e-9 || Math.abs(u.awayPace - 1) > 1e-9)
+        uLinije.push(`pace index: domaćin ${u.homePace.toFixed(2)} · gost ${u.awayPace.toFixed(2)} (1.00 = prosjek lige)`);
+      if (u.homeORtg !== 100 || u.awayORtg !== 100 || u.homeDRtg !== 100 || u.awayDRtg !== 100)
+        uLinije.push(`ratingi: ORtg ${u.homeORtg.toFixed(0)}/${u.awayORtg.toFixed(0)} · DRtg ${u.homeDRtg.toFixed(0)}/${u.awayDRtg.toFixed(0)} (100 = prosjek lige)`);
+      if (u.b2bFatigue > 0)
+        uLinije.push(`B2B umor: ${(u.b2bFatigue * 100).toFixed(0)}% → umanjena projekcija domaćina`);
+    }
+    if (u.sport === "rukomet") {
+      if (Math.abs(u.homeOffenseEff - 1) > 1e-9 || Math.abs(u.awayOffenseEff - 1) > 1e-9)
+        uLinije.push(`efikasnost napada: domaćin ${u.homeOffenseEff.toFixed(2)} · gost ${u.awayOffenseEff.toFixed(2)} (1.00 = prosjek lige)`);
+      if (u.homeGkSavePct > 0 || u.awayGkSavePct > 0)
+        uLinije.push(`golmani: obrane domaćin ${(u.homeGkSavePct * 100).toFixed(0)}% · gost ${(u.awayGkSavePct * 100).toFixed(0)}%`);
+      if (u.sevenVsSixFactor > 0)
+        uLinije.push(`7v6 upotreba: ${(u.sevenVsSixFactor * 100).toFixed(0)}% situacija → dodatni golovi ukupno`);
+    }
+    if (uLinije.length) {
+      linije.push("── UNIVERSAL MATCH CONTEXT (normalizirani podaci utakmice) ──");
+      linije.push(...uLinije);
     }
   }
   if (c.edgeCases) {
