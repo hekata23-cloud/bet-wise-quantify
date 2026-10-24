@@ -44,7 +44,7 @@ export interface Tiket {
 }
 
 /* ── Prepoznavanje void statusa (API-Football / API-Sports short kodovi) ── */
-const VOID_STATUSI = new Set(["PST", "CANC", "ABD", "SUSP"]);
+const VOID_STATUSI = new Set(["PST", "CANC", "ABD", "SUSP", "INT", "POSTP"]);
 
 export function jeVoidStatus(short: string | null | undefined): boolean {
   return short != null && VOID_STATUSI.has(short.toUpperCase());
@@ -74,6 +74,7 @@ export function vrstaTrzista(sport: Sport, trziste: string, tip: string): VrstaT
 
 /* ── Izvor rezultata po sportu i tržištu ── */
 export interface RezultatUtakmice {
+  sport?: Sport;          // opcionalni hint za 3-argumentni evaluator
   status: string;        // API short: "FT", "AET", "AOT", "PST"…
   zavrsena: boolean;
   dom: number | null;        // konačni rezultat (uklj. OT ako je bilo)
@@ -230,6 +231,29 @@ export function ocijeniNogu(sport: Sport, noga: { trziste: string; tip: string; 
     return s === (domR > gostR ? "1" : "2") ? "dobitna" : "izgubljena";
   }
   return "nepoznato"; // HT/FT, SGP, točan rezultat → ručna provjera
+}
+
+/**
+ * Javno ime evaluatora koje koriste settlement procesi.
+ * Prima sport, tržište, odabir i konačan rezultat; vraća dobitna/izgubljena/povrat/nepoznato.
+ * Stara ocijeniNogu ostaje kompatibilna za postojeće pozive.
+ */
+export function evaluateLegOutcome(
+  market: string,
+  selection: string,
+  matchResult: RezultatUtakmice,
+  sport?: Sport,
+): IshodNoge {
+  // Za tržišta koja se dijele među sportovima (npr. 1X2/O-U), pozivatelj
+  // treba navesti sport ili ga postaviti u matchResult.sport.
+  const inferredSport: Sport = sport ?? matchResult.sport ?? (
+    /basket|ko[sš]arka|poen|moneyline|spread/i.test(`${market} ${selection}`)
+      ? "košarka"
+      : /handball|rukomet/i.test(`${market} ${selection}`)
+        ? "rukomet"
+        : "nogomet"
+  );
+  return ocijeniNogu(inferredSport, { trziste: market, tip: selection, kvota: 1 }, matchResult);
 }
 
 /* ── Statusi i isplata tiketa ── */
