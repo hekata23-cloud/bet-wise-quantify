@@ -2,7 +2,9 @@
    MOJI LISTIĆI — Virtual Betting Simulation dashboard (v1)
    • Analitička traka: Ukupan ROI %, Win Rate %, Najjači sport,
      Najveća pogođena kvota + "Podijeli Statistiku" (clipboard).
-   • Settlement motor: automatska provjera rezultata (API),
+   • Settlement motor: AUTOMATSKA provjera rezultata (API) — pri otvaranju
+     stranice i pri povratku na tab, noge se same oboje ✓/✗ kad utakmice
+     završe (bez klika); ručna "Provjeri rezultate" ostaje.
      void noge (PST/CANC/ABD) = ⚪ KVOTA 1.00 s dinamičkim
      preračunom kvote i isplate — tiket ne pada zbog voida.
    • Sport-pravila: košarka 1X2/Spread = regularno, Moneyline/Total
@@ -23,7 +25,7 @@ import {
   postaviNoguIshod, brisiListic, noviDobitniTiketi, jeVoidStatus,
   type Tiket, type TiketNoga, type Sport,
 } from "@/lib/listici";
-import { getStatusUtakmice, getFiksatureDana, type KandidatFiksatura } from "@/lib/listici.functions";
+import { getStatusUtakmice, getFiksatureDana, type KandidatFiksatura, type StatusUtakmice } from "@/lib/listici.functions";
 import { getApiKey } from "@/lib/zlatni-guard";
 import { EfektiSwitch, pokreniKonfete, svirajDobitak } from "@/components/DobitakEfekti";
 import { kreditirajVirtualniTiket } from "@/lib/virtualna";
@@ -39,6 +41,20 @@ export const Route = createFileRoute("/listici")({
 /** sport u API oznaku ("košarka" → "kosarka"). */
 function sportApi(s: Sport): "nogomet" | "kosarka" | "rukomet" {
   return s === "košarka" ? "kosarka" : s;
+}
+
+/** Auto-provjera na otvaranju stranice — najviše 1× u 5 min da se štedi
+ *  dnevni API limit; ručni klik uvijek provjerava odmah. */
+const AUTO_KES = "pc.listici.auto.v1";
+const AUTO_PAUZA_MS = 5 * 60_000;
+
+function autoPauzaIstekla(): boolean {
+  try {
+    const proslo = Number(sessionStorage.getItem(AUTO_KES) ?? 0);
+    return !Number.isFinite(proslo) || Date.now() - proslo > AUTO_PAUZA_MS;
+  } catch {
+    return true; // bez session storagea — pokušaj
+  }
 }
 
 function danIso(d: Date, ofset = 0): string {
@@ -178,14 +194,19 @@ function ListiciPage() {
 
   /** Automatsko poravnanje: API provjera svih nogu koje čekaju. */
   const provjeri = useCallback(async () => {
-    const apiKey = getApiKey();
-    if (!apiKey) { setStatus("Prvo unesi API-Sports ključ u Postavkama (⚙️)."); setSettings(true); return; }
+    // Ključ nije nužan u browseru — server funkcije imaju env fallback;
+    // ako ništa ne valja, ACCOUNT greška ispod otvara Postavke.
+    const apiKey = getApiKey() ?? "";
     setProveravam(true);
     setStatus("Provjeravam listiće kroz API red…");
     const danKes = new Map<string, KandidatFiksatura[]>();
+    const statusKes = new Map<string, StatusUtakmice>(); // ista utakmica = 1 API poziv
     let pozivi = 0;
-    const MAX_POZIVA = 18; // API red ostaje u granicama
+    // API red ostaje u granicama; s de-duplikacijom pokriva i listiće
+    // s više nogu na istoj utakmici.
+    const MAX_POZIVA = 24;
     let limitPauza = false;
+    let accountStop = false;
     try {
       const svi = ucitajListice();
       for (const t of svi) {
@@ -208,7 +229,11 @@ function ListiciPage() {
               if (!kandidati) {
                 const r = await getFiksatureDana({ data: { sport, dan, apiKey } });
                 pozivi++;
-                if (r.error && /DNEVNI_LIMIT|ACCOUNT|RATE_LIMIT/.test(r.error)) { limitPauza = true; break; }
+                if (r.error && /DNEVNI_LIMIT|ACCOUNT|RATE_LIMIT/.test(r.error)) {
+                  if (/ACCOUNT/.test(r.error)) accountStop = true;
+                  limitPauza = true;
+                  break;
+                }
                 kandidati = r.error ? [] : r.fiksature;
                 danKes.set(ck, kandidati);
               }
@@ -217,9 +242,18 @@ function ListiciPage() {
             }
           }
           if (fid == null) continue;
-          const r = await getStatusUtakmice({ data: { sport, fixtureId: fid, apiKey } });
-          pozivi++;
-          if (r.error && /DNEVNI_LIMIT|ACCOUNT|RATE_LIMIT/.test(r.error)) { limitPauza = true; break; }
+          const ck = `${sport}|${fid}`;
+          let r = statusKes.get(ck);
+          if (!r) {
+            r = await getStatusUtakmice({ data: { sport, fixtureId: fid, apiKey } });
+            statusKes.set(ck, r);
+            pozivi++;
+          }
+          if (r.error && /DNEVNI_LIMIT|ACCOUNT|RATE_LIMIT/.test(r.error)) {
+            if (/ACCOUNT/.test(r.error)) accountStop = true;
+            limitPauza = true;
+            break;
+          }
           if (r.error || (!r.zavrsena && !jeVoidStatus(r.status))) continue;
           const ishod = ocijeniNogu(n.sport, n, r);
           if (ishod === "nepoznato") continue;
@@ -242,15 +276,43 @@ function ListiciPage() {
       svirajDobitak();
       toast.success(`${novi.length} novi dobitan listić! 🎉`);
     }
-    setStatus(
-      limitPauza
-        ? "API limit dostignut — nastavi malo kasnije (ostatak se ne troši uzalud)."
-        : pozivi === 0
-          ? "Nema nogu za provjeru (sve su već poravnate ili bez izvora)."
-          : `Provjereno ${pozivi} poziva kroz API red.`,
-    );
+    try { sessionStorage.setItem(AUTO_KES, String(Date.now())); } catch { /* bez session storagea */ }
+    if (accountStop && !apiKey) {
+      setStatus("Unesi API-Sports ključ u Postavkama (⚙️) — provjera rezultata ga treba.");
+      setSettings(true);
+    } else {
+      setStatus(
+        limitPauza
+          ? "API limit dostignut — nastavi malo kasnije (ostatak se ne troši uzalud)."
+          : pozivi === 0
+            ? "Nema nogu za provjeru (sve su već poravnate ili bez izvora)."
+            : `Provjereno ${pozivi} poziva kroz API red.`,
+      );
+    }
     setProveravam(false);
   }, [osvjezi]);
+
+  /** Automatska provjera pri otvaranju stranice — noge se same oboje ✓/✗
+   *  čim utakmice završe (bez klika na "Provjeri rezultate"). */
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (autoRef.current) return;
+    autoRef.current = true;
+    const imaCekaj = ucitajListice().some((t) => statusTiketa(t.noge) === "aktivno");
+    if (imaCekaj && autoPauzaIstekla()) void provjeri();
+  }, [provjeri]);
+
+  /** Automatska ponovna provjera kad se korisnik vrati na tab (utakmice
+   *  mogle završiti dok je stranica bila otvorena u pozadini). */
+  useEffect(() => {
+    const naPovratak = () => {
+      if (document.visibilityState !== "visible") return;
+      const imaCekaj = ucitajListice().some((t) => statusTiketa(t.noge) === "aktivno");
+      if (imaCekaj && autoPauzaIstekla()) void provjeri();
+    };
+    document.addEventListener("visibilitychange", naPovratak);
+    return () => document.removeEventListener("visibilitychange", naPovratak);
+  }, [provjeri]);
 
   /** Kreditiraj poravnate virtualne listiće na bankroll (idempotentno). */
   function kreditirajVirtualne() {
