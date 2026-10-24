@@ -21,7 +21,7 @@ import {
 import { toast } from "sonner";
 import {
   ucitajListice, statistikaListica, statusTiketa, ukupnaKvotaTiketa,
-  isplataTiketa, ocijeniNogu, pogodiFiksaturu, azurirajListic,
+  isplataTiketa, evaluateLegOutcome, pogodiFiksaturu, azurirajListic,
   postaviNoguIshod, brisiListic, noviDobitniTiketi, jeVoidStatus,
   type Tiket, type TiketNoga, type Sport,
 } from "@/lib/listici";
@@ -81,8 +81,15 @@ function StatusBadge({ status }: { status: Tiket["noge"][number]["status"] | str
 
 function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod: "dobitna" | "izgubljena" | "void" | "cekaj") => void }) {
   const voidNoga = noga.status === "void";
+  const legTone = noga.status === "dobitna"
+    ? "border-emerald-500/35 bg-emerald-500/5"
+    : noga.status === "izgubljena"
+      ? "border-red-500/35 bg-red-500/5"
+      : voidNoga
+        ? "border-slate-400/30 bg-slate-400/5"
+        : "border-border/40 bg-card/40";
   return (
-    <li className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/40 px-2.5 py-2 text-xs">
+    <li className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors ${legTone}`}>
       <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
         {noga.sport.slice(0, 3)}
       </span>
@@ -160,6 +167,7 @@ function ListiciPage() {
   const [status, setStatus] = useState("");
   const [settings, setSettings] = useState(false);
   const prvoUcitano = useRef(false);
+  const provjeraAktivna = useRef(false);
 
   const osvjezi = useCallback(() => setTiketi(ucitajListice()), []);
   useEffect(() => { osvjezi(); }, [osvjezi]);
@@ -194,6 +202,8 @@ function ListiciPage() {
 
   /** Automatsko poravnanje: API provjera svih nogu koje čekaju. */
   const provjeri = useCallback(async () => {
+    if (provjeraAktivna.current) return;
+    provjeraAktivna.current = true;
     // Ključ nije nužan u browseru — server funkcije imaju env fallback;
     // ako ništa ne valja, ACCOUNT greška ispod otvara Postavke.
     const apiKey = getApiKey() ?? "";
@@ -202,6 +212,7 @@ function ListiciPage() {
     const danKes = new Map<string, KandidatFiksatura[]>();
     const statusKes = new Map<string, StatusUtakmice>(); // ista utakmica = 1 API poziv
     let pozivi = 0;
+    let poravnateNoge = 0;
     // API red ostaje u granicama; s de-duplikacijom pokriva i listiće
     // s više nogu na istoj utakmici.
     const MAX_POZIVA = 24;
@@ -255,9 +266,10 @@ function ListiciPage() {
             break;
           }
           if (r.error || (!r.zavrsena && !jeVoidStatus(r.status))) continue;
-          const ishod = ocijeniNogu(n.sport, n, r);
+          const ishod = evaluateLegOutcome(n.trziste, n.tip, r, n.sport);
           if (ishod === "nepoznato") continue;
           n.status = ishod === "dobitna" ? "dobitna" : ishod === "izgubljena" ? "izgubljena" : "void";
+          poravnateNoge++;
           n.napomena = jeVoidStatus(r.status)
             ? `${r.status} — odgođeno/otkazano, kvota 1.00`
             : ishod === "povrat"
@@ -289,7 +301,11 @@ function ListiciPage() {
             : `Provjereno ${pozivi} poziva kroz API red.`,
       );
     }
+    if (poravnateNoge > 0) {
+      toast.success(`Provjera završena: poravnato ${poravnateNoge} nog${poravnateNoge === 1 ? "a" : "u"}.`);
+    }
     setProveravam(false);
+    provjeraAktivna.current = false;
   }, [osvjezi]);
 
   /** Automatska provjera pri otvaranju stranice — noge se same oboje ✓/✗
@@ -312,6 +328,16 @@ function ListiciPage() {
     };
     document.addEventListener("visibilitychange", naPovratak);
     return () => document.removeEventListener("visibilitychange", naPovratak);
+  }, [provjeri]);
+
+  /** Tiha provjera dok je stranica otvorena; pauza od 5 minuta čuva API kvotu. */
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      const imaCekaj = ucitajListice().some((t) => statusTiketa(t.noge) === "aktivno");
+      if (imaCekaj && autoPauzaIstekla()) void provjeri();
+    }, AUTO_PAUZA_MS);
+    return () => window.clearInterval(timer);
   }, [provjeri]);
 
   /** Kreditiraj poravnate virtualne listiće na bankroll (idempotentno). */
@@ -405,7 +431,7 @@ function ListiciPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${provjeram ? "animate-spin" : ""}`} />
-          {provjeram ? "Provjeravam…" : "Provjeri rezultate"}
+          {provjeram ? "Provjeravam…" : "🔄 Osvježi i provjeri rezultate"}
         </button>
         {imaAktivnih && !provjeram && (
           <span className="text-xs text-muted-foreground">
@@ -450,6 +476,16 @@ function ListiciPage() {
                     <LegRow key={n.id} t={t} noga={n} naNogu={(ishod) => naNogu(t.id, n.id, ishod)} />
                   ))}
                 </ul>
+                {st === "dobitno" && (
+                  <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-center text-sm font-extrabold tracking-wide text-emerald-300">
+                    DOBITAN LISTIĆ ✓
+                  </div>
+                )}
+                {st === "gubitno" && (
+                  <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm font-extrabold tracking-wide text-red-300">
+                    GUBITAN LISTIĆ ✗ · 0,00 €
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/40 pt-2 text-xs">
                   <span className="text-muted-foreground">
                     Ukupna kvota: <b className="font-mono text-foreground">{kvota.toFixed(2)}</b>
