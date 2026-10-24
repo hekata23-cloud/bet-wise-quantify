@@ -38,6 +38,7 @@ import { SgpBuilder } from "@/components/SgpBuilder";
 import { spremiKontekstMeca } from "@/lib/ai-context";
 import type { GoalsIzlaz } from "@/lib/goals-motor";
 import type { FormaGolovi, OkolisUlaz, SudacUlaz } from "@/lib/math-engine";
+import { normalizirajKontekst } from "@/lib/safe-math";
 
 export type MatchInsightProps = {
   utakmica: {
@@ -101,6 +102,25 @@ export function MatchInsightPanel(props: MatchInsightProps) {
     };
   }, [kartona, penali]);
 
+  // UNIVERSAL MATCH CONTEXT (v7): normalizirani kontekst utakmice —
+  // isti objekt ide u motor (xG/motivacija) i u AI prompt (Luna/Orion).
+  const universalKontekst = useMemo(
+    () =>
+      normalizirajKontekst({
+        sport: "nogomet",
+        fixtureId: utakmica.id,
+        domacin: utakmica.home,
+        gost: utakmica.away,
+        liga: utakmica.league,
+        vjetarKmh: okolisUlaz?.vjetarKmh ?? 0,
+        kisa: okolisUlaz?.kisa === true,
+        refCardsPerGame: sudacUlaz?.kartonaPoUtakmici ?? 0,
+        refPensPerGame: sudacUlaz?.penaliPoUtakmici ?? 0,
+        brojKladionica: props.brojKladionica ?? 0,
+      }),
+    [utakmica.id, utakmica.home, utakmica.away, utakmica.league, okolisUlaz, sudacUlaz, props.brojKladionica],
+  );
+
   const sarp: SarpIzlaz = useMemo(
     () =>
       sarpBrain({
@@ -112,8 +132,9 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         goals: goals ?? null,
         okolis: okolisUlaz,
         sudac: sudacUlaz,
+        kontekst: universalKontekst,
       }),
-    [utakmica, kvote, props.brojKladionica, props.formaDom, props.formaGost, goals, okolisUlaz, sudacUlaz],
+    [utakmica, kvote, props.brojKladionica, props.formaDom, props.formaGost, goals, okolisUlaz, sudacUlaz, universalKontekst],
   );
 
   // historija kvota: svaki novi dohvat = snapshot
@@ -168,9 +189,10 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         : null,
       live: null,
       kvant: sarp.kvant,
+      universal: universalKontekst,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [utakmica.id, JSON.stringify(kvote), sarp, lineupInfo]);
+  }, [utakmica.id, JSON.stringify(kvote), sarp, lineupInfo, universalKontekst]);
 
   /* ── ANTI-LOSS ENGINE ──
      sukob modela: Skellam vs grid + MC vs analitički model (O2.5) */
