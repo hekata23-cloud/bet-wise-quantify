@@ -29,6 +29,7 @@ import { priorZaLigu, shrinkajStopu, jeMaliUzorak, stropPovjerenja, type LigaPri
 import { bttsIzKopule } from "./btts-copula";
 import { kalibrirajGoalsFinal, tezinaKalibracije } from "./global-calibration";
 import type { EmpStanje } from "./accuracy-ledger";
+import { kvota as cistaKvota, broj } from "./safe-math";
 
 export type FormaGolovi = {
   odigrano: number;
@@ -174,6 +175,10 @@ function deMargin(o: number | undefined, u: number | undefined): { pA: number; p
 
 /** Troglavi de-margin za 1X2. */
 function deMargin1x2(k1: number | undefined, kX: number | undefined, k2: number | undefined) {
+  // SAFE-MATH štit: nepotpune/NaN kvote → null (razdvoba ide samo iz forme).
+  if (k1 != null && !Number.isFinite(k1)) return null;
+  if (kX != null && !Number.isFinite(kX)) return null;
+  if (k2 != null && !Number.isFinite(k2)) return null;
   if (k1 == null || kX == null || k2 == null || k1 < 1.01 || kX < 1.01 || k2 < 1.01) return null;
   const a = 1 / k1, b = 1 / kX, c = 1 / k2;
   const s = a + b + c;
@@ -307,21 +312,56 @@ function ocjenaIzPovjerenja(p: number): GoalsIzlaz["ocjena"] {
   return "C";
 }
 
+/* ═══════════════ SAFE-MATH SANITIZACIJA ULAZA ═══════════════ */
+// API kvote dolaze kao brojevi ILI stringovi ("2.10"), forma kao djelomični
+// objekt. Sve se na ulazu prisilno pretvara u čiste brojeve — NaN više ne
+// može ući u Poisson/Skellam/Kopulu.
+
+function sanitizirajKvote(kv: Record<string, number> | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!kv || typeof kv !== "object") return out;
+  for (const [k, v] of Object.entries(kv)) {
+    const n = cistaKvota(v as unknown) ?? null;
+    if (n != null) out[k] = n;
+  }
+  return out;
+}
+
+function cistaForma(f: FormaGolovi | null): FormaGolovi | null {
+  if (!f || typeof f !== "object") return null;
+  const n = broj(f.odigrano as unknown, 0, 0, 60);
+  if (n <= 0) return null;
+  const pod = (v: unknown) => broj(v as unknown, 0, 0, 300);
+  const omjer = (v: unknown) => broj(v as unknown, 0, 0, 1);
+  return {
+    odigrano: Math.round(n),
+    postignuti: pod(f.postignuti),
+    primljeni: pod(f.primljeni),
+    // btts/over15/over25/under35/penali su BROJI UTAKMICA (dijele se s
+    // odigrano kasnije), ne omjeri — koercija kao i golovi.
+    btts: pod(f.btts),
+    over15: pod(f.over15),
+    over25: pod(f.over25),
+    under35: pod(f.under35),
+    penali: pod(f.penali),
+  };
+}
+
 /* ═══════════════ GLAVNI ULAZ ═══════════════ */
 
 export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const upozorenja: string[] = [];
   const faktori: string[] = [];
-  const kv = ulaz.kvote;
-  const books = ulaz.brojKladionica ?? 0;
+  const kv = sanitizirajKvote(ulaz.kvote);
+  const books = Math.round(broj(ulaz.brojKladionica as unknown, 0, 0, 99));
 
   /* 0) ligaški prior (Empirical Bayes) */
   const prior = priorZaLigu(ulaz.liga);
   const priorPoTimu = prior.poTimu;
 
   /* 1) forma → EB shrinkage prema ligaškom prioru */
-  const dom = ulaz.formaDom;
-  const gost = ulaz.formaGost;
+  const dom = cistaForma(ulaz.formaDom);
+  const gost = cistaForma(ulaz.formaGost);
   const domShr = shrinkajFormu(dom, priorPoTimu);
   const gostShr = shrinkajFormu(gost, priorPoTimu);
   const odDom = dom?.odigrano ?? 0;
