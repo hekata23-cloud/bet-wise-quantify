@@ -14,6 +14,7 @@
 import type { RukometAnalysis } from "./rukomet-engine";
 import { poolPar, poolTrojku, tezinaKalibracije, tempPar, tempTrojku } from "./global-calibration";
 import { tempZa, type EmpStanje } from "./accuracy-ledger";
+import { broj as safeBroj, type UniversalMatchContext } from "./safe-math";
 
 export interface HandballMatchStats {
   /** napadi (posjedi) po timu po utakmici — tipično 26-30 */
@@ -132,9 +133,45 @@ export function sarpRukomet(args: {
   brojKladionica?: number;
   /** STVARNA TOČNOST: ručno ubrizgano empirijsko stanje (Samotest); bez toga čita Dnevnik */
   empirijske?: EmpStanje;
+  /** UNIVERSAL MATCH CONTEXT (v7): normalizirani kontekst utakmice —
+   *  efikasnost napada, postotak obrana golmana i 7v6 dopunjuju podatke
+   *  koji fale (identitet kad su svi podaci već prisutni). */
+  kontekst?: UniversalMatchContext | null;
 }): HandballSARPPrediction {
-  const { an, fixtureId } = args;
-  const s = args.stats ?? {};
+  const { fixtureId } = args;
+  const sRaw = args.stats ?? {};
+  // SAFE-MATH štit: numerička statistika kroz koerciju — string, null ili
+  // NaN postaje undefined (motor koristi sigurne prosjeke lige).
+  const c = (v: unknown): number | undefined => {
+    const n = typeof v === "number" ? v : safeBroj(v as unknown, NaN, -1e6, 1e6);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  // SAFE-MATH štit za analizu: ne-konačne λ/vjerojatnosti → sigurni defaulti.
+  const okN = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+  let an = args.an;
+  an = {
+    ...an,
+    muTotal: okN(an.muTotal) && an.muTotal > 20 && an.muTotal < 90 ? an.muTotal : 57,
+    muDiff: okN(an.muDiff) && Math.abs(an.muDiff) < 15 ? an.muDiff : 0,
+    sigmaDiff: okN(an.sigmaDiff) && an.sigmaDiff > 0.5 ? an.sigmaDiff : 6.1,
+    muHome: okN(an.muHome) && an.muHome > 5 && an.muHome < 60 ? an.muHome : 29.5,
+    muAway: okN(an.muAway) && an.muAway > 5 && an.muAway < 60 ? an.muAway : 27.5,
+    pHome: okN(an.pHome) && an.pHome >= 0 && an.pHome <= 1 ? an.pHome : 1 / 3,
+    pDraw: okN(an.pDraw) && an.pDraw >= 0 && an.pDraw <= 1 ? an.pDraw : 1 / 3,
+    pAway: okN(an.pAway) && an.pAway >= 0 && an.pAway <= 1 ? an.pAway : 1 / 3,
+    pHomeML: okN(an.pHomeML) && an.pHomeML >= 0 && an.pHomeML <= 1 ? an.pHomeML : 0.5,
+    pAwayML: okN(an.pAwayML) && an.pAwayML >= 0 && an.pAwayML <= 1 ? an.pAwayML : 0.5,
+  } as typeof an;
+  const s = {
+    attacksHome: c(sRaw.attacksHome), attacksAway: c(sRaw.attacksAway),
+    attackEffHome: c(sRaw.attackEffHome), attackEffAway: c(sRaw.attackEffAway),
+    gkSaveHome: c(sRaw.gkSaveHome), gkSaveAway: c(sRaw.gkSaveAway),
+    suspHome: c(sRaw.suspHome), suspAway: c(sRaw.suspAway),
+    koristi7v6Home: c(sRaw.koristi7v6Home), koristi7v6Away: c(sRaw.koristi7v6Away),
+    gkMinutaHome: c(sRaw.gkMinutaHome), gkMinutaAway: c(sRaw.gkMinutaAway),
+    halfShare: c(sRaw.halfShare),
+    liveMinuta: c(sRaw.liveMinuta), liveDomGolovi: c(sRaw.liveDomGolovi), liveGostGolovi: c(sRaw.liveGostGolovi),
+  } as typeof sRaw;
   const upozorenja: string[] = [];
   const izvori: string[] = ["Tržišne kvote (de-vig)", "Monte Carlo 5.000 (Skellam)", "Profil lige"];
 
@@ -176,6 +213,23 @@ export function sarpRukomet(args: {
   // nosti: do +3.2 gola pri punoj upotrebi (≥ 0.65). 70% ekstre ide
   // timu koji igra 7v6, 30% protivniku (kontranapadi). Bez inputa:
   // identitet (nijedan broj se ne mijenja).
+  // UNIVERSAL MATCH CONTEXT (v7): 7v6, golmani i efikasnost dopunjuju
+  // podatke koji fale na kartici (identitet kad podaci postoje).
+  const cxR = args.kontekst;
+  if (cxR && cxR.sport === "rukomet") {
+    if (s.koristi7v6Home == null && s.koristi7v6Away == null && cxR.sevenVsSixFactor > 0) {
+      s.koristi7v6Home = clamp(cxR.sevenVsSixFactor, 0, 1); // kontekst: kućni tim
+    }
+    if (s.gkSaveHome == null && cxR.homeGkSavePct >= 0.15 && cxR.homeGkSavePct <= 0.45)
+      s.gkSaveHome = cxR.homeGkSavePct;
+    if (s.gkSaveAway == null && cxR.awayGkSavePct >= 0.15 && cxR.awayGkSavePct <= 0.45)
+      s.gkSaveAway = cxR.awayGkSavePct;
+    if ((s.attackEffHome == null || s.attackEffAway == null) &&
+        (Math.abs(cxR.homeOffenseEff - 1) > 1e-9 || Math.abs(cxR.awayOffenseEff - 1) > 1e-9)) {
+      if (s.attackEffHome == null) s.attackEffHome = clamp(0.44 * cxR.homeOffenseEff, 0.2, 0.65);
+      if (s.attackEffAway == null) s.attackEffAway = clamp(0.44 * cxR.awayOffenseEff, 0.2, 0.65);
+    }
+  }
   const u7v6H = s.koristi7v6Home; const u7v6A = s.koristi7v6Away;
   let ekstra7v6 = 0; let tim7v6: "dom" | "gost" | null = null;
   if (u7v6H != null || u7v6A != null) {
