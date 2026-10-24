@@ -24,6 +24,7 @@ import {
 } from "./math-engine";
 import { HAZARD_BETA, ahSkellam } from "./skellam";
 import type { GoalsIzlaz } from "./goals-motor";
+import { kvota as cistaKvota, broj, type UniversalMatchContext } from "./safe-math";
 
 export type SarpTip = {
   kljuc: string;
@@ -61,6 +62,10 @@ export type SarpUlaz = {
   okolis?: OkolisUlaz | null;
   /** SUDAC (v6): prosjek kartona/penala suca — opcionalno */
   sudac?: SudacUlaz | null;
+  /** UNIVERSAL MATCH CONTEXT (v7): normalizirani kontekst utakmice iz
+   *  safe-math (xG, motivacija, vjetar/kiša, sudac, kladionice). Opcionalno
+   *  — bez njega motor radi kao i do sada (identitet). */
+  kontekst?: UniversalMatchContext | null;
 };
 
 export type SarpIzlaz = {
@@ -116,15 +121,45 @@ function fmtPct(x: number): string {
   return `${(x * 100).toFixed(1)}%`;
 }
 
+function cistaForma(f: FormaGolovi | null | undefined): FormaGolovi | null {
+  if (!f || typeof f !== "object") return null;
+  const n = broj(f.odigrano as unknown, 0, 0, 60);
+  if (n <= 0) return null;
+  const pod = (v: unknown) => broj(v as unknown, 0, 0, 300);
+  const omjer = (v: unknown) => broj(v as unknown, 0, 0, 1);
+  return {
+    odigrano: Math.round(n),
+    postignuti: pod(f.postignuti),
+    primljeni: pod(f.primljeni),
+    // btts/over15/over25/under35/penali su BROJI UTAKMICA (dijele se s
+    // odigrano kasnije), ne omjeri — koercija kao i golovi.
+    btts: pod(f.btts),
+    over15: pod(f.over15),
+    over25: pod(f.over25),
+    under35: pod(f.under35),
+    penali: pod(f.penali),
+  };
+}
+
 export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   const faze: SarpFaza[] = [];
-  const kv = ulaz.kvote;
-  const books = ulaz.brojKladionica ?? 0;
+  // SAFE-MATH štit: sve kvote/FORME na ulazu kroz sanitizaciju —
+  // string kvote ("2.10"), null, undefined i NaN ne prolaze dalje.
+  const kv: Record<string, number> = {};
+  if (ulaz.kvote && typeof ulaz.kvote === "object") {
+    for (const [k, v] of Object.entries(ulaz.kvote)) {
+      const n = cistaKvota(v as unknown);
+      if (n != null) kv[k] = n;
+    }
+  }
+  const books = Math.round(broj(ulaz.brojKladionica as unknown, 0, 0, 99));
+  const formaDomCista = cistaForma(ulaz.formaDom);
+  const formaGostCista = cistaForma(ulaz.formaGost);
 
   /* ── FAZA 1: SKUP ── */
   const brojTrzista = TRZISTA.filter((t) => kv[t.kljuc] != null && kv[t.kljuc]! >= 1.01).length;
-  const odDom = ulaz.formaDom?.odigrano ?? 0;
-  const odGost = ulaz.formaGost?.odigrano ?? 0;
+  const odDom = formaDomCista?.odigrano ?? 0;
+  const odGost = formaGostCista?.odigrano ?? 0;
   const brojIzvora =
     (brojTrzista > 0 ? 1 : 0) +   // kvote
     (books > 0 ? 1 : 0) +         // više kladionica
@@ -139,21 +174,21 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
       ...TRZISTA.filter((t) => kv[t.kljuc] != null && kv[t.kljuc]! >= 1.01).map(
         (t) => `${t.label}: ${kv[t.kljuc]!.toFixed(2)}`,
       ),
-      odDom > 0 ? `Forma domaćina: ${ulaz.formaDom!.postignuti} postignutih / ${ulaz.formaDom!.primljeni} primljenih u ${odDom} utakmica` : "Forma domaćina: nedostupna (ligaški prosjek)",
-      odGost > 0 ? `Forma gosta: ${ulaz.formaGost!.postignuti} postignutih / ${ulaz.formaGost!.primljeni} primljenih u ${odGost} utakmica` : "Forma gosta: nedostupna (ligaški prosjek)",
+      odDom > 0 ? `Forma domaćina: ${formaDomCista!.postignuti} postignutih / ${formaDomCista!.primljeni} primljenih u ${odDom} utakmica` : "Forma domaćina: nedostupna (ligaški prosjek)",
+      odGost > 0 ? `Forma gosta: ${formaGostCista!.postignuti} postignutih / ${formaGostCista!.primljeni} primljenih u ${odGost} utakmica` : "Forma gosta: nedostupna (ligaški prosjek)",
     ],
   });
 
   /* ── FAZA 2: STRUKTURA (forma → λ) ── */
-  const { lam: lamF, mu: muF } = lambdaIzForme(ulaz.formaDom ?? null, ulaz.formaGost ?? null);
+  const { lam: lamF, mu: muF } = lambdaIzForme(formaDomCista, formaGostCista);
   const uzorakMali = odDom < 4 || odGost < 4;
   faze.push({
     broj: 2,
     naziv: "Struktura (forma)",
     sazetak: `Model procjenjuje ${lamF.toFixed(2)} očekivanih golova domaćina i ${muF.toFixed(2)} gosta (ukupno ${(lamF + muF).toFixed(2)}).${uzorakMali ? " Uzorak je mali — procjena je povučena prema ligaškom prosjeku." : ""}`,
     podaci: [
-      odDom > 0 ? `Domaćin: napad ${fmtPct((ulaz.formaDom!.postignuti / odDom) / 1.35)} od ligaškog prosjeka, obrana prima ${(ulaz.formaDom!.primljeni / odDom).toFixed(2)}/utakmici` : "Domaćin: ligaški prosjek 1.35",
-      odGost > 0 ? `Gost: napad ${fmtPct((ulaz.formaGost!.postignuti / odGost) / 1.35)} od ligaškog prosjeka, obrana prima ${(ulaz.formaGost!.primljeni / odGost).toFixed(2)}/utakmici` : "Gost: ligaški prosjek 1.35",
+      odDom > 0 ? `Domaćin: napad ${fmtPct((formaDomCista!.postignuti / odDom) / 1.35)} od ligaškog prosjeka, obrana prima ${(formaDomCista!.primljeni / odDom).toFixed(2)}/utakmici` : "Domaćin: ligaški prosjek 1.35",
+      odGost > 0 ? `Gost: napad ${fmtPct((formaGostCista!.postignuti / odGost) / 1.35)} od ligaškog prosjeka, obrana prima ${(formaGostCista!.primljeni / odGost).toFixed(2)}/utakmici` : "Gost: ligaški prosjek 1.35",
       `λ domaćin = ${lamF.toFixed(2)}, λ gost = ${muF.toFixed(2)}`,
     ],
   });
@@ -238,6 +273,26 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   // SUDAC (v6): profil suca — strog sudac ( > 5.0 kartona ili > 0.4
   // penala /utakmici) diže rizik crvenog kartona na > 18%.
   const sudac = sudacProfil(ulaz.sudac);
+  // UNIVERSAL MATCH CONTEXT (v7): xG i motivacija iz normaliziranog
+  // konteksta utakmice (safe-math). Blaga težina (xG 20%, motivacija ±4%)
+  // — bez konteksta: identitet.
+  const cx = ulaz.kontekst;
+  if (cx && cx.sport === "nogomet") {
+    const lamXg = cx.homeXG + cx.awayXG;
+    if (lamXg > 0.4) {
+      const w = 0.2;
+      const ukNov = clamp(w * lamXg + (1 - w) * (lamH + lamA), 0.4, 7);
+      const dijelj = lamH + lamA > 0 ? lamH / (lamH + lamA) : 0.5;
+      lamH = clamp(ukNov * dijelj, 0.1, 4.5);
+      lamA = clamp(ukNov * (1 - dijelj), 0.1, 4.5);
+    }
+    if (Math.abs(cx.motivationIndex - 0.5) > 1e-9) {
+      const fH = 1 + (cx.motivationIndex - 0.5) * 0.08;
+      const fA = 1 - (cx.motivationIndex - 0.5) * 0.08;
+      lamH = clamp(lamH * fH, 0.05, 4.5);
+      lamA = clamp(lamA * fA, 0.05, 4.5);
+    }
+  }
   // rho: fit na tržište U 1.5 kad postoji
   let rho = -0.05;
   if (dmO15) {
