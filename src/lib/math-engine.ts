@@ -487,3 +487,12 @@ export {
   type CalibrationMetrics,
   type EnterpriseMatchSignals,
 } from "./enterprise-precision";
+
+/* ── BTTS & OVER 2.5 ANOMALY SNIPER ───────────────────────────────── */
+export {
+  computeSniperAnomaly,
+  formatSniperAnomalyForAI,
+  type SniperMatchInput,
+  type SniperAnalysisResult,
+  type AnomalyOddsCell,
+} from "./anomaly-sniper";
