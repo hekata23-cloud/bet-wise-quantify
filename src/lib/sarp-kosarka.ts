@@ -14,6 +14,7 @@ import type { KosMarkets } from "./kosarka.functions";
 import type { KosAnalysis } from "./kosarka-engine";
 import { poolPar, tezinaKalibracije, tempPar } from "./global-calibration";
 import { tempZa, type EmpStanje } from "./accuracy-ledger";
+import { broj as safeBroj, type UniversalMatchContext } from "./safe-math";
 
 export interface BasketballMatchStats {
   /** posjedi po utakmici (pace) */
@@ -122,9 +123,42 @@ export function sarpKosarka(args: {
   brojKladionica?: number;
   /** STVARNA TOČNOST: ručno ubrizgano empirijsko stanje (Samotest); bez toga čita Dnevnik */
   empirijske?: EmpStanje;
+  /** UNIVERSAL MATCH CONTEXT (v7): normalizirani kontekst utakmice — pace/
+   *  ORtg/DRtg indexi i B2B umor dopunjuju podatke koji fale (identitet kad
+   *  su svi podaci već prisutni). */
+  kontekst?: UniversalMatchContext | null;
 }): BasketballSARPPrediction | null {
-  const { an, mk, fixtureId } = args;
-  const s = args.stats ?? {};
+  const { mk, fixtureId } = args;
+  let an = args.an;
+  const sRaw = args.stats ?? {};
+  // SAFE-MATH štit: svaki numerički podatak o statistici prolazi kroz
+  // koerciju — string, null ili NaN postaje undefined (motor koristi
+  // svoje sigurne prosjeke lige umjesto da zarazi projekciju).
+  const c = (v: unknown): number | undefined => {
+    const n = typeof v === "number" ? v : safeBroj(v as unknown, NaN, -1e6, 1e6);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const s = {
+    homePace: c(sRaw.homePace), awayPace: c(sRaw.awayPace), leagueAvgPace: c(sRaw.leagueAvgPace),
+    homeORtg: c(sRaw.homeORtg), awayORtg: c(sRaw.awayORtg), homeDRtg: c(sRaw.homeDRtg), awayDRtg: c(sRaw.awayDRtg),
+    leagueAvgORtg: c(sRaw.leagueAvgORtg),
+    efgHome: c(sRaw.efgHome), efgAway: c(sRaw.efgAway), tovHome: c(sRaw.tovHome), tovAway: c(sRaw.tovAway),
+    orbHome: c(sRaw.orbHome), orbAway: c(sRaw.orbAway), ftrHome: c(sRaw.ftrHome), ftrAway: c(sRaw.ftrAway),
+    homeB2B: sRaw.homeB2B === true, awayB2B: sRaw.awayB2B === true,
+    home3in4: sRaw.home3in4 === true, away3in4: sRaw.away3in4 === true,
+  } as typeof sRaw;
+  // SAFE-MATH štit za tržišno-motorsku analizu (KosAnalysis): NaN ukupno
+  // ili marža pada na sigurne vrijednosti lige (2 × prosječni poeni).
+  // vjerojatnosti iz analize: ne-konačne → neutralna trojka (1/3)
+  const pOk = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
+  an = {
+    ...an,
+    total: Number.isFinite(an.total) && an.total > 40 ? an.total : 160, // ligaški default (NBA usklađeno kasnije)
+    mu: Number.isFinite(an.mu) ? an.mu : 0,
+    pHomeOT: pOk(an.pHomeOT) ? an.pHomeOT : 1 / 3,
+    pAwayOT: pOk(an.pAwayOT) ? an.pAwayOT : 1 / 3,
+    pDraw: pOk(an.pDraw) ? an.pDraw : 1 / 3,
+  } as typeof an;
   const upozorenja: string[] = [];
   const izvori: string[] = ["Tržišne kvote (de-vig)", "Monte Carlo 5.000", "Profil lige"];
 
@@ -133,7 +167,7 @@ export function sarpKosarka(args: {
   const normLige = nba ? 225 : 160;
   const paceModel =
     s.homePace != null && s.awayPace != null && s.leagueAvgPace != null && s.leagueAvgPace > 0;
-  const expPossessions = paceModel ? (s.homePace! * s.awayPace!) / s.leagueAvgPace! : null;
+  const expPossessions = paceModel ? clamp(((s.homePace! * s.awayPace!) / s.leagueAvgPace!), 80, 300) : null;
   if (paceModel) izvori.push("Pace/posjedi (korisnička statistika)");
   const tempoOznaka: BasketballSARPPrediction["pace"]["tempoOznaka"] =
     an.total > normLige + 7 ? "High Pace" : an.total < normLige - 7 ? "Defensive Grind" : "Moderate";
@@ -164,6 +198,26 @@ export function sarpKosarka(args: {
     expSpread = an.mu - 0.5 * (umorH - umorA);
     expHome = (expTotal + expSpread) / 2;
     expAway = (expTotal - expSpread) / 2;
+  }
+
+  // — 3b) UNIVERSAL MATCH CONTEXT (v7): dopuna podataka koji fale —
+  // pace index i B2B umor ulaze samo kad kartica nema bolje podatke.
+  const cx = args.kontekst;
+  if (cx && cx.sport === "kosarka") {
+    if (!paceModel && (Math.abs(cx.homePace - 1) > 1e-9 || Math.abs(cx.awayPace - 1) > 1e-9)) {
+      const avg = clamp((cx.homePace + cx.awayPace) / 2, 0.8, 1.25);
+      expTotal = clamp(expTotal * avg, 100, 320);
+      expSpread = clamp(expSpread, -45, 45);
+      expHome = (expTotal + expSpread) / 2;
+      expAway = (expTotal - expSpread) / 2;
+      izvori.push("Pace index (universal kontekst)");
+    }
+    if (cx.b2bFatigue > 0 && !s.homeB2B && !s.awayB2B) {
+      const pen = 2.5 * clamp(cx.b2bFatigue, 0, 1);
+      expHome = Math.max(60, expHome - pen);
+      expTotal = Math.max(100, expTotal - pen);
+      upozorenja.push(`Kontekst: back-to-back umor domaćina — oduzeto ~${pen.toFixed(1)} poena.`);
+    }
   }
 
   // — 4) FOUR FACTORS (Dean Oliver) s Q4 CLUTCH modom —
