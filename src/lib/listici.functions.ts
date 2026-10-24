@@ -3,6 +3,8 @@
    za poravnanje listića ("Moji listići") i Virtualnu Kladionicu.
    - getStatusUtakmice: status (FT/PST/CANC/ABD/SUSP…), puni i
      regularni rezultat, poluvrijeme — za void i sport-pravila.
+   - Oba dohvata koriste klijentski ključ ili env fallback (API_SPORTS_KEY /
+     API_FOOTBALL_KEY), pa automatsko poravnanje radi i bez ključa u browseru.
    - getFiksatureDana: sve utakmice jednog dana (za uparivanje
      nogu bez fixtureId-a po imenima momčadi i prikaz u Virtualnoj).
    Nogomet preko api-guarda, košarka/rukomet preko sportovi-guarda
@@ -119,6 +121,9 @@ function generirajVirtualniRaspored(sport: "kosarka" | "rukomet", dan: string): 
 export const getStatusUtakmice = createServerFn({ method: "GET" })
   .inputValidator((d) => schemaStatus.parse(d))
   .handler(async ({ data }): Promise<StatusUtakmice> => {
+    // ključ s klijenta ili env fallback (podržava API_SPORTS_KEY i API_FOOTBALL_KEY)
+    const kljuc = (data.apiKey || process.env["API_SPORTS_KEY"] || process.env["API_FOOTBALL_KEY"] || "").trim().replace(/^["']|["']$/g, "");
+
     // Ako je virtualna utakmica (generirana fiksatura), simuliraj deterministički rezultat
     if (data.fixtureId >= 9000000) {
       const isKos = data.sport === "kosarka";
@@ -135,7 +140,7 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
 
     if (data.sport === "kosarka" || data.sport === "rukomet") {
       const r: GuardResult = await sportoviGet(data.sport, `/games?id=${data.fixtureId}`, {
-        apiKey: data.apiKey,
+        apiKey: kljuc,
         ttlMs: 10 * 60_000,
       });
       if (r.error) return { ...nista, error: r.error };
@@ -196,7 +201,7 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
     }
 
     // nogomet — football kvota, api-guard
-    const r = await guardGet(`/fixtures?id=${data.fixtureId}`, { apiKey: data.apiKey, ttlMs: 10 * 60_000 });
+    const r = await guardGet(`/fixtures?id=${data.fixtureId}`, { apiKey: kljuc, ttlMs: 10 * 60_000 });
     if (r.error) return { ...nista, error: r.error };
     const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
     const f = resp[0];
