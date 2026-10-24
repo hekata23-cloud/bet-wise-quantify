@@ -34,7 +34,7 @@ export function loadKorpa(): KorpaTip[] {
   try {
     const raw = localStorage.getItem(KORPA_KEY);
     const arr = raw ? (JSON.parse(raw) as KorpaTip[]) : [];
-    return Array.isArray(arr) ? arr.filter((t) => t && typeof t.id === "string" && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost > 0 && t.vjerojatnost <= 1).slice(0, 15) : [];
+    return Array.isArray(arr) ? arr.filter((t) => t && typeof t.id === "string" && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost > 0 && t.vjerojatnost <= 1).slice(0, 30) : [];
   } catch {
     return [];
   }
@@ -42,7 +42,7 @@ export function loadKorpa(): KorpaTip[] {
 
 function spremiKorpu(tipovi: KorpaTip[]) {
   try {
-    localStorage.setItem(KORPA_KEY, JSON.stringify(tipovi.slice(0, 15)));
+    localStorage.setItem(KORPA_KEY, JSON.stringify(tipovi.slice(0, 30)));
   } catch {
     /* puna memorija — ignoriraj */
   }
