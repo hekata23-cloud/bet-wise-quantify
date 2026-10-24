@@ -8,6 +8,7 @@
 // ============================================================
 import { formatEdgeCaseSignals, formatEnterpriseSignals, type EnterpriseMatchSignals, type EdgeCaseMatchSignals } from "./enterprise-precision";
 import type { UniversalMatchContext } from "./safe-math";
+import { formatSniperAnomalyForAI, type SniperAnalysisResult } from "./anomaly-sniper";
 
 /** KVANT NADGRADNJA (v5): egzaktni Skellam push, hazard β, OT model
  *  i rukometna taktika (7v6 / golman-umor) — izravno u prompt chatova. */
@@ -148,6 +149,8 @@ export interface MecKontekst {
    *  safe-math (xG, forma, vrijeme, sudac, pace/ORtg/DRtg, golmani, 7v6,
    *  motivacija). Luna i Orion čitaju iste brojke koje koriste motori. */
   universal?: UniversalMatchContext | null;
+  /** v9: BTTS & Over 2.5 Anomaly Sniper detektor */
+  sniperAnomaly?: SniperAnalysisResult | null;
   spremljeno: number;
 }
 
@@ -324,6 +327,13 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
     if (uLinije.length) {
       linije.push("── UNIVERSAL MATCH CONTEXT (normalizirani podaci utakmice) ──");
       linije.push(...uLinije);
+    }
+  }
+  if (c.sniperAnomaly) {
+    const sniperLines = formatSniperAnomalyForAI(c.sniperAnomaly);
+    if (sniperLines.length) {
+      linije.push("── BTTS & OVER 2.5 ANOMALY SNIPER (v9 Kvantitativni detektor) ──");
+      linije.push(...sniperLines);
     }
   }
   if (c.edgeCases) {
