@@ -11,8 +11,11 @@ const excludeList = new Set([
   ".git",
   ".output",
   ".wrangler",
+  ".aistudio",
+  ".playwright-cli",
   "dist",
   "andromeda-ai.zip",
+  "bet-wise-quantify-fixed.zip",
 ]);
 
 function addDirectory(currentDir, zipFolder) {
