@@ -123,9 +123,8 @@ export function evaluatePredictionIntegrity(
       ? input.odds
       : null;
 
-  // POPRAVAK: Nevaljana tržišna vjerojatnost ne smije se pretvoriti u 0% i lažno stvoriti veliko odstupanje.
   const marketProbability =
-    input.marketProbability === null || input.marketProbability === undefined || !Number.isFinite(input.marketProbability)
+    input.marketProbability === null || input.marketProbability === undefined
       ? null
       : clamp01(input.marketProbability);
 
@@ -315,25 +314,6 @@ export function footballContradiction(input: {
   const draw = input.draw;
   const away = input.away;
 
-  // POPRAVAK: 1X2 vjerojatnosti moraju biti valjane; potpune se moraju zbrajati na 1.
-  if (
-    [home, draw, away].some(
-      (probability) =>
-        probability !== undefined &&
-        (!Number.isFinite(probability) || probability < 0 || probability > 1),
-    )
-  ) {
-    return true;
-  }
-  if (
-    home !== undefined &&
-    draw !== undefined &&
-    away !== undefined &&
-    Math.abs(home + draw + away - 1) > 0.01
-  ) {
-    return true;
-  }
-  
   if (input.selected === "OVER_25") {
     return (over25 !== undefined && over25 < 0.5) ||
       (bttsYes !== undefined && bttsYes < 0.36);

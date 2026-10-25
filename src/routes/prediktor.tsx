@@ -286,44 +286,7 @@ function PrediktorPage() {
       setLoading(false);
     }
   };
-  // Tiha revalidacija samo odabrane nadolazeće utakmice.
-  useEffect(() => {
-    const fixture = fixtures.find((item) => item.id === selected);
-    if (!fixture || !keys.football?.trim() || fixture.status !== "NS") return;
 
-    const kickoff = Date.parse(fixture.time);
-    if (!Number.isFinite(kickoff) || kickoff <= Date.now()) return;
-
-    const timer = window.setInterval(async () => {
-      if (document.visibilityState !== "visible" || Date.now() >= kickoff) return;
-
-      try {
-        const latest = await fetchMatchOdds(keys, fixture, true);
-        const hasMarketData = Object.values(latest.inputs).some(
-          (value) => typeof value === "string" && value.trim() !== "",
-        );
-
-        if (!hasMarketData) {
-          const safeEmpty = emptyInputs();
-          setInp(safeEmpty);
-          runAll(safeEmpty);
-          setNotice("Kvote nisu osvježene. Zastarjele cijene i Value Edge privremeno su isključeni.");
-          return;
-        }
-
-        setInp(latest.inputs);
-        runAll(latest.inputs);
-        // Uspješno SWR osvježavanje ostaje tiho.
-      } catch {
-        const safeEmpty = emptyInputs();
-        setInp(safeEmpty);
-        runAll(safeEmpty);
-        setNotice("Kvote su zastarjele. Value Edge isključen dok se ne dohvate svježe cijene.");
-      }
-    }, 60_000);
-
-    return () => window.clearInterval(timer);
-  }, [selected, fixtures, keys]);
   const shown = fixtures
     .filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase()))
     .slice(0, 200);

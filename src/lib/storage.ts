@@ -20,17 +20,17 @@ const KEYS: Record<ApiKeyName, string> = {
 
 export function getKey(name: ApiKeyName): string {
   if (typeof window === "undefined") return "";
-  try { return window.localStorage.getItem(KEYS[name]) ?? ""; } catch { return ""; }
+  return window.localStorage.getItem(KEYS[name]) ?? "";
 }
 
 export function setKey(name: ApiKeyName, value: string): void {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(KEYS[name], value.trim()); } catch { /* storage unavailable */ }
+  window.localStorage.setItem(KEYS[name], value.trim());
 }
 
 export function clearKey(name: ApiKeyName): void {
   if (typeof window === "undefined") return;
-  try { window.localStorage.removeItem(KEYS[name]); } catch { /* storage unavailable */ }
+  window.localStorage.removeItem(KEYS[name]);
 }
 
 export function hasKey(name: ApiKeyName): boolean {
@@ -50,7 +50,5 @@ export function loadJSON<T>(key: string, fallback: T): T {
 
 export function saveJSON(key: string, value: unknown): void {
   if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch { /* quota/storage unavailable; keep app running */ }
+  window.localStorage.setItem(key, JSON.stringify(value));
 }

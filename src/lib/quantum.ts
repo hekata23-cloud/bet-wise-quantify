@@ -43,9 +43,8 @@ export const QUANTUM_MODULES: QuantumModule[] = [
     id: "marketBlend",
     label: "Miks s tržištem (model + kvote)",
     desc: "Model se spaja s de-vigiranom kvotom umjesto slijepog vjerovanja modelu.",
-    // POPRAVAK: formula koristi podesivu težinu tržišta, umjesto fiksnih 40%.
     directive:
-      "MIKS S TRŽIŠTEM — kad postoje kvote, finalni p = (1 − w) × p_model + w × p_devig_tržište, gdje je w težina tržišta iz postavki. Ako je razlika modela i tržišta > 12 pb, izričito napiši da je to crvena zastava i smanji sigurnost.",
+      "MIKS S TRŽIŠTEM — kad postoje kvote, finalni p = 0.6 × p_model + 0.4 × p_devig_tržište. Ako je razlika modela i tržišta > 12 pb, izričito napiši da je to crvena zastava i smanji sigurnost.",
   },
   {
     id: "devigCLV",

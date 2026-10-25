@@ -107,31 +107,23 @@ function invPhi(p: number) {
   return (lo + hi) / 2;
 }
 
-/** SAFE-MATH štit: kvota je "ispravna" samo ako je konačan broj > 1.001. */
-const isVal = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v > 1.001;
-
 function devig(odds: number[]): number[] {
-  const inv = odds.map((o) => (Number.isFinite(o) && o > 1.001 ? 1 / o : 0));
+  const inv = odds.map((o) => (o > 0 ? 1 / o : 0));
   const s = inv.reduce((a, b) => a + b, 0);
-  return s > 0 ? inv.map((x) => x / s) : [];
+  return s > 0 ? inv.map((x) => x / s) : odds.map(() => 1 / odds.length);
 }
 
 const find = (m: RukometMarkets, re: RegExp) =>
   Object.entries(m).find(([k]) => re.test(k))?.[1];
 
-/** SAFE-MATH štit: NaN kvota → odd null (nikad NaN tip). */
-const tip = (market: string, pick: string, prob: number, odd: number | null): Tip => {
-  const kv = odd != null && Number.isFinite(odd) && odd > 1.001 ? odd : null;
-  const p = Number.isFinite(prob) ? prob : 0;
-  return {
-    market,
-    pick,
-    prob: p,
-    fair: p > 0 ? 1 / p : 99,
-    odd: kv,
-    ev: kv ? (p * kv - 1) * 100 : null,
-  };
-};
+const tip = (market: string, pick: string, prob: number, odd: number | null): Tip => ({
+  market,
+  pick,
+  prob,
+  fair: prob > 0 ? 1 / prob : 99,
+  odd,
+  ev: odd ? (prob * odd - 1) * 100 : null,
+});
 
 /** Profilira tempo i zbroj golova prema ligi i tipu natjecanja */
 function getLeagueGoalProfile(league: string): { mu: number; sigma: number } {
@@ -246,8 +238,7 @@ export function analyzeRukomet(
       map.set(L, entry);
     }
     for (const [line, entry] of map) {
-      // SAFE-MATH štit: obje strane moraju biti konačne kvote > 1.001.
-      if (isVal(entry.o) && isVal(entry.u)) lines.push({ line, o: entry.o, u: entry.u });
+      if (entry.o && entry.u) lines.push({ line, o: entry.o, u: entry.u });
     }
     lines.sort((a, b) => a.line - b.line);
   }
@@ -258,17 +249,12 @@ export function analyzeRukomet(
   let mainLineBook: { line: number; o: number; u: number } | null = null;
   if (lines.length > 0) {
     mainLineBook = [...lines].sort((a, b) => Math.abs(a.o - a.u) - Math.abs(b.o - b.u))[0]!;
-    const dv = devig([mainLineBook.o, mainLineBook.u]);
-    if (dv.length === 2) {
-      const pOver = dv[0]!;
-      muTotal = mainLineBook.line + sigmaTotal * invPhi(pOver);
-      if (isBet365) notes.push(`Kalibrirano prema Bet365 liniji zbroja: ${mainLineBook.line} golova.`);
-    } else notes.push("Nekonzistentne kvote na zbroj golova — korišten profil lige.");
+    const pOver = devig([mainLineBook.o, mainLineBook.u])[0]!;
+    muTotal = mainLineBook.line + sigmaTotal * invPhi(pOver);
+    if (isBet365) notes.push(`Kalibrirano prema Bet365 liniji zbroja: ${mainLineBook.line} golova.`);
   } else {
     notes.push(`Procijenjen tempo lige (${league}): ~${profile.mu} golova.`);
   }
-  // SAFE-MATH štit: ukupni očekivani golovi moraju biti zdrav broj.
-  if (!Number.isFinite(muTotal) || !(muTotal > 20) || !(muTotal < 90)) muTotal = profile.mu;
 
   // 2) 1X2 I POBJEDNIK
   const three =
@@ -287,22 +273,19 @@ export function analyzeRukomet(
   let targetProbH: number | null = null;
   let source: "API" | "ALGORITAM" | "RUČNO" = sourceMode ?? "API";
 
-  // SAFE-MATH štit: NaN kvota više ne prolazi truthy provjeru (NaN je truthy!).
-  if (isVal(tH) && isVal(tX) && isVal(tA)) {
+  if (tH && tX && tA) {
     const probs = devig([tH, tX, tA]);
-    if (probs.length === 3) targetProbH = probs[0]!;
-  } else if (isVal(mlH) && isVal(mlA)) {
+    targetProbH = probs[0]!;
+  } else if (mlH && mlA) {
     const probs = devig([mlH, mlA]);
-    if (probs.length === 2) targetProbH = probs[0]! * 0.92;
-  }
-  if (targetProbH == null || !Number.isFinite(targetProbH)) {
+    targetProbH = probs[0]! * 0.92;
+  } else {
     source = "ALGORITAM";
     const delta = getTeamStrengthDelta(homeTeam, awayTeam);
     const z = delta / 6.8;
     targetProbH = Math.max(0.12, Math.min(0.88, Phi(z) * 0.92));
     notes.push("Tržišne kvote nisu dostupne — izračunato kvantitativnim rukometnim modelom.");
   }
-
 
   const sigmaDiff = 6.8;
   let lo = -25,
@@ -319,9 +302,8 @@ export function analyzeRukomet(
     0.05,
     Math.min(0.12, Phi((0.5 - muDiff) / sigmaDiff) - Phi((-0.5 - muDiff) / sigmaDiff))
   );
-  // POPRAVAK: ograniči domaćina prema remiju kako tri ishoda uvijek daju ukupno 1.
-  const pHome = Math.max(0.02, Math.min(0.96, 1 - pDraw - 0.02, 1 - Phi((0.5 - muDiff) / sigmaDiff)));
-  const pAway = 1 - pHome - pDraw;
+  const pHome = Math.max(0.02, Math.min(0.96, 1 - Phi((0.5 - muDiff) / sigmaDiff)));
+  const pAway = Math.max(0.02, 1 - pHome - pDraw);
 
   const pHomeML = pHome + pDraw * 0.5;
   const pAwayML = 1 - pHomeML;
@@ -501,18 +483,6 @@ export function analyzeRukomet(
     withOdds.filter((t) => t.prob >= 0.65).sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0))[0] ??
     allTips.filter((t) => t.prob >= 0.70).sort((a, b) => b.prob - a.prob)[0] ??
     null;
-
-  // SAFE-MATH štit: ne-konačne/nerazumne kvote u concrete bloku → null
-  const ocistiKv = (t: unknown) => {
-    const x = t as { odd?: number | null; ev?: number | null } | undefined;
-    if (x) {
-      x.odd = x.odd != null && Number.isFinite(x.odd) && x.odd > 1.001 && x.odd < 1000 ? x.odd : null;
-      x.ev = x.odd != null && x.ev != null && Number.isFinite(x.ev) ? x.ev : null;
-    }
-    return x;
-  };
-  ocistiKv(winnerPick);
-  ocistiKv(totalGoalsConcrete); ocistiKv(homeTotalConcrete); ocistiKv(awayTotalConcrete);
 
   return {
     muDiff,

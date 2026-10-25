@@ -31,19 +31,9 @@ function pois(l: number, k: number) {
 
 function grid(lh: number, la: number) {
   const g: number[][] = [];
-  let total = 0;
   for (let h = 0; h <= 8; h++) {
     g[h] = [];
-    for (let a = 0; a <= 8; a++) {
-      g[h][a] = pois(lh, h) * pois(la, a);
-      total += g[h][a];
-    }
-  }
-  // POPRAVAK: normaliziraj odrezanu Poissonovu matricu prije zbrajanja ishoda.
-  if (total > 0) {
-    for (let h = 0; h <= 8; h++) {
-      for (let a = 0; a <= 8; a++) g[h][a] /= total;
-    }
+    for (let a = 0; a <= 8; a++) g[h][a] = pois(lh, h) * pois(la, a);
   }
   return g;
 }

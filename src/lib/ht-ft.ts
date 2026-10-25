@@ -107,11 +107,10 @@ export function computeHtFtAnalysis(
   // Konvolucija 1H i 2H golova
   const conv = (fn: (h1: number, a1: number, h2: number, a2: number) => boolean) => {
     let s = 0;
-    // POPRAVAK: zbrajaj cijelu matricu, a ne samo rezultate 0–6.
-    for (let a = 0; a < H1.length; a++) {
-      for (let b = 0; b < (H1[a]?.length ?? 0); b++) {
-        for (let c = 0; c < H2.length; c++) {
-          for (let d = 0; d < (H2[c]?.length ?? 0); d++) {
+    for (let a = 0; a <= 6; a++) {
+      for (let b = 0; b <= 6; b++) {
+        for (let c = 0; c <= 6; c++) {
+          for (let d = 0; d <= 6; d++) {
             if (fn(a, b, c, d)) s += (H1[a]?.[b] ?? 0) * (H2[c]?.[d] ?? 0);
           }
         }
@@ -154,9 +153,8 @@ export function computeHtFtAnalysis(
 
   const outcomes: HtFtOutcome[] = codes.map((c) => {
     const p = conv((a, b, c2, d2) => r(a, b) === c.h && r(a + c2, b + d2) === c.f);
-    // POPRAVAK: ne podižite stvarnu vjerojatnost rijetkog ishoda na 0.1%.
-    const prob = p;
-    const fairOdd = Number((1 / Math.max(0.001, prob)).toFixed(2));
+    const prob = Math.max(0.001, p);
+    const fairOdd = Number((1 / prob).toFixed(2));
     const bookieOdd = getBookieOdd(c.code);
     const ev = bookieOdd ? Number(((prob * bookieOdd - 1) * 100).toFixed(1)) : undefined;
 
@@ -179,9 +177,8 @@ export function computeHtFtAnalysis(
   let pHt1 = 0,
     pHtX = 0,
     pHt2 = 0;
-  // POPRAVAK: HT 1X2 zbraja sve rezultate koje vraća matrica.
-  for (let i = 0; i < H1.length; i++) {
-    for (let j = 0; j < (H1[i]?.length ?? 0); j++) {
+  for (let i = 0; i <= 6; i++) {
+    for (let j = 0; j <= 6; j++) {
       const p = H1[i]?.[j] ?? 0;
       if (i > j) pHt1 += p;
       else if (i === j) pHtX += p;

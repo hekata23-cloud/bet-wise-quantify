@@ -21,7 +21,6 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
-import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
 import { loadMastermind } from "@/lib/mastermind";
@@ -62,7 +61,7 @@ export const Route = createFileRoute("/chat")({
 const KEY = "tm.chat.history";
 
 function ChatPage() {
-  const [messages, setMessages] = useState<ChatTurn[]>(() => loadJSON<ChatTurn[]>(KEY, []));
+  const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -74,30 +73,11 @@ function ChatPage() {
   const [antiOn, setAntiOn] = useState(false);
   const [titanCount, setTitanCount] = useState(0);
   const [mmOn, setMmOn] = useState(false);
-  const [mecNaziv, setMecNaziv] = useState<string | null>(null);
-  useEffect(() => {
-    const osvjezi = () => setMecNaziv(ucitajKontekstMeca()?.naslov ?? null);
-    osvjezi();
-    window.addEventListener("andromeda:mec-kontekst", osvjezi);
-    return () => window.removeEventListener("andromeda:mec-kontekst", osvjezi);
-  }, []);
   useEffect(() => {
     setSniperCount(sniperActiveCount(loadSniper()));
     setAntiOn(loadAntiError().enabled);
     setTitanCount(titanActiveCount(loadTitan()));
     setMmOn(loadMastermind().enabled);
-  }, []);
-
-  // PITAJ LUNU (v7): pitanje iz Korpe ("Pitaj Lunu za mišljenje o listiću")
-  // šalje se automatski jednom pri otvaranju chata — kontekst tiketa je već spremljen.
-  useEffect(() => {
-    try {
-      const q = localStorage.getItem("pc.luna.pitanje");
-      if (!q) return;
-      localStorage.removeItem("pc.luna.pitanje");
-      setTimeout(() => void send(q), 400);
-    } catch { /* ignoriraj */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -107,6 +87,7 @@ function ChatPage() {
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
   useEffect(() => {
+    setMessages(loadJSON<ChatTurn[]>(KEY, []));
     inputRef.current?.focus();
     warmUpVoices();
     if (loadVoicePrefs().autoSpeak) setVoiceMode(true);
@@ -156,22 +137,12 @@ function ChatPage() {
       ts: Date.now(),
       attachments: attSnapshot.map((a) => ({ name: a.name, kind: a.kind, path: a.path })),
     };
-    const nextMessages = [...messages, userTurn];
-    saveJSON(KEY, nextMessages); // Persist before network work so a tab switch cannot lose the turn.
-    setMessages(nextMessages);
+    setMessages((m) => [...m, userTurn]);
     setInput("");
     setAttachments([]);
     setLoading(true);
     try {
-      // Match Engine kontekst (SARP analiza zadnje otvorene utakmice) ide
-      // automatski u prompt — pohranjena poruka ostaje čista.
-      const kontekst = ucitajKontekstMeca();
-      const tiket = ucitajKontekstTiketa();
-      const tekstZaAI =
-        [text, kontekst ? izgradiKontekstTekst(kontekst) : "", tiket ? izgradiTiketTekst(tiket) : ""]
-          .filter((s) => s)
-          .join("\n\n");
-      const reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
+      const reply = await askAi(text, messages, attSnapshot, { voice: voiceMode });
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
         setSpeaking(true);
@@ -273,11 +244,6 @@ function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {mecNaziv && (
-            <span className="hidden rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 sm:inline">
-              MEC: {mecNaziv.length > 22 ? mecNaziv.slice(0, 22) + "…" : mecNaziv}
-            </span>
-          )}
           {mmOn && (
             <span className="rounded-lg border border-primary bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">
               MASTERMIND v11

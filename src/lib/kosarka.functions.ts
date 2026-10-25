@@ -56,18 +56,12 @@ export const getKosGames = createServerFn({ method: "POST" })
 
 export type KosMarkets = Record<string, Record<string, number>>;
 
-/**
- * Jedan poziv: /odds?game=ID. Prednost Bet365, inače kladionica s najviše tržišta.
- * v2: vraća i `brojKladionica` — stvaran broj kladionica s objavljenim kvotama
- * u API odgovoru; ide u SARP panel pa u globalnu kalibraciju motora
- * (težina log-poola ovisi o stvarnoj pokrivenosti, ne o pretpostavci od 3 knjige).
- */
+/** Jedan poziv: /odds?game=ID. Prednost Bet365, inače kladionica s najviše tržišta. */
 export const getKosOdds = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d))
   .handler(async ({ data }) => {
     const r = await call(`/odds?game=${data.id}`, data.apiKey);
     const books: any[] = ((r.data as any[]) ?? []).flatMap((it) => it?.bookmakers ?? []);
-    const knjigeSKvotama = books.filter((b) => (b?.bets?.length ?? 0) > 0).length;
     const chosen =
       books.find((b) => /bet ?365/i.test(String(b.name))) ??
       [...books].sort((a, b) => (b.bets?.length ?? 0) - (a.bets?.length ?? 0))[0];
@@ -81,6 +75,5 @@ export const getKosOdds = createServerFn({ method: "POST" })
       if (Object.keys(m).length) markets[String(bet.name).trim()] = m;
     }
     const error = r.error ?? (Object.keys(markets).length ? null : "Kladionice još nisu objavile kvote za ovu utakmicu.");
-    return { error, rate: r.rate, markets, bookmaker: (chosen?.name as string) ?? null, brojKladionica: knjigeSKvotama };
+    return { error, rate: r.rate, markets, bookmaker: (chosen?.name as string) ?? null };
   });
-

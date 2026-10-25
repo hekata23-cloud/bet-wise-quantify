@@ -44,11 +44,8 @@ export function scanAllMarketValues(
     { market: "BTTS NE", bookieOdd: kNg, prob: pNg },
   ];
 
-  // POPRAVAK: izostavi nevaljane decimalne kvote kako ne bi stvarale beskonačan ili neskladni EV.
-  const allMarkets: MarketValue[] = marketsData
-    .filter((item) => Number.isFinite(item.bookieOdd) && item.bookieOdd > 1)
-    .map((item) => {
-    const bookieImplied = 1 / item.bookieOdd;
+  const allMarkets: MarketValue[] = marketsData.map((item) => {
+    const bookieImplied = 1 / Math.max(1.01, item.bookieOdd);
     const evRaw = item.prob * item.bookieOdd - 1;
     const ev = Number((evRaw * 100).toFixed(1));
     const edge = Number(((item.prob - bookieImplied) * 100).toFixed(1));

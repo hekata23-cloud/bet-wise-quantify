@@ -7,22 +7,14 @@ export interface ORMessage {
   content: string;
 }
 
-// Popis modela provjeren ŽIVIM upitom na https://openrouter.ai/api/v1/models
-// (17.10.2026) — svi slugovi postoje (besplatnih ima ukupno 16).
 export const OR_MODELS = [
-  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (Glavni)", free: true },
-  { id: "poolside/laguna-s-2.1:free", label: "Laguna S 2.1", free: true },
-  { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning", free: true },
-  { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B", free: true },
-  { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B", free: true },
-  { id: "dots-studio/dots-3-note-preview:free", label: "Dots 3 Note Preview", free: true },
-  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", label: "Nemotron Nano Omni 30B", free: true },
-  { id: "xingchen-agi/xing4.0-29b-a4b:free", label: "Xing 4.0 29B", free: true },
-  { id: "nvidia/nemotron-3.5-super-vl:free", label: "Nemotron 3.5 Super VL", free: true },
+  { id: "openrouter/free", label: "OpenRouter Free Router (Automatski bira najbolji besplatni model)", free: true },
+  { id: "nvidia/nemotron-3-ultra:free", label: "Nvidia Nemotron-3 Ultra (Logika)", free: true },
+  { id: "minimax/minimax-m3:free", label: "Minimax-M3 (Brzina)", free: true },
 ];
 
 export function specialistDefault(): string {
-  return "google/gemma-4-31b-it:free";
+  return "openrouter/free";
 }
 
 export interface ORCallOptions {
@@ -31,157 +23,37 @@ export interface ORCallOptions {
   extraFallbacks?: string[];
 }
 
-/** Vlastiti timeout po pozivu — model koji visi nikad ne blokira lanac. */
-const CALL_TIMEOUT_MS = 40_000;
-
-/** Besplatni nivo OpenRotera: 50 zahtjeva/dan i 20/minuti — PO RAČUNU,
- *  ne po modelu. Limit se resetira u ponoć UTC (02:00 po našem vremenu). */
-export const FREE_DAILY_LIMIT = 50;
-
-// ── Dnevna potrošnja (lokalna procjena u localStorage, po UTC danu) ──
-const USAGE_KEY = "or_free_usage";
-
-function danUTC(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/** Koliko smo (procjena) zahtjeva poslali danas. */
-export function orUsageToday(): number {
-  try {
-    const raw = JSON.parse(localStorage.getItem(USAGE_KEY) || "{}");
-    if (raw.dan !== danUTC()) return 0;
-    return raw.broj || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function zabiljeziPokusaj(): void {
-  try {
-    localStorage.setItem(
-      USAGE_KEY,
-      JSON.stringify({ dan: danUTC(), broj: orUsageToday() + 1 }),
-    );
-  } catch {
-    /* nebitno */
-  }
-}
-
-/** Prepoznaj OpenRouterovu ograničavajuću grešku (429). Limit je po RAČUNU,
- *  ne po modelu — pa zamjena modela ne pomaže i ne treba dalje trošiti pokušaje. */
-export function jeRateGreska(msg: string): boolean {
-  return /\(429\)|rate.?limit|too many requests|quota exceeded|free-model/i.test(msg);
-}
-
-/** Jedan poziv prema OpenRouteru; baca grešku s porukom provajdera. */
-async function call(model: string, messages: ORMessage[], opts: ORCallOptions): Promise<string> {
-  const key = getKey("openrouter");
-  if (!key) throw new Error("Ključ nedostaje");
-
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), CALL_TIMEOUT_MS);
-  let res: Response;
-  try {
-    res = await fetch(URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${key}`,
-        "X-Title": "Andromeda AI Oracle",
-      },
-      body: JSON.stringify({
-        model: model || specialistDefault(),
-        messages,
-        temperature: opts.temperature ?? 0.6,
-        ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-      }),
-      signal: ctrl.signal,
-    });
-  } catch (e) {
-    if (e instanceof DOMException && e.name === "AbortError")
-      throw new Error(`${model}: nema odgovora ${CALL_TIMEOUT_MS / 1000} s`);
-    throw e;
-  } finally {
-    clearTimeout(t);
-  }
-
-  const data = await res.json().catch(() => null as unknown);
-  if (!res.ok) {
-    const m = (data as any)?.error?.message;
-    throw new Error(`(${res.status}) ${m || "OpenRouter Error"}`);
-  }
-  const ch = (data as any)?.choices?.[0];
-  // Provider greška krije se unutar choices (npr. "no allowed providers").
-  if (ch?.error?.message) throw new Error(ch.error.message);
-  const content = typeof ch?.message?.content === "string" ? ch.message.content.trim() : "";
-  if (content) return content;
-  // Neki besplatni reasoning modeli vrate tekst u "reasoning" polju.
-  const reasoning = typeof ch?.message?.reasoning === "string" ? ch.message.reasoning.trim() : "";
-  if (reasoning) return reasoning;
-  // Prazan odgovor je jasna greška — ne šuti.
-  throw new Error(`${model}: prazan odgovor`);
-}
-
-/** Spas: samo 2 rezervna modela, da lanac ne traje duže od potrebne mjere. */
-const RESCUE_MODELS = [
-  "google/gemma-4-26b-a4b-it:free",
-  "nvidia/nemotron-3.5-lightning:free",
-];
-
 export async function openrouterChat(
   model: string,
   messages: ORMessage[],
   opts: ORCallOptions = {},
 ): Promise<string> {
-  zabiljeziPokusaj();
-  try {
-    return await call(model, messages, opts);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    // 429 / quota → odmah baci jasnu poruku, BEZ spasonosnih pokušaja:
-    // svaki dodatni poziv samo troši dio istog dnevnog limita.
-    if (jeRateGreska(msg)) {
-      throw new Error(
-        `${model}: ${msg} — OpenRouter ograničenje: 50 zahtjeva/dan i 20 u minuti (besplatno, po računu). Pričekaj minutu; dnevni limit se resetira u 02:00. Trajno rješenje: 10 $ kredita → 1000 zahtjeva/dan.`,
-      );
-    }
-    // Model umirovljen / nedostupan / preopterećen / spor / prazan → spas preko
-    // živih besplatnih modela (max 2, da ukupno vrijeme ostane pod kontrolom).
-    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|402|404|400|prazan odgovor|nema odgovora/i.test(msg);
-    if (rescue) {
-      for (const m of RESCUE_MODELS) {
-        if (m === model) continue;
-        try {
-          zabiljeziPokusaj();
-          const out = await call(m, messages, opts);
-          if (out) return out;
-        } catch (e2) {
-          const m2 = e2 instanceof Error ? e2.message : String(e2);
-          if (jeRateGreska(m2)) throw new Error(m2);
-          /* idemo na sljedeći */
-        }
-      }
-    }
-    // Eksplicitni rezervni modeli iz poziva.
-    for (const fb of opts.extraFallbacks ?? []) {
-      try {
-        zabiljeziPokusaj();
-        const out = await call(fb, messages, opts);
-        if (out) return out;
-      } catch (e2) {
-        const m2 = e2 instanceof Error ? e2.message : String(e2);
-        if (jeRateGreska(m2)) throw new Error(m2);
-        /* idemo dalje */
-      }
-    }
-    throw e;
-  }
+  const key = getKey("openrouter");
+  if (!key) throw new Error("Ključ nedostaje");
+
+  const res = await fetch(URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${key}`,
+      "X-Title": "Andromeda AI Oracle"
+    },
+    body: JSON.stringify({
+      model: model || "openrouter/free",
+      messages,
+      temperature: opts.temperature ?? 0.6,
+      ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || "OpenRouter Error");
+  return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
 export async function testOpenRouter() {
   try {
-    await openrouterChat(specialistDefault(), [{ role: "user", content: "Say OK" }]);
-    return { ok: true, msg: "OpenRouter spreman — Gemma 4 31B odgovara!" };
+    await openrouterChat("openrouter/free", [{ role: "user", content: "Say OK" }]);
+    return { ok: true, msg: "OpenRouter Free Router je spreman!" };
   } catch (e: any) { return { ok: false, msg: e.message }; }
 }
-
