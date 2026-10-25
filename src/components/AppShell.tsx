@@ -2,9 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity,
-  BookOpen,
   Brain,
-  CircleDot,
   Dribbble,
   Calculator,
   Clock,
@@ -13,7 +11,6 @@ import {
   MessageCircle,
   Radar,
   Radio,
-  Rocket,
   Settings,
   Sparkles,
   Target,
@@ -22,31 +19,23 @@ import {
   Trophy,
   Wrench,
   Zap,
-  TrendingUp,
-  Coins,
-  Info,
+  ShieldCheck,
+  TrendingDown,
 } from "lucide-react";
 import { formatZagreb } from "@/lib/zagreb-time";
 import { SharpFilterToggle } from "@/components/SharpFilterToggle";
 import { useSharpFilter, SHARP_PRESETS } from "@/lib/sharp-filter";
-import { Korpa } from "@/components/Korpa";
-import { Orion } from "@/components/Orion";
 
 const NAV = [
   { to: "/", label: "Početna", icon: Sparkles },
   { to: "/ht-ft-predikcija", label: "HT/FT Predikcija", icon: Zap },
   { to: "/ht-ft", label: "HT/FT Sharp", icon: Clock },
-  { to: "/ht-ft-beta", label: "HT/FT Beta", icon: Rocket },
   { to: "/btts-over", label: "2.5 & BTTS Sharp", icon: Flame },
-  { to: "/btts-ultra", label: "BTTS Ultra", icon: Flame },
-  { to: "/over25-pro", label: "2.5 Pro", icon: Zap },
   { to: "/tiket-arhitekt", label: "Tiket Arhitekt", icon: Ticket },
   { to: "/golovi", label: "Golovi Pro", icon: Goal },
   { to: "/kosarka", label: "Košarka Sharp", icon: Dribbble },
   { to: "/rukomet", label: "Rukomet Sharp", icon: Activity },
   { to: "/obrnute-kvote", label: "Obrnute kvote", icon: Radar },
-    { to: "/ou-niski", label: "O/U 0.5 & 1.5", icon: Goal },
-
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
   { to: "/over-under", label: "2.5 Termometar", icon: Thermometer },
@@ -54,16 +43,11 @@ const NAV = [
   { to: "/prediktor", label: "Prediktor 3.5 & CS", icon: Target },
   { to: "/pro", label: "Pro Sharp", icon: Target },
   { to: "/pro-alati", label: "Pro Alati", icon: Wrench },
+  { to: "/dnb-asian-master", label: "DNB & Hendikep", icon: ShieldCheck },
+  { to: "/dropping-odds", label: "Smart Money Radar", icon: TrendingDown },
   { to: "/ai-prognoza", label: "AI Prognoza", icon: Brain },
   { to: "/chat", label: "AI Chat", icon: MessageCircle },
   { to: "/uzivo", label: "Uživo", icon: Radio },
-  { to: "/kosarka-pro", label: "Košarka Pro", icon: Dribbble },
-  { to: "/rukomet-pro", label: "Rukomet Pro", icon: CircleDot },
-  { to: "/virtualna", label: "Virtualna", icon: Coins },
-  { to: "/listici", label: "Moji listići", icon: Ticket },
-  { to: "/dnevnik", label: "Dnevnik", icon: BookOpen },
-  { to: "/track-record", label: "Track Record", icon: TrendingUp },
-  { to: "/info", label: "Info & Arhitektura", icon: Info },
   { to: "/postavke", label: "Postavke", icon: Settings },
 ] as const;
 
@@ -169,10 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <footer className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
         Andromeda AI © 2026 · Kvantitativno modeliranje sportskih tržišta
       </footer>
-
-      {/* Dual-AI agenti + Bet Slip Korpa — dostupni na svakoj kartici */}
-      <Orion />
-      <Korpa />
     </div>
   );
 }
+
