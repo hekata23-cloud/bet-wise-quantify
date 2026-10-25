@@ -158,6 +158,11 @@ export async function guarded<T extends { error: string | null; rate: any }>(
   try { return await job; } finally { inflight.delete(ck); }
 }
 
+/** Obriši jedan dnevni cache zapis (npr. utakmica još nema kvote — pokušaj kasnije ponovno). */
+export function zaboraviCache(cacheId: string) {
+  try { localStorage.removeItem(CACHE + zagrebDay() + "." + cacheId); } catch { /* */ }
+}
+
 export function resetGuard() {
   const s = readState();
   s.blockedDay = null;

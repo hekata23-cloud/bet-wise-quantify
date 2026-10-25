@@ -6,6 +6,7 @@ import { loadKey } from "@/lib/api-football-storage";
 import { getFixtureOdds, getFixtures, type FixtureItem, type OddsResult } from "@/lib/api-football-data.functions";
 import { canCall, DAILY_LIMIT, getCache, readGuard, recordCall, resetGuard, setCache } from "@/lib/api-guard";
 import { getApiKey } from "@/lib/zlatni-guard";
+import { isoDateZagreb } from "@/lib/zagreb-time";
 
 export interface LoadedMatchOdds {
   k22?: number;
@@ -21,11 +22,8 @@ interface Props {
 }
 
 function localDate() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // POPRAVAK: početni datum mora pratiti Zagreb, ne vremensku zonu uređaja.
+  return isoDateZagreb();
 }
 
 export function MatchPicker({ onLoaded }: Props) {
@@ -208,7 +206,7 @@ export function MatchPicker({ onLoaded }: Props) {
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-ink">{f.home} – {f.away}</span>
                     <span className="font-mono text-xs text-cyan">
-                      {new Date(f.time).toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(f.time).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">

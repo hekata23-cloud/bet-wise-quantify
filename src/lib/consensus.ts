@@ -246,8 +246,14 @@ export async function runConsensus(
 
   // tržišna sidra iz kvota u tekstu (potrebna i za Elo/λ rotaciju)
   const odds = parseOdds(userText, market);
-  const pMarket =
-    odds.main && odds.alt ? devig(odds.main, odds.alt) : odds.main ? Math.min(0.97, 1 / odds.main / 1.06) : null;
+  // POPRAVAK: Dvosmjerni de-vig nije valjan za 1X2 jer izostavlja neodlučeni ishod.
+  const pMarket = market === "1x2"
+    ? null
+    : odds.main && odds.alt
+      ? devig(odds.main, odds.alt)
+      : odds.main
+        ? Math.min(0.97, 1 / odds.main / 1.06)
+        : null;
   const homeShare = market === "1x2" && pMarket !== null ? pMarket : null;
 
   // ── PIPELINE SUPER TOČNOSTI (hijerarhija, Elo, zero-inflation, overdispersion, HT/FT)
@@ -256,7 +262,8 @@ export async function runConsensus(
       lambdaHome: lh,
       lambdaAway: la,
       leagueTotal: priorTotal,
-      sampleSize: Math.max(2, members.length * Math.max(1, a.passes)),
+      // POPRAVAK: U turbo načinu stvarni uzorak ima jedan prolaz, ne spremljeni broj prolaza.
+      sampleSize: Math.max(2, members.length * passes),
       tau: a.tau,
       rho: a.rho,
       homeShareFromOdds: homeShare,
@@ -296,7 +303,13 @@ export async function runConsensus(
     if (!coherence.ok) pMain = applyPenalty(pMain, coherence.penalty);
   }
 
-  const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], odds.main ?? null, agreement, a);
+  // POPRAVAK: EV/Kelly moraju koristiti kvotu izabranog ishoda; za neunesenu suprotnu 1X2/HTX kvotu ih izostavljamo.
+  const verdictOdds = pMain >= 0.5
+    ? odds.main ?? null
+    : market === "btts" || market === "ou25"
+      ? odds.alt ?? null
+      : null;
+  const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], verdictOdds, agreement, a);
   const safer = saferAlternative(market, probs);
 
   const summary = members

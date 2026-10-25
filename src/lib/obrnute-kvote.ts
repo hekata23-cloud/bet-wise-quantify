@@ -14,7 +14,8 @@ export type Signal = {
 export type Rezultat = { lh: number; la: number; pOver: number; pBtts: number; signali: Signal[] };
 
 const devig = (o: number[]) => { const i = o.map((x) => 1 / x); const s = i.reduce((a, b) => a + b, 0); return i.map((x) => x / s); };
-const pois = (l: number, n = 11) => { const r = [Math.exp(-l)]; for (let k = 1; k < n; k++) r.push(r[k - 1]! * l / k); return r; };
+// POPRAVAK: normalizira ograničeni Poissonov raspon kako odbačeni rep ne bi lažno povećao pobjede gosta.
+const pois = (l: number, n = 11) => { const r = [Math.exp(-l)]; for (let k = 1; k < n; k++) r.push(r[k - 1]! * l / k); const s = r.reduce((a, b) => a + b, 0); return r.map((p) => p / s); };
 
 function mat(lh: number, la: number) {
   const h = pois(lh), a = pois(la);

@@ -5,6 +5,8 @@ import { analyze } from "@/lib/zlatni-engine";
 import { getApiKey, guarded, resetGuard, zagrebDay, readState } from "@/lib/zlatni-guard";
 import { SettingsModal } from "@/components/SettingsModal";
 import { computeBttsOverAnalysis, type BttsOverAnalysis } from "@/lib/btts-over";
+import { BttsAnomalySniperCard } from "@/components/BttsAnomalySniperCard";
+import { computeSniperAnomaly, type SniperAnalysisResult } from "@/lib/anomaly-sniper";
 import {
   evaluatePredictionIntegrity,
   footballContradiction,
@@ -53,6 +55,7 @@ export function BttsOverPage() {
   const [selectedFixture, setSelectedFixture] = useState<ZtFixture | null>(null);
   const [analysisResult, setAnalysisResult] = useState<BttsOverAnalysis | null>(null);
   const [analyzedList, setAnalyzedList] = useState<BttsOverAnalysis[]>([]);
+  const [sniperList, setSniperList] = useState<SniperAnalysisResult[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<number | null>(null);
@@ -168,6 +171,24 @@ export function BttsOverPage() {
         timeFormatted
       );
 
+      const [hName, aName] = bttsOverData.match.split(" — ");
+      const sniperRes = computeSniperAnomaly({
+        match: bttsOverData.match,
+        homeTeam: hName ?? f.home,
+        awayTeam: aName ?? f.away,
+        league: bttsOverData.league,
+        time: timeFormatted,
+        fixtureId: f.id,
+        lambdaHome: bttsOverData.lh,
+        lambdaAway: bttsOverData.la,
+        bookieOdds: {
+          over25: bttsOverData.bookieOver25,
+          under25: bttsOverData.bookieUnder25,
+          bttsYes: bttsOverData.bookieBttsYes,
+          bttsNo: bttsOverData.bookieBttsNo,
+        },
+      });
+      setSniperList((prev) => [sniperRes, ...prev.filter((x) => x.match !== sniperRes.match)]);
       setAnalysisResult(bttsOverData);
       setAnalyzedList((prev) => {
         const filtered = prev.filter((item) => item.match !== bttsOverData.match);
@@ -183,8 +204,11 @@ export function BttsOverPage() {
 
     // Brzi simulator bez trošenja API poziva
   const handleSimulateCustom = () => {
-    const hXg = parseFloat(simXgHome.replace(",", ".")) || 1.5;
-    const aXg = parseFloat(simXgAway.replace(",", ".")) || 1.2;
+    const parsedHXg = parseFloat(simXgHome.replace(",", "."));
+    const parsedAXg = parseFloat(simXgAway.replace(",", "."));
+    // POPRAVAK: nulti xG je valjan; fallback vrijedi samo za neispravan/negativan unos.
+    const hXg = Number.isFinite(parsedHXg) && parsedHXg >= 0 ? parsedHXg : 1.5;
+    const aXg = Number.isFinite(parsedAXg) && parsedAXg >= 0 ? parsedAXg : 1.2;
 
     const fakeMarkets = {
       "Goals Over/Under": {
@@ -376,6 +400,9 @@ export function BttsOverPage() {
           <span className="text-xs text-muted-foreground">Preostalo kredita: {guard.dayRemaining >= 0 ? guard.dayRemaining : "—"}</span>
         </div>
       )}
+
+      {/* BTTS & OVER 2.5 ANOMALY SNIPER KARTICA */}
+      <BttsAnomalySniperCard analyzedMatches={sniperList} />
 
       {/* BRZI xG SIMULATOR (Može se koristiti uvijek bez trošenja API-ja) */}
       <section className="rounded-2xl border border-border/70 bg-card p-5 shadow-sm space-y-3">
@@ -959,5 +986,6 @@ export function BttsOverPage() {
     </div>
   );
 }
+
 
 

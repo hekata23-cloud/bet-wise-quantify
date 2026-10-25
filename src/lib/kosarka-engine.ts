@@ -25,11 +25,14 @@ function invPhi(p: number) {
   return (lo + hi) / 2;
 }
 
+/** SAFE-MATH štit: kvota je "ispravna" samo ako je konačan broj > 1.001. */
+const isVal = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v) && v > 1.001;
+
 /** De-vig proporcionalno (dovoljno precizno za 2–3 ishoda). */
 function devig(odds: number[]) {
-  const inv = odds.map((o) => 1 / o);
+  const inv = odds.filter((o) => Number.isFinite(o) && o > 1.001).map((o) => 1 / o);
   const s = inv.reduce((a, b) => a + b, 0);
-  return inv.map((x) => x / s);
+  return s > 0 ? inv.map((x) => x / s) : [];
 }
 
 const find = (m: KosMarkets, re: RegExp) => Object.entries(m).find(([k]) => re.test(k))?.[1];
@@ -40,13 +43,17 @@ function regProbs(mu: number, sigma: number) {
   return { pHome, pDraw, pAway: 1 - pHome - pDraw };
 }
 
-const tip = (market: string, pick: string, prob: number, odd: number | null): Tip => ({
-  market, pick, prob, fair: prob > 0 ? 1 / prob : 99, odd, ev: odd ? (prob * odd - 1) * 100 : null,
-});
+/** SAFE-MATH štit: NaN kvota → odd null (nikad NaN tip). */
+const tip = (market: string, pick: string, prob: number, odd: number | null): Tip => {
+  const kv = odd != null && Number.isFinite(odd) && odd > 1.001 ? odd : null;
+  const p = Number.isFinite(prob) ? prob : 0;
+  return { market, pick, prob: p, fair: p > 0 ? 1 / p : 99, odd: kv, ev: kv ? (p * kv - 1) * 100 : null };
+};
 
 export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
   const notes: string[] = [];
-  const nba = /nba|wnba|ncaa/i.test(league);
+  // POPRAVAK: samo NBA ima 48 minuta; WNBA i NCAA koriste 40-minutni format.
+  const nba = /\bnba\b/i.test(league);
   const qMin = nba ? 48 : 40;
 
   // 1) Zbroj poena — glavna linija (najbliža 50/50)
@@ -61,7 +68,8 @@ export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
       /over/i.test(mm[1]!) ? (e.o = v) : (e.u = v);
       map.set(L, e);
     }
-    for (const [line, e] of map) if (e.o && e.u) lines.push({ line, o: e.o, u: e.u });
+    // SAFE-MATH štit: obje strane moraju biti konačne kvote > 1.001.
+    for (const [line, e] of map) if (isVal(e.o) && isVal(e.u)) lines.push({ line, o: e.o, u: e.u });
     lines.sort((a, b) => a.line - b.line);
   }
   let total = nba ? 225 : 160;
@@ -69,9 +77,15 @@ export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
   if (lines.length) {
     const main = [...lines].sort((a, b) => Math.abs(a.o - a.u) - Math.abs(b.o - b.u))[0]!;
     sigmaT = main.line * 0.075;
-    const pOver = devig([main.o, main.u])[0]!;
-    total = main.line + sigmaT * invPhi(pOver);
+    const dv = devig([main.o, main.u]);
+    if (dv.length === 2) {
+      const pOver = dv[0]!;
+      // POPRAVAK: total određuje sigmaT, zato kalibracija mora riješiti jednadžbu s konačnom σT.
+      total = main.line / (1 - 0.075 * invPhi(pOver));
+    } else notes.push("Nekonzistentne kvote na zbroj poena — korištena prosječna liga.");
   } else notes.push("Nema kvota na zbroj poena — korištena prosječna liga.");
+  // SAFE-MATH štit: total mora biti zdrav broj, inače ligaški prosjek.
+  if (!Number.isFinite(total) || !(total > 80) || !(total < 400)) total = nba ? 225 : 160;
   sigmaT = total * 0.075;
 
   // σ razlike skalira s tempom (NBA ≈ 12.5 pri 225 poena)
@@ -85,9 +99,13 @@ export function analyzeKos(m: KosMarkets, league: string): KosAnalysis | null {
   const tH = three?.["Home"] ?? three?.["1"]; const tX = three?.["Draw"] ?? three?.["X"]; const tA = three?.["Away"] ?? three?.["2"];
 
   let target: number | null = null; let mode: "ml" | "3w" = "ml";
-  if (mlH && mlA) target = devig([mlH, mlA])[0]!;
-  else if (tH && tX && tA) { const p = devig([tH, tX, tA]); target = p[0]! / (p[0]! + p[2]!); mode = "3w"; }
-  if (target == null) return null;
+  // SAFE-MATH štit: NaN kvota više ne prolazi truthy provjeru (NaN je truthy!).
+  if (isVal(mlH) && isVal(mlA)) { const dv = devig([mlH, mlA]); if (dv.length === 2) target = dv[0]!; }
+  else if (isVal(tH) && isVal(tX) && isVal(tA)) {
+    const p = devig([tH, tX, tA]);
+    if (p.length === 3) { target = p[0]! / (p[0]! + p[2]!); mode = "3w"; }
+  }
+  if (target == null || !Number.isFinite(target)) return null;
   if (mode === "3w") notes.push("Kalibrirano iz 1X2 (regularno vrijeme).");
 
   let lo = -40, hi = 40;
