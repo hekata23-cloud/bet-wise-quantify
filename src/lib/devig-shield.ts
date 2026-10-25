@@ -36,15 +36,17 @@ export function devigMultiplikativno(odds: number[]): number[] {
  *  k = 1 → multiplikativno; k > 1 → favoriti dobivaju više (Shin-približno). */
 export function devigPower(odds: number[]): number[] {
   const inv = odds.map((o) => (o > 1 ? 1 / o : 1e-9));
-  // f(k) = Σ (1/o)^k je opadajuća u k (svaki (1/o) < 1)
-  let lo = 0.2, hi = 4;
-  for (let i = 0; i < 60; i++) {
+  let lo = 0.01, hi = 4;
+  while (inv.reduce((acc, r) => acc + Math.pow(r, hi), 0) > 1 && hi < 256) hi *= 2;
+  for (let i = 0; i < 80; i++) {
     const mid = (lo + hi) / 2;
     const zbroj = inv.map((x) => Math.pow(x, mid)).reduce((a, b) => a + b, 0);
     if (zbroj > 1) lo = mid; else hi = mid;
   }
   const k = (lo + hi) / 2;
-  return inv.map((x) => Math.pow(x, k));
+  const p = inv.map((x) => Math.pow(x, k));
+  const s = p.reduce((a, b) => a + b, 0) || 1;
+  return p.map((x) => x / s);
 }
 
 /** 3) Shin: p_i iz kvota modelom insajderske trgovine (iterativno po z). */

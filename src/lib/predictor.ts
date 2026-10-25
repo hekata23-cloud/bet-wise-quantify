@@ -222,11 +222,17 @@ export function analyzeOU(input: {
   let poissonProbOver = 1;
   for (let goals = 0; goals <= input.line; goals++)
     poissonProbOver -= poisson(input.homeXG + input.awayXG, goals);
-  const historicalAvg = input.homeGoalsAvg + input.awayGoalsAvg;
-  const historicalProbOver = historicalAvg > input.line ? 0.5 + Math.min(0.4, (historicalAvg - input.line) * 0.15) : 0.5 - Math.min(0.4, (input.line - historicalAvg) * 0.15);
-  const probOver = 0.7 * poissonProbOver + 0.3 * historicalProbOver;
+  const rawHist = (input.homeGoalsAvg ?? 0) + (input.awayGoalsAvg ?? 0);
+  const hasHistory = Number.isFinite(rawHist) && rawHist > 0.5;
+  const historicalAvg = hasHistory ? rawHist : (sm.expectedGoals > 0 ? sm.expectedGoals : 2.68);
+  const historicalProbOver = historicalAvg > input.line
+    ? 0.5 + Math.min(0.4, (historicalAvg - input.line) * 0.15)
+    : 0.5 - Math.min(0.4, (input.line - historicalAvg) * 0.15);
+  const probOver = hasHistory
+    ? 0.7 * poissonProbOver + 0.3 * historicalProbOver
+    : poissonProbOver;
   const probUnder = 1 - probOver;
-  const tip = probOver >= 0.55 ? `Over ${input.line}` : probUnder >= 0.55 ? `Under ${input.line}` : probOver >= 0.5 ? `Over ${input.line}` : `Under ${input.line}`;
+  const tip = probOver >= 0.5 ? `Over ${input.line}` : `Under ${input.line}`;
   const confidence = Math.round(Math.max(probOver, probUnder) * 100);
   const reasons: string[] = [];
   reasons.push(
