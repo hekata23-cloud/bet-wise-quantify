@@ -30,15 +30,5 @@ async function unregisterStale(): Promise<void> {
 
 export async function registerAppServiceWorker(): Promise<void> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-
-  if (isRefusedContext()) {
-    await unregisterStale();
-    return;
-  }
-
-  try {
-    await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  } catch {
-    // registration failed — app still works online
-  }
+  await unregisterStale();
 }
