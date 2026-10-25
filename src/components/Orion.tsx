@@ -64,12 +64,12 @@ export function Orion() {
   async function send(text?: string) {
     const poruka = (text ?? input).trim();
     if (!poruka || sendingRef.current) return;
-    if (
-      !hasKey("gemini") && !hasKey("groq") && !hasKey("openrouter") &&
-      !hasKey("nvidia") && !hasKey("huggingface")
-    ) {
-      toast.error("Postavi barem jedan AI ključ u Postavkama.");
-      return;
+    // Orion radi hibridno: ako ima API ključ koristi AI + matematiku, a ako nema koristi lokalni kvantitativni engine
+    const hasAnyKey =
+      hasKey("gemini") || hasKey("groq") || hasKey("openrouter") ||
+      hasKey("nvidia") || hasKey("huggingface");
+    if (!hasAnyKey && messages.length === 0) {
+      toast.info("Orion: Kvantitativni matematički engine aktivan (Dixon-Coles & Monte Carlo).");
     }
     sendingRef.current = true;
     const korisnik: ChatTurn = { role: "user", content: poruka, ts: Date.now() };

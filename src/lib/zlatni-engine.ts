@@ -298,16 +298,27 @@ export function analyze(mk: Bet365Markets, home: TeamStats | null, away: TeamSta
 
   // izbor tipova
   const all = markets.flatMap((m) => m.outcomes.map((o) => ({ market: m.name, outcome: o, src: m.source })));
-  const priced = all.filter((x) => x.outcome.odd && x.outcome.odd >= 1.2);
-  const safe = [...priced].filter((x) => x.outcome.odd! >= 1.25).sort((a, b) => b.outcome.p - a.outcome.p)[0] ?? null;
-  const value = [...priced].filter((x) => x.outcome.p >= 0.4 && x.src === "model").sort((a, b) => b.outcome.ev! - a.outcome.ev!)[0] ?? null;
-  // Zlatni: visoka vjerojatnost + nenegativan EV + kvota koja se isplati
+  const priced = all.filter((x) => x.outcome.odd && x.outcome.odd >= 1.18);
+  const safePriced = [...priced].filter((x) => x.outcome.odd! >= 1.20).sort((a, b) => b.outcome.p - a.outcome.p)[0] ?? null;
+  const safeModel = [...all].filter((x) => x.outcome.fair >= 1.15 && x.outcome.p >= 0.60).sort((a, b) => b.outcome.p - a.outcome.p)[0] ?? null;
+  const safe = safePriced ?? (safeModel ? { market: safeModel.market, outcome: safeModel.outcome } : null);
+
+  const valuePriced = [...priced].filter((x) => x.outcome.p >= 0.38 && x.src === "model" && (x.outcome.ev ?? 0) > 0.01).sort((a, b) => (b.outcome.ev ?? 0) - (a.outcome.ev ?? 0))[0] ?? null;
+  const value = valuePriced;
+
+  // Zlatni: visoka vjerojatnost + nenegativan EV + optimalna kvota
   const gold = [...priced]
-    .filter((x) => x.outcome.p >= 0.62 && x.outcome.odd! >= 1.3 && x.outcome.ev! >= -0.01)
-    .sort((a, b) => b.outcome.p * (1 + b.outcome.ev!) * Math.log(b.outcome.odd!) - a.outcome.p * (1 + a.outcome.ev!) * Math.log(a.outcome.odd!))[0];
-  const golden = gold
-    ? { market: gold.market, outcome: gold.outcome, kind: gold.outcome.ev! > 0.02 ? "Value + sigurnost" : "Visoka vjerojatnost" }
-    : safe ? { market: safe.market, outcome: safe.outcome, kind: "Najsigurnija opcija (bez value prednosti)" } : null;
+    .filter((x) => x.outcome.p >= 0.60 && x.outcome.odd! >= 1.25 && (x.outcome.ev ?? 0) >= -0.02)
+    .sort((a, b) => b.outcome.p * (1 + (b.outcome.ev ?? 0)) * Math.log(b.outcome.odd!) - a.outcome.p * (1 + (a.outcome.ev ?? 0)) * Math.log(a.outcome.odd!))[0];
+
+  let golden: Analysis["golden"] = null;
+  if (gold) {
+    golden = { market: gold.market, outcome: gold.outcome, kind: (gold.outcome.ev ?? 0) > 0.02 ? "Value + sigurnost" : "Visoka vjerojatnost" };
+  } else if (safePriced) {
+    golden = { market: safePriced.market, outcome: safePriced.outcome, kind: "Najsigurnija opcija s kvotom" };
+  } else if (safeModel) {
+    golden = { market: safeModel.market, outcome: safeModel.outcome, kind: "Visoka vjerojatnost (model)" };
+  }
 
   return { lh, la, fitError: fm?.err ?? null, htShare, markets, topScores: scores.slice(0, 6), golden, safe, value, notes };
 }

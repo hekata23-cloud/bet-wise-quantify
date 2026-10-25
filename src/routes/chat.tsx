@@ -139,15 +139,14 @@ function ChatPage() {
   async function send(override?: string) {
     const text = (override ?? input).trim();
     if ((!text && attachments.length === 0) || loading) return;
-    if (
-      !hasKey("gemini") &&
-      !hasKey("groq") &&
-      !hasKey("openrouter") &&
-      !hasKey("nvidia") &&
-      !hasKey("huggingface")
-    ) {
-      toast.error("Postavi barem jedan AI ključ u Postavkama (OpenRouter je besplatan).");
-      return;
+    const hasAnyKey =
+      hasKey("gemini") ||
+      hasKey("groq") ||
+      hasKey("openrouter") ||
+      hasKey("nvidia") ||
+      hasKey("huggingface");
+    if (!hasAnyKey && messages.length === 0) {
+      toast.info("Luna: SARP kognitivni model i kvantitativni engine aktivni.");
     }
     const attSnapshot = attachments;
     const userTurn: ChatTurn = {

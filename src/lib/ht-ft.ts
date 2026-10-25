@@ -207,14 +207,14 @@ export function computeHtFtAnalysis(
   const p22 = outcomes.find((o) => o.code === "2/2")!;
   const pX2 = outcomes.find((o) => o.code === "X/2")!;
 
-  if (p11.prob >= 0.35) {
+  if (p11.prob >= 0.35 && p11.prob >= p22.prob) {
     mainTipPick = p11;
     mainReasoning = `Domaćin ima dominaciju (xG ${lh}). Vjerojatnost ranog vodstva i sigurne pobjede je ${p11.probPercent}%.`;
-  } else if (p22.prob >= 0.35) {
+  } else if (p22.prob >= 0.35 && p22.prob > p11.prob) {
     mainTipPick = p22;
     mainReasoning = `Gost je izraziti favorit (xG ${la}). Vjerojatnost ranog vodstva i pobjede je ${p22.probPercent}%.`;
   } else if (p00AtHalf > 38 && (pX1.prob > 0.22 || pX2.prob > 0.22)) {
-    const tacticalPick = pX1.prob > pX2.prob ? pX1 : pX2;
+    const tacticalPick = pX1.prob >= pX2.prob ? pX1 : pX2;
     mainTipPick = tacticalPick;
     mainReasoning = `Visoka šansa čvrstog prvog poluvremena (0:0 šansa ${p00AtHalf}%). Favorit lomi utakmicu u drugom dijelu.`;
   }

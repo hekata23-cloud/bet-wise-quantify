@@ -24,6 +24,7 @@ import { Route as InfoRouteImport } from './routes/info'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as KosarkaRouteImport } from './routes/kosarka'
 import { Route as KosarkaProRouteImport } from './routes/kosarka-pro'
+import { Route as LearnRouteImport } from './routes/learn'
 import { Route as ListiciRouteImport } from './routes/listici'
 import { Route as ObrnuteKvoteRouteImport } from './routes/obrnute-kvote'
 import { Route as OuNiskiRouteImport } from './routes/ou-niski'
@@ -42,10 +43,18 @@ import { Route as TrackRecordRouteImport } from './routes/track-record'
 import { Route as UzivoRouteImport } from './routes/uzivo'
 import { Route as VirtualnaRouteImport } from './routes/virtualna'
 import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
+import { Route as LearnIndexRouteImport } from './routes/learn.index'
+import { Route as LearnCommunityRouteImport } from './routes/learn.community'
+import { Route as LearnCoursesRouteImport } from './routes/learn.courses'
+import { Route as LearnLoginRouteImport } from './routes/learn.login'
+import { Route as LearnPathRouteImport } from './routes/learn.path'
+import { Route as LearnProgressRouteImport } from './routes/learn.progress'
 import { Route as OverUnderIndexRouteImport } from './routes/over-under.index'
 import { Route as OverUnderPostavkeRouteImport } from './routes/over-under.postavke'
 import { Route as ApiPublicFootballDataRouteImport } from './routes/api/public/football-data'
 import { Route as ApiPublicNvidiaRouteImport } from './routes/api/public/nvidia'
+import { Route as LearnCourseCourseIdRouteImport } from './routes/learn.course.$courseId'
+import { Route as LearnLessonTopicIdKindRouteImport } from './routes/learn.lesson.$topicId.$kind'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -120,6 +129,11 @@ const KosarkaRoute = KosarkaRouteImport.update({
 const KosarkaProRoute = KosarkaProRouteImport.update({
   id: '/kosarka-pro',
   path: '/kosarka-pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LearnRoute = LearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListiciRoute = ListiciRouteImport.update({
@@ -212,6 +226,36 @@ const ZlatniTipRoute = ZlatniTipRouteImport.update({
   path: '/zlatni-tip',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearnIndexRoute = LearnIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnCommunityRoute = LearnCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnCoursesRoute = LearnCoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnLoginRoute = LearnLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnPathRoute = LearnPathRouteImport.update({
+  id: '/path',
+  path: '/path',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnProgressRoute = LearnProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => LearnRoute,
+} as any)
 const OverUnderIndexRoute = OverUnderIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -232,6 +276,16 @@ const ApiPublicNvidiaRoute = ApiPublicNvidiaRouteImport.update({
   path: '/api/public/nvidia',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearnCourseCourseIdRoute = LearnCourseCourseIdRouteImport.update({
+  id: '/course/$courseId',
+  path: '/course/$courseId',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnLessonTopicIdKindRoute = LearnLessonTopicIdKindRouteImport.update({
+  id: '/lesson/$topicId/$kind',
+  path: '/lesson/$topicId/$kind',
+  getParentRoute: () => LearnRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -249,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
   '/kosarka-pro': typeof KosarkaProRoute
+  '/learn': typeof LearnRouteWithChildren
   '/listici': typeof ListiciRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/ou-niski': typeof OuNiskiRoute
@@ -267,10 +322,18 @@ export interface FileRoutesByFullPath {
   '/uzivo': typeof UzivoRoute
   '/virtualna': typeof VirtualnaRoute
   '/zlatni-tip': typeof ZlatniTipRoute
+  '/learn/community': typeof LearnCommunityRoute
+  '/learn/courses': typeof LearnCoursesRoute
+  '/learn/login': typeof LearnLoginRoute
+  '/learn/path': typeof LearnPathRoute
+  '/learn/progress': typeof LearnProgressRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/learn/': typeof LearnIndexRoute
   '/over-under/': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
+  '/learn/course/$courseId': typeof LearnCourseCourseIdRoute
+  '/learn/lesson/$topicId/$kind': typeof LearnLessonTopicIdKindRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -305,10 +368,18 @@ export interface FileRoutesByTo {
   '/uzivo': typeof UzivoRoute
   '/virtualna': typeof VirtualnaRoute
   '/zlatni-tip': typeof ZlatniTipRoute
+  '/learn/community': typeof LearnCommunityRoute
+  '/learn/courses': typeof LearnCoursesRoute
+  '/learn/login': typeof LearnLoginRoute
+  '/learn/path': typeof LearnPathRoute
+  '/learn/progress': typeof LearnProgressRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/learn': typeof LearnIndexRoute
   '/over-under': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
+  '/learn/course/$courseId': typeof LearnCourseCourseIdRoute
+  '/learn/lesson/$topicId/$kind': typeof LearnLessonTopicIdKindRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -327,6 +398,7 @@ export interface FileRoutesById {
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
   '/kosarka-pro': typeof KosarkaProRoute
+  '/learn': typeof LearnRouteWithChildren
   '/listici': typeof ListiciRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
   '/ou-niski': typeof OuNiskiRoute
@@ -345,10 +417,18 @@ export interface FileRoutesById {
   '/uzivo': typeof UzivoRoute
   '/virtualna': typeof VirtualnaRoute
   '/zlatni-tip': typeof ZlatniTipRoute
+  '/learn/community': typeof LearnCommunityRoute
+  '/learn/courses': typeof LearnCoursesRoute
+  '/learn/login': typeof LearnLoginRoute
+  '/learn/path': typeof LearnPathRoute
+  '/learn/progress': typeof LearnProgressRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/learn/': typeof LearnIndexRoute
   '/over-under/': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
+  '/learn/course/$courseId': typeof LearnCourseCourseIdRoute
+  '/learn/lesson/$topicId/$kind': typeof LearnLessonTopicIdKindRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -368,6 +448,7 @@ export interface FileRouteTypes {
     | '/kalkulator'
     | '/kosarka'
     | '/kosarka-pro'
+    | '/learn'
     | '/listici'
     | '/obrnute-kvote'
     | '/ou-niski'
@@ -386,10 +467,18 @@ export interface FileRouteTypes {
     | '/uzivo'
     | '/virtualna'
     | '/zlatni-tip'
+    | '/learn/community'
+    | '/learn/courses'
+    | '/learn/login'
+    | '/learn/path'
+    | '/learn/progress'
     | '/over-under/postavke'
+    | '/learn/'
     | '/over-under/'
     | '/api/public/football-data'
     | '/api/public/nvidia'
+    | '/learn/course/$courseId'
+    | '/learn/lesson/$topicId/$kind'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -424,10 +513,18 @@ export interface FileRouteTypes {
     | '/uzivo'
     | '/virtualna'
     | '/zlatni-tip'
+    | '/learn/community'
+    | '/learn/courses'
+    | '/learn/login'
+    | '/learn/path'
+    | '/learn/progress'
     | '/over-under/postavke'
+    | '/learn'
     | '/over-under'
     | '/api/public/football-data'
     | '/api/public/nvidia'
+    | '/learn/course/$courseId'
+    | '/learn/lesson/$topicId/$kind'
   id:
     | '__root__'
     | '/'
@@ -445,6 +542,7 @@ export interface FileRouteTypes {
     | '/kalkulator'
     | '/kosarka'
     | '/kosarka-pro'
+    | '/learn'
     | '/listici'
     | '/obrnute-kvote'
     | '/ou-niski'
@@ -463,10 +561,18 @@ export interface FileRouteTypes {
     | '/uzivo'
     | '/virtualna'
     | '/zlatni-tip'
+    | '/learn/community'
+    | '/learn/courses'
+    | '/learn/login'
+    | '/learn/path'
+    | '/learn/progress'
     | '/over-under/postavke'
+    | '/learn/'
     | '/over-under/'
     | '/api/public/football-data'
     | '/api/public/nvidia'
+    | '/learn/course/$courseId'
+    | '/learn/lesson/$topicId/$kind'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -485,6 +591,7 @@ export interface RootRouteChildren {
   KalkulatorRoute: typeof KalkulatorRoute
   KosarkaRoute: typeof KosarkaRoute
   KosarkaProRoute: typeof KosarkaProRoute
+  LearnRoute: typeof LearnRouteWithChildren
   ListiciRoute: typeof ListiciRoute
   ObrnuteKvoteRoute: typeof ObrnuteKvoteRoute
   OuNiskiRoute: typeof OuNiskiRoute
@@ -614,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KosarkaProRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn': {
+      id: '/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listici': {
       id: '/listici'
       path: '/listici'
@@ -740,6 +854,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ZlatniTipRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn/': {
+      id: '/learn/'
+      path: '/'
+      fullPath: '/learn/'
+      preLoaderRoute: typeof LearnIndexRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/community': {
+      id: '/learn/community'
+      path: '/community'
+      fullPath: '/learn/community'
+      preLoaderRoute: typeof LearnCommunityRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/courses': {
+      id: '/learn/courses'
+      path: '/courses'
+      fullPath: '/learn/courses'
+      preLoaderRoute: typeof LearnCoursesRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/login': {
+      id: '/learn/login'
+      path: '/login'
+      fullPath: '/learn/login'
+      preLoaderRoute: typeof LearnLoginRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/path': {
+      id: '/learn/path'
+      path: '/path'
+      fullPath: '/learn/path'
+      preLoaderRoute: typeof LearnPathRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/progress': {
+      id: '/learn/progress'
+      path: '/progress'
+      fullPath: '/learn/progress'
+      preLoaderRoute: typeof LearnProgressRouteImport
+      parentRoute: typeof LearnRoute
+    }
     '/over-under/': {
       id: '/over-under/'
       path: '/'
@@ -768,8 +924,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicNvidiaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn/course/$courseId': {
+      id: '/learn/course/$courseId'
+      path: '/course/$courseId'
+      fullPath: '/learn/course/$courseId'
+      preLoaderRoute: typeof LearnCourseCourseIdRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/lesson/$topicId/$kind': {
+      id: '/learn/lesson/$topicId/$kind'
+      path: '/lesson/$topicId/$kind'
+      fullPath: '/learn/lesson/$topicId/$kind'
+      preLoaderRoute: typeof LearnLessonTopicIdKindRouteImport
+      parentRoute: typeof LearnRoute
+    }
   }
 }
+
+interface LearnRouteChildren {
+  LearnCommunityRoute: typeof LearnCommunityRoute
+  LearnCoursesRoute: typeof LearnCoursesRoute
+  LearnLoginRoute: typeof LearnLoginRoute
+  LearnPathRoute: typeof LearnPathRoute
+  LearnProgressRoute: typeof LearnProgressRoute
+  LearnIndexRoute: typeof LearnIndexRoute
+  LearnCourseCourseIdRoute: typeof LearnCourseCourseIdRoute
+  LearnLessonTopicIdKindRoute: typeof LearnLessonTopicIdKindRoute
+}
+
+const LearnRouteChildren: LearnRouteChildren = {
+  LearnCommunityRoute: LearnCommunityRoute,
+  LearnCoursesRoute: LearnCoursesRoute,
+  LearnLoginRoute: LearnLoginRoute,
+  LearnPathRoute: LearnPathRoute,
+  LearnProgressRoute: LearnProgressRoute,
+  LearnIndexRoute: LearnIndexRoute,
+  LearnCourseCourseIdRoute: LearnCourseCourseIdRoute,
+  LearnLessonTopicIdKindRoute: LearnLessonTopicIdKindRoute,
+}
+
+const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
 
 interface OverUnderRouteChildren {
   OverUnderPostavkeRoute: typeof OverUnderPostavkeRoute
@@ -801,6 +995,7 @@ const rootRouteChildren: RootRouteChildren = {
   KalkulatorRoute: KalkulatorRoute,
   KosarkaRoute: KosarkaRoute,
   KosarkaProRoute: KosarkaProRoute,
+  LearnRoute: LearnRouteWithChildren,
   ListiciRoute: ListiciRoute,
   ObrnuteKvoteRoute: ObrnuteKvoteRoute,
   OuNiskiRoute: OuNiskiRoute,

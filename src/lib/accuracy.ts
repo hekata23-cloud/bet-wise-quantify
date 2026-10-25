@@ -412,10 +412,17 @@ export function verdict(
   const kelly = odds && odds > 1 ? Math.max(0, ((pp * odds - 1) / (odds - 1)) * a.kellyFraction * 100) : null;
   const confPts = pp * 100;
   let stars = 1;
-  if (confPts >= a.minConfidence) stars = 3;
-  if (confPts >= a.minConfidence + 6 && agreement >= 0.6) stars = 4;
-  if (confPts >= a.minConfidence + 12 && agreement >= 0.75) stars = 5;
-  if (confPts < a.minConfidence - 4 || agreement < 0.4) stars = 2;
+  if (confPts >= a.minConfidence + 12 && agreement >= 0.75) {
+    stars = 5;
+  } else if (confPts >= a.minConfidence + 6 && agreement >= 0.6) {
+    stars = 4;
+  } else if (confPts >= a.minConfidence) {
+    stars = 3;
+  } else if (confPts >= a.minConfidence - 4 && agreement >= 0.4) {
+    stars = 2;
+  } else {
+    stars = 1;
+  }
   const valueOk =
     confPts >= a.minConfidence && (edge === null || edge >= a.minEdge) && agreement >= (a.conservative ? 0.5 : 0.35);
   const advice = valueOk
