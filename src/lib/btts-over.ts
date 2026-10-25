@@ -430,15 +430,15 @@ export function computeBttsOverAnalysis(
   const bttsYesEv = bGg ? Number(((pBttsYes * bGg - 1) * 100).toFixed(1)) : undefined;
   const bttsNoEv = bNg ? Number(((pBttsNo * bNg - 1) * 100).toFixed(1)) : undefined;
 
-  // Glavni O/U tip: usklađen s višom vjerojatnošću i očekivanom vrijednošću
-  const isOverPick = pOver25 >= pUnder25;
+  // Glavni O/U tip
+  const isOverPick = pOver25 >= 0.52;
   const mainOUPick = isOverPick ? ("Više 2.5" as const) : ("Manje 2.5" as const);
   const mainOUProb = isOverPick ? pOver25 : pUnder25;
   const mainOUOdd = isOverPick ? bOver : bUnder;
   const mainOUEv = isOverPick ? over25Ev : under25Ev;
 
-  // Glavni BTTS tip: usklađen s višom vjerojatnošću i očekivanom vrijednošću
-  const isGgPick = pBttsYes >= pBttsNo;
+  // Glavni BTTS tip
+  const isGgPick = pBttsYes >= 0.52;
   const mainBttsPick = isGgPick ? ("Oba daju gol (GG)" as const) : ("Barem jedan NE daje (NG)" as const);
   const mainBttsProb = isGgPick ? pBttsYes : pBttsNo;
   const mainBttsOdd = isGgPick ? bGg : bNg;

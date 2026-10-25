@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getFixtures, getMatchBundle } from "@/lib/football.functions";
 import { SettingsModal } from "./SettingsModal";
-import { getApiKey } from "@/lib/zlatni-guard";
 
 type Fixture = {
   id: number;
@@ -34,7 +33,7 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
   const [hasKey, setHasKey] = useState(false);
 
   const checkKey = () => {
-    const k = getApiKey() || localStorage.getItem("kr-football-api-key");
+    const k = localStorage.getItem("kr-football-api-key");
     setHasKey(Boolean(k));
   };
 
@@ -49,7 +48,7 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
     }
   }, []);
 
-  const getKey = () => getApiKey() || localStorage.getItem("kr-football-api-key") || undefined;
+  const getKey = () => localStorage.getItem("kr-football-api-key") || undefined;
 
   const ucitaj = async (force = false) => {
     const key = `kr-fix-v3-${dan()}`;

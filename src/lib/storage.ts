@@ -19,25 +19,8 @@ const KEYS: Record<ApiKeyName, string> = {
 };
 
 export function getKey(name: ApiKeyName): string {
-  let val = "";
-  if (typeof window !== "undefined") {
-    try {
-      val = window.localStorage.getItem(KEYS[name]) ?? "";
-    } catch {
-      val = "";
-    }
-  }
-  if (!val && name === "gemini") {
-    try {
-      val =
-        (typeof import.meta !== "undefined" && import.meta.env?.VITE_GEMINI_API_KEY) ||
-        (typeof import.meta !== "undefined" && import.meta.env?.GEMINI_API_KEY) ||
-        "";
-    } catch {
-      /* ignore */
-    }
-  }
-  return val;
+  if (typeof window === "undefined") return "";
+  try { return window.localStorage.getItem(KEYS[name]) ?? ""; } catch { return ""; }
 }
 
 export function setKey(name: ApiKeyName, value: string): void {

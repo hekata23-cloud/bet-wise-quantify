@@ -19,7 +19,7 @@ import { loadMastermind as loadMaster, mastermindActive, mastermindDirectives } 
 import { getFixturesByDate, getLiveFixtures, ApiFootballError } from "./api-football";
 import type { ChatAttachment } from "./attachments";
 import { attachmentsContextText } from "./attachments";
-import { ORION_PERSONA, runQuantAnalytics, formatOrionResponse, formatLunaResponse } from "./botovi";
+import { ORION_PERSONA } from "./botovi";
 
 type GeminiPart = { text?: string; inline_data?: { mime_type: string; data: string } };
 type GeminiMessage = { role: string; parts: GeminiPart[] };
@@ -295,23 +295,10 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
   // Mastermind v11 — glavni um; ide zadnji jer koordinira sve ostalo.
   const mastermind = mastermindDirectives(master, market);
   const tail = `${precision}${titan}${antiUniversal}${mastermind}`;
-  const quant = runQuantAnalytics(userText);
-  const quantDirective = `\n\n═══ EGZAKTNA MATEMATIČKA TELEMETRIJA (POTVRĐENA IZRAČUNIMA) ═══
-- Momčadi: ${quant.homeTeam} vs ${quant.awayTeam} (${quant.sport.toUpperCase()})
-- Dixon-Coles Poisson model: λ_dom = ${quant.lambdaHome}, λ_gost = ${quant.lambdaAway} (Ukupno očekivano: ${quant.totalXG} gola)
-- Matrica vjerojatnosti 1X2: 1 (${quant.p1}%), X (${quant.pX}%), 2 (${quant.p2}%)
-- Tržišta golova: Over 2.5 (${quant.pOver25}%), Under 2.5 (${quant.pUnder25}%), BTTS (${quant.pBttsYes}%)
-- 10.000 Monte Carlo simulacija: ${quant.monteCarloRatio} u korist tipa ${quant.pick} (${quant.confidencePercent}%)
-- Kelly kriterij: ${quant.kellyFractionPercent}% preporučeni ulog (frakcijski 25%)
-- Shannonova entropija: H = ${quant.shannonEntropy} (indeks neodređenosti)
-- De-vig fer kvota: ${quant.fairOdds} · Edge: +${Math.max(0.5, quant.edgePercent)}%
-- Prediction Integrity Gate: ${quant.integrity.status} (${quant.integrity.label})
-OBAVEZNO uskladi svoj izračun s ovim točnim matematičkim vrijednostima!`;
-
   const marketDirective =
     market === "opce"
-      ? deepThinking + antiDirectives + quantDirective + tail
-      : deepThinking + `\n\nTRAŽENO TRŽIŠTE: ${MARKET_LABEL[market]}. Prva rečenica odgovora MORA biti konkretan tip za ovo tržište + sigurnost u %. Ne skreći na druga tržišta osim jedne alternative na kraju.\n\n${modul}${consensusBlock}${omniBlock}${antiDirectives}${quantDirective}${tail}`;
+      ? deepThinking + antiDirectives + tail
+      : deepThinking + `\n\nTRAŽENO TRŽIŠTE: ${MARKET_LABEL[market]}. Prva rečenica odgovora MORA biti konkretan tip za ovo tržište + sigurnost u %. Ne skreći na druga tržišta osim jedne alternative na kraju.\n\n${modul}${consensusBlock}${omniBlock}${antiDirectives}${tail}`;
   const sys =
     agentSystemPrompt +
     marketDirective +
@@ -385,12 +372,8 @@ OBAVEZNO uskladi svoj izračun s ovim točnim matematičkim vrijednostima!`;
       console.warn(`${b} pao, prebacujem na sljedeći:`, msg);
     }
   }
-
-  // Autonomni kvantitativni fallback (kad vanjski API ključevi nisu uneseni ili su servisi nedostupni)
-  if (opts.agent === "orion") {
-    return formatOrionResponse(quant);
-  }
-  return formatLunaResponse(quant);
+  if (errors.length) throw new Error(`Svi mozgovi pali. ${errors.join(" | ")}`);
+  throw new Error("Nijedan AI ključ nije spremljen. Otvori Postavke i dodaj barem OpenRouter (besplatno).");
 }
 
 async function runOpenRouter(

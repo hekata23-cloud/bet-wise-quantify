@@ -27,18 +27,4 @@ post-mortem). Svi su uključeni po defaultu i **automatski se vežu na svaki odg
 uz automatsko pokretanje OMNI motora i ansambl konsenzusa.
 
 ## Preuzimanje projekta
-Postavke → „Preuzmi andromeda-ai.zip“ (ili direktno preuzmi `andromeda-ai.zip` / `bet-wise-quantify-fixed.zip` iz `public/`).
-
-## Popravak „bijelog ekrana” pri objavi u Lovable-u
-Problem bijelog ekrana (blank screen) nastao je jer su greškom u korijen projekta dodane datoteke:
-1. `index.html` (s pozivom na `src/main.tsx`)
-2. `src/App.tsx` (koji je vraćao prazan `<div></div>`)
-3. `src/main.tsx` i `src/index.css`
-
-Lovable projekt koristi TanStack Start (SSR s Nitro engineom), gdje se cijela struktura generira kroz `src/routes/__root.tsx` i `src/server.ts`. Kada se u korijenu nalazi `index.html`, Vite ga automatski učitava umjesto aplikacije i renderira prazan `App.tsx` (bijeli ekran).
-
-Uklanjanjem tih datoteka i regeneracijom čistog paketa:
-- TanStack Start SSR ponovno radi 100% ispravno.
-- Svi moduli, rute (84+), stilovi i servisi se normalno učitavaju i prikazuju.
-- Build i testovi prolaze bez greške.
-
+Postavke → „Preuzmi andromeda-ai.zip“ (paket je u `public/andromeda-ai.zip`).
