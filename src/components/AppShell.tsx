@@ -45,6 +45,8 @@ const NAV = [
   { to: "/kosarka", label: "Košarka Sharp", icon: Dribbble },
   { to: "/rukomet", label: "Rukomet Sharp", icon: Activity },
   { to: "/obrnute-kvote", label: "Obrnute kvote", icon: Radar },
+  { to: "/dnb-master", label: "DNB Master", icon: Target },
+  { to: "/smart-money", label: "Pametni novac", icon: TrendingUp },
     { to: "/ou-niski", label: "O/U 0.5 & 1.5", icon: Goal },
 
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },

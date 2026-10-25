@@ -51,6 +51,7 @@ export function HtFtPanel({
 
   function uKorpu(c: Celija) {
     dodajUKorpu({
+      id: `${utakmica}|HT/FT|${c.kod}`,
       sport: "nogomet",
       utakmica,
       liga,
@@ -110,8 +111,8 @@ export function HtFtPanel({
           </div>
         ))}
         {REDOVI.map((h) => (
-          <>
-            <div key={`r-${h}`} className="flex items-center justify-end pr-2 font-bold text-muted-foreground">
+          <div key={`red-${h}`} className="contents">
+            <div className="flex items-center justify-end pr-2 font-bold text-muted-foreground">
               HT {h}
             </div>
             {STUPCI.map((f) => {
@@ -128,7 +129,7 @@ export function HtFtPanel({
                 </button>
               );
             })}
-          </>
+          </div>
         ))}
       </div>
 

@@ -13,6 +13,7 @@
 // ============================================================
 
 import type { KorpaTip } from "./korpa";
+import { classifyMarket, MarketType } from "./market-type";
 
 export type Sport = "nogomet" | "košarka" | "rukomet";
 export type LegStatus = "cekaj" | "dobitna" | "izgubljena" | "void";
@@ -50,26 +51,26 @@ export function jeVoidStatus(short: string | null | undefined): boolean {
   return short != null && VOID_STATUSI.has(short.toUpperCase());
 }
 
-/* ── Klasifikacija tržišta ── */
-export type VrstaTrzista = "1x2reg" | "moneyline" | "handicap" | "total" | "timtotal" | "dvostruka" | "htft" | "polu1x2" | "polutotal" | "ostalo";
+/* ── Klasifikacija tržišta (strogi MarketType enum → interna vrsta) ── */
+export type VrstaTrzista = "1x2reg" | "moneyline" | "handicap" | "total" | "timtotal" | "dvostruka" | "htft" | "polu1x2" | "polutotal" | "dnb" | "btts" | "ostalo";
 
 export function vrstaTrzista(sport: Sport, trziste: string, tip: string): VrstaTrzista {
-  const t = trziste.toLowerCase();
-  const ti = tip.toLowerCase();
-  if (t.includes("moneyline") || t.includes("pobjednik meča") || t.includes("pobjednik meca")) return "moneyline";
-  if (t.includes("1x2") || t.includes("1×2") || t.includes("1x2reg")) return "1x2reg";
-  if (t.includes("spread") || t.includes("handicap") || t.includes("hendikep") || t.includes("azijski")) return "handicap";
-  if (t.includes("ht/ft") || (t.includes("ht") && t.includes("ft"))) return "htft";
-  if (t.includes("polu")) return (t.includes("over") || t.includes("under") || ti.includes("over") || ti.includes("under")) ? "polutotal" : "polu1x2";
-  if (t.includes("dvostruka") || /^(1x|x2|12)$/.test(ti)) return "dvostruka";
-  if (t.includes("timtotal") || t.startsWith("dom") || t.startsWith("gost")) {
-    if (t.includes("over") || t.includes("under") || t.includes("ukupno")) return "timtotal";
+  const c = classifyMarket(trziste, tip, sport);
+  const ht = c.period === "HT";
+  switch (c.type) {
+    case MarketType.HT_FT: return "htft";
+    case MarketType.DNB: return ht ? "ostalo" : "dnb";
+    case MarketType.ASIAN_HANDICAP: return ht ? "ostalo" : "handicap";
+    case MarketType.DOUBLE_CHANCE: return ht ? "ostalo" : "dvostruka";
+    case MarketType.BTTS: return ht ? "ostalo" : "btts";
+    case MarketType.OVER_UNDER_GOALS:
+    case MarketType.OVER_UNDER_POINTS:
+      if (ht) return c.team ? "ostalo" : "polutotal";
+      return c.team ? "timtotal" : "total";
+    case MarketType.MONEYLINE: return ht ? "polu1x2" : "moneyline";
+    case MarketType.MATCH_RESULT_1X2: return ht ? "polu1x2" : "1x2reg";
+    default: return "ostalo";
   }
-  if (t.includes("o/u") || t.includes("total") || t.includes("ukupno") || t.includes("golovi") ||
-      t.includes("poeni") || t.includes("over") || t.includes("under")) return "total";
-  if (ti.startsWith("over") || ti.startsWith("under") || ti.startsWith("više") || ti.startsWith("vise") || ti.startsWith("manje")) return "total";
-  if (sport === "košarka" && (t.includes("1") || t.includes("2")) && !t.includes("ht")) return "moneyline";
-  return "ostalo";
 }
 
 /* ── Izvor rezultata po sportu i tržištu ── */
@@ -211,21 +212,20 @@ export function ocijeniNogu(sport: Sport, noga: { trziste: string; tip: string; 
     if (!tot) return "nepoznato";
     const vrijednost =
       vrsta === "timtotal"
-        ? noga.trziste.toLowerCase().startsWith("domR") ? domR : gostR
+        ? (classifyMarket(noga.trziste, noga.tip, sport).team === "2" ? gostR : domR)
         : domR + gostR;
     if (vrijednost === tot.linija) return "povrat"; // push
     const over = vrijednost > tot.linija;
     return over === tot.over ? "dobitna" : "izgubljena";
   }
-  // ostalo (BTTS/GG, DNB, SGP…): ocjena po punim regularnim golovima
-  const ti = noga.tip.toLowerCase();
-  if (/^(gg|btts)/.test(ti)) {
-    const da = !ti.includes("ne") && !ti.includes("ng") && !ti.includes("nema");
-    const btts = domR > 0 && gostR > 0;
-    return da === btts ? "dobitna" : "izgubljena";
+  if (vrsta === "btts") {
+    const ti = noga.tip.toLowerCase().trim();
+    const ne = /^(ng|ne|no)\b|nema|btts ne|gg ne|\bne$|\bno$/.test(ti);
+    return !ne === (domR > 0 && gostR > 0) ? "dobitna" : "izgubljena";
   }
-  if (ti.includes("dnb") || ti.includes("bez remi")) {
-    const s = stranaDvorna(ti.replace(/dnb|bez remi/g, "").trim());
+  if (vrsta === "dnb") {
+    // DNB: remi = VOID (kvota 1.00), tiket ostaje živ
+    const s = stranaDvorna(noga.tip.toLowerCase().replace(/dnb|draw no bet|bez remija?|pobjeda bez remija?/g, "").trim());
     if (!s) return "nepoznato";
     if (domR === gostR) return "povrat";
     return s === (domR > gostR ? "1" : "2") ? "dobitna" : "izgubljena";

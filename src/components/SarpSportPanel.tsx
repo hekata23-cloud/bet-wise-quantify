@@ -5,20 +5,19 @@
 // (Model vs Monte Carlo vs De-vig tržište), core/alt tip s
 // edge guardom (EV ≥ 4.5%) i ¼ Kelly ulogom, povjerenje A/B/C
 // s brojem izvora. "+ Korpa" šalje tip u Bet Slip i Dnevnik.
-// v2: broj kladionica iz API odgovora ide u globalnu kalibraciju motora.
 // ============================================================
 
 import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle, Brain, CheckCircle2, Flame, Gauge, ShieldCheck, ShoppingCart } from "lucide-react";
-import { sarpKosarka, type BasketballMatchStats, type BasketballSARPPrediction } from "@/lib/sarp-kosarka";
-import { sarpRukomet, type HandballMatchStats, type HandballSARPPrediction } from "@/lib/sarp-rukomet";
+import { sarpKosarka, type BasketballMatchStats, type BasketballSARPPrediction, type SarpKandidat as KosSarpKandidat } from "@/lib/sarp-kosarka";
+import { sarpRukomet, type HandballMatchStats, type HandballSARPPrediction, type SarpKandidat as RukSarpKandidat } from "@/lib/sarp-rukomet";
 import type { KosMarkets } from "@/lib/kosarka.functions";
 import type { KosAnalysis } from "@/lib/kosarka-engine";
 import type { RukometAnalysis } from "@/lib/rukomet-engine";
-import { dodajUKorpu } from "@/lib/korpa";
+import { dodajUKorpu, type Sport } from "@/lib/korpa";
 import { htftKosarka, htftRukomet, type HtFtKosarkaIzlaz, type HtFtRukometIzlaz } from "@/lib/htft-motor";
 import { losaCijena } from "@/lib/devig-shield";
-import { zapisiTip } from "@/lib/dnevnik";
+import { zapisiTip, type DnevnikUnos } from "@/lib/dnevnik";
 import { spremiKontekstMeca } from "@/lib/ai-context";
 import { normalizirajKontekst } from "@/lib/safe-math";
 
@@ -52,7 +51,8 @@ function VrfRed({ ime, p, boja }: { ime: string; p: number | null; boja: string 
 }
 
 export function SarpSportPanel(props: Props) {
-  const { utakmica, an } = props;
+  const { utakmica, book, brojKladionica } = props;
+  const isKos = props.sport === "kosarka";
   const [b2bH, setB2bH] = useState(false);
   const [b2bA, setB2bA] = useState(false);
   const [t34H, setT34H] = useState(false);
@@ -61,9 +61,7 @@ export function SarpSportPanel(props: Props) {
   const [suspA, setSuspA] = useState(1);
   const [dodano, setDodano] = useState<string | null>(null);
 
-  // UNIVERSAL MATCH CONTEXT (v7): normalizirani kontekst utakmice —
-  // dopunjuje podatke koji fale (pace/ORtg/DRtg/B2B za košarku,
-  // efikasnost/golmani/7v6 za rukomet) i ide u AI prompt.
+  // UNIVERSAL MATCH CONTEXT (v7)
   const universalKontekst = useMemo(
     () =>
       normalizirajKontekst({
@@ -72,22 +70,40 @@ export function SarpSportPanel(props: Props) {
         domacin: utakmica.home,
         gost: utakmica.away,
         liga: utakmica.league,
-        brojKladionica: props.brojKladionica ?? 0,
+        brojKladionica: brojKladionica ?? 0,
       }),
-    [props.sport, utakmica.id, utakmica.home, utakmica.away, utakmica.league, props.brojKladionica],
+    [props.sport, utakmica.id, utakmica.home, utakmica.away, utakmica.league, brojKladionica],
   );
 
   const kos = useMemo<BasketballSARPPrediction | null>(() => {
     if (props.sport !== "kosarka") return null;
     const stats: BasketballMatchStats = { homeB2B: b2bH, awayB2B: b2bA, home3in4: t34H, away3in4: t34A };
-    return sarpKosarka({ an: an as KosAnalysis, mk: props.mk, home: utakmica.home, away: utakmica.away, league: utakmica.league, fixtureId: utakmica.id, brojKladionica: props.brojKladionica ?? undefined, stats, kontekst: universalKontekst });
-  }, [props.sport === "kosarka" ? an : null, props.sport === "kosarka" ? props.mk : null, props.sport === "kosarka" ? props.brojKladionica : null, b2bH, b2bA, t34H, t34A, utakmica.id, universalKontekst]);
+    return sarpKosarka({
+      an: props.an,
+      mk: props.mk,
+      home: utakmica.home,
+      away: utakmica.away,
+      league: utakmica.league,
+      fixtureId: utakmica.id,
+      brojKladionica: brojKladionica ?? undefined,
+      stats,
+      kontekst: universalKontekst,
+    });
+  }, [props, b2bH, b2bA, t34H, t34A, utakmica, brojKladionica, universalKontekst]);
 
   const ruk = useMemo<HandballSARPPrediction | null>(() => {
     if (props.sport !== "rukomet") return null;
     const stats: HandballMatchStats = { suspHome: suspH, suspAway: suspA };
-    return sarpRukomet({ an: an as RukometAnalysis, home: utakmica.home, away: utakmica.away, fixtureId: utakmica.id, brojKladionica: props.brojKladionica ?? undefined, stats, kontekst: universalKontekst });
-  }, [props.sport === "rukomet" ? an : null, props.sport === "rukomet" ? props.brojKladionica : null, suspH, suspA, utakmica.id, universalKontekst]);
+    return sarpRukomet({
+      an: props.an,
+      home: utakmica.home,
+      away: utakmica.away,
+      fixtureId: utakmica.id,
+      brojKladionica: brojKladionica ?? undefined,
+      stats,
+      kontekst: universalKontekst,
+    });
+  }, [props, suspH, suspA, utakmica, brojKladionica, universalKontekst]);
 
   const htft = useMemo<HtFtKosarkaIzlaz | HtFtRukometIzlaz | null>(() => {
     if (props.sport === "kosarka" && kos) return htftKosarka(kos.expHome, kos.expAway, kos.sigma);
@@ -95,13 +111,11 @@ export function SarpSportPanel(props: Props) {
     return null;
   }, [props.sport, kos, ruk]);
 
-  const pred = props.sport === "kosarka" ? kos : ruk;
+  const pred = isKos ? kos : ruk;
 
-  /* ── AI KONTEKST — SARP košarka/rukomet ide Lunama/Orionu u prompt ──
-     v5 kvant: OT model (košarka) i 7v6/golman-umor (rukomet) u kvant bloku */
+  /* ── AI KONTEKST — SARP košarka/rukomet ide Lunama/Orionu u prompt ── */
   useEffect(() => {
     if (!pred || !pred.core) return;
-    const isKos = props.sport === "kosarka";
     spremiKontekstMeca({
       naslov: `${isKos ? "Košarka" : "Rukomet"}: ${utakmica.home} - ${utakmica.away}`,
       liga: utakmica.league,
@@ -114,15 +128,21 @@ export function SarpSportPanel(props: Props) {
         ? { "1": kos!.pML1, "X": kos!.pDraw, "2": kos!.pML2 }
         : { "1": ruk!.pHome, "X": ruk!.pDraw, "2": ruk!.pAway },
       coreTip: {
-        label: pred.core.label, kljuc: pred.core.tip, p: pred.core.p,
-        kvota: pred.core.kvota ?? undefined, edge: pred.core.edge ?? undefined,
+        label: pred.core.label,
+        kljuc: pred.core.tip,
+        p: pred.core.p,
+        kvota: pred.core.kvota ?? undefined,
+        edge: pred.core.edge ?? undefined,
         kellyPct: pred.core.kellyPct,
       },
       altTip: pred.alt
         ? { label: pred.alt.label, p: pred.alt.p, kvota: pred.alt.kvota ?? undefined }
         : null,
       mc: {
-        btts: 0, o15: 0, o25: 0, o35: 0,
+        btts: 0,
+        o15: 0,
+        o25: 0,
+        o35: 0,
         p1: isKos ? kos!.mc.pML1 : ruk!.mc.pHome,
         pX: isKos ? kos!.mc.pDraw : ruk!.mc.pDraw,
         p2: isKos ? 1 - kos!.mc.pML1 - kos!.mc.pDraw : ruk!.mc.pAway,
@@ -158,20 +178,25 @@ export function SarpSportPanel(props: Props) {
           },
       universal: universalKontekst,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [utakmica.id, pred, universalKontekst]);
+  }, [utakmica.id, pred, universalKontekst, isKos, kos, ruk, utakmica]);
+
   if (!pred) return null;
 
   const cijena = pred.core ? losaCijena(pred.core.p, pred.core.kvota) : null;
 
-  function uKorpu(k: NonNullable<(BasketballSARPPrediction | HandballSARPPrediction)["core"]>) {
-    const sportKorpa = props.sport === "kosarka" ? "košarka" : "rukomet";
+  function uKorpu(k: KosSarpKandidat | RukSarpKandidat) {
+    const sportKorpa: Sport = props.sport === "kosarka" ? "košarka" : "rukomet";
+    const sportDnevnik: DnevnikUnos["sport"] = props.sport === "kosarka" ? "kosarka" : "rukomet";
     const id = `${props.sport}|${utakmica.id}|${k.trziste}|${k.tip}`;
     dodajUKorpu({
-      id, sport: sportKorpa as "košarka" | "rukomet",
+      id,
+      sport: sportKorpa,
       utakmica: `${utakmica.home} - ${utakmica.away}`,
       liga: utakmica.league,
-      trziste: k.trziste, tip: k.label, kvota: k.kvota ?? k.fer, vjerojatnost: k.p,
+      trziste: k.trziste,
+      tip: k.label,
+      kvota: k.kvota ?? k.fer,
+      vjerojatnost: k.p,
       fixtureId: utakmica.id,
     });
     const provjera =
@@ -182,26 +207,31 @@ export function SarpSportPanel(props: Props) {
           : null;
     if (provjera) {
       zapisiTip({
-        sport: sportKorpa as "košarka" | "rukomet",
+        sport: sportDnevnik,
         kartica: props.sport === "kosarka" ? "kosarka-sarp" : "rukomet-sarp",
         utakmica: `${utakmica.home} — ${utakmica.away}`,
         liga: utakmica.league,
         fixtureId: utakmica.id,
         tip: `${k.label} @ ${(k.kvota ?? k.fer).toFixed(2)}`,
-        p: k.p, kvota: k.kvota ?? k.fer, provjera,
+        p: k.p,
+        kvota: k.kvota ?? k.fer,
+        provjera,
       });
     }
     setDodano(id);
   }
 
   return (
-    <div className="rounded-xl border-2 border-purple-500/50 bg-purple-500/5 p-4">
+    <div className="rounded-2xl border border-border/60 bg-card/40 p-4">
+      {/* ——— NASLOV S POVJERENJEM ——— */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm font-bold text-purple-300">
-          <Brain className="h-4 w-4" /> SARP Engine — Trostruka verifikacija
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-purple-400" />
+          <span className="text-sm font-semibold">SARP Engine · {isKos ? "Košarka Sharp" : "Rukomet Sharp"}</span>
+          <span className="text-[11px] text-muted-foreground">{book ? `izvor: ${book}` : "analitički model"}</span>
         </div>
-        <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${pred.razina === "A" ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-300" : pred.razina === "B" ? "border-sky-500/50 bg-sky-500/20 text-sky-300" : "border-slate-500/50 bg-slate-500/20 text-slate-300"}`}>
-          Model Confidence: {pred.razina} · {pred.povjerenje}/100
+        <span className="rounded-full border border-purple-500/50 bg-purple-500/10 px-2.5 py-0.5 text-xs font-bold text-purple-300">
+          Model Confidence: {pred.razina} · {pred.povjerenje}/100 ({pred.izvori.length} izvora)
         </span>
       </div>
 
@@ -255,7 +285,7 @@ export function SarpSportPanel(props: Props) {
       {htft && (
         <div className="mb-3 rounded-lg border border-indigo-500/40 bg-indigo-500/5 p-3">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">⚡ HT/FT prijelazi (Pro kopulo model)</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">⚡ HT/FT prijelazi (Pro model)</span>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${
               htft.razinaPreokreta === "visoko" ? "border-red-500/50 bg-red-500/20 text-red-300"
               : htft.razinaPreokreta === "srednje" ? "border-amber-500/50 bg-amber-500/20 text-amber-300"
@@ -399,3 +429,4 @@ export function SarpSportPanel(props: Props) {
     </div>
   );
 }
+
