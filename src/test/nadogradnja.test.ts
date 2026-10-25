@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { classifyMarket, MarketType } from "@/lib/market-type";
 import { ocijeniNogu, statusTiketa, ukupnaKvotaTiketa, type RezultatUtakmice, type TiketNoga } from "@/lib/listici";
 import { lineupDelta } from "@/lib/lineup-delta";
-import { padoviKvota } from "@/lib/smart-money";
-import { dnbAhTablica } from "@/lib/skellam-dnb";
+import { padoviKvota, plosneKvote, sharpConsensus } from "@/lib/smart-money";
+import { dnbAhTablica, parseAsianHandicapLine, skellam } from "@/lib/skellam-dnb";
 import { jeTier1 } from "@/lib/league-tier";
 
 const r = (dom: number, gost: number, domHT = 0, gostHT = 0): RezultatUtakmice => ({
@@ -70,12 +70,47 @@ describe("smart money", () => {
     const now = Date.now();
     expect(padoviKvota([{ t: now - 13 * 3600_000, kvote: { "1": 2.15 } }, { t: now, kvote: { "1": 1.78 } }], now)).toHaveLength(0);
   });
+  it("budući i neispravni snimci ne stvaraju lažni pad", () => {
+    const now = Date.now();
+    expect(padoviKvota([
+      { t: now - 3600_000, kvote: { "1": 2.15 } },
+      { t: now + 60_000, kvote: { "1": 1.7 } },
+    ], now)).toHaveLength(0);
+    expect(padoviKvota([
+      { t: now - 3600_000, kvote: { "1": Infinity } },
+      { t: now, kvote: { "1": 1.7 } },
+    ], now)).toHaveLength(0);
+  });
+  it("čita DNB i oznake kvota bez obzira na velika/mala slova", () => {
+    expect(plosneKvote({ "Draw No Bet": { home: 1.82, away: 2.04 } })).toEqual({
+      "DNB 1": 1.82,
+      "DNB 2": 2.04,
+    });
+  });
+  it("ne potvrđuje consensus za nemoguće vjerojatnosti ili kvote", () => {
+    expect(sharpConsensus(1.2, 2.1, 1.8)).toEqual({ slaze: false, ev: 0 });
+  });
 });
 
 describe("DNB / AH", () => {
   it("DNB dobitak + povrat + gubitak = 1", () => {
     const d = dnbAhTablica(1.6, 1.0)[0]!;
     expect(d.win + d.push + d.loss).toBeCloseTo(1);
+  });
+  it("Skellamov rep ostaje dostupan i kod otvorenih utakmica", () => {
+    const p = skellam(15, 0.5);
+    expect(p.get(12)).toBeGreaterThan(0);
+    expect([...p.values()].reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 10);
+  });
+  it("pretvara zapis azijske četvrt-linije u decimalnu liniju", () => {
+    expect(parseAsianHandicapLine("-0/0.5")).toBe(-0.25);
+    expect(parseAsianHandicapLine("+0/0.5")).toBe(0.25);
+    expect(parseAsianHandicapLine("0/-0.5")).toBe(-0.25);
+    expect(parseAsianHandicapLine("nema linije")).toBeNull();
+  });
+  it("odbija nevaljan λ umjesto izračuna neispravnih vjerojatnosti", () => {
+    expect(() => skellam(Number.NaN, 1)).toThrow(RangeError);
+    expect(() => dnbAhTablica(-1, 1)).toThrow(RangeError);
   });
 });
 

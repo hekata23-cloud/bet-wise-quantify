@@ -19,6 +19,7 @@ import { loadMastermind as loadMaster, mastermindActive, mastermindDirectives } 
 import { getFixturesByDate, getLiveFixtures, ApiFootballError } from "./api-football";
 import type { ChatAttachment } from "./attachments";
 import { attachmentsContextText } from "./attachments";
+import { ORION_PERSONA } from "./botovi";
 
 type GeminiPart = { text?: string; inline_data?: { mime_type: string; data: string } };
 type GeminiMessage = { role: string; parts: GeminiPart[] };
@@ -150,6 +151,20 @@ Prije nego nešto tvrdiš, mentalno prođi sve faze (korisniku prikazuješ SAŽE
 - Ako korisnik pita za KONKRETAN tip, prvi red = TIP + %. Točka.
 `;
 
+const ORION_SYSTEM_PROMPT = SYSTEM_PROMPT
+  .replace(
+    "Ti si LUNA (alias: Callisto) — hrvatska AI asistentica aplikacije Andromeda AI: vrhunska savjetnica za sportske predikcije, iskusna full-stack developerica i majstorica SARP metode.",
+    "Ti si ORION — hrvatski AI analitičar aplikacije Andromeda AI, specijaliziran za duboku statistiku, kretanje kvota, ozljede, taktiku i alternativne sportove.",
+  )
+  .replace(
+    '- Zoveš se Luna. Odazivaš se i na "Callisto". Ženski rod u govoru o sebi ("mislim", "izračunala sam", "sigurna sam").',
+    '- Zoveš se Orion. Muški rod u govoru o sebi ("mislim", "izračunao sam", "siguran sam").',
+  )
+  .replace(
+    "- Topla si, prijateljska, duhovita, ali analitički britka.",
+    "- Izravan si, sažet i analitički britak; bez čavrljanja.",
+  ) + `\n\n${ORION_PERSONA}`;
+
 /** Ograniči trajanje pomoćnog motora da chat nikad ne visi bez odgovora. */
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
@@ -217,7 +232,7 @@ export async function askAi(
   userText: string,
   history: ChatTurn[],
   attachments: ChatAttachment[] = [],
-  opts: { voice?: boolean } = {},
+  opts: { voice?: boolean; agent?: "luna" | "orion" } = {},
 ): Promise<string> {
   const prefs = loadPrefs();
   const now = `Trenutno vrijeme (Europe/Zagreb): ${formatZagreb()}. Datum ISO: ${isoDateZagreb()}.`;
@@ -225,6 +240,7 @@ export async function askAi(
   const attCtx = attachmentsContextText(attachments);
   const market = detectMarket(userText);
   const modul = marketModule(market);
+  const agentSystemPrompt = opts.agent === "orion" ? ORION_SYSTEM_PROMPT : SYSTEM_PROMPT;
 
   // ── OMNI GOL MOTOR: svi mozgovi + svi modeli za BTTS i Over/Under 2.5
   let omniBlock = "";
@@ -284,14 +300,14 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
       ? deepThinking + antiDirectives + tail
       : deepThinking + `\n\nTRAŽENO TRŽIŠTE: ${MARKET_LABEL[market]}. Prva rečenica odgovora MORA biti konkretan tip za ovo tržište + sigurnost u %. Ne skreći na druga tržišta osim jedne alternative na kraju.\n\n${modul}${consensusBlock}${omniBlock}${antiDirectives}${tail}`;
   const sys =
-    SYSTEM_PROMPT +
+    agentSystemPrompt +
     marketDirective +
     "\n\nKONTEKST:\n" +
     now +
     (ctx ? "\n\n" + ctx : "") +
     (attCtx ? "\n\n" + attCtx : "") +
     (opts.voice
-      ? "\n\n(NAPOMENA: ovo je GLASOVNI razgovor s Lunom — odgovori razgovorno na hrvatskom, maksimalno 4 kratke rečenice, bez markdowna, bez nabrajanja i bez emojija.)"
+      ? `\n\n(NAPOMENA: ovo je GLASOVNI razgovor s ${opts.agent === "orion" ? "Orionom" : "Lunom"} — odgovori razgovorno na hrvatskom, maksimalno 4 kratke rečenice, bez markdowna, bez nabrajanja i bez emojija.)`
       : "") +
     (hasKey("apiFootball") ? "" : "\n\n(API-Football ključ nije spremljen — nemam live podatke.)");
 

@@ -15,14 +15,22 @@ export interface SkellamLinija {
   ferKvota: number;    // poštena kvota uz povrat ((1 - push) / win)
 }
 
-function pois(l: number, n = 12): number[] {
+function pois(l: number): number[] {
+  if (!Number.isFinite(l) || l < 0 || l > 100) {
+    throw new RangeError("λ mora biti konačan broj između 0 i 100.");
+  }
+  if (l === 0) return [1];
+
+  // Uvijek uključi rep raspodjele; fiksna granica 0–11 iskrivljuje vjerojatnosti
+  // kad je očekivani broj golova veći ili se meč modelira kao vrlo otvoren.
+  const maxGolova = Math.max(12, Math.ceil(l + 12 * Math.sqrt(l + 1) + 20));
   const r = [Math.exp(-l)];
-  for (let k = 1; k < n; k++) r.push((r[k - 1]! * l) / k);
+  for (let k = 1; k <= maxGolova; k++) r.push((r[k - 1]! * l) / k);
   const s = r.reduce((a, b) => a + b, 0);
   return r.map((p) => p / s);
 }
 
-/** P(D = d) za d ∈ [-11, 11]. */
+/** P(D = d), uz puni numerički značajan rep Poissonove raspodjele. */
 export function skellam(lh: number, la: number): Map<number, number> {
   const h = pois(lh), a = pois(la);
   const out = new Map<number, number>();
@@ -52,6 +60,22 @@ function linija(sk: Map<number, number>, tim: "1" | "2", h: number | null): Skel
 }
 
 export const AH_LINIJE = [0.5, 0.25, -0.25, -0.5] as const;
+
+/** Čita decimalnu azijsku liniju, uključujući bookmaker zapis "0/-0.5". */
+export function parseAsianHandicapLine(raw: string): number | null {
+  const match = raw.trim().match(/^([+-]?\d+(?:\.\d+)?)(?:\s*\/\s*([+-]?\d+(?:\.\d+)?))?$/);
+  if (!match) return null;
+  const prviRaw = match[1]!;
+  const prvi = Number(prviRaw);
+  if (!match[2]) return prvi;
+  const drugiRaw = match[2]!;
+  const drugi = Number(drugiRaw);
+  const drugiImaZnak = drugiRaw.startsWith("+") || drugiRaw.startsWith("-");
+  const drugiPotpisan = drugiImaZnak
+    ? drugi
+    : prviRaw.startsWith("-") ? -Math.abs(drugi) : prviRaw.startsWith("+") ? Math.abs(drugi) : drugi;
+  return (prvi + drugiPotpisan) / 2;
+}
 
 /** Sve DNB + AH linije za oba tima. */
 export function dnbAhTablica(lh: number, la: number): SkellamLinija[] {

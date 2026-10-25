@@ -16,7 +16,9 @@ export type KvotaSnapshot = {
 };
 
 const KLJUC = (fixtureId: number) => `pc.kvote.v1.${fixtureId}`;
-const MAX_SNIMAKA = 50;
+// 50 snimaka uz minimalni razmak od 10 min pokriva samo 8 h i 20 min,
+// pa bi aktivno praćenje prerano izbacilo početak 12-satnog radarskog prozora.
+const MAX_SNIMAKA = 100;
 /** Dva snimka u ovom razmaku se dedupliciraju (kvote se ne mijenjaju toliko brzo). */
 const MIN_RAZMAK_MS = 10 * 60_000;
 

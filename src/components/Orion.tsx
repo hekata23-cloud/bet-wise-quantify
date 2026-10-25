@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
 import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadJSON, saveJSON, hasKey } from "@/lib/storage";
-import { ORION_PERSONA, ORION_PODSJETNIK, ORION_BRZI_UPITI, SPORT_PREDLOŠCI } from "@/lib/botovi";
+import { ORION_BRZI_UPITI, SPORT_PREDLOŠCI } from "@/lib/botovi";
 
 const KEY = "andromeda.orion.history";
 
@@ -20,6 +20,8 @@ export function Orion() {
   const [mecNaziv, setMecNaziv] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sendingRef = useRef(false);
+  const sendRef = useRef<(text?: string) => Promise<void>>(async () => {});
 
   useEffect(() => {
     const osvjezi = () => setMecNaziv(ucitajKontekstMeca()?.naslov ?? null);
@@ -38,8 +40,9 @@ export function Orion() {
       if (!q) return;
       try { window.localStorage.removeItem("pc.orion.pitanje"); } catch { /* ignoriraj */ }
       setOpen(true);
-      // mali odmak da se "send" veže na aktualni state nakon otvaranja
-      setTimeout(() => { void send(q!); }, 120);
+      // Čitaj najnoviju funkciju slanja; efekt se registrira samo jednom i
+      // njegova izvorna send funkcija inače bi zadržala zastarjele poruke.
+      setTimeout(() => { void sendRef.current(q!); }, 120);
     };
     autoPitanje();
     window.addEventListener("andromeda:orion-pitanje", autoPitanje);
@@ -60,7 +63,7 @@ export function Orion() {
 
   async function send(text?: string) {
     const poruka = (text ?? input).trim();
-    if (!poruka || loading) return;
+    if (!poruka || sendingRef.current) return;
     if (
       !hasKey("gemini") && !hasKey("groq") && !hasKey("openrouter") &&
       !hasKey("nvidia") && !hasKey("huggingface")
@@ -68,6 +71,7 @@ export function Orion() {
       toast.error("Postavi barem jedan AI ključ u Postavkama.");
       return;
     }
+    sendingRef.current = true;
     const korisnik: ChatTurn = { role: "user", content: poruka, ts: Date.now() };
     const nova = [...messages, korisnik];
     setMessages(nova);
@@ -80,20 +84,25 @@ export function Orion() {
       const tiket = ucitajKontekstTiketa();
       const blok = kontekst ? `\n\n${izgradiKontekstTekst(kontekst)}` : "";
       const blokTiket = tiket ? `\n\n${izgradiTiketTekst(tiket)}` : "";
-      const poslano =
-        messages.length === 0
-          ? `${ORION_PERSONA}\n\n──────────\n\nKorisnikovo pitanje: ${poruka}${blok}${blokTiket}`
-          : `${ORION_PODSJETNIK}\n${poruka}${blok}${blokTiket}`;
-      const odgovor = (await askAi(poslano, nova.slice(0, -1).filter((t) => t.content.trim()), [], {})).trim();
+      const poslano = `${poruka}${blok}${blokTiket}`;
+      const odgovor = (await askAi(
+        poslano,
+        nova.slice(0, -1).filter((t) => t.content.trim()),
+        [],
+        { agent: "orion" },
+      )).trim();
       if (!odgovor || /^prazan odgovor$/i.test(odgovor)) throw new Error("AI je vratio prazan odgovor — provjeri AI ključeve u Postavkama.");
       // Korisnikova poruka je već dodana gore — prije se dodavala dvaput.
       setMessages((m) => [...m, { role: "assistant", content: odgovor, ts: Date.now() }]);
     } catch (e) {
       toast.error("Orion nije uspio: " + (e instanceof Error ? e.message : String(e)));
     } finally {
+      sendingRef.current = false;
       setLoading(false);
     }
   }
+
+  sendRef.current = send;
 
   return (
     <>

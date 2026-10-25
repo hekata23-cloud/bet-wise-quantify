@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { fit1x2 } from "@/lib/obrnute-kvote";
-import { dnbAhTablica, jeSigurnica, type SkellamLinija } from "@/lib/skellam-dnb";
+import { dnbAhTablica, jeSigurnica, parseAsianHandicapLine, type SkellamLinija } from "@/lib/skellam-dnb";
 import { dodajUKorpu, loadKorpa } from "@/lib/korpa";
 import { useLigaFilter } from "@/lib/league-tier";
 import { useUtakmiceDana, poredajZaSken, type Markets } from "@/hooks/use-utakmice-dana";
@@ -36,10 +36,27 @@ function nadjiTrziste(m: Markets, re: RegExp): Record<string, number> | undefine
 
 function trzisnaKvota(m: Markets, l: SkellamLinija): number | undefined {
   const strana = l.tim === "1" ? "Home" : "Away";
-  if (l.linija === null) return nadjiTrziste(m, /^(home\/away|draw no bet)$/i)?.[strana];
+  if (l.linija === null) {
+    const cijene = nadjiTrziste(m, /^(home\/away|draw no bet)$/i);
+    const kvota = cijene && Object.entries(cijene).find(([k]) => k.trim().toLowerCase() === strana.toLowerCase())?.[1];
+    return Number.isFinite(kvota) && kvota! > 1 ? kvota : undefined;
+  }
   const ah = nadjiTrziste(m, /^asian handicap$/i) ?? {};
   const v = l.linija;
-  return ah[`${strana} ${v > 0 ? "+" : ""}${v}`] ?? ah[`${strana} ${v}`];
+  const direct = ah[`${strana} ${v > 0 ? "+" : ""}${v}`] ?? ah[`${strana} ${v}`];
+  if (Number.isFinite(direct) && direct! > 1) return direct;
+
+  for (const [label, kvota] of Object.entries(ah)) {
+    const match = label.trim().match(/^(Home|Away)\s+(.+)$/i);
+    if (
+      match &&
+      match[1]!.toLowerCase() === strana.toLowerCase() &&
+      parseAsianHandicapLine(match[2]!) === v &&
+      Number.isFinite(kvota) &&
+      kvota > 1
+    ) return kvota;
+  }
+  return undefined;
 }
 
 function Page() {
@@ -77,7 +94,7 @@ function Page() {
       }
       const n = out.filter((a) => a.linije.length).length;
       setMsg(`Gotovo: analizirano ${out.length} utakmica s kvotama (${bezKvota} bez kvota preskočeno) — ${n} sa sigurnicama ≥78%.`);
-    } catch (e: any) { setMsg(e?.message ?? "Greška"); } finally { setBusy(false); }
+    } catch (e) { setMsg(e instanceof Error ? e.message : "Greška"); } finally { setBusy(false); }
   };
 
   const dodaj = (a: Analiza, l: SkellamLinija, kvota: number) => {

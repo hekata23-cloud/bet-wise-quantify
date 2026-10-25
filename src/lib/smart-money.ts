@@ -20,14 +20,27 @@ export interface PadKvote {
 
 /** Najveći pad po ključu tržišta unutar prozora. */
 export function padoviKvota(snimci: KvotaSnapshot[], sad = Date.now(), prag = PAD_PRAG_PCT): PadKvote[] {
-  const u = snimci.filter((s) => sad - s.t <= PROZOR_MS).sort((a, b) => a.t - b.t);
+  const u = [...snimci]
+    .filter((s) =>
+      s != null &&
+      Number.isFinite(s.t) &&
+      s.t <= sad &&
+      sad - s.t <= PROZOR_MS &&
+      s.kvote != null &&
+      typeof s.kvote === "object",
+    )
+    .sort((a, b) => a.t - b.t);
   if (u.length < 2) return [];
   const zadnji = u[u.length - 1]!;
   const out: PadKvote[] = [];
-  for (const [k, sada] of Object.entries(zadnji.kvote)) {
-    if (!(sada > 1)) continue;
+  for (const [k, vrijednost] of Object.entries(zadnji.kvote)) {
+    const sada = vrijednost;
+    if (typeof sada !== "number" || !Number.isFinite(sada) || sada <= 1) continue;
     let max = 0, tMax = zadnji.t;
-    for (const s of u.slice(0, -1)) { const v = s.kvote[k]; if (v != null && v > max) { max = v; tMax = s.t; } }
+    for (const s of u.slice(0, -1)) {
+      const v = s.kvote[k];
+      if (typeof v === "number" && Number.isFinite(v) && v > max) { max = v; tMax = s.t; }
+    }
     if (max <= 1) continue;
     const padPct = Math.round(((max - sada) / max) * 1000) / 10;
     if (padPct >= prag) out.push({ kljuc: k, otvaranje: max, sada, padPct, minuta: Math.round((zadnji.t - tMax) / 60000) });
@@ -37,6 +50,11 @@ export function padoviKvota(snimci: KvotaSnapshot[], sad = Date.now(), prag = PA
 
 /** Model se slaže s padom kad je p_model ≥ 1/kvota otvaranja i EV na trenutnoj kvoti ≥ 0. */
 export function sharpConsensus(pModel: number, otvaranje: number, sada: number): { slaze: boolean; ev: number } {
+  if (
+    !Number.isFinite(pModel) || pModel < 0 || pModel > 1 ||
+    !Number.isFinite(otvaranje) || otvaranje <= 1 ||
+    !Number.isFinite(sada) || sada <= 1
+  ) return { slaze: false, ev: 0 };
   const ev = pModel * sada - 1;
   return { slaze: pModel >= 1 / otvaranje && ev >= 0, ev };
 }
@@ -57,12 +75,14 @@ export function prati(u: PracenaUtakmica) {
 /** Plosnati ključevi kvota iz API-Football tržišta (bet365 struktura). */
 export function plosneKvote(markets: Record<string, Record<string, number>>): Record<string, number> {
   const g = (re: RegExp) => Object.entries(markets).find(([k]) => re.test(k))?.[1] ?? {};
-  const w = g(/^match winner$/i), ou = g(/^goals over\/under$/i), bt = g(/^both teams (to )?score$/i), dnb = g(/^home\/away$/i);
+  const w = g(/^match winner$/i), ou = g(/^goals over\/under$/i), bt = g(/^both teams (to )?score$/i), dnb = g(/^(home\/away|draw no bet)$/i);
   const out: Record<string, number> = {};
-  const put = (k: string, v?: number) => { if (v && v > 1) out[k] = v; };
-  put("1", w["Home"]); put("X", w["Draw"]); put("2", w["Away"]);
-  put("Over 2.5", ou["Over 2.5"]); put("Under 2.5", ou["Under 2.5"]);
-  put("GG", bt["Yes"]); put("NG", bt["No"]);
-  put("DNB 1", dnb["Home"]); put("DNB 2", dnb["Away"]);
+  const value = (market: Record<string, number>, label: string) =>
+    Object.entries(market).find(([key, v]) => key.trim().toLowerCase() === label.toLowerCase() && Number.isFinite(v))?.[1];
+  const put = (k: string, v?: number) => { if (Number.isFinite(v) && v! > 1) out[k] = v!; };
+  put("1", value(w, "Home")); put("X", value(w, "Draw")); put("2", value(w, "Away"));
+  put("Over 2.5", value(ou, "Over 2.5")); put("Under 2.5", value(ou, "Under 2.5"));
+  put("GG", value(bt, "Yes")); put("NG", value(bt, "No"));
+  put("DNB 1", value(dnb, "Home")); put("DNB 2", value(dnb, "Away"));
   return out;
 }
