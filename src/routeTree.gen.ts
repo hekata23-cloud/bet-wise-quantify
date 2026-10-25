@@ -12,29 +12,22 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiPrognozaRouteImport } from './routes/ai-prognoza'
 import { Route as BttsOverRouteImport } from './routes/btts-over'
-import { Route as BttsUltraRouteImport } from './routes/btts-ultra'
 import { Route as ChatRouteImport } from './routes/chat'
-import { Route as DnevnikRouteImport } from './routes/dnevnik'
-import { Route as InfoRouteImport } from './routes/info'
-import { Route as TrackRecordRouteImport } from './routes/track-record'
+import { Route as DnbAsianMasterRouteImport } from './routes/dnb-asian-master'
+import { Route as DroppingOddsRouteImport } from './routes/dropping-odds'
 import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as HtFtRouteImport } from './routes/ht-ft'
-import { Route as HtFtBetaRouteImport } from './routes/ht-ft-beta'
 import { Route as HtFtPredikcijaRouteImport } from './routes/ht-ft-predikcija'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
 import { Route as KosarkaRouteImport } from './routes/kosarka'
-import { Route as KosarkaProRouteImport } from './routes/kosarka-pro'
 import { Route as ObrnuteKvoteRouteImport } from './routes/obrnute-kvote'
-import { Route as OuNiskiRouteImport } from './routes/ou-niski'
 import { Route as OverUnderRouteImport } from './routes/over-under'
-import { Route as Over25ProRouteImport } from './routes/over25-pro'
 import { Route as PostavkeRouteImport } from './routes/postavke'
 import { Route as PrediktorRouteImport } from './routes/prediktor'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as ProAlatiRouteImport } from './routes/pro-alati'
 import { Route as RadarRouteImport } from './routes/radar'
 import { Route as RukometRouteImport } from './routes/rukomet'
-import { Route as RukometProRouteImport } from './routes/rukomet-pro'
 import { Route as TiketArhitektRouteImport } from './routes/tiket-arhitekt'
 import { Route as UzivoRouteImport } from './routes/uzivo'
 import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
@@ -58,29 +51,19 @@ const BttsOverRoute = BttsOverRouteImport.update({
   path: '/btts-over',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BttsUltraRoute = BttsUltraRouteImport.update({
-  id: '/btts-ultra',
-  path: '/btts-ultra',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DnevnikRoute = DnevnikRouteImport.update({
-  id: '/dnevnik',
-  path: '/dnevnik',
+const DnbAsianMasterRoute = DnbAsianMasterRouteImport.update({
+  id: '/dnb-asian-master',
+  path: '/dnb-asian-master',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InfoRoute = InfoRouteImport.update({
-  id: '/info',
-  path: '/info',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TrackRecordRoute = TrackRecordRouteImport.update({
-  id: '/track-record',
-  path: '/track-record',
+const DroppingOddsRoute = DroppingOddsRouteImport.update({
+  id: '/dropping-odds',
+  path: '/dropping-odds',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoloviRoute = GoloviRouteImport.update({
@@ -91,11 +74,6 @@ const GoloviRoute = GoloviRouteImport.update({
 const HtFtRoute = HtFtRouteImport.update({
   id: '/ht-ft',
   path: '/ht-ft',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HtFtBetaRoute = HtFtBetaRouteImport.update({
-  id: '/ht-ft-beta',
-  path: '/ht-ft-beta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HtFtPredikcijaRoute = HtFtPredikcijaRouteImport.update({
@@ -113,29 +91,14 @@ const KosarkaRoute = KosarkaRouteImport.update({
   path: '/kosarka',
   getParentRoute: () => rootRouteImport,
 } as any)
-const KosarkaProRoute = KosarkaProRouteImport.update({
-  id: '/kosarka-pro',
-  path: '/kosarka-pro',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ObrnuteKvoteRoute = ObrnuteKvoteRouteImport.update({
   id: '/obrnute-kvote',
   path: '/obrnute-kvote',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OuNiskiRoute = OuNiskiRouteImport.update({
-  id: '/ou-niski',
-  path: '/ou-niski',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const OverUnderRoute = OverUnderRouteImport.update({
   id: '/over-under',
   path: '/over-under',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Over25ProRoute = Over25ProRouteImport.update({
-  id: '/over25-pro',
-  path: '/over25-pro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostavkeRoute = PostavkeRouteImport.update({
@@ -166,11 +129,6 @@ const RadarRoute = RadarRouteImport.update({
 const RukometRoute = RukometRouteImport.update({
   id: '/rukomet',
   path: '/rukomet',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RukometProRoute = RukometProRouteImport.update({
-  id: '/rukomet-pro',
-  path: '/rukomet-pro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TiketArhitektRoute = TiketArhitektRouteImport.update({
@@ -213,29 +171,22 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
-  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
-  '/dnevnik': typeof DnevnikRoute
-  '/info': typeof InfoRoute
-  '/track-record': typeof TrackRecordRoute
+  '/dnb-asian-master': typeof DnbAsianMasterRoute
+  '/dropping-odds': typeof DroppingOddsRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
-  '/ht-ft-beta': typeof HtFtBetaRoute
   '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
-  '/kosarka-pro': typeof KosarkaProRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
-  '/ou-niski': typeof OuNiskiRoute
   '/over-under': typeof OverUnderRouteWithChildren
-  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
   '/rukomet': typeof RukometRoute
-  '/rukomet-pro': typeof RukometProRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -248,28 +199,21 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
-  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
-  '/dnevnik': typeof DnevnikRoute
-  '/info': typeof InfoRoute
-  '/track-record': typeof TrackRecordRoute
+  '/dnb-asian-master': typeof DnbAsianMasterRoute
+  '/dropping-odds': typeof DroppingOddsRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
-  '/ht-ft-beta': typeof HtFtBetaRoute
   '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
-  '/kosarka-pro': typeof KosarkaProRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
-  '/ou-niski': typeof OuNiskiRoute
-  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
   '/rukomet': typeof RukometRoute
-  '/rukomet-pro': typeof RukometProRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -283,29 +227,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
-  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
-  '/dnevnik': typeof DnevnikRoute
-  '/info': typeof InfoRoute
-  '/track-record': typeof TrackRecordRoute
+  '/dnb-asian-master': typeof DnbAsianMasterRoute
+  '/dropping-odds': typeof DroppingOddsRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
-  '/ht-ft-beta': typeof HtFtBetaRoute
   '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
   '/kalkulator': typeof KalkulatorRoute
   '/kosarka': typeof KosarkaRoute
-  '/kosarka-pro': typeof KosarkaProRoute
   '/obrnute-kvote': typeof ObrnuteKvoteRoute
-  '/ou-niski': typeof OuNiskiRoute
   '/over-under': typeof OverUnderRouteWithChildren
-  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
   '/rukomet': typeof RukometRoute
-  '/rukomet-pro': typeof RukometProRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
   '/uzivo': typeof UzivoRoute
   '/zlatni-tip': typeof ZlatniTipRoute
@@ -320,29 +257,22 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
-    | '/btts-ultra'
     | '/chat'
-    | '/dnevnik'
-    | '/info'
-    | '/track-record'
+    | '/dnb-asian-master'
+    | '/dropping-odds'
     | '/golovi'
     | '/ht-ft'
-    | '/ht-ft-beta'
     | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
-    | '/kosarka-pro'
     | '/obrnute-kvote'
-    | '/ou-niski'
     | '/over-under'
-    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
     | '/rukomet'
-    | '/rukomet-pro'
     | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
@@ -355,28 +285,21 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
-    | '/btts-ultra'
     | '/chat'
-    | '/dnevnik'
-    | '/info'
-    | '/track-record'
+    | '/dnb-asian-master'
+    | '/dropping-odds'
     | '/golovi'
     | '/ht-ft'
-    | '/ht-ft-beta'
     | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
-    | '/kosarka-pro'
     | '/obrnute-kvote'
-    | '/ou-niski'
-    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
     | '/rukomet'
-    | '/rukomet-pro'
     | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
@@ -389,29 +312,22 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
-    | '/btts-ultra'
     | '/chat'
-    | '/dnevnik'
-    | '/info'
-    | '/track-record'
+    | '/dnb-asian-master'
+    | '/dropping-odds'
     | '/golovi'
     | '/ht-ft'
-    | '/ht-ft-beta'
     | '/ht-ft-predikcija'
     | '/kalkulator'
     | '/kosarka'
-    | '/kosarka-pro'
     | '/obrnute-kvote'
-    | '/ou-niski'
     | '/over-under'
-    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
     | '/rukomet'
-    | '/rukomet-pro'
     | '/tiket-arhitekt'
     | '/uzivo'
     | '/zlatni-tip'
@@ -425,29 +341,22 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiPrognozaRoute: typeof AiPrognozaRoute
   BttsOverRoute: typeof BttsOverRoute
-  BttsUltraRoute: typeof BttsUltraRoute
   ChatRoute: typeof ChatRoute
-  DnevnikRoute: typeof DnevnikRoute
-  InfoRoute: typeof InfoRoute
-  TrackRecordRoute: typeof TrackRecordRoute
+  DnbAsianMasterRoute: typeof DnbAsianMasterRoute
+  DroppingOddsRoute: typeof DroppingOddsRoute
   GoloviRoute: typeof GoloviRoute
   HtFtRoute: typeof HtFtRoute
-  HtFtBetaRoute: typeof HtFtBetaRoute
   HtFtPredikcijaRoute: typeof HtFtPredikcijaRoute
   KalkulatorRoute: typeof KalkulatorRoute
   KosarkaRoute: typeof KosarkaRoute
-  KosarkaProRoute: typeof KosarkaProRoute
   ObrnuteKvoteRoute: typeof ObrnuteKvoteRoute
-  OuNiskiRoute: typeof OuNiskiRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
-  Over25ProRoute: typeof Over25ProRoute
   PostavkeRoute: typeof PostavkeRoute
   PrediktorRoute: typeof PrediktorRoute
   ProRoute: typeof ProRoute
   ProAlatiRoute: typeof ProAlatiRoute
   RadarRoute: typeof RadarRoute
   RukometRoute: typeof RukometRoute
-  RukometProRoute: typeof RukometProRoute
   TiketArhitektRoute: typeof TiketArhitektRoute
   UzivoRoute: typeof UzivoRoute
   ZlatniTipRoute: typeof ZlatniTipRoute
@@ -478,13 +387,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BttsOverRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/btts-ultra': {
-      id: '/btts-ultra'
-      path: '/btts-ultra'
-      fullPath: '/btts-ultra'
-      preLoaderRoute: typeof BttsUltraRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -492,25 +394,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dnevnik': {
-      id: '/dnevnik'
-      path: '/dnevnik'
-      fullPath: '/dnevnik'
-      preLoaderRoute: typeof DnevnikRouteImport
+    '/dnb-asian-master': {
+      id: '/dnb-asian-master'
+      path: '/dnb-asian-master'
+      fullPath: '/dnb-asian-master'
+      preLoaderRoute: typeof DnbAsianMasterRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/info': {
-      id: '/info'
-      path: '/info'
-      fullPath: '/info'
-      preLoaderRoute: typeof InfoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/track-record': {
-      id: '/track-record'
-      path: '/track-record'
-      fullPath: '/track-record'
-      preLoaderRoute: typeof TrackRecordRouteImport
+    '/dropping-odds': {
+      id: '/dropping-odds'
+      path: '/dropping-odds'
+      fullPath: '/dropping-odds'
+      preLoaderRoute: typeof DroppingOddsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/golovi': {
@@ -525,13 +420,6 @@ declare module '@tanstack/react-router' {
       path: '/ht-ft'
       fullPath: '/ht-ft'
       preLoaderRoute: typeof HtFtRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ht-ft-beta': {
-      id: '/ht-ft-beta'
-      path: '/ht-ft-beta'
-      fullPath: '/ht-ft-beta'
-      preLoaderRoute: typeof HtFtBetaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ht-ft-predikcija': {
@@ -555,13 +443,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KosarkaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/kosarka-pro': {
-      id: '/kosarka-pro'
-      path: '/kosarka-pro'
-      fullPath: '/kosarka-pro'
-      preLoaderRoute: typeof KosarkaProRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/obrnute-kvote': {
       id: '/obrnute-kvote'
       path: '/obrnute-kvote'
@@ -569,25 +450,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ObrnuteKvoteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ou-niski': {
-      id: '/ou-niski'
-      path: '/ou-niski'
-      fullPath: '/ou-niski'
-      preLoaderRoute: typeof OuNiskiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/over-under': {
       id: '/over-under'
       path: '/over-under'
       fullPath: '/over-under'
       preLoaderRoute: typeof OverUnderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/over25-pro': {
-      id: '/over25-pro'
-      path: '/over25-pro'
-      fullPath: '/over25-pro'
-      preLoaderRoute: typeof Over25ProRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/postavke': {
@@ -630,13 +497,6 @@ declare module '@tanstack/react-router' {
       path: '/rukomet'
       fullPath: '/rukomet'
       preLoaderRoute: typeof RukometRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rukomet-pro': {
-      id: '/rukomet-pro'
-      path: '/rukomet-pro'
-      fullPath: '/rukomet-pro'
-      preLoaderRoute: typeof RukometProRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tiket-arhitekt': {
@@ -709,29 +569,22 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiPrognozaRoute: AiPrognozaRoute,
   BttsOverRoute: BttsOverRoute,
-  BttsUltraRoute: BttsUltraRoute,
   ChatRoute: ChatRoute,
-  DnevnikRoute: DnevnikRoute,
-  InfoRoute: InfoRoute,
-  TrackRecordRoute: TrackRecordRoute,
+  DnbAsianMasterRoute: DnbAsianMasterRoute,
+  DroppingOddsRoute: DroppingOddsRoute,
   GoloviRoute: GoloviRoute,
   HtFtRoute: HtFtRoute,
-  HtFtBetaRoute: HtFtBetaRoute,
   HtFtPredikcijaRoute: HtFtPredikcijaRoute,
   KalkulatorRoute: KalkulatorRoute,
   KosarkaRoute: KosarkaRoute,
-  KosarkaProRoute: KosarkaProRoute,
   ObrnuteKvoteRoute: ObrnuteKvoteRoute,
-  OuNiskiRoute: OuNiskiRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
-  Over25ProRoute: Over25ProRoute,
   PostavkeRoute: PostavkeRoute,
   PrediktorRoute: PrediktorRoute,
   ProRoute: ProRoute,
   ProAlatiRoute: ProAlatiRoute,
   RadarRoute: RadarRoute,
   RukometRoute: RukometRoute,
-  RukometProRoute: RukometProRoute,
   TiketArhitektRoute: TiketArhitektRoute,
   UzivoRoute: UzivoRoute,
   ZlatniTipRoute: ZlatniTipRoute,
