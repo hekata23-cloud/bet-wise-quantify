@@ -4,7 +4,7 @@ import { fit1x2 } from "@/lib/obrnute-kvote";
 import { dnbAhTablica, jeSigurnica, type SkellamLinija } from "@/lib/skellam-dnb";
 import { dodajUKorpu, loadKorpa } from "@/lib/korpa";
 import { useLigaFilter } from "@/lib/league-tier";
-import { useUtakmiceDana, type Markets } from "@/hooks/use-utakmice-dana";
+import { useUtakmiceDana, poredajZaSken, type Markets } from "@/hooks/use-utakmice-dana";
 import { LeagueTierFilter } from "@/components/LeagueTierFilter";
 import { SettingsModal } from "@/components/SettingsModal";
 import type { ZtFixture } from "@/lib/zlatni-tip.functions";
@@ -26,12 +26,20 @@ export const Route = createFileRoute("/dnb-master")({
 type Analiza = { f: ZtFixture; lh: number; la: number; linije: SkellamLinija[]; m: Markets };
 const pct = (p: number) => `${(p * 100).toFixed(1)}%`;
 const MAX_SKEN = 12;
+/** Najviše kredita po skeniranju (i utakmice bez kvota troše 1 kredit). */
+const MAX_POKUSAJA = 25;
+
+/** Naziv tržišta ovisi o kladionici ("Home/Away", "Draw No Bet"…) — traži ga fleksibilno. */
+function nadjiTrziste(m: Markets, re: RegExp): Record<string, number> | undefined {
+  return Object.entries(m).find(([k]) => re.test(k))?.[1];
+}
 
 function trzisnaKvota(m: Markets, l: SkellamLinija): number | undefined {
   const strana = l.tim === "1" ? "Home" : "Away";
-  if (l.linija === null) return m["Home/Away"]?.[strana];
-  const ah = m["Asian Handicap"] ?? {};
-  return ah[`${strana} ${l.linija > 0 ? "+" : ""}${l.linija}`];
+  if (l.linija === null) return nadjiTrziste(m, /^(home\/away|draw no bet)$/i)?.[strana];
+  const ah = nadjiTrziste(m, /^asian handicap$/i) ?? {};
+  const v = l.linija;
+  return ah[`${strana} ${v > 0 ? "+" : ""}${v}`] ?? ah[`${strana} ${v}`];
 }
 
 function Page() {
@@ -52,17 +60,23 @@ function Page() {
   const skeniraj = async () => {
     setBusy(true);
     const out: Analiza[] = [];
+    let pokusaja = 0, bezKvota = 0;
     try {
-      for (const f of vidljive.slice(0, MAX_SKEN)) {
-        setMsg(`Analiziram ${f.home} — ${f.away}…`);
+      // Prije: prvih 12 po vremenu — rano ujutro to su egzotične lige bez kvota pa nije bilo ništa.
+      // Sada: prvo top lige, utakmice bez kvota se preskaču dok se ne nađe MAX_SKEN s kvotama.
+      for (const f of poredajZaSken(vidljive)) {
+        if (out.length >= MAX_SKEN || pokusaja >= MAX_POKUSAJA) break;
+        pokusaja++;
+        setMsg(`Analiziram ${f.home} — ${f.away}… (${out.length}/${MAX_SKEN} s kvotama)`);
         const m = await kvote(f);
-        const w = m?.["Match Winner"];
-        if (!m || !w?.Home || !w.Draw || !w.Away) continue;
+        const w = m ? nadjiTrziste(m, /^match winner$/i) : undefined;
+        if (!m || !w?.Home || !w.Draw || !w.Away) { bezKvota++; continue; }
         const { lh, la } = fit1x2(w.Home, w.Draw, w.Away);
         out.push({ f, lh, la, linije: dnbAhTablica(lh, la).filter(jeSigurnica), m });
         setRez([...out]);
       }
-      setMsg(`Gotovo: ${out.filter((a) => a.linije.length).length} utakmica sa sigurnicama ≥78%.`);
+      const n = out.filter((a) => a.linije.length).length;
+      setMsg(`Gotovo: analizirano ${out.length} utakmica s kvotama (${bezKvota} bez kvota preskočeno) — ${n} sa sigurnicama ≥78%.`);
     } catch (e: any) { setMsg(e?.message ?? "Greška"); } finally { setBusy(false); }
   };
 
@@ -87,10 +101,10 @@ function Page() {
         <LeagueTierFilter />
         <div className="flex flex-wrap gap-2">
           <button disabled={busy} onClick={async () => { if (!(await ucitajDan())) setSettings(true); }} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">Učitaj utakmice dana</button>
-          {fx.length > 0 && <button disabled={busy} onClick={skeniraj} className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">Skeniraj sigurnice ({Math.min(MAX_SKEN, vidljive.length)})</button>}
+          {fx.length > 0 && <button disabled={busy} onClick={skeniraj} className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">Skeniraj sigurnice (do {MAX_SKEN})</button>}
           <button onClick={() => setSettings(true)} className="rounded-lg border border-border px-3 py-2 text-sm">Postavke (API ključ)</button>
         </div>
-        <p className="text-xs text-muted-foreground">1 kredit po utakmici, sve se pamti do kraja dana. {fx.length > 0 && `Prikazano ${vidljive.length}/${fx.length} po filteru liga.`}</p>
+        <p className="text-xs text-muted-foreground">1 kredit po utakmici (najviše {MAX_POKUSAJA} po skeniranju), utakmice s kvotama se pamte do kraja dana. {fx.length > 0 && `Prikazano ${vidljive.length}/${fx.length} po filteru liga.`}</p>
         {msg && <p className="text-sm">{msg}</p>}
       </div>
 

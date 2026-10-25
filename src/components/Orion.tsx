@@ -47,7 +47,8 @@ export function Orion() {
   }, []);
 
   useEffect(() => {
-    setMessages(loadJSON<ChatTurn[]>(KEY, []));
+    // Stari zapisi "Prazan odgovor" (iz pokvarene verzije) se ne učitavaju.
+    setMessages(loadJSON<ChatTurn[]>(KEY, []).filter((t) => t.content?.trim() && !/^prazan odgovor$/i.test(t.content.trim())));
   }, []);
   useEffect(() => {
     saveJSON(KEY, messages.slice(-40));
@@ -83,8 +84,10 @@ export function Orion() {
         messages.length === 0
           ? `${ORION_PERSONA}\n\n──────────\n\nKorisnikovo pitanje: ${poruka}${blok}${blokTiket}`
           : `${ORION_PODSJETNIK}\n${poruka}${blok}${blokTiket}`;
-      const odgovor = await askAi(poslano, nova.slice(0, -1), [], {});
-      setMessages((m) => [...m, korisnik, { role: "assistant", content: odgovor, ts: Date.now() }]);
+      const odgovor = (await askAi(poslano, nova.slice(0, -1).filter((t) => t.content.trim()), [], {})).trim();
+      if (!odgovor || /^prazan odgovor$/i.test(odgovor)) throw new Error("AI je vratio prazan odgovor — provjeri AI ključeve u Postavkama.");
+      // Korisnikova poruka je već dodana gore — prije se dodavala dvaput.
+      setMessages((m) => [...m, { role: "assistant", content: odgovor, ts: Date.now() }]);
     } catch (e) {
       toast.error("Orion nije uspio: " + (e instanceof Error ? e.message : String(e)));
     } finally {

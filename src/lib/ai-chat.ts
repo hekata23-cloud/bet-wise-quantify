@@ -307,7 +307,7 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
   ) {
     try {
       const council = await withTimeout(runCouncil(sys, history, userText), 120_000, "Vijeće AI-ja");
-      if (council) return council;
+      if (council && council.trim() && !/^prazan odgovor$/i.test(council.trim())) return council;
     } catch (e) {
       console.warn("Vijeće AI-ja nije uspjelo, ide normalan mozak:", e);
     }
@@ -327,22 +327,28 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
   push("huggingface");
 
   const errors: string[] = [];
+  /** Prazan odgovor nikad nije "odgovor" — tretiraj ga kao grešku da ide sljedeći mozak. */
+  const provjeri = (t: string, b: string): string => {
+    const s = (t ?? "").trim();
+    if (!s || /^prazan odgovor$/i.test(s)) throw new Error(`${b}: prazan odgovor`);
+    return s;
+  };
   for (const b of brains) {
     try {
       if (b === "openrouter" && hasKey("openrouter")) {
-        return await runOpenRouter(sys, history, userText, attachments, prefs, market);
+        return provjeri(await runOpenRouter(sys, history, userText, attachments, prefs, market), b);
       }
       if (b === "nvidia" && hasKey("nvidia")) {
-        return await runNim(sys, history, userText, prefs);
+        return provjeri(await runNim(sys, history, userText, prefs), b);
       }
       if (b === "gemini" && hasKey("gemini")) {
-        return await runGemini(sys, history, userText, attachments);
+        return provjeri(await runGemini(sys, history, userText, attachments), b);
       }
       if (b === "groq" && hasKey("groq")) {
-        return await runGroq(sys, history, userText, attachments);
+        return provjeri(await runGroq(sys, history, userText, attachments), b);
       }
       if (b === "huggingface" && hasKey("huggingface")) {
-        return await runHF(sys, history, userText, attachments, prefs);
+        return provjeri(await runHF(sys, history, userText, attachments, prefs), b);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

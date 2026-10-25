@@ -85,3 +85,12 @@ it("Tier 1 lige", () => {
   expect(jeTier1("Liga MX")).toBe(false);
 });
 
+it("Tier 1 lige u formatu API-Footballa (Država — Liga)", () => {
+  expect(jeTier1("England — Premier League")).toBe(true);
+  expect(jeTier1("Spain — La Liga")).toBe(true);
+  expect(jeTier1("Croatia — HNL")).toBe(true);
+  expect(jeTier1("World — UEFA Champions League")).toBe(true);
+  expect(jeTier1("Ethiopia — Premier League")).toBe(false);
+  expect(jeTier1("Brazil — Serie A")).toBe(false);
+});
+
