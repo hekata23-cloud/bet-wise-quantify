@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  ucitajListice, statistikaListica, statusTiketa, ukupnaKvotaTiketa,
+  ucitajListice, spremiListic, statistikaListica, statusTiketa, ukupnaKvotaTiketa,
   isplataTiketa, evaluateLegOutcome, pogodiFiksaturu, azurirajListic,
   postaviNoguIshod, brisiListic, noviDobitniTiketi, jeVoidStatus,
   type Tiket, type TiketNoga, type Sport,
@@ -66,95 +66,173 @@ function danIso(d: Date, ofset = 0): string {
 const nov = (x: number) => `${x.toFixed(2)} €`;
 
 const STATUS_ZNAK: Record<string, { label: string; cls: string }> = {
-  dobitno: { label: "DOBITAN ✓", cls: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" },
-  gubitno: { label: "GUBITAN ✗", cls: "bg-red-500/20 text-red-300 border-red-500/40" },
-  povrat: { label: "POVRAT ULOGA", cls: "bg-slate-500/20 text-slate-300 border-slate-500/40" },
-  aktivno: { label: "AKTIVAN", cls: "bg-sky-500/20 text-sky-300 border-sky-500/40" },
+  dobitno: {
+    label: "POGOĐEN LISTIĆ ✓",
+    cls: "bg-emerald-500/25 text-emerald-300 border-emerald-500/60 shadow-sm shadow-emerald-950/40",
+  },
+  gubitno: {
+    label: "PROMAŠEN LISTIĆ ✗",
+    cls: "bg-red-500/25 text-red-300 border-red-500/60 shadow-sm shadow-red-950/40",
+  },
+  povrat: {
+    label: "POVRAT ULOGA (VOID)",
+    cls: "bg-slate-500/25 text-slate-300 border-slate-500/50",
+  },
+  aktivno: {
+    label: "U TIJEKU · AKTIVAN",
+    cls: "bg-sky-500/20 text-sky-300 border-sky-500/40",
+  },
 };
 
 function StatusBadge({ status }: { status: Tiket["noge"][number]["status"] | string }) {
-  const s = STATUS_ZNAK[status] ?? STATUS_ZNAK.aktivno;
+  if (status === "dobitno") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/60 bg-emerald-500/20 px-3 py-0.5 text-[11px] font-black tracking-wide text-emerald-300 shadow-sm shadow-emerald-950/40">
+        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+        POGOĐEN LISTIĆ
+      </span>
+    );
+  }
+  if (status === "gubitno") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/60 bg-red-500/20 px-3 py-0.5 text-[11px] font-black tracking-wide text-red-300 shadow-sm shadow-red-950/40">
+        <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+        PROMAŠEN LISTIĆ
+      </span>
+    );
+  }
+  if (status === "povrat") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/50 bg-slate-500/20 px-3 py-0.5 text-[11px] font-black tracking-wide text-slate-300">
+        <MinusCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+        POVRAT ULOGA
+      </span>
+    );
+  }
   return (
-    <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${s.cls}`}>{s.label}</span>
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/20 px-3 py-0.5 text-[11px] font-black tracking-wide text-sky-300">
+      <RefreshCw className="h-3 w-3 animate-spin text-sky-400" style={{ animationDuration: "3s" }} />
+      U TIJEKU
+    </span>
   );
 }
 
 function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod: "dobitna" | "izgubljena" | "void" | "cekaj") => void }) {
   const voidNoga = noga.status === "void";
-  const legTone = noga.status === "dobitna"
-    ? "border-emerald-500/35 bg-emerald-500/5"
-    : noga.status === "izgubljena"
-      ? "border-red-500/35 bg-red-500/5"
+  const isDobitna = noga.status === "dobitna";
+  const isIzgubljena = noga.status === "izgubljena";
+  const isCekaj = noga.status === "cekaj";
+
+  const legTone = isDobitna
+    ? "border-emerald-500/50 bg-emerald-950/30 shadow-sm shadow-emerald-950/30"
+    : isIzgubljena
+      ? "border-red-500/50 bg-red-950/30 shadow-sm shadow-red-950/30"
       : voidNoga
-        ? "border-slate-400/30 bg-slate-400/5"
-        : "border-border/40 bg-card/40";
+        ? "border-slate-500/30 bg-slate-900/30"
+        : "border-border/40 bg-card/40 hover:border-border/70";
+
   return (
-    <li className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors ${legTone}`}>
-      <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
-        {noga.sport.slice(0, 3)}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="truncate font-medium">{noga.utakmica}</span>
-          {voidNoga && (
-            <span className="rounded-full border border-slate-400/50 bg-slate-400/10 px-2 py-0.5 text-[9px] font-bold text-slate-300">
-              ⚪ KVOTA 1.00
+    <li className={`flex flex-col gap-2 rounded-xl border p-3 text-xs transition-colors ${legTone}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="shrink-0 rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase text-primary border border-primary/25">
+            {noga.sport}
+          </span>
+          <span className="truncate text-sm font-semibold text-foreground">
+            {noga.utakmica}
+          </span>
+        </div>
+
+        {/* Jasna oznaka za svaki par: Zelena kvačica (POGOĐENO) ili Crveni iksić (PROMAŠENO) */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          {isDobitna && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/70 bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-black text-emerald-300 shadow-sm shadow-emerald-950/40">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              POGOĐENO
             </span>
           )}
-          {noga.status === "dobitna" && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
-          {noga.status === "izgubljena" && <XCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />}
-        </div>
-        <div className="truncate text-[10px] text-muted-foreground">
-          {noga.trziste}: <span className="font-semibold text-emerald-400">{noga.tip}</span>
-          {voidNoga ? (
-            <span className="ml-1 text-slate-400"> · void {noga.napomena ? `(${noga.napomena})` : ""}</span>
-          ) : (
-            <span> · model {(noga.vjerojatnost * 100).toFixed(0)}%</span>
+          {isIzgubljena && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/70 bg-red-500/20 px-2.5 py-0.5 text-[11px] font-black text-red-300 shadow-sm shadow-red-950/40">
+              <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+              PROMAŠENO
+            </span>
           )}
-          {noga.napomena && !voidNoga && noga.status !== "cekaj" && (
-            <span className="ml-1 text-emerald-400/80">{noga.napomena}</span>
+          {voidNoga && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-500/50 bg-slate-500/20 px-2.5 py-0.5 text-[10px] font-bold text-slate-300">
+              <MinusCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              VOID (1.00)
+            </span>
+          )}
+          {isCekaj && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300">
+              <RefreshCw className="h-3 w-3 animate-spin text-sky-400" style={{ animationDuration: "3s" }} />
+              Čeka rezultat…
+            </span>
           )}
         </div>
       </div>
-      <span className={`font-mono text-sm font-bold ${voidNoga ? "text-slate-400" : ""}`}>
-        {(voidNoga ? 1 : noga.kvota).toFixed(2)}
-      </span>
-      {/* Ručno namještanje — za noge bez automatskog izvora */}
-      <div className="flex shrink-0 items-center gap-0.5">
-        <button
-          onClick={() => naNogu("dobitna")}
-          className="rounded p-1 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-400"
-          title="Ručno: pogođeno ✓"
-          aria-label="Noga pogođena"
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={() => naNogu("izgubljena")}
-          className="rounded p-1 text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
-          title="Ručno: promašaj ✗"
-          aria-label="Noga promašena"
-        >
-          <XCircle className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={() => naNogu("void")}
-          className="rounded p-1 text-muted-foreground hover:bg-slate-400/10 hover:text-slate-300"
-          title="Ručno: void ⚪ (kvota 1.00)"
-          aria-label="Noga void"
-        >
-          <MinusCircle className="h-3.5 w-3.5" />
-        </button>
-        {noga.status !== "cekaj" && (
-          <button
-            onClick={() => naNogu("cekaj")}
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Vrati na 'čeka'"
-            aria-label="Resetiraj nogu"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </button>
-        )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/30 pt-1.5 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+          <span className="text-muted-foreground">{noga.trziste}:</span>
+          <span className="font-bold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+            {noga.tip}
+          </span>
+          {noga.liga && <span className="text-[11px] text-muted-foreground">({noga.liga})</span>}
+          {noga.napomena && (
+            <span className={`text-[11px] font-medium ${isDobitna ? "text-emerald-300" : isIzgubljena ? "text-red-300" : "text-muted-foreground"}`}>
+              · {noga.napomena}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-1 font-mono">
+            <span className="text-[10px] uppercase text-muted-foreground">Kvota:</span>
+            <span className={`text-sm font-extrabold ${voidNoga ? "line-through text-slate-500" : isDobitna ? "text-emerald-400" : isIzgubljena ? "text-red-400" : "text-foreground"}`}>
+              {noga.kvota.toFixed(2)}
+            </span>
+            {voidNoga && <span className="text-xs font-bold text-slate-300 font-mono">→ 1.00</span>}
+          </div>
+
+          {/* Ručne tipke za provjeru/ispravak para */}
+          <div className="flex items-center gap-1 border-l border-border/40 pl-2">
+            <button
+              onClick={() => naNogu("dobitna")}
+              className={`rounded p-1 transition-colors ${isDobitna ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-500/50" : "text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-400"}`}
+              title="Postavi: pogođeno ✓"
+              aria-label="Pogođeno"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => naNogu("izgubljena")}
+              className={`rounded p-1 transition-colors ${isIzgubljena ? "bg-red-500/30 text-red-300 ring-1 ring-red-500/50" : "text-muted-foreground hover:bg-red-500/10 hover:text-red-400"}`}
+              title="Postavi: promašeno ✗"
+              aria-label="Promašeno"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => naNogu("void")}
+              className={`rounded p-1 transition-colors ${voidNoga ? "bg-slate-500/30 text-slate-300 ring-1 ring-slate-500/50" : "text-muted-foreground hover:bg-slate-500/10 hover:text-slate-300"}`}
+              title="Postavi: void ⚪ (kvota 1.00)"
+              aria-label="Void"
+            >
+              <MinusCircle className="h-4 w-4" />
+            </button>
+            {!isCekaj && (
+              <button
+                onClick={() => naNogu("cekaj")}
+                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="Vrati na 'čeka rezultat'"
+                aria-label="Resetiraj"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
       <span className="sr-only">{t.id}</span>
     </li>
@@ -274,7 +352,7 @@ function ListiciPage() {
             ? `${r.status} — odgođeno/otkazano, kvota 1.00`
             : ishod === "povrat"
               ? "PUSH — povrat uloga na nozi"
-              : `Auto (${r.domReg ?? "?"}—${r.gostReg ?? "?"})`;
+              : `Završeno ${r.domReg ?? r.dom ?? "?"}:${r.gostReg ?? r.gost ?? "?"} (${ishod === "dobitna" ? "Pogođeno" : "Promašeno"})`;
           promijenjen = true;
         }
         if (promijenjen) azurirajListic(t);
@@ -424,21 +502,104 @@ function ListiciPage() {
       </section>
 
       {/* TRAKA ZA PROVJERU */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => void provjeri()}
-          disabled={provjeram}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${provjeram ? "animate-spin" : ""}`} />
-          {provjeram ? "Provjeravam…" : "🔄 Osvježi i provjeri rezultate"}
-        </button>
-        {imaAktivnih && !provjeram && (
-          <span className="text-xs text-muted-foreground">
-            Aktivni listići čekaju poravnanje — void noge (PST/CANC/ABD) automatski dobivaju kvotu 1.00.
-          </span>
-        )}
-        {status && <span className="text-xs text-muted-foreground">{status}</span>}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => void provjeri()}
+            disabled={provjeram}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${provjeram ? "animate-spin" : ""}`} />
+            {provjeram ? "Provjeravam…" : "🔄 Osvježi i provjeri rezultate"}
+          </button>
+          {imaAktivnih && !provjeram && (
+            <span className="text-xs text-muted-foreground">
+              Aktivni listići čekaju poravnanje — void noge (PST/CANC/ABD) automatski dobivaju kvotu 1.00.
+            </span>
+          )}
+          {status && <span className="text-xs text-muted-foreground">{status}</span>}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              spremiListic(
+                [
+                  {
+                    id: `noga-${Date.now()}-1`,
+                    sport: "nogomet",
+                    utakmica: "Real Madrid — Barcelona",
+                    liga: "La Liga",
+                    trziste: "1X2",
+                    tip: "1",
+                    kvota: 1.95,
+                    vjerojatnost: 0.58,
+                    status: "dobitna",
+                    napomena: "Završeno 2:1 (Pogođeno ✓)",
+                  },
+                  {
+                    id: `noga-${Date.now()}-2`,
+                    sport: "nogomet",
+                    utakmica: "Arsenal — Chelsea",
+                    liga: "Premier League",
+                    trziste: "O/U 2.5",
+                    tip: "Over 2.5",
+                    kvota: 1.80,
+                    vjerojatnost: 0.62,
+                    status: "dobitna",
+                    napomena: "Završeno 3:1 (Pogođeno ✓)",
+                  },
+                ],
+                10,
+              );
+              osvjezi();
+              toast.success("Dodan probni pogođeni listić! 🎉");
+            }}
+            className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
+            title="Dodaj ogledni pogođeni listić za testiranje"
+          >
+            + Probni pogođeni ✓
+          </button>
+          <button
+            onClick={() => {
+              spremiListic(
+                [
+                  {
+                    id: `noga-${Date.now()}-1`,
+                    sport: "nogomet",
+                    utakmica: "Bayern Munich — Dortmund",
+                    liga: "Bundesliga",
+                    trziste: "1X2",
+                    tip: "1",
+                    kvota: 1.65,
+                    vjerojatnost: 0.65,
+                    status: "dobitna",
+                    napomena: "Završeno 3:0 (Pogođeno ✓)",
+                  },
+                  {
+                    id: `noga-${Date.now()}-2`,
+                    sport: "košarka",
+                    utakmica: "Partizan — Crvena Zvezda",
+                    liga: "Euroliga",
+                    trziste: "Moneyline",
+                    tip: "1",
+                    kvota: 1.90,
+                    vjerojatnost: 0.55,
+                    status: "izgubljena",
+                    napomena: "Završeno 78:82 (Promašeno ✗)",
+                  },
+                ],
+                10,
+              );
+              osvjezi();
+              toast.info("Dodan probni promašeni listić!");
+            }}
+            className="rounded-lg border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/20"
+            title="Dodaj ogledni promašeni listić za testiranje"
+          >
+            + Probni promašeni ✗
+          </button>
+        </div>
       </div>
 
       {/* LISTIĆI */}
@@ -448,18 +609,27 @@ function ListiciPage() {
           "Odigraj" — listić se sprema ovdje i prati mu se isplata.
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {tiketi.map((t) => {
             const st = statusTiketa(t.noge);
             const kvota = ukupnaKvotaTiketa(t.noge);
             const isplata = isplataTiketa(t.noge, t.ulog);
+            const isDobitan = st === "dobitno";
+            const isPromasen = st === "gubitno";
+
+            const cardTone = isDobitan
+              ? "border-2 border-emerald-500/70 bg-gradient-to-b from-card/95 via-emerald-950/25 to-card/95 shadow-xl shadow-emerald-950/40 ring-1 ring-emerald-500/40"
+              : isPromasen
+                ? "border-2 border-red-500/70 bg-gradient-to-b from-card/95 via-red-950/25 to-card/95 shadow-xl shadow-red-950/40 ring-1 ring-red-500/40"
+                : "border border-border/60 bg-card/50";
+
             return (
-              <article key={t.id} className="rounded-2xl border border-border/60 bg-card/50 p-4">
+              <article key={t.id} className={`rounded-2xl p-4 transition-all ${cardTone}`}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={st} />
                     <span className="text-xs text-muted-foreground">
-                      {new Date(t.datum).toLocaleDateString("hr-HR")} · {t.noge.length} noga
+                      {new Date(t.datum).toLocaleDateString("hr-HR")} · {t.noge.length} {t.noge.length === 1 ? "par" : "para"}
                     </span>
                   </div>
                   <button
@@ -471,36 +641,97 @@ function ListiciPage() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <ul className="space-y-1.5">
+
+                {/* Popis parova sa zelenim kvačicama i crvenim iksićima */}
+                <ul className="space-y-2 mt-3">
                   {t.noge.map((n) => (
                     <LegRow key={n.id} t={t} noga={n} naNogu={(ishod) => naNogu(t.id, n.id, ishod)} />
                   ))}
                 </ul>
-                {st === "dobitno" && (
-                  <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-center text-sm font-extrabold tracking-wide text-emerald-300">
-                    DOBITAN LISTIĆ ✓
+
+                {/* Veliki uočljivi status banneri za pogođeni ili promašeni listić */}
+                {isDobitan && (
+                  <div className="mt-3.5 flex items-center justify-between rounded-xl border-2 border-emerald-500/70 bg-gradient-to-r from-emerald-950/90 via-emerald-900/50 to-emerald-950/90 px-4 py-3 text-emerald-300 shadow-md shadow-emerald-950/50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/25 text-emerald-300 border border-emerald-500/60 shadow-sm">
+                        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                      </div>
+                      <div>
+                        <div className="text-base font-black tracking-wide uppercase text-emerald-300 flex items-center gap-2">
+                          POGOĐEN LISTIĆ ✓
+                        </div>
+                        <div className="text-xs text-emerald-400/90 font-medium">
+                          Svi parovi na listiću su uspješno pogođeni!
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-400/70">Ukupna Isplata</div>
+                      <div className="text-xl font-black font-mono text-emerald-300">{nov(isplata)} 🎉</div>
+                    </div>
                   </div>
                 )}
-                {st === "gubitno" && (
-                  <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-sm font-extrabold tracking-wide text-red-300">
-                    GUBITAN LISTIĆ ✗ · 0,00 €
+
+                {isPromasen && (
+                  <div className="mt-3.5 flex items-center justify-between rounded-xl border-2 border-red-500/70 bg-gradient-to-r from-red-950/90 via-red-900/50 to-red-950/90 px-4 py-3 text-red-300 shadow-md shadow-red-950/50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/25 text-red-300 border border-red-500/60 shadow-sm">
+                        <XCircle className="h-6 w-6 text-red-400" />
+                      </div>
+                      <div>
+                        <div className="text-base font-black tracking-wide uppercase text-red-300 flex items-center gap-2">
+                          PROMAŠEN LISTIĆ ✗
+                        </div>
+                        <div className="text-xs text-red-400/90 font-medium">
+                          Nažalost, listić nije prošao · Isplata: 0,00 €
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-red-400/70">Izgubljen ulog</div>
+                      <div className="text-lg font-bold font-mono text-red-400">-{nov(t.ulog)}</div>
+                    </div>
                   </div>
                 )}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/40 pt-2 text-xs">
+
+                {st === "povrat" && (
+                  <div className="mt-3.5 flex items-center justify-between rounded-xl border border-slate-500/50 bg-slate-900/60 px-4 py-2.5 text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <MinusCircle className="h-5 w-5 text-slate-400" />
+                      <span className="font-bold">POVRAT ULOGA (Svi parovi void / otkazani)</span>
+                    </div>
+                    <span className="font-mono font-bold text-slate-200">{nov(isplata)}</span>
+                  </div>
+                )}
+
+                {st === "aktivno" && (
+                  <div className="mt-3.5 flex items-center justify-between rounded-xl border border-sky-500/30 bg-sky-950/20 px-3.5 py-2 text-sky-300 text-xs">
+                    <div className="flex items-center gap-2 font-medium">
+                      <RefreshCw className="h-4 w-4 animate-spin text-sky-400" style={{ animationDuration: "3s" }} />
+                      <span>LISTIĆ U TIJEKU — Čeka se završetak utakmica</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground mr-1.5">Mogući dobitak:</span>
+                      <b className="font-mono text-emerald-400 font-bold">{nov(t.ulog * kvota)}</b>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/40 pt-2.5 text-xs">
                   <span className="text-muted-foreground">
                     Ukupna kvota: <b className="font-mono text-foreground">{kvota.toFixed(2)}</b>
                   </span>
                   <span className="text-muted-foreground">Ulog: <b className="font-mono text-foreground">{nov(t.ulog)}</b></span>
                   {st === "aktivno" ? (
-                    <span className="text-muted-foreground">
-                      Potencijalna isplata: <b className="font-mono text-emerald-400">{nov(t.ulog * kvota)}</b>
+                    <span className="text-muted-foreground ml-auto">
+                      Potencijalna isplata: <b className="font-mono text-emerald-400 font-bold">{nov(t.ulog * kvota)}</b>
                     </span>
-                  ) : st === "dobitno" ? (
-                    <span className="font-semibold text-emerald-400">Isplata: {nov(isplata)} 🎉</span>
+                  ) : isDobitan ? (
+                    <span className="font-bold text-emerald-300 ml-auto">Dobitak: {nov(isplata)} 🎉</span>
                   ) : st === "povrat" ? (
-                    <span className="font-semibold text-slate-300">Povrat uloga: {nov(isplata)}</span>
+                    <span className="font-semibold text-slate-300 ml-auto">Povrat: {nov(isplata)}</span>
                   ) : (
-                    <span className="font-semibold text-red-400">Izgubljeno: {nov(t.ulog)}</span>
+                    <span className="font-semibold text-red-400 ml-auto">Gubitak: {nov(t.ulog)}</span>
                   )}
                 </div>
               </article>
