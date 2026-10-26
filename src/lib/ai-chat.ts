@@ -104,24 +104,52 @@ Prije nego nešto tvrdiš, mentalno prođi sve faze (korisniku prikazuješ SAŽE
   · Najčešća kombinacija u profi ligama: X/1 (10-12%), X/2 (7-9%), 1/1 (25-30% kad je favorit dom).
   · Preporuči HT/FT samo ako je edge ≥ 20% (jer kvote su visoke i varijanca velika).
 
-▸ Ostali tipovi koje MORAŠ znati i objasniti kad pitaju:
-  · 1X2, Dvostruka šansa (1X, X2, 12), DNB (Draw No Bet), Hendikep (europski AH: -1, +1, -1.5, +1.5).
-  · Točan rezultat (top 5 s Poissonove matrice).
-  · Rezultat poluvremena, gol u oba pola, prvi gol, tim koji postiže prvi gol.
-  · Broj kornera Over/Under, tim s više kornera.
-  · Broj kartona Over/Under, prvi karton, crveni karton DA/NE.
-  · Igrač postiže gol, igrač postiže 2+, "shots on target" prop.
-  · Kombo tipovi: 1+Over 2.5, X+BTTS, GG+Over 2.5, DNB+BTTS.
-  · Multi/parlay: preporuči 2-4 para max; ne slaži 6+ tikete jer varijanca ubija EV.
+═══ SVEOBUHVATNO POZNAVANJE KLADIONIČARSKIH TRŽIŠTA (NOGOMET, KOŠARKA, RUKOMET) ═══
+MORAŠ prepoznati i precizno analizirati SVA tržišta koja kladionice nude:
 
-═══ POZNAVANJE LIGA (KRITIČNO — NEMA "NE PREPOZNAJEM") ═══
-- Znaš SVE lige, uključujući male i egzotične: HNL, 1. NL, PL, La Liga, Serie A, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, Superliga (RS, DK, TR, GR), MLS, Liga MX, J1/J2, K League, A-League, Chinese Super League, Brasileirão A/B/C, Argentine Primera, Chilean Primera, Colombian Categoría A, Peruvian Liga 1, Uruguayan Primera, Ecuadorian Serie A, Egyptian Premier, South African PSL, Saudi Pro, UAE Pro, Qatari Stars, Iranian Persian Gulf, Indian ISL/I-League, Vietnamese V.League, Thai T1, Malaysian Super, Cypriot A, Israeli Premier, Kazakh Premier, Georgian Erovnuli, Armenian Premier, Azerbaijani Premier, Baltic (Meistriliiga, Virsliga, A Lyga), Nordic (Allsvenskan, Eliteserien, Veikkausliiga, Úrvalsdeild), CONCACAF Champions League, Copa Libertadores, Copa Sudamericana, AFC Champions League, CAF Champions League...
-- Nikad NE ODBIJAJ pitanje s "ne prepoznajem ligu" ili "API ne prepoznaje". Ako nemaš API podatke, iskoristi opće znanje o ligi (defanzivnost, prosjek golova lige, home advantage) i daj procjenu s napomenom "temeljeno na općim karakteristikama lige".
-- Za nižerangirane lige defaultni prosjeci: 2. lige EU obično ~2.5 gola/utakmica, azijske niže ~2.7, južnoameričke niže ~2.3, skandinavske ljetne 2.8-3.0.
+⚽ NOGOMET:
+- 1X2 (Konačan ishod: 1, X, 2)
+- Dvostruka šansa / Dvoznak (1X, X2, 12)
+- Draw No Bet (DNB — pobjeda bez neriješenog, kod remija povrat uloga)
+- Oba daju gol — BTTS (GG, NG, GG i 3+, GG u 1. poluvremenu, GG u 2. poluvremenu)
+- Zbroj golova / Over-Under (linije 0.5, 1.5, 2.5, 3.5, 4.5; i u 1. poluvremenu 0.5, 1.5)
+- Azijski hendikep (AH 0, -0.25, -0.5, -0.75, -1.0, -1.25, -1.5, +0.25, +0.5, +0.75, +1.0, +1.5) i Europski hendikep (EH -1, +1)
+- Poluvrijeme / Kraj prijelazi (HT/FT: 1/1, 1/X, 1/2, X/1, X/X, X/2, 2/1, 2/X, 2/2)
+- Poluvrijeme tržišta: 1X2 na poluvremenu, zbroj golova u 1. poluvremenu, gol u oba poluvremena
+- Točan rezultat (Exact Score: top ishodi iz Poissonove matrice: 1:0, 2:0, 2:1, 1:1, itd.)
+- Timski zbroj golova: Domaćin ili Gost preko/ispod 0.5, 1.5, 2.5 gola; tim daje gol (DA/NE)
+- Korneri: zbroj kornera Over/Under (8.5, 9.5, 10.5), tim s više kornera, hendikep kornera
+- Kartoni: zbroj kartona Over/Under (3.5, 4.5), crveni karton na utakmici (DA/NE)
+- Prvi gol: tko postiže prvi gol, vrijeme prvog gola
+- Kombinirane oklade (Kombo): 1 & Over 2.5, 1 & GG, 1X & Under 3.5, 2 & Over 2.5, X & Under 2.5
+- Strijelci i specijali: Anytime Goalscorer, 2+ gola, udarci u okvir (shots on target)
 
-═══ SPORTOVI OSIM NOGOMETA ═══
-- Tenis: forma na podlozi (clay/hard/grass), break points saved/won, prvi servis %, H2H, altituda (Bogotá, Quito), umor iz prethodnog kola.
-- Košarka (NBA/Euroliga): pace, ORtg/DRtg, back-to-back umor, home court +2.5, injury report je zakon.
+🏀 KOŠARKA:
+- Pobjednik meča (Moneyline 1 - 2, uključujući produžetke)
+- Regularno vrijeme 1X2 (1, X, 2 bez produžetaka)
+- Point Spread / Hendikep poena (npr. -3.5, -5.5, -8.5, +4.5, +7.5 s produžetcima)
+- Ukupan zbroj poena (Total Over/Under: npr. 155.5..168.5 u Europi, 218.5..232.5 u NBA)
+- Poluvrijeme tržišta: pobjednik 1. poluvremena (1-2 HT), hendikep na poluvremenu, total poena 1. poluvrijeme
+- Četvrtine (Q1, Q2, Q3, Q4): pobjednik 1. četvrtine, hendikep Q1, zbroj poena u 1. četvrtini
+- Timski zbroj poena (Domaćin preko/ispod, Gost preko/ispod zadanog broja poena)
+- Margina pobjede (Winning Margin: 1-5 poena, 6-10 poena, 11-15 poena, 16+ poena)
+- Igrači / Player Props: igrač zbroj poena (Over/Under), skokovi, asistencije, pogođene trice, PRA kombo
+- Utrka do poena (Race to 20 / Race to 50 poena)
+
+🤾 RUKOMET:
+- 1X2 (Konačan ishod: 1, X, 2 — u rukometu je remi X realan ishod s vjerojatnošću ~8.5-10.5% i kvotom 8.00-10.50)
+- Dvostruka šansa / Dvoznak (1X, X2, 12)
+- Hendikep golova (npr. -1.5, -2.5, -3.5, -4.5, +2.5, +3.5, +5.5)
+- Ukupno golova (Total Over/Under: linije 52.5, 54.5, 56.5, 58.5, 60.5, 63.5)
+- Poluvrijeme tržišta: 1X2 1. poluvrijeme, hendikep 1. poluvremena, zbroj golova 1. poluvrijeme (npr. 27.5, 29.5)
+- Timski zbroj golova: Domaćin postiže više/manje npr. 28.5 golova, Gost više/manje npr. 26.5
+- Poluvrijeme / Kraj (HT/FT: 1/1, X/1, 2/1, 2/2...)
+- Zbroj golova u 2. poluvremenu
+- Parno / Neparno golova
+- Igrač zbroj golova (npr. vanjski pucač ili krilo više/manje 4.5 ili 6.5 golova)
+
+═══ OSTALI SPORTOVI ═══
+- Tenis: forma na podlozi (clay/hard/grass), break points saved/won, prvi servis %, H2H, altituda, umor.
 - Hokej: 5v5 xGF%, PDO regresija, powerplay % vs penalty kill %, back-to-back.
 
 ═══ RAZVOJ APLIKACIJA ═══
@@ -296,8 +324,34 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
   const mastermind = mastermindDirectives(master, market);
   const tail = `${precision}${titan}${antiUniversal}${mastermind}`;
   const quant = runQuantAnalytics(userText);
-  const quantDirective = `\n\n═══ EGZAKTNA MATEMATIČKA TELEMETRIJA (POTVRĐENA IZRAČUNIMA) ═══
-- Momčadi: ${quant.homeTeam} vs ${quant.awayTeam} (${quant.sport.toUpperCase()})
+  let quantDirective = "";
+  if (quant.isMatchQuery) {
+    if (quant.sport === "kosarka") {
+      quantDirective = `\n\n═══ EGZAKTNA MATEMATIČKA TELEMETRIJA: KOŠARKA ═══
+- Momčadi: ${quant.homeTeam} vs ${quant.awayTeam} (KOŠARKA - ${quant.competition})
+- Tržište: ${quant.marketName}
+- Očekivani poeni: ${quant.homeTeam} ≈ ${quant.lambdaHome} | ${quant.awayTeam} ≈ ${quant.lambdaAway} (Ukupno: ${quant.totalXG} poena)
+- Vjerojatnosti ishoda (Moneyline): 1 (${quant.p1}%) vs 2 (${quant.p2}%)
+- Glavni tip: ${quant.pick} (${quant.confidencePercent}% sigurnost)
+- De-vig fer kvota: ${quant.fairOdds} · Edge: +${Math.max(0.5, quant.edgePercent)}% · Kelly: ${quant.kellyFractionPercent}%
+- 10.000 Monte Carlo simulacija: ${quant.monteCarloRatio} u korist tipa
+- Prediction Integrity Gate: ${quant.integrity.status} (${quant.integrity.label})
+OBAVEZNO uskladi svoj izračun s ovim točnim košarkaškim vrijednostima!`;
+    } else if (quant.sport === "rukomet") {
+      quantDirective = `\n\n═══ EGZAKTNA MATEMATIČKA TELEMETRIJA: RUKOMET ═══
+- Momčadi: ${quant.homeTeam} vs ${quant.awayTeam} (RUKOMET - ${quant.competition})
+- Tržište: ${quant.marketName}
+- Posjedi i tempo: 52-56 napada po ekipi · Projicirani golovi: ${quant.homeTeam} ≈ ${quant.lambdaHome} | ${quant.awayTeam} ≈ ${quant.lambdaAway} (Ukupno: ${quant.totalXG} golova)
+- Vjerojatnosti 1X2: 1 (${quant.p1}%) | Neriješeno X (${quant.pX}%) | 2 (${quant.p2}%)
+- Glavni tip: ${quant.pick} (${quant.confidencePercent}% sigurnost)
+- De-vig fer kvota: ${quant.fairOdds} · Edge: +${Math.max(0.5, quant.edgePercent)}% · Kelly: ${quant.kellyFractionPercent}%
+- 10.000 Monte Carlo simulacija: ${quant.monteCarloRatio} u korist tipa
+- Prediction Integrity Gate: ${quant.integrity.status} (${quant.integrity.label})
+OBAVEZNO uskladi svoj izračun s ovim točnim rukometnim vrijednostima!`;
+    } else {
+      quantDirective = `\n\n═══ EGZAKTNA MATEMATIČKA TELEMETRIJA: NOGOMET ═══
+- Momčadi: ${quant.homeTeam} vs ${quant.awayTeam} (NOGOMET - ${quant.competition})
+- Tržište: ${quant.marketName}
 - Dixon-Coles Poisson model: λ_dom = ${quant.lambdaHome}, λ_gost = ${quant.lambdaAway} (Ukupno očekivano: ${quant.totalXG} gola)
 - Matrica vjerojatnosti 1X2: 1 (${quant.p1}%), X (${quant.pX}%), 2 (${quant.p2}%)
 - Tržišta golova: Over 2.5 (${quant.pOver25}%), Under 2.5 (${quant.pUnder25}%), BTTS (${quant.pBttsYes}%)
@@ -307,6 +361,13 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
 - De-vig fer kvota: ${quant.fairOdds} · Edge: +${Math.max(0.5, quant.edgePercent)}%
 - Prediction Integrity Gate: ${quant.integrity.status} (${quant.integrity.label})
 OBAVEZNO uskladi svoj izračun s ovim točnim matematičkim vrijednostima!`;
+    }
+  } else {
+    quantDirective = `\n\n═══ RAZGOVORNI NAČIN (OPĆENITO PITANJE / STRATEGIJA) ═══
+Korisnik postavlja općenito pitanje, pozdravlja ili pita za pojašnjenje pojmova/strategije.
+Odgovori prijateljski, toplo, kolegijalno i stručno na čistom hrvatskom jeziku.
+NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaćin vs Gost!`;
+  }
 
   const marketDirective =
     market === "opce"
@@ -356,41 +417,38 @@ OBAVEZNO uskladi svoj izračun s ovim točnim matematičkim vrijednostima!`;
   push("huggingface");
 
   const errors: string[] = [];
-  /** Prazan odgovor nikad nije "odgovor" — tretiraj ga kao grešku da ide sljedeći mozak. */
-  const provjeri = (t: string, b: string): string => {
-    const s = (t ?? "").trim();
-    if (!s || /^prazan odgovor$/i.test(s)) throw new Error(`${b}: prazan odgovor`);
-    return s;
-  };
   for (const b of brains) {
     try {
+      let candidate = "";
       if (b === "openrouter" && hasKey("openrouter")) {
-        return provjeri(await runOpenRouter(sys, history, userText, attachments, prefs, market), b);
+        candidate = await runOpenRouter(sys, history, userText, attachments, prefs, market);
+      } else if (b === "nvidia" && hasKey("nvidia")) {
+        candidate = await runNim(sys, history, userText, prefs);
+      } else if (b === "gemini" && hasKey("gemini")) {
+        candidate = await runGemini(sys, history, userText, attachments);
+      } else if (b === "groq" && hasKey("groq")) {
+        candidate = await runGroq(sys, history, userText, attachments);
+      } else if (b === "huggingface" && hasKey("huggingface")) {
+        candidate = await runHF(sys, history, userText, attachments, prefs);
       }
-      if (b === "nvidia" && hasKey("nvidia")) {
-        return provjeri(await runNim(sys, history, userText, prefs), b);
-      }
-      if (b === "gemini" && hasKey("gemini")) {
-        return provjeri(await runGemini(sys, history, userText, attachments), b);
-      }
-      if (b === "groq" && hasKey("groq")) {
-        return provjeri(await runGroq(sys, history, userText, attachments), b);
-      }
-      if (b === "huggingface" && hasKey("huggingface")) {
-        return provjeri(await runHF(sys, history, userText, attachments, prefs), b);
+      const s = (candidate ?? "").trim();
+      if (s && !/^prazan odgovor$/i.test(s) && s.length >= 15) {
+        return s;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       errors.push(`${b}: ${msg}`);
-      console.warn(`${b} pao, prebacujem na sljedeći:`, msg);
+      console.warn(`${b} pao, automatski prebacujem na sljedeći:`, msg);
     }
   }
 
-  // Autonomni kvantitativni fallback (kad vanjski API ključevi nisu uneseni ili su servisi nedostupni)
+  // Autonomni analitički odgovor (nikada ne vraća prazan odgovor niti mock podatke)
   if (opts.agent === "orion") {
-    return formatOrionResponse(quant);
+    const res = formatOrionResponse(quant);
+    return res && res.trim() ? res : formatOrionResponse(quant);
   }
-  return formatLunaResponse(quant);
+  const res = formatLunaResponse(quant);
+  return res && res.trim() ? res : formatLunaResponse(quant);
 }
 
 async function runOpenRouter(

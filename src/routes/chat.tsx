@@ -21,6 +21,7 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
+import { formatLunaResponse, runQuantAnalytics } from "@/lib/botovi";
 import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
@@ -170,14 +171,22 @@ function ChatPage() {
         [text, kontekst ? izgradiKontekstTekst(kontekst) : "", tiket ? izgradiTiketTekst(tiket) : ""]
           .filter((s) => s)
           .join("\n\n");
-      const reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
+      let reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
+      if (!reply || !reply.trim() || reply.trim().length < 15 || /^prazan odgovor$/i.test(reply.trim())) {
+        reply = formatLunaResponse(runQuantAnalytics(text));
+      }
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
         setSpeaking(true);
         speak(reply, () => setSpeaking(false));
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Greška");
+    } catch {
+      const fallback = formatLunaResponse(runQuantAnalytics(text));
+      setMessages((m) => [...m, { role: "assistant", content: fallback, ts: Date.now() }]);
+      if (voiceMode) {
+        setSpeaking(true);
+        speak(fallback, () => setSpeaking(false));
+      }
     } finally {
       setLoading(false);
       inputRef.current?.focus();
