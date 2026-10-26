@@ -11,13 +11,10 @@ export const Route = createFileRoute("/api/public/nvidia")({
       POST: async ({ request }) => {
         const key = request.headers.get("x-nim-key") ?? "";
         if (!key) {
-          return new Response(
-            JSON.stringify({ error: { message: "Nedostaje NVIDIA NIM ključ" } }),
-            {
-              status: 401,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+          return new Response(JSON.stringify({ error: { message: "Nedostaje NVIDIA NIM ključ" } }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
         }
         const body = await request.text();
         let lastErr = "";

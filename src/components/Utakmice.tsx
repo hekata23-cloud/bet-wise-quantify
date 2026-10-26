@@ -72,19 +72,15 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
 
     // Briše starije verzije cachea
     Object.keys(localStorage)
-      .filter(
-        (k) =>
-          (k.startsWith("kr-fix-") || k.startsWith("kr-form-") || k.startsWith("kr-odds-")) &&
-          !k.includes("v3"),
-      )
+      .filter((k) => (k.startsWith("kr-fix-") || k.startsWith("kr-form-") || k.startsWith("kr-odds-")) && !k.includes("v3"))
       .forEach((k) => localStorage.removeItem(k));
 
     setList(r.fixtures);
     setMsg(`Učitano ${r.fixtures.length} utakmica. Preostalo API poziva danas: ${r.remaining}`);
   };
 
-  const BUNDLE_TTL = 10 * 60 * 1000; // svjež bundel — otvori bez API poziva
-  const STALE_TTL = 3 * 60 * 60 * 1000; // do 3 h stari — samo kao zadnja šansa
+  const BUNDLE_TTL = 10 * 60 * 1000;      // svjež bundel — otvori bez API poziva
+  const STALE_TTL = 3 * 60 * 60 * 1000;   // do 3 h stari — samo kao zadnja šansa
   const bundleKey = (id: number) => `kr-bundle-v2-${id}`;
 
   const otvori = async (f: Fixture) => {
@@ -101,20 +97,12 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
         if (svjez && imaKvota) {
           setMsg("");
           onLoad(
-            {
-              odds: p.r.odds,
-              corners: p.r.corners,
-              izvori: p.r.izvori,
-              upozorenja: p.r.upozorenja,
-              bookmaker: p.r.bookmaker,
-            },
+            { odds: p.r.odds, corners: p.r.corners, izvori: p.r.izvori, upozorenja: p.r.upozorenja, bookmaker: p.r.bookmaker },
             naziv,
           );
           return;
         }
-      } catch {
-        /* oštećen keš — idemo na API */
-      }
+      } catch { /* oštećen keš — idemo na API */ }
     }
 
     setBusy(true);
@@ -135,13 +123,7 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
           localStorage.setItem(key, JSON.stringify({ t: Date.now(), r }));
           setMsg("");
           onLoad(
-            {
-              odds: r.odds,
-              corners: r.corners,
-              izvori: r.izvori,
-              upozorenja: r.upozorenja,
-              bookmaker: r.bookmaker,
-            },
+            { odds: r.odds, corners: r.corners, izvori: r.izvori, upozorenja: r.upozorenja, bookmaker: r.bookmaker },
             naziv,
           );
           loaded = true;
@@ -161,20 +143,12 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
         if (Date.now() - p.t < STALE_TTL) {
           setMsg(`⚠️ API trenutno ne daje nove podatke — otvaram memorirane kvote. (${lastMsg})`);
           onLoad(
-            {
-              odds: p.r.odds,
-              corners: p.r.corners,
-              izvori: p.r.izvori,
-              upozorenja: p.r.upozorenja,
-              bookmaker: p.r.bookmaker,
-            },
+            { odds: p.r.odds, corners: p.r.corners, izvori: p.r.izvori, upozorenja: p.r.upozorenja, bookmaker: p.r.bookmaker },
             naziv,
           );
           loaded = true;
         }
-      } catch {
-        /* ignoriraj */
-      }
+      } catch { /* ignoriraj */ }
     }
 
     if (!loaded) setMsg(lastMsg);
@@ -182,7 +156,7 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
   };
 
   const vidljive = list.filter((f) =>
-    `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(q.toLowerCase()),
+    `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(q.toLowerCase())
   );
 
   return (

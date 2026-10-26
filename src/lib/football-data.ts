@@ -60,8 +60,7 @@ export async function fdGet<T>(path: string, params: Record<string, string> = {}
     const msg = (json as { message?: string } | null)?.message ?? text.slice(0, 160);
     if (res.status === 400 || res.status === 403)
       throw new FootballDataError(`Ključ odbijen ili nemaš pristup tom resursu: ${msg}`);
-    if (res.status === 429)
-      throw new FootballDataError("football-data.org limit (10/min). Pričekaj minutu.");
+    if (res.status === 429) throw new FootballDataError("football-data.org limit (10/min). Pričekaj minutu.");
     throw new FootballDataError(`football-data.org ${res.status}: ${msg}`);
   }
   cacheSet(cacheKey, json);
@@ -79,10 +78,7 @@ export interface FDMatch {
 }
 
 export async function fdMatchesByDate(isoDate: string): Promise<FDMatch[]> {
-  const j = await fdGet<{ matches?: FDMatch[] }>("/matches", {
-    dateFrom: isoDate,
-    dateTo: isoDate,
-  });
+  const j = await fdGet<{ matches?: FDMatch[] }>("/matches", { dateFrom: isoDate, dateTo: isoDate });
   return j.matches ?? [];
 }
 

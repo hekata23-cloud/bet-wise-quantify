@@ -32,21 +32,14 @@ export function smartMoneyVerdict(fixtureId: number, kljuc: string): SmartMoney 
       postoji: false,
       verdict: "nema",
       naslov: "Smart Money Alert",
-      tekst:
-        "Nedovoljno snimaka kvota. Otvori analizu ponovno kasnije (i prije početka utakmice) — radar prati kuda tržište kreće.",
+      tekst: "Nedovoljno snimaka kvota. Otvori analizu ponovno kasnije (i prije početka utakmice) — radar prati kuda tržište kreće.",
       deltaPct: null,
     };
   }
   const prva = s[0]!.kvote[kljuc];
   const zadnja = s[s.length - 1]!.kvote[kljuc];
   if (prva == null || zadnja == null || prva <= 0) {
-    return {
-      postoji: false,
-      verdict: "nema",
-      naslov: "Smart Money Alert",
-      tekst: "Nema povijesti kvota na ovom tržištu.",
-      deltaPct: null,
-    };
+    return { postoji: false, verdict: "nema", naslov: "Smart Money Alert", tekst: "Nema povijesti kvota na ovom tržištu.", deltaPct: null };
   }
   const deltaPct = Math.round((zadnja / prva - 1) * 1000) / 10;
 
@@ -100,3 +93,4 @@ export function OddsRadar({ fixtureId, kljuc }: { fixtureId: number; kljuc: stri
     </div>
   );
 }
+

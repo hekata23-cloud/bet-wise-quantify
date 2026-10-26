@@ -11,9 +11,9 @@
 // ============================================================
 
 export interface LiveUlaz {
-  lambdaDom: number; // pre-match λ domaćina (iz SARP/goals motora)
+  lambdaDom: number;   // pre-match λ domaćina (iz SARP/goals motora)
   lambdaGost: number;
-  minuta: number; // 0..120
+  minuta: number;      // 0..120
   goloviDom: number;
   goloviGost: number;
   crveniDom?: number;
@@ -25,19 +25,11 @@ export interface LiveIzlaz {
   lamPreostaloDom: number;
   lamPreostaloGost: number;
   /** puni match, uvjetovano trenutnim stanjem */
-  o05: number;
-  o15: number;
-  o25: number;
-  o35: number;
-  o45: number;
+  o05: number; o15: number; o25: number; o35: number; o45: number;
   btts: number;
-  p1: number;
-  pX: number;
-  p2: number;
+  p1: number; pX: number; p2: number;
   /** sljedeći gol (u preostalom vremenu) */
-  sljedeciDom: number;
-  sljedeciGost: number;
-  sljedeciNema: number;
+  sljedeciDom: number; sljedeciGost: number; sljedeciNema: number;
   /** vjerojatnost da NE padne više gol u meču */
   nemaViseGolova: number;
   ocekivaniKonacniRezultat: string;
@@ -86,14 +78,8 @@ export function liveAnaliza(ulaz: LiveUlaz): LiveIzlaz {
 
   const crD = Math.max(0, ulaz.crveniDom ?? 0);
   const crG = Math.max(0, ulaz.crveniGost ?? 0);
-  if (crD > 0) {
-    lamD *= Math.pow(0.85, crD);
-    lamG *= Math.pow(1.22, crD);
-  }
-  if (crG > 0) {
-    lamG *= Math.pow(0.85, crG);
-    lamD *= Math.pow(1.22, crG);
-  }
+  if (crD > 0) { lamD *= Math.pow(0.85, crD); lamG *= Math.pow(1.22, crD); }
+  if (crG > 0) { lamG *= Math.pow(0.85, crG); lamD *= Math.pow(1.22, crG); }
 
   const gd = Math.max(0, Math.round(ulaz.goloviDom));
   const gg = Math.max(0, Math.round(ulaz.goloviGost));
@@ -102,9 +88,7 @@ export function liveAnaliza(ulaz: LiveUlaz): LiveIzlaz {
   const o = (n: number) => (ukupnoSad >= n ? 1 : pZbrojNajmanje(lamD, lamG, n - ukupnoSad));
 
   // BTTS (final): oba tima daju ≥1
-  let pDomNula = 0,
-    pGostNula = 0,
-    pObojeNula = 0;
+  let pDomNula = 0, pGostNula = 0, pObojeNula = 0;
   if (gd === 0 && gg === 0) {
     pDomNula = Math.exp(-lamD);
     pGostNula = Math.exp(-lamG);
@@ -117,17 +101,14 @@ export function liveAnaliza(ulaz: LiveUlaz): LiveIzlaz {
   const btts = clamp(1 - pDomNula - pGostNula + pObojeNula, 0, 1);
 
   // finalni ishod 1X2: suma po preostalim golovima
-  let p1 = 0,
-    pX = 0,
-    p2 = 0;
+  let p1 = 0, pX = 0, p2 = 0;
   for (let i = 0; i <= 10; i++) {
     const pa = poissonPmf(lamD, i);
     if (pa === 0) continue;
     for (let j = 0; j <= 10; j++) {
       const pb = poissonPmf(lamG, j);
       if (pb === 0) continue;
-      const konD = gd + i,
-        konG = gg + j;
+      const konD = gd + i, konG = gg + j;
       const w = pa * pb;
       if (konD > konG) p1 += w;
       else if (konD === konG) pX += w;
@@ -135,9 +116,7 @@ export function liveAnaliza(ulaz: LiveUlaz): LiveIzlaz {
     }
   }
   const s = p1 + pX + p2 || 1;
-  p1 /= s;
-  pX /= s;
-  p2 /= s;
+  p1 /= s; pX /= s; p2 /= s;
 
   // sljedeći gol: Poisson utrka (neovisni procesi, brzina ∝ λ)
   const lamUk = lamD + lamG;
@@ -149,11 +128,7 @@ export function liveAnaliza(ulaz: LiveUlaz): LiveIzlaz {
     preostaloMinuta: Math.round(preostalo),
     lamPreostaloDom: Math.round(lamD * 100) / 100,
     lamPreostaloGost: Math.round(lamG * 100) / 100,
-    o05: o(1),
-    o15: o(2),
-    o25: o(3),
-    o35: o(4),
-    o45: o(5),
+    o05: o(1), o15: o(2), o25: o(3), o35: o(4), o45: o(5),
     btts: Math.round(btts * 1000) / 1000,
     p1: Math.round(p1 * 1000) / 1000,
     pX: Math.round(pX * 1000) / 1000,

@@ -26,10 +26,7 @@ export const testApiFootballKey = createServerFn({ method: "POST" })
         headers: { "x-apisports-key": data.key },
       });
     } catch {
-      return {
-        ok: false,
-        message: "Nije moguće doći do servisa. Provjeri internet i pokušaj ponovno za koju minutu.",
-      };
+      return { ok: false, message: "Nije moguće doći do servisa. Provjeri internet i pokušaj ponovno za koju minutu." };
     }
 
     if (response.status === 429) {
@@ -39,10 +36,7 @@ export const testApiFootballKey = createServerFn({ method: "POST" })
       return { ok: false, message: "Ključ nije prihvaćen. Provjeri jesi li kopirao cijeli ključ." };
     }
     if (!response.ok) {
-      return {
-        ok: false,
-        message: `Servis je vratio grešku (${response.status}). Pokušaj kasnije.`,
-      };
+      return { ok: false, message: `Servis je vratio grešku (${response.status}). Pokušaj kasnije.` };
     }
 
     const body = (await response.json()) as {
@@ -56,9 +50,7 @@ export const testApiFootballKey = createServerFn({ method: "POST" })
 
     const errors = body.errors;
     if (Array.isArray(errors) ? errors.length > 0 : errors && Object.keys(errors).length > 0) {
-      const first = Array.isArray(errors)
-        ? String(errors[0])
-        : String(Object.values(errors as Record<string, unknown>)[0]);
+      const first = Array.isArray(errors) ? String(errors[0]) : String(Object.values(errors as Record<string, unknown>)[0]);
       return { ok: false, message: first || "Ključ nije prihvaćen." };
     }
 

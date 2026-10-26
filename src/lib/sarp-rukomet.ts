@@ -18,17 +18,13 @@ import { broj as safeBroj, type UniversalMatchContext } from "./safe-math";
 
 export interface HandballMatchStats {
   /** napadi (posjedi) po timu po utakmici — tipično 26-30 */
-  attacksHome?: number;
-  attacksAway?: number;
+  attacksHome?: number; attacksAway?: number;
   /** efikasnost napada (udio pretvorenih napada, 0..1) — tipično 0.40-0.48 */
-  attackEffHome?: number;
-  attackEffAway?: number;
+  attackEffHome?: number; attackEffAway?: number;
   /** postotak obrana golmana (0..1) — tipično 0.24-0.32 */
-  gkSaveHome?: number;
-  gkSaveAway?: number;
+  gkSaveHome?: number; gkSaveAway?: number;
   /** prosječan broj isključenja na 2 minute po timu (bazno 1) */
-  suspHome?: number;
-  suspAway?: number;
+  suspHome?: number; suspAway?: number;
   /** udio golova u 1. poluvremenu (default 0.47) */
   halfShare?: number;
 
@@ -49,15 +45,9 @@ export interface HandballMatchStats {
 }
 
 export type SarpKandidat = {
-  trziste: string;
-  tip: string;
-  label: string;
-  p: number;
-  kvota: number | null;
-  fer: number;
-  edge: number | null;
-  kellyPct: number;
-  isplativo: boolean;
+  trziste: string; tip: string; label: string;
+  p: number; kvota: number | null; fer: number;
+  edge: number | null; kellyPct: number; isplativo: boolean;
 };
 
 export interface HandballSARPPrediction {
@@ -71,36 +61,15 @@ export interface HandballSARPPrediction {
   gk: { saveHome: number; saveAway: number; diff: number; procijenjeno: boolean };
   suspenzije: { home: number; away: number; utjecajGolova: number };
   /** TAKTIKA (v5): 7v6 prazna mreža + golman-umor (opcionalno, identitet bez inputa) */
-  taktika: {
-    primijenjeno: boolean;
-    ekstraGolovi7v6: number;
-    tim7v6: "dom" | "gost" | null;
-    gkUmorDom: boolean;
-    gkUmorGost: boolean;
-  };
+  taktika: { primijenjeno: boolean; ekstraGolovi7v6: number; tim7v6: "dom" | "gost" | null; gkUmorDom: boolean; gkUmorGost: boolean };
   /** GARBAGE TIME (v6): tempo-dolaziš kad je razlika velika u 2. poluvremenu */
-  garbageTime: {
-    primijenjeno: boolean;
-    margina: number | null;
-    minut: number | null;
-    ekstraGolovi: number;
-  };
-  lamHome: number;
-  lamAway: number;
-  expTotal: number;
-  expSpread: number;
-  sigmaTotal: number;
-  sigmaDiff: number;
-  p1HOver: number;
-  linija1H: number;
-  expTotal1H: number;
+  garbageTime: { primijenjeno: boolean; margina: number | null; minut: number | null; ekstraGolovi: number };
+  lamHome: number; lamAway: number; expTotal: number; expSpread: number;
+  sigmaTotal: number; sigmaDiff: number;
+  p1HOver: number; linija1H: number; expTotal1H: number;
   htft: { kod: string; p: number }[];
-  pHome: number;
-  pDraw: number;
-  pAway: number;
-  pOver: number;
-  pUnder: number;
-  linijaTotala: number;
+  pHome: number; pDraw: number; pAway: number;
+  pOver: number; pUnder: number; linijaTotala: number;
   mc: { n: number; pHome: number; pDraw: number; pAway: number; pOver: number };
   trziste: { pHome: number | null; pOver: number | null; devigIzvor: string | null };
   provjera: { maxDiscrepancy: number | null; volatility: boolean };
@@ -108,25 +77,17 @@ export interface HandballSARPPrediction {
   kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
   /** STVARNA TOČNOST: temperiranje prema vlastitom rekordu (Dnevnik) */
   empTocnost: { primijenjena: boolean; temp: Record<string, number> };
-  povjerenje: number;
-  razina: "A" | "B" | "C";
-  core: SarpKandidat | null;
-  alt: SarpKandidat | null;
+  povjerenje: number; razina: "A" | "B" | "C";
+  core: SarpKandidat | null; alt: SarpKandidat | null;
   izvori: string[];
   upozorenja: string[];
 }
 
-const clamp = (x: number, a: number, b: number) =>
-  Math.min(b, Math.max(a, Number.isFinite(x) ? x : a));
+const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, Number.isFinite(x) ? x : a));
 const erf = (x: number) => {
-  const s = Math.sign(x);
-  x = Math.abs(x);
+  const s = Math.sign(x); x = Math.abs(x);
   const t = 1 / (1 + 0.3275911 * x);
-  const y =
-    1 -
-    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
-      t *
-      Math.exp(-x * x);
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
   return s * y;
 };
 export const Phi = (z: number) => 0.5 * (1 + erf(z / Math.SQRT2));
@@ -140,42 +101,33 @@ function devig(odds: number[]): number[] {
 function rng(seed: number) {
   let a = (seed || 1) >>> 0;
   return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 function gauss(r: () => number) {
-  const u = Math.max(1e-9, r()),
-    v = r();
+  const u = Math.max(1e-9, r()), v = r();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 /** Poisson uzorkovanje (Knuth) — za λ ≤ 30 točno i brzo. */
 function poisson(lambda: number, r: () => number): number {
-  const L = Math.exp(-lambda);
-  let k = 0;
-  let p = 1;
-  do {
-    k++;
-    p *= r();
-  } while (p > L && k < 200);
+  const L = Math.exp(-lambda); let k = 0; let p = 1;
+  do { k++; p *= r(); } while (p > L && k < 200);
   return k - 1;
 }
 
-const GK_LIGA = 0.27; // prosječan postotak obrana golmana u ligi
-const SUSP_GOL = 0.25; // svako isključenje preko baznog ≈ 0.25 primljenog gola
-const SUSP_NAPAD = 0.15; // ... i ≈ 0.15 gola manje vlastitog napada
-const RU_BAZA_1H = 0.47; // udio golova u 1. poluvremenu (ista baza kao HT/FT motor)
+const GK_LIGA = 0.27;      // prosječan postotak obrana golmana u ligi
+const SUSP_GOL = 0.25;     // svako isključenje preko baznog ≈ 0.25 primljenog gola
+const SUSP_NAPAD = 0.15;   // ... i ≈ 0.15 gola manje vlastitog napada
+const RU_BAZA_1H = 0.47;    // udio golova u 1. poluvremenu (ista baza kao HT/FT motor)
 const GK_UMOR_PENAL = 0.04; // −4% efikasnost obrana golmana > 45 min (u 2H)
 const PRAZNA_MREZA_SHIFT = 3.2; // max +3.2 gola ukupno pri punoj upotrebi 7v6
 
 export function sarpRukomet(args: {
   an: RukometAnalysis;
-  home: string;
-  away: string;
-  fixtureId: number;
+  home: string; away: string; fixtureId: number;
   stats?: HandballMatchStats;
   /** broj kladionica s kvotama — jača kalibraciju (opcionalno; default 3 kad kvote postoje) */
   brojKladionica?: number;
@@ -211,32 +163,22 @@ export function sarpRukomet(args: {
     pAwayML: okN(an.pAwayML) && an.pAwayML >= 0 && an.pAwayML <= 1 ? an.pAwayML : 0.5,
   } as typeof an;
   const s = {
-    attacksHome: c(sRaw.attacksHome),
-    attacksAway: c(sRaw.attacksAway),
-    attackEffHome: c(sRaw.attackEffHome),
-    attackEffAway: c(sRaw.attackEffAway),
-    gkSaveHome: c(sRaw.gkSaveHome),
-    gkSaveAway: c(sRaw.gkSaveAway),
-    suspHome: c(sRaw.suspHome),
-    suspAway: c(sRaw.suspAway),
-    koristi7v6Home: c(sRaw.koristi7v6Home),
-    koristi7v6Away: c(sRaw.koristi7v6Away),
-    gkMinutaHome: c(sRaw.gkMinutaHome),
-    gkMinutaAway: c(sRaw.gkMinutaAway),
+    attacksHome: c(sRaw.attacksHome), attacksAway: c(sRaw.attacksAway),
+    attackEffHome: c(sRaw.attackEffHome), attackEffAway: c(sRaw.attackEffAway),
+    gkSaveHome: c(sRaw.gkSaveHome), gkSaveAway: c(sRaw.gkSaveAway),
+    suspHome: c(sRaw.suspHome), suspAway: c(sRaw.suspAway),
+    koristi7v6Home: c(sRaw.koristi7v6Home), koristi7v6Away: c(sRaw.koristi7v6Away),
+    gkMinutaHome: c(sRaw.gkMinutaHome), gkMinutaAway: c(sRaw.gkMinutaAway),
     halfShare: c(sRaw.halfShare),
-    liveMinuta: c(sRaw.liveMinuta),
-    liveDomGolovi: c(sRaw.liveDomGolovi),
-    liveGostGolovi: c(sRaw.liveGostGolovi),
+    liveMinuta: c(sRaw.liveMinuta), liveDomGolovi: c(sRaw.liveDomGolovi), liveGostGolovi: c(sRaw.liveGostGolovi),
   } as typeof sRaw;
   const upozorenja: string[] = [];
   const izvori: string[] = ["Tržišne kvote (de-vig)", "Monte Carlo 5.000 (Skellam)", "Profil lige"];
 
   // — 1) NAPADI I EFIKASNOST —
-  const attacksH = s.attacksHome ?? 28;
-  const attacksA = s.attacksAway ?? 28;
+  const attacksH = s.attacksHome ?? 28; const attacksA = s.attacksAway ?? 28;
   const expAttacks = attacksH + attacksA;
-  const efH = s.attackEffHome ?? null;
-  const efA = s.attackEffAway ?? null;
+  const efH = s.attackEffHome ?? null; const efA = s.attackEffAway ?? null;
   if (efH != null && efA != null) izvori.push("Efikasnost napada (korisnička statistika)");
 
   // — 2) GOLMANI —
@@ -246,10 +188,8 @@ export function sarpRukomet(args: {
   if (!procijenjeno) izvori.push("Postotak obrana golmana (GK save %)");
 
   // — 3) ISKLJUČENJA (2 minute) —
-  const suspH = clamp(s.suspHome ?? 1, 0, 5);
-  const suspA = clamp(s.suspAway ?? 1, 0, 5);
-  const utjecajGolova =
-    (suspH - 1) * (SUSP_GOL + SUSP_NAPAD) - (suspA - 1) * (SUSP_GOL + SUSP_NAPAD);
+  const suspH = clamp(s.suspHome ?? 1, 0, 5); const suspA = clamp(s.suspAway ?? 1, 0, 5);
+  const utjecajGolova = (suspH - 1) * (SUSP_GOL + SUSP_NAPAD) - (suspA - 1) * (SUSP_GOL + SUSP_NAPAD);
   if (suspH !== 1 || suspA !== 1) izvori.push("Isključenja 2' (utjecaj na λ)");
 
   // — 4) λ IZ MODELA POSJEDA + FUZIJA S TRŽIŠTEM —
@@ -257,18 +197,15 @@ export function sarpRukomet(args: {
   let lamAway = an.muAway;
   if (efH != null && efA != null) {
     // golovi = napadi × efikasnost, korigirano obranom protivničkog golmana
-    const mH = attacksH * efH * (1 - clamp(((saveA - GK_LIGA) / GK_LIGA) * 0.35, -0.2, 0.2));
-    const mA = attacksA * efA * (1 - clamp(((saveH - GK_LIGA) / GK_LIGA) * 0.35, -0.2, 0.2));
+    const mH = attacksH * efH * (1 - clamp((saveA - GK_LIGA) / GK_LIGA * 0.35, -0.2, 0.2));
+    const mA = attacksA * efA * (1 - clamp((saveH - GK_LIGA) / GK_LIGA * 0.35, -0.2, 0.2));
     lamHome = 0.5 * lamHome + 0.5 * mH;
     lamAway = 0.5 * lamAway + 0.5 * mA;
   }
   // isključenja: domaćinovo isključenje → gost dolazi do više golova, domaćin ih daje manje
-  lamAway += (suspH - 1) * SUSP_GOL;
-  lamHome -= (suspH - 1) * SUSP_NAPAD;
-  lamHome += (suspA - 1) * SUSP_GOL;
-  lamAway -= (suspA - 1) * SUSP_NAPAD;
-  lamHome = clamp(lamHome, 8, 45);
-  lamAway = clamp(lamAway, 8, 45);
+  lamAway += (suspH - 1) * SUSP_GOL; lamHome -= (suspH - 1) * SUSP_NAPAD;
+  lamHome += (suspA - 1) * SUSP_GOL; lamAway -= (suspA - 1) * SUSP_NAPAD;
+  lamHome = clamp(lamHome, 8, 45); lamAway = clamp(lamAway, 8, 45);
 
   // — 4b) 7v6 PRAZNA MREŽA (moderni taktički faktor, v5) —
   // Tim koji zaostaje skida golmana (7 na 6). Udio upotrebe > 0.35
@@ -287,18 +224,14 @@ export function sarpRukomet(args: {
       s.gkSaveHome = cxR.homeGkSavePct;
     if (s.gkSaveAway == null && cxR.awayGkSavePct >= 0.15 && cxR.awayGkSavePct <= 0.45)
       s.gkSaveAway = cxR.awayGkSavePct;
-    if (
-      (s.attackEffHome == null || s.attackEffAway == null) &&
-      (Math.abs(cxR.homeOffenseEff - 1) > 1e-9 || Math.abs(cxR.awayOffenseEff - 1) > 1e-9)
-    ) {
+    if ((s.attackEffHome == null || s.attackEffAway == null) &&
+        (Math.abs(cxR.homeOffenseEff - 1) > 1e-9 || Math.abs(cxR.awayOffenseEff - 1) > 1e-9)) {
       if (s.attackEffHome == null) s.attackEffHome = clamp(0.44 * cxR.homeOffenseEff, 0.2, 0.65);
       if (s.attackEffAway == null) s.attackEffAway = clamp(0.44 * cxR.awayOffenseEff, 0.2, 0.65);
     }
   }
-  const u7v6H = s.koristi7v6Home;
-  const u7v6A = s.koristi7v6Away;
-  let ekstra7v6 = 0;
-  let tim7v6: "dom" | "gost" | null = null;
+  const u7v6H = s.koristi7v6Home; const u7v6A = s.koristi7v6Away;
+  let ekstra7v6 = 0; let tim7v6: "dom" | "gost" | null = null;
   if (u7v6H != null || u7v6A != null) {
     const uH = clamp(u7v6H ?? 0.35, 0, 1);
     const uA = clamp(u7v6A ?? 0.35, 0, 1);
@@ -307,18 +240,10 @@ export function sarpRukomet(args: {
     ekstra7v6 = PRAZNA_MREZA_SHIFT * tezina;
     tim7v6 = uH >= uA ? "dom" : "gost";
     if (ekstra7v6 > 0.01) {
-      if (tim7v6 === "dom") {
-        lamHome += ekstra7v6 * 0.7;
-        lamAway += ekstra7v6 * 0.3;
-      } else {
-        lamAway += ekstra7v6 * 0.7;
-        lamHome += ekstra7v6 * 0.3;
-      }
-      lamHome = clamp(lamHome, 8, 45);
-      lamAway = clamp(lamAway, 8, 45);
-      izvori.push(
-        `7v6 faktor: +${ekstra7v6.toFixed(1)} gola ukupno (${tim7v6 === "dom" ? args.home : args.away} igra s igračem više u zaostatku)`,
-      );
+      if (tim7v6 === "dom") { lamHome += ekstra7v6 * 0.7; lamAway += ekstra7v6 * 0.3; }
+      else { lamAway += ekstra7v6 * 0.7; lamHome += ekstra7v6 * 0.3; }
+      lamHome = clamp(lamHome, 8, 45); lamAway = clamp(lamAway, 8, 45);
+      izvori.push(`7v6 faktor: +${ekstra7v6.toFixed(1)} gola ukupno (${tim7v6 === "dom" ? args.home : args.away} igra s igračem više u zaostatku)`);
     }
   }
 
@@ -327,31 +252,18 @@ export function sarpRukomet(args: {
   // u 2. poluvremenu → protivnik dobiva ~4% od svojih 2H golova.
   const gkUmorDom = s.gkMinutaHome != null && s.gkMinutaHome > 45;
   const gkUmorGost = s.gkMinutaAway != null && s.gkMinutaAway > 45;
-  if (gkUmorDom) {
-    lamAway += lamAway * (1 - RU_BAZA_1H) * GK_UMOR_PENAL;
-    izvori.push(
-      `Golman domaćina: ${(s.gkMinutaHome ?? 0).toFixed(0)} min bez odmora → −4% obrana u 2H`,
-    );
-  }
-  if (gkUmorGost) {
-    lamHome += lamHome * (1 - RU_BAZA_1H) * GK_UMOR_PENAL;
-    izvori.push(
-      `Golman gosta: ${(s.gkMinutaAway ?? 0).toFixed(0)} min bez odmora → −4% obrana u 2H`,
-    );
-  }
+  if (gkUmorDom) { lamAway += lamAway * (1 - RU_BAZA_1H) * GK_UMOR_PENAL; izvori.push(`Golman domaćina: ${(s.gkMinutaHome ?? 0).toFixed(0)} min bez odmora → −4% obrana u 2H`); }
+  if (gkUmorGost) { lamHome += lamHome * (1 - RU_BAZA_1H) * GK_UMOR_PENAL; izvori.push(`Golman gosta: ${(s.gkMinutaAway ?? 0).toFixed(0)} min bez odmora → −4% obrana u 2H`); }
   if (gkUmorDom) lamAway = clamp(lamAway, 8, 45);
   if (gkUmorGost) lamHome = clamp(lamHome, 8, 45);
   if (gkUmorDom || gkUmorGost) {
-    upozorenja.push(
-      `Golman-umor model: golman${gkUmorDom && gkUmorGost ? "i oba tima" : gkUmorDom ? " domaćina" : " gosta"} igra dugo bez odmora — 2H očekivano brži.`,
-    );
+    upozorenja.push(`Golman-umor model: golman${gkUmorDom && gkUmorGost ? "i oba tima" : gkUmorDom ? " domaćina" : " gosta"} igra dugo bez odmora — 2H očekivano brži.`);
   }
   const taktika = {
     primijenjeno: ekstra7v6 > 0.01 || gkUmorDom || gkUmorGost,
     ekstraGolovi7v6: Math.round(ekstra7v6 * 100) / 100,
     tim7v6,
-    gkUmorDom,
-    gkUmorGost,
+    gkUmorDom, gkUmorGost,
   };
 
   // — 4d) GARBAGE TIME (v6) —
@@ -361,28 +273,16 @@ export function sarpRukomet(args: {
   // veći dio vodećem timu (0.6/0.4). Bez live stanja: identitet.
   const liveStanje =
     s.liveMinuta != null && s.liveDomGolovi != null && s.liveGostGolovi != null
-      ? {
-          min: s.liveMinuta,
-          raz: Math.abs(s.liveDomGolovi - s.liveGostGolovi),
-          domVodi: s.liveDomGolovi > s.liveGostGolovi,
-        }
+      ? { min: s.liveMinuta, raz: Math.abs(s.liveDomGolovi - s.liveGostGolovi), domVodi: s.liveDomGolovi > s.liveGostGolovi }
       : null;
   const garbageTrigger = liveStanje != null && liveStanje.min >= 40 && liveStanje.raz >= 8;
   let ekstraGarbage = 0;
   if (liveStanje && garbageTrigger) {
     ekstraGarbage = Math.min(2.2, 1.0 + 0.55 * (liveStanje.raz - 8));
-    if (liveStanje.domVodi) {
-      lamHome += ekstraGarbage * 0.6;
-      lamAway += ekstraGarbage * 0.4;
-    } else {
-      lamAway += ekstraGarbage * 0.6;
-      lamHome += ekstraGarbage * 0.4;
-    }
-    lamHome = clamp(lamHome, 8, 45);
-    lamAway = clamp(lamAway, 8, 45);
-    izvori.push(
-      `Garbage time: razlika ${liveStanje.raz.toFixed(0)} golova u ${liveStanje.min.toFixed(0)}. min → tempo +${ekstraGarbage.toFixed(1)} gola (brz tempo kontra)`,
-    );
+    if (liveStanje.domVodi) { lamHome += ekstraGarbage * 0.6; lamAway += ekstraGarbage * 0.4; }
+    else { lamAway += ekstraGarbage * 0.6; lamHome += ekstraGarbage * 0.4; }
+    lamHome = clamp(lamHome, 8, 45); lamAway = clamp(lamAway, 8, 45);
+    izvori.push(`Garbage time: razlika ${liveStanje.raz.toFixed(0)} golova u ${liveStanje.min.toFixed(0)}. min → tempo +${ekstraGarbage.toFixed(1)} gola (brz tempo kontra)`);
   }
   const garbageTime = {
     primijenjeno: garbageTrigger,
@@ -403,53 +303,28 @@ export function sarpRukomet(args: {
   // — 5) TROSTRUKA VERIFIKACIJA: model vs Skellam MC vs de-vig tržište —
   const N = 5000;
   const r = rng(fixtureId);
-  let wH = 0,
-    dr = 0,
-    wA = 0,
-    ov = 0;
+  let wH = 0, dr = 0, wA = 0, ov = 0;
   const linijaTotala = an.totals.length
     ? Number(an.totals[0]!.market.replace(/[^\d.]/g, "")) || Math.round(expTotal * 2) / 2
     : Math.round(expTotal * 2) / 2;
   for (let i = 0; i < N; i++) {
-    const gh = poisson(lamHome, r);
-    const ga = poisson(lamAway, r);
+    const gh = poisson(lamHome, r); const ga = poisson(lamAway, r);
     const d = gh - ga;
-    if (d > 0) wH++;
-    else if (d === 0) dr++;
-    else wA++;
+    if (d > 0) wH++; else if (d === 0) dr++; else wA++;
     if (gh + ga > linijaTotala) ov++;
   }
   const mc = { n: N, pHome: wH / N, pDraw: dr / N, pAway: wA / N, pOver: ov / N };
 
   // de-vig tržišta iz 1X2 i glavne O/U linije
-  const o1 = an.x12[0]?.odd ?? null;
-  const oX = an.x12[1]?.odd ?? null;
-  const o2 = an.x12[2]?.odd ?? null;
-  const overTip = an.totals.find(
-    (t) => t.market === `Zbroj ${linijaTotala}` && t.pick.includes("Više"),
-  );
-  const underTip = an.totals.find(
-    (t) => t.market === `Zbroj ${linijaTotala}` && t.pick.includes("Manje"),
-  );
-  let pHomeMkt: number | null = null;
-  let pOverMkt: number | null = null;
-  let devigIzvor: string | null = null;
-  if (o1 && oX && o2) {
-    const p = devig([o1, oX, o2]);
-    pHomeMkt = p[0]!;
-    devigIzvor = "1X2";
-  } else if (an.ml[0]?.odd && an.ml[1]?.odd) {
-    pHomeMkt = devig([an.ml[0]!.odd!, an.ml[1]!.odd!])[0]! * 0.92;
-    devigIzvor = "ML";
-  }
-  if (overTip?.odd && underTip?.odd) {
-    pOverMkt = devig([overTip.odd, underTip.odd])[0]!;
-    devigIzvor = devigIzvor ? `${devigIzvor} + O/U` : "O/U";
-  }
+  const o1 = an.x12[0]?.odd ?? null; const oX = an.x12[1]?.odd ?? null; const o2 = an.x12[2]?.odd ?? null;
+  const overTip = an.totals.find((t) => t.market === `Zbroj ${linijaTotala}` && t.pick.includes("Više"));
+  const underTip = an.totals.find((t) => t.market === `Zbroj ${linijaTotala}` && t.pick.includes("Manje"));
+  let pHomeMkt: number | null = null; let pOverMkt: number | null = null; let devigIzvor: string | null = null;
+  if (o1 && oX && o2) { const p = devig([o1, oX, o2]); pHomeMkt = p[0]!; devigIzvor = "1X2"; }
+  else if (an.ml[0]?.odd && an.ml[1]?.odd) { pHomeMkt = devig([an.ml[0]!.odd!, an.ml[1]!.odd!])[0]! * 0.92; devigIzvor = "ML"; }
+  if (overTip?.odd && underTip?.odd) { pOverMkt = devig([overTip.odd, underTip.odd])[0]!; devigIzvor = devigIzvor ? `${devigIzvor} + O/U` : "O/U"; }
 
-  const pHome = an.pHome;
-  const pDraw = an.pDraw;
-  const pAway = an.pAway;
+  const pHome = an.pHome; const pDraw = an.pDraw; const pAway = an.pAway;
   const pOverModel = 1 - Phi((linijaTotala - expTotal) / sigmaTotal);
 
   // — 5b) GLOBALNA KALIBRACIJA — logaritamski pool modela s de-margined
@@ -460,29 +335,19 @@ export function sarpRukomet(args: {
   // model ostaje nepromijenjen (identitet).
   const mlMkt = an.ml[0]?.odd && an.ml[1]?.odd ? devig([an.ml[0]!.odd!, an.ml[1]!.odd!])[0]! : null;
   const imax12 = !!(o1 && oX && o2);
-  const books =
-    args.brojKladionica ?? (imax12 || mlMkt != null || (overTip?.odd && underTip?.odd) ? 3 : 0);
+  const books = args.brojKladionica ?? (imax12 || mlMkt != null || (overTip?.odd && underTip?.odd) ? 3 : 0);
   const parovi = (imax12 || mlMkt != null ? 1 : 0) + (overTip?.odd && underTip?.odd ? 1 : 0);
   const wKal = tezinaKalibracije(books, parovi);
   const T_1x2 = tempZa("1x2", args.empirijske);
   const T_OU = tempZa("ou", args.empirijske);
-  let pHomeKal = pHome;
-  let pDrawKal = pDraw;
-  let pAwayKal = pAway;
-  let pOverKal = pOverModel;
+  let pHomeKal = pHome; let pDrawKal = pDraw; let pAwayKal = pAway; let pOverKal = pOverModel;
   const listaPomaka: number[] = [];
   if (wKal > 0) {
     if (imax12 && pHome > 0 && pDraw > 0 && pAway > 0) {
       const m = devig([o1!, oX!, o2!]);
       const tr = poolTrojku([pHome, pDraw, pAway], [m[0]!, m[1]!, m[2]!], wKal, T_1x2);
-      listaPomaka.push(
-        Math.abs(tr[0]! - pHome),
-        Math.abs(tr[1]! - pDraw),
-        Math.abs(tr[2]! - pAway),
-      );
-      pHomeKal = tr[0]!;
-      pDrawKal = tr[1]!;
-      pAwayKal = tr[2]!;
+      listaPomaka.push(Math.abs(tr[0]! - pHome), Math.abs(tr[1]! - pDraw), Math.abs(tr[2]! - pAway));
+      pHomeKal = tr[0]!; pDrawKal = tr[1]!; pAwayKal = tr[2]!;
     } else if (mlMkt != null) {
       const m = poolPar(pHome, mlMkt, wKal, T_1x2);
       listaPomaka.push(Math.abs(m - pHome));
@@ -500,23 +365,15 @@ export function sarpRukomet(args: {
     // bez tržišta: čisto temperiranje prema stvarnoj točnosti
     if (pHome > 0 && pDraw > 0 && pAway > 0 && T_1x2 !== 1) {
       const tr = tempTrojku([pHome, pDraw, pAway], T_1x2);
-      listaPomaka.push(
-        Math.abs(tr[0]! - pHome),
-        Math.abs(tr[1]! - pDraw),
-        Math.abs(tr[2]! - pAway),
-      );
-      pHomeKal = tr[0]!;
-      pDrawKal = tr[1]!;
-      pAwayKal = tr[2]!;
+      listaPomaka.push(Math.abs(tr[0]! - pHome), Math.abs(tr[1]! - pDraw), Math.abs(tr[2]! - pAway));
+      pHomeKal = tr[0]!; pDrawKal = tr[1]!; pAwayKal = tr[2]!;
     }
     if (T_OU !== 1) {
       pOverKal = tempPar(pOverModel, T_OU);
       listaPomaka.push(Math.abs(pOverKal - pOverModel));
     }
   }
-  const kalPomak = listaPomaka.length
-    ? listaPomaka.reduce((a, b) => a + b, 0) / listaPomaka.length
-    : 0;
+  const kalPomak = listaPomaka.length ? listaPomaka.reduce((a, b) => a + b, 0) / listaPomaka.length : 0;
   const empAktivno = T_1x2 !== 1 || T_OU !== 1;
   const kalPrimijenjena = listaPomaka.length > 0 && (wKal > 0 || empAktivno);
   if (kalPrimijenjena) {
@@ -540,11 +397,8 @@ export function sarpRukomet(args: {
   if (pHomeMkt != null) discrep.push(Math.abs(pHome - pHomeMkt));
   if (pOverMkt != null) discrep.push(Math.abs(pOverModel - pOverMkt));
   const maxDiscrepancy = discrep.length ? Math.max(...discrep) : null;
-  const volatility = maxDiscrepancy != null && maxDiscrepancy > 0.1;
-  if (volatility)
-    upozorenja.push(
-      `⚠️ HIGH VOLATILITY / Market Disagreement: model i tržište se razilaze ${(maxDiscrepancy! * 100).toFixed(1)} pp — povjerenje spušteno.`,
-    );
+  const volatility = maxDiscrepancy != null && maxDiscrepancy > 0.10;
+  if (volatility) upozorenja.push(`⚠️ HIGH VOLATILITY / Market Disagreement: model i tržište se razilaze ${(maxDiscrepancy! * 100).toFixed(1)} pp — povjerenje spušteno.`);
 
   // — 6) 1. POLUVRIJEME (≈47% golova) —
   const halfShare = clamp(s.halfShare ?? 0.47, 0.4, 0.55);
@@ -562,16 +416,8 @@ export function sarpRukomet(args: {
   const pHTX = Phi((0.5 - muHT) / sigmaHT) - Phi((-0.5 - muHT) / sigmaHT);
   const pHT2 = 1 - pHT1 - pHTX;
   const htft: HandballSARPPrediction["htft"] = [];
-  for (const ht of [
-    ["1", pHT1],
-    ["X", pHTX],
-    ["2", pHT2],
-  ] as const) {
-    for (const ft of [
-      ["1", pHomeKal],
-      ["X", pDrawKal],
-      ["2", pAwayKal],
-    ] as const) {
+  for (const ht of [["1", pHT1], ["X", pHTX], ["2", pHT2]] as const) {
+    for (const ft of [["1", pHomeKal], ["X", pDrawKal], ["2", pAwayKal]] as const) {
       htft.push({ kod: `${ht[0]}/${ft[0]}`, p: (ht[1] as number) * (ft[1] as number) });
     }
   }
@@ -580,13 +426,9 @@ export function sarpRukomet(args: {
   // — 8) POVJERENJE —
   let povjerenje = 40 + Math.min(45, izvori.length * 9);
   if (volatility) povjerenje -= 20;
-  if (!o1 && !oX) {
-    povjerenje -= 10;
-    upozorenja.push("Nema kvota kladionica — EV se ne može provjeriti.");
-  }
+  if (!o1 && !oX) { povjerenje -= 10; upozorenja.push("Nema kvota kladionica — EV se ne može provjeriti."); }
   povjerenje = clamp(Math.round(povjerenje), 10, 95);
-  const razina: HandballSARPPrediction["razina"] =
-    povjerenje >= 75 ? "A" : povjerenje >= 55 ? "B" : "C";
+  const razina: HandballSARPPrediction["razina"] = povjerenje >= 75 ? "A" : povjerenje >= 55 ? "B" : "C";
 
   // — 9) KANDIDATI + EDGE GUARD (EV ≥ 4.5%) + KELLY —
   const kand: SarpKandidat[] = [];
@@ -596,17 +438,7 @@ export function sarpRukomet(args: {
     const edge = kv ? pp * kv - 1 : null;
     const b = kv ? kv - 1 : 0;
     const kelly = kv ? (b * pp - (1 - pp)) / b : 0;
-    kand.push({
-      trziste,
-      tip,
-      label,
-      p: pp,
-      kvota: kv,
-      fer: 1 / pp,
-      edge,
-      kellyPct: Math.min(3, Math.max(0, kelly) * 0.25 * 100),
-      isplativo: edge != null && edge >= 0.045,
-    });
+    kand.push({ trziste, tip, label, p: pp, kvota: kv, fer: 1 / pp, edge, kellyPct: Math.min(3, Math.max(0, kelly) * 0.25 * 100), isplativo: edge != null && edge >= 0.045 });
   };
   push("1X2", "1", `${args.home} pobjeda`, pHomeKal, o1);
   push("1X2", "X", "Neriješeno", pDrawKal, oX);
@@ -614,61 +446,29 @@ export function sarpRukomet(args: {
   push("O/U", "Over", `Više od ${linijaTotala}`, pOverKal, overTip?.odd ?? null);
   push("O/U", "Under", `Manje od ${linijaTotala}`, 1 - pOverKal, underTip?.odd ?? null);
 
-  const valueList = kand
-    .filter((k) => k.isplativo && k.p >= 0.45)
-    .sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
-  const core =
-    valueList[0] ??
-    kand.filter((k) => k.kvota && k.p >= 0.5).sort((a, b) => b.p - a.p)[0] ??
-    kand.filter((k) => k.p >= 0.5).sort((a, b) => b.p - a.p)[0] ??
-    kand.sort((a, b) => b.p - a.p)[0] ??
-    null;
-  const alt =
-    kand
-      .filter((k) => k !== core && (k.kvota ? true : k.p >= 0.35))
-      .sort((a, b) => (b.kvota ? 1 : 0) - (a.kvota ? 1 : 0) || b.p - a.p)[0] ?? null;
-  if (!valueList.length && core)
-    upozorenja.push("Edge Guard: nema tipa s EV ≥ 4.5% — prikazan najsigurniji, ne isplativi tip.");
-  if (pDrawKal > 0.1)
-    upozorenja.push(
-      `Rizik remija: ${(pDrawKal * 100).toFixed(1)}% — kod azijskog hendikepa razmisli o zaštiti (X).`,
-    );
+  const valueList = kand.filter((k) => k.isplativo && k.p >= 0.45).sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
+  const core = valueList[0] ?? kand.filter((k) => k.kvota && k.p >= 0.5).sort((a, b) => b.p - a.p)[0] ?? null;
+  const alt = kand.filter((k) => k !== core && k.kvota).sort((a, b) => b.p - a.p)[0] ?? null;
+  if (!valueList.length && core) upozorenja.push("Edge Guard: nema tipa s EV ≥ 4.5% — prikazan najsigurniji, ne isplativi tip.");
+  if (pDrawKal > 0.10) upozorenja.push(`Rizik remija: ${(pDrawKal * 100).toFixed(1)}% — kod azijskog hendikepa razmisli o zaštiti (X).`);
 
   const goloviNa50 = (lam: number, att: number) => clamp((lam / Math.max(10, att)) * 50, 15, 55);
 
   return {
     fixtureId,
     tempo: {
-      expAttacks,
-      efikasnost: { home: efH, away: efA },
-      oznaka,
-      goloviNa50Napada: {
-        home: goloviNa50(lamHome, attacksH),
-        away: goloviNa50(lamAway, attacksA),
-      },
+      expAttacks, efikasnost: { home: efH, away: efA }, oznaka,
+      goloviNa50Napada: { home: goloviNa50(lamHome, attacksH), away: goloviNa50(lamAway, attacksA) },
     },
     gk: { saveHome: saveH, saveAway: saveA, diff: saveH - saveA, procijenjeno },
     suspenzije: { home: suspH, away: suspA, utjecajGolova },
     taktika,
     garbageTime,
-    lamHome,
-    lamAway,
-    expTotal,
-    expSpread,
-    sigmaTotal,
-    sigmaDiff,
-    p1HOver,
-    linija1H,
-    expTotal1H,
-    htft,
-    pHome: pHomeKal,
-    pDraw: pDrawKal,
-    pAway: pAwayKal,
-    pOver: pOverKal,
-    pUnder: 1 - pOverKal,
-    linijaTotala,
-    mc,
-    trziste: { pHome: pHomeMkt, pOver: pOverMkt, devigIzvor },
+    lamHome, lamAway, expTotal, expSpread, sigmaTotal, sigmaDiff,
+    p1HOver, linija1H, expTotal1H, htft,
+    pHome: pHomeKal, pDraw: pDrawKal, pAway: pAwayKal,
+    pOver: pOverKal, pUnder: 1 - pOverKal, linijaTotala,
+    mc, trziste: { pHome: pHomeMkt, pOver: pOverMkt, devigIzvor },
     provjera: { maxDiscrepancy, volatility },
     kalibracija: {
       primijenjena: kalPrimijenjena,
@@ -679,11 +479,6 @@ export function sarpRukomet(args: {
       primijenjena: empAktivno,
       temp: { "1x2": T_1x2, ou: T_OU },
     },
-    povjerenje,
-    razina,
-    core,
-    alt,
-    izvori,
-    upozorenja,
+    povjerenje, razina, core, alt, izvori, upozorenja,
   };
 }

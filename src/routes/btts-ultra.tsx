@@ -22,12 +22,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { SettingsModal } from "../components/SettingsModal";
-import {
-  getGoalsBundle,
-  getGoalsUtakmice,
-  type GoalsBundle,
-  type GoalsUtakmica,
-} from "../lib/goals.functions";
+import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "../lib/goals.functions";
 import { goalsAnaliza, type GoalsIzlaz } from "../lib/goals-motor";
 import { getApiKey, zagrebDay } from "../lib/zlatni-guard";
 import { zapisiTip } from "../lib/dnevnik";
@@ -40,19 +35,11 @@ export const Route = createFileRoute("/btts-ultra")({
   component: BttsUltraPage,
 });
 
-function fmtPct(x: number) {
-  return `${(x * 100).toFixed(1)}%`;
-}
+function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
 function vremeno(iso: string) {
   try {
-    return new Date(iso).toLocaleTimeString("hr-HR", {
-      timeZone: "Europe/Zagreb",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
+    return new Date(iso).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" });
+  } catch { return iso; }
 }
 function edgeBoja(e: number) {
   if (e >= 0.05) return "text-emerald-400";
@@ -78,11 +65,7 @@ function kellyUlog(p: number, kvota: number) {
   return Math.max(0, Math.min(3, ((p * kvota - 1) / (kvota - 1)) * 25));
 }
 
-interface TipStrana {
-  label: string;
-  p: number | null;
-  kv: number | null | undefined;
-}
+interface TipStrana { label: string; p: number | null; kv: number | null | undefined }
 
 function BttsUltraPage() {
   const [date, setDate] = useState(zagrebDay());
@@ -108,8 +91,7 @@ function BttsUltraPage() {
     const ck = `bttsu.fix.${dan}`;
     try {
       const kes = force ? null : localStorage.getItem(ck);
-      const r = kes
-        ? (JSON.parse(kes) as { error: string | null; utakmice: GoalsUtakmica[] })
+      const r = kes ? (JSON.parse(kes) as { error: string | null; utakmice: GoalsUtakmica[] })
         : await getGoalsUtakmice({ data: { date: dan, apiKey } });
       if (!force && !kes) localStorage.setItem(ck, JSON.stringify(r));
       if (r.error) {
@@ -117,11 +99,9 @@ function BttsUltraPage() {
         setStatus(`Učitavanje nije uspjelo: ${r.error}`);
       } else {
         setUtakmice(r.utakmice);
-        setStatus(
-          r.utakmice.length
-            ? `Učitano ${r.utakmice.length} utakmica. Klikni utakmicu za BTTS analizu.`
-            : "Nema nadolazećih utakmica za taj dan.",
-        );
+        setStatus(r.utakmice.length
+          ? `Učitano ${r.utakmice.length} utakmica. Klikni utakmicu za BTTS analizu.`
+          : "Nema nadolazećih utakmica za taj dan.");
       }
     } catch {
       setStatus("Greška pri dohvatu utakmica.");
@@ -131,11 +111,7 @@ function BttsUltraPage() {
 
   const analiziraj = async (u: GoalsUtakmica) => {
     const apiKey = getApiKey();
-    if (!apiKey) {
-      setStatus("Nedostaje API ključ.");
-      setSettings(true);
-      return;
-    }
+    if (!apiKey) { setStatus("Nedostaje API ključ."); setSettings(true); return; }
     setOdabrana(u);
     setAnaliziram(true);
     setBundle(null);
@@ -189,79 +165,54 @@ function BttsUltraPage() {
             utakmica: `${u.home} — ${u.away}`,
             liga: u.league,
             fixtureId: u.id,
-            tip:
-              kvTipD != null
-                ? `BTTS ${stranaD.toUpperCase()} @ ${kvTipD.toFixed(2)}`
-                : `BTTS ${stranaD.toUpperCase()}`,
+            tip: kvTipD != null ? `BTTS ${stranaD.toUpperCase()} @ ${kvTipD.toFixed(2)}` : `BTTS ${stranaD.toUpperCase()}`,
             p: pTipD,
             kvota: kvTipD ?? null,
             provjera: { vrsta: "btts", strana: stranaD },
           });
         }
         if (b.error)
-          setStatus(
-            `⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`,
-          );
-        else setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+          setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
+        else
+          setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
       } catch {
         setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
       }
     } catch {
-      setStatus(
-        "Dohvat podataka nije uspio ni drugim pokušajem — API je zaokupljen, probaj za minutu.",
-      );
+      setStatus("Dohvat podataka nije uspio ni drugim pokušajem — API je zaokupljen, probaj za minutu.");
     }
     setAnaliziram(false);
   };
 
-  const filtrirane = utakmice.filter(
-    (u) =>
-      !trazim ||
-      `${u.home} ${u.away} ${u.league} ${u.country}`.toLowerCase().includes(trazim.toLowerCase()),
+  const filtrirane = utakmice.filter((u) =>
+    !trazim || `${u.home} ${u.away} ${u.league} ${u.country}`.toLowerCase().includes(trazim.toLowerCase()),
   );
 
   const pDa = analiza?.final["bttsDa"] ?? null;
   const pNe = analiza?.final["bttsNe"] ?? null;
   const kvotaDa = bundle?.kvote["bttsDa"];
   const kvotaNe = bundle?.kvote["bttsNe"];
-  const preporukaDa = pDa != null && kvotaDa != null && pDa * kvotaDa - 1 >= 0.02;
-  const preporukaNe = pNe != null && kvotaNe != null && pNe * kvotaNe - 1 >= 0.02;
+  const preporukaDa = pDa != null && kvotaDa != null && (pDa * kvotaDa - 1) >= 0.02;
+  const preporukaNe = pNe != null && kvotaNe != null && (pNe * kvotaNe - 1) >= 0.02;
 
   // ── KONKRETAN TIP: jedna strana BTTS + kvota + EV + Kelly ulog + sigurnosna linija ──
   let tip: null | {
-    label: string;
-    p: number;
-    kv: number | null;
-    edge: number | null;
-    ulog: number;
-    sigLabel: string;
-    sigP: number | null;
-    sigKv: number | null;
-    altLabel: string;
-    altP: number | null;
+    label: string; p: number; kv: number | null; edge: number | null; ulog: number;
+    sigLabel: string; sigP: number | null; sigKv: number | null;
+    altLabel: string; altP: number | null;
   } = null;
   if (analiza) {
     const strane: TipStrana[] = [
       { label: "DA", p: pDa, kv: kvotaDa },
       { label: "NE", p: pNe, kv: kvotaNe },
     ];
-    const isplativi = strane
-      .filter((s) => s.p != null && s.kv != null && s.p * s.kv - 1 > 0)
+    const isplativi = strane.filter((s) => s.p != null && s.kv != null && s.p * s.kv - 1 > 0)
       .sort((a, b) => b.p! * b.kv! - a.p! * a.kv!);
     const poProb = strane.filter((s) => s.p != null).sort((a, b) => b.p! - a.p!);
     const c = isplativi[0] ?? poProb[0]!;
-    const sig =
-      c.label === "DA"
-        ? {
-            label: "Više od 1.5 golova",
-            p: analiza.final["o15"] ?? null,
-            kv: bundle?.kvote["o15"] ?? null,
-          }
-        : {
-            label: "Manje od 2.5 golova",
-            p: analiza.final["u25"] ?? null,
-            kv: bundle?.kvote["u25"] ?? null,
-          };
+    const sig = c.label === "DA"
+      ? { label: "Više od 1.5 golova", p: analiza.final["o15"] ?? null, kv: bundle?.kvote["o15"] ?? null }
+      : { label: "Manje od 2.5 golova", p: analiza.final["u25"] ?? null, kv: bundle?.kvote["u25"] ?? null };
     tip = {
       label: c.label,
       p: c.p!,
@@ -284,8 +235,7 @@ function BttsUltraPage() {
             <Flame className="h-5 w-5 text-orange-400" /> BTTS Ultra
           </h1>
           <p className="text-xs text-muted-foreground">
-            Oba tima daju gol — Poisson + Dixon-Coles matrica, kalibrirana tržištem, s formom oba
-            tima.
+            Oba tima daju gol — Poisson + Dixon-Coles matrica, kalibrirana tržištem, s formom oba tima.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -300,11 +250,7 @@ function BttsUltraPage() {
             disabled={ucitam}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
-            {ucitam ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
+            {ucitam ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             Učitaj
           </button>
         </div>
@@ -313,12 +259,7 @@ function BttsUltraPage() {
       {status && (
         <div className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
           {status}
-          <button
-            onClick={() => setSettings(true)}
-            className="ml-2 underline hover:text-foreground"
-          >
-            Postavke
-          </button>
+          <button onClick={() => setSettings(true)} className="ml-2 underline hover:text-foreground">Postavke</button>
         </div>
       )}
 
@@ -343,9 +284,7 @@ function BttsUltraPage() {
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {u.country} · {u.league} · {vremeno(u.time)}
             </div>
-            <div className="mt-1 text-sm font-semibold">
-              {u.home} — {u.away}
-            </div>
+            <div className="mt-1 text-sm font-semibold">{u.home} — {u.away}</div>
           </button>
         ))}
       </div>
@@ -353,23 +292,17 @@ function BttsUltraPage() {
       {(analiziram || analiza) && odabrana && (
         <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-bold">
-              {odabrana.home} — {odabrana.away}
-            </h2>
+            <h2 className="text-lg font-bold">{odabrana.home} — {odabrana.away}</h2>
             {analiza && (
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-bold ${ocjenaBoja(analiza.ocjena)}`}
-              >
+              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${ocjenaBoja(analiza.ocjena)}`}>
                 Povjerenje {analiza.povjerenje}/100 · {analiza.ocjena}
               </span>
             )}
           </div>
 
-          {analiziram && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="h-4 w-4 animate-spin" /> Analiziram kroz motor…
-            </div>
-          )}
+          {analiziram && <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="h-4 w-4 animate-spin" /> Analiziram kroz motor…
+          </div>}
 
           {analiza && (
             <>
@@ -377,19 +310,14 @@ function BttsUltraPage() {
               {tip && (
                 <div className="rounded-2xl border border-primary/50 bg-primary/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-xs font-bold uppercase tracking-wide text-primary">
-                      🎯 Konkretan tip
-                    </div>
+                    <div className="text-xs font-bold uppercase tracking-wide text-primary">🎯 Konkretan tip</div>
                     {tip.kv != null && tip.edge != null && tip.edge >= 0.02 ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                        <CheckCircle2 className="h-3 w-3" /> ISPLATIVO — ULOG {tip.ulog.toFixed(1)}%
-                        BANKE
+                        <CheckCircle2 className="h-3 w-3" /> ISPLATIVO — ULOG {tip.ulog.toFixed(1)}% BANKE
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                        {tip.kv == null
-                          ? "FER TIP — KVOTA JOS NIJE OBJAVLJENA"
-                          : "PRESKOČI — NEMA VRIJEDNOSTI"}
+                        {tip.kv == null ? "FER TIP — KVOTA JOS NIJE OBJAVLJENA" : "PRESKOČI — NEMA VRIJEDNOSTI"}
                       </span>
                     )}
                   </div>
@@ -404,9 +332,7 @@ function BttsUltraPage() {
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Fer kvota</div>
-                      <div className="font-mono font-bold">
-                        {tip.p > 0 ? (1 / tip.p).toFixed(2) : "—"}
-                      </div>
+                      <div className="font-mono font-bold">{tip.p > 0 ? (1 / tip.p).toFixed(2) : "—"}</div>
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Kvota API</div>
@@ -414,31 +340,24 @@ function BttsUltraPage() {
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Edge / EV</div>
-                      <div
-                        className={`font-mono font-bold ${tip.edge != null ? edgeBoja(tip.edge) : ""}`}
-                      >
+                      <div className={`font-mono font-bold ${tip.edge != null ? edgeBoja(tip.edge) : ""}`}>
                         {tip.edge != null ? `${(tip.edge * 100).toFixed(1)}%` : "—"}
                       </div>
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Protivtip</div>
                       <div className="font-mono font-bold">
-                        {tip.altLabel}
-                        {tip.altP != null ? ` ${fmtPct(tip.altP)}` : ""}
+                        {tip.altLabel}{tip.altP != null ? ` ${fmtPct(tip.altP)}` : ""}
                       </div>
                     </div>
                   </div>
                   {tip.sigP != null && (
                     <div className="mt-2 text-xs text-muted-foreground">
-                      🛡️ Sigurnosna linija: <b className="text-foreground">{tip.sigLabel}</b> (model{" "}
-                      {fmtPct(tip.sigP)}
-                      {tip.sigKv != null ? ` @ ${tip.sigKv.toFixed(2)}` : ""}) — ako ti je glavni
-                      tip pretežak, tu ide manji ulog.
+                      🛡️ Sigurnosna linija: <b className="text-foreground">{tip.sigLabel}</b> (model {fmtPct(tip.sigP)}{tip.sigKv != null ? ` @ ${tip.sigKv.toFixed(2)}` : ""}) — ako ti je glavni tip pretežak, tu ide manji ulog.
                     </div>
                   )}
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Odabir: najveći edge među isplativim stranama; ako nijedna nema edge, strana s
-                    većom vjerojatnošću.
+                    Odabir: najveći edge među isplativim stranama; ako nijedna nema edge, strana s većom vjerojatnošću.
                   </div>
                 </div>
               )}
@@ -451,24 +370,18 @@ function BttsUltraPage() {
                 ].map((s) => (
                   <div key={s.k} className="rounded-xl border border-border bg-background/50 p-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-muted-foreground">
-                        BTTS {s.k}
-                      </span>
+                      <span className="text-sm font-semibold text-muted-foreground">BTTS {s.k}</span>
                       {s.rec && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                           <CheckCircle2 className="h-3 w-3" /> VRIJEDI
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 text-3xl font-black tabular-nums">
-                      {s.p != null ? fmtPct(s.p) : "—"}
-                    </div>
+                    <div className="mt-1 text-3xl font-black tabular-nums">{s.p != null ? fmtPct(s.p) : "—"}</div>
                     <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                       <div>
                         <div className="text-muted-foreground">Fer kvota</div>
-                        <div className="font-mono font-bold">
-                          {s.p != null ? (1 / s.p).toFixed(2) : "—"}
-                        </div>
+                        <div className="font-mono font-bold">{s.p != null ? (1 / s.p).toFixed(2) : "—"}</div>
                       </div>
                       <div>
                         <div className="text-muted-foreground">Kvota API</div>
@@ -476,12 +389,8 @@ function BttsUltraPage() {
                       </div>
                       <div>
                         <div className="text-muted-foreground">Edge</div>
-                        <div
-                          className={`font-mono font-bold ${s.p != null && s.kvota != null ? edgeBoja(s.p * s.kvota - 1) : ""}`}
-                        >
-                          {s.p != null && s.kvota != null
-                            ? `${((s.p * s.kvota - 1) * 100).toFixed(1)}%`
-                            : "—"}
+                        <div className={`font-mono font-bold ${s.p != null && s.kvota != null ? edgeBoja(s.p * s.kvota - 1) : ""}`}>
+                          {s.p != null && s.kvota != null ? `${((s.p * s.kvota - 1) * 100).toFixed(1)}%` : "—"}
                         </div>
                       </div>
                     </div>
@@ -493,21 +402,15 @@ function BttsUltraPage() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl border border-border bg-background/50 p-3">
                   <div className="text-[10px] uppercase text-muted-foreground">λ Domaćin</div>
-                  <div className="text-xl font-bold tabular-nums">
-                    {analiza.lambdaDom.toFixed(2)}
-                  </div>
+                  <div className="text-xl font-bold tabular-nums">{analiza.lambdaDom.toFixed(2)}</div>
                 </div>
                 <div className="rounded-xl border border-border bg-background/50 p-3">
                   <div className="text-[10px] uppercase text-muted-foreground">μ Gost</div>
-                  <div className="text-xl font-bold tabular-nums">
-                    {analiza.lambdaGost.toFixed(2)}
-                  </div>
+                  <div className="text-xl font-bold tabular-nums">{analiza.lambdaGost.toFixed(2)}</div>
                 </div>
                 <div className="rounded-xl border border-border bg-background/50 p-3">
                   <div className="text-[10px] uppercase text-muted-foreground">Ukupno golova</div>
-                  <div className="text-xl font-bold tabular-nums">
-                    {analiza.lambdaUkupno.toFixed(2)}
-                  </div>
+                  <div className="text-xl font-bold tabular-nums">{analiza.lambdaUkupno.toFixed(2)}</div>
                 </div>
                 <div className="rounded-xl border border-border bg-background/50 p-3">
                   <div className="flex items-center gap-1 text-[10px] uppercase text-muted-foreground">
@@ -524,17 +427,10 @@ function BttsUltraPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
                   {["o25", "u25", "o15", "o35", "nulaNula"].map((k) => {
-                    const p =
-                      k === "nulaNula"
-                        ? (analiza.topRezultati.find((t) => t.rezultat === "0:0")?.p ?? null)
-                        : analiza.final[k];
-                    const label: Record<string, string> = {
-                      o25: "Over 2.5",
-                      u25: "Under 2.5",
-                      o15: "Over 1.5",
-                      o35: "Over 3.5",
-                      nulaNula: "0:0",
-                    };
+                    const p = k === "nulaNula"
+                      ? analiza.topRezultati.find((t) => t.rezultat === "0:0")?.p ?? null
+                      : analiza.final[k];
+                    const label: Record<string, string> = { o25: "Over 2.5", u25: "Under 2.5", o15: "Over 1.5", o35: "Over 3.5", nulaNula: "0:0" };
                     return (
                       <div key={k} className="rounded-lg bg-muted/40 p-2 text-center">
                         <div className="text-muted-foreground">{label[k]}</div>
@@ -552,24 +448,17 @@ function BttsUltraPage() {
                     <ShieldCheck className="h-3 w-3" /> Što model gleda
                   </div>
                   <ul className="list-inside list-disc text-xs text-muted-foreground">
-                    {analiza.faktori.map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
+                    {analiza.faktori.map((f, i) => <li key={i}>{f}</li>)}
                   </ul>
                 </div>
               )}
 
               {/* Top rezultati */}
               <div className="rounded-xl border border-border bg-background/50 p-3">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Najvjerojatniji rezultati
-                </div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Najvjerojatniji rezultati</div>
                 <div className="flex flex-wrap gap-2">
                   {analiza.topRezultati.map((t) => (
-                    <span
-                      key={t.rezultat}
-                      className="rounded-lg bg-muted/40 px-2 py-1 font-mono text-xs"
-                    >
+                    <span key={t.rezultat} className="rounded-lg bg-muted/40 px-2 py-1 font-mono text-xs">
                       {t.rezultat} · {fmtPct(t.p)}
                     </span>
                   ))}
@@ -583,9 +472,7 @@ function BttsUltraPage() {
                     <AlertTriangle className="h-3 w-3" /> Upozorenja
                   </div>
                   <ul className="list-inside list-disc text-xs text-amber-200/90">
-                    {analiza.upozorenja.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
+                    {analiza.upozorenja.map((w, i) => <li key={i}>{w}</li>)}
                   </ul>
                 </div>
               )}
@@ -593,8 +480,7 @@ function BttsUltraPage() {
               {bundle && bundle.kvote["bttsDa"] == null && (
                 <div className="flex items-center gap-2 rounded-xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
                   <XCircle className="h-4 w-4 text-red-400" />
-                  Knjige ne nude BTTS tržište za ovu utakmicu — procjena je čisto modelna (fer kvote
-                  gore).
+                  Knjige ne nude BTTS tržište za ovu utakmicu — procjena je čisto modelna (fer kvote gore).
                 </div>
               )}
               {/* ═══ SARP MATCH INSIGHT PANEL (9 sekcija) ═══ */}
@@ -621,3 +507,4 @@ function BttsUltraPage() {
     </div>
   );
 }
+

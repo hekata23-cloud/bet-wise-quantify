@@ -22,10 +22,10 @@ export type DnevnikUnos = {
   kartica: string;
   utakmica: string;
   liga: string | null;
-  datum: string; // kad je tip zapisan
-  fixtureId: number; // ID utakmice u API-ju
+  datum: string;      // kad je tip zapisan
+  fixtureId: number;  // ID utakmice u API-ju
   tip: string;
-  p: number; // vjerojatnost koju je dao model (0..1)
+  p: number;          // vjerojatnost koju je dao model (0..1)
   kvota: number | null;
   provjera: Provjera;
   status: "cekaj" | "pogodak" | "promasaj";
@@ -50,9 +50,7 @@ export function dnevnikUnosi(): DnevnikUnos[] {
 function spremi(unosi: DnevnikUnos[]) {
   try {
     localStorage.setItem(KLJUC, JSON.stringify(unosi.slice(0, MAX)));
-  } catch {
-    /* pun localStorage — preskoči */
-  }
+  } catch { /* pun localStorage — preskoči */ }
 }
 
 /** Očisti duplikate: isti fixture + kartica + tip = jedan unos. */
@@ -102,8 +100,7 @@ export function pogodakLi(
 ): boolean {
   switch (pr.vrsta) {
     case "1x2reg": {
-      const d = domReg ?? dom,
-        g = gostReg ?? gost;
+      const d = domReg ?? dom, g = gostReg ?? gost;
       return pr.strana === (d > g ? "1" : d < g ? "2" : "X");
     }
     case "tt": {
@@ -132,7 +129,7 @@ export type KarticaStat = {
   igrano: number;
   pogodeno: number;
   hitRate: number;
-  brier: number; // 0 = savršeno, 0.25 = novčić
+  brier: number;         // 0 = savršeno, 0.25 = novčić
   prosjekKvota: number | null;
 };
 
@@ -160,9 +157,7 @@ export function statistika(): KarticaStat[] {
       pogodeno,
       hitRate: arr.length ? pogodeno / arr.length : 0,
       brier,
-      prosjekKvota: sKvotom.length
-        ? sKvotom.reduce((a, u) => a + (u.kvota ?? 0), 0) / sKvotom.length
-        : null,
+      prosjekKvota: sKvotom.length ? sKvotom.reduce((a, u) => a + (u.kvota ?? 0), 0) / sKvotom.length : null,
     });
   }
   return out.sort((a, b) => b.igrano - a.igrano);

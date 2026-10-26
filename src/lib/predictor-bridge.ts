@@ -51,10 +51,10 @@ export function predictorBriefing(): string {
   const cs = calculateCorrectScore(inputs, true);
   if (!("error" in cs)) {
     lines.push(
-      `• Očekivani golovi (xG): Domaćin ${cs.lambdaHome.toFixed(2)} | Gost ${cs.lambdaAway.toFixed(2)} (Ukupno ${cs.totalXG.toFixed(2)})`,
+      `• Očekivani golovi (xG): Domaćin ${cs.lambdaHome.toFixed(2)} | Gost ${cs.lambdaAway.toFixed(2)} (Ukupno ${cs.totalXG.toFixed(2)})`
     );
     lines.push(
-      `• Najvjerojatniji točan rezultat: ${cs.bestScore.score} (${(cs.bestScore.prob * 100).toFixed(1)}%, fer tečaj ${cs.bestScore.fair.toFixed(2)})`,
+      `• Najvjerojatniji točan rezultat: ${cs.bestScore.score} (${(cs.bestScore.prob * 100).toFixed(1)}%, fer tečaj ${cs.bestScore.fair.toFixed(2)})`
     );
     const top3Str = cs.top3.map((s) => `${s.score} (${(s.prob * 100).toFixed(1)}%)`).join(", ");
     lines.push(`• Top 3 rezultata: ${top3Str}`);
@@ -64,7 +64,7 @@ export function predictorBriefing(): string {
   const btts = calculateBtts(inputs, true);
   if (!("error" in btts)) {
     lines.push(
-      `• BTTS (GG/NG): GG = ${(btts.probYes * 100).toFixed(1)}% | NG = ${(btts.probNo * 100).toFixed(1)}% -> Preporuka: ${btts.concretePick.pick}`,
+      `• BTTS (GG/NG): GG = ${(btts.probYes * 100).toFixed(1)}% | NG = ${(btts.probNo * 100).toFixed(1)}% -> Preporuka: ${btts.concretePick.pick}`
     );
   }
 
@@ -72,30 +72,28 @@ export function predictorBriefing(): string {
   const o15 = calculateOu15(inputs, true);
   if (!("error" in o15)) {
     lines.push(
-      `• Zbroj 1.5: Više = ${(o15.probOver * 100).toFixed(1)}% | Manje = ${(o15.probUnder * 100).toFixed(1)}%`,
+      `• Zbroj 1.5: Više = ${(o15.probOver * 100).toFixed(1)}% | Manje = ${(o15.probUnder * 100).toFixed(1)}%`
     );
   }
 
   const ou25 = calculateOu(inputs);
   if (!("error" in ou25)) {
     lines.push(
-      `• Zbroj 2.5: Više = ${(ou25.probOver * 100).toFixed(1)}% | Manje = ${(ou25.probUnder * 100).toFixed(1)}% -> Preporuka: ${ou25.concretePick.pick}`,
+      `• Zbroj 2.5: Više = ${(ou25.probOver * 100).toFixed(1)}% | Manje = ${(ou25.probUnder * 100).toFixed(1)}% -> Preporuka: ${ou25.concretePick.pick}`
     );
   }
 
   const ou35 = calculateOu35(inputs);
   if (!("error" in ou35)) {
     lines.push(
-      `• Zbroj 3.5: Više = ${(ou35.probOver * 100).toFixed(1)}% | Manje = ${(ou35.probUnder * 100).toFixed(1)}%`,
+      `• Zbroj 3.5: Više = ${(ou35.probOver * 100).toFixed(1)}% | Manje = ${(ou35.probUnder * 100).toFixed(1)}%`
     );
   }
 
   // 4. Poluvrijeme / Kraj (HT/FT)
   const htft = calculate(inputs, true);
   if (!("error" in htft)) {
-    lines.push(
-      `• HT/FT Favorit: ${htft.concretePick.pick} (${htft.concretePick.confidenceScore}% sigurnost)`,
-    );
+    lines.push(`• HT/FT Favorit: ${htft.concretePick.pick} (${htft.concretePick.confidenceScore}% sigurnost)`);
   }
 
   const htd = calculateHtDraw(inputs, true);
@@ -103,8 +101,7 @@ export function predictorBriefing(): string {
     lines.push(`• X na poluvremenu (HT Draw): ${(htd.probDraw * 100).toFixed(1)}%`);
   }
 
-  lines.push(
-    "Uputa za Lunu: Ovi brojevi su izračunati izravno iz tečajeva utakmice. Obavezno ih uskladi u odgovoru.",
-  );
+  lines.push("Uputa za Lunu: Ovi brojevi su izračunati izravno iz tečajeva utakmice. Obavezno ih uskladi u odgovoru.");
   return lines.join("\n");
 }
+

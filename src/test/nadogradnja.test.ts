@@ -1,26 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { classifyMarket, MarketType } from "@/lib/market-type";
-import {
-  ocijeniNogu,
-  statusTiketa,
-  ukupnaKvotaTiketa,
-  type RezultatUtakmice,
-  type TiketNoga,
-} from "@/lib/listici";
+import { ocijeniNogu, statusTiketa, ukupnaKvotaTiketa, type RezultatUtakmice, type TiketNoga } from "@/lib/listici";
 import { lineupDelta } from "@/lib/lineup-delta";
 import { padoviKvota, plosneKvote, sharpConsensus } from "@/lib/smart-money";
 import { dnbAhTablica, parseAsianHandicapLine, skellam } from "@/lib/skellam-dnb";
 import { jeTier1 } from "@/lib/league-tier";
 
 const r = (dom: number, gost: number, domHT = 0, gostHT = 0): RezultatUtakmice => ({
-  status: "FT",
-  zavrsena: true,
-  dom,
-  gost,
-  domReg: dom,
-  gostReg: gost,
-  domHT,
-  gostHT,
+  status: "FT", zavrsena: true, dom, gost, domReg: dom, gostReg: gost, domHT, gostHT,
 });
 
 describe("MarketType enum", () => {
@@ -36,12 +23,8 @@ describe("MarketType enum", () => {
 
 describe("settlement", () => {
   it("DNB remi je povrat (kvota 1.00), ne gubitak", () => {
-    expect(ocijeniNogu("nogomet", { trziste: "DNB", tip: "DNB 1", kvota: 1.6 }, r(1, 1))).toBe(
-      "povrat",
-    );
-    expect(ocijeniNogu("nogomet", { trziste: "DNB", tip: "DNB 1", kvota: 1.6 }, r(2, 1))).toBe(
-      "dobitna",
-    );
+    expect(ocijeniNogu("nogomet", { trziste: "DNB", tip: "DNB 1", kvota: 1.6 }, r(1, 1))).toBe("povrat");
+    expect(ocijeniNogu("nogomet", { trziste: "DNB", tip: "DNB 1", kvota: 1.6 }, r(2, 1))).toBe("dobitna");
   });
   it("tiket s DNB remijem ostaje dobitan, kvota se preračuna", () => {
     const noge = [
@@ -53,43 +36,25 @@ describe("settlement", () => {
   });
   it("HT over gleda poluvrijeme, FT over cijelu utakmicu", () => {
     const rez = r(3, 0, 0, 0);
-    expect(
-      ocijeniNogu("nogomet", { trziste: "1. poluvrijeme O/U", tip: "Over 0.5", kvota: 1.4 }, rez),
-    ).toBe("izgubljena");
-    expect(ocijeniNogu("nogomet", { trziste: "O/U 2.5", tip: "Over 2.5", kvota: 1.9 }, rez)).toBe(
-      "dobitna",
-    );
+    expect(ocijeniNogu("nogomet", { trziste: "1. poluvrijeme O/U", tip: "Over 0.5", kvota: 1.4 }, rez)).toBe("izgubljena");
+    expect(ocijeniNogu("nogomet", { trziste: "O/U 2.5", tip: "Over 2.5", kvota: 1.9 }, rez)).toBe("dobitna");
   });
   it("timski total gosta broji golove gosta", () => {
-    expect(
-      ocijeniNogu("nogomet", { trziste: "Gost O/U", tip: "Over 0.5", kvota: 1.5 }, r(3, 0)),
-    ).toBe("izgubljena");
+    expect(ocijeniNogu("nogomet", { trziste: "Gost O/U", tip: "Over 0.5", kvota: 1.5 }, r(3, 0))).toBe("izgubljena");
   });
 });
 
 describe("lineup delta", () => {
   const base = { pBtts: 0.5, pOver25: 0.5, lambdaDom: 1.5, lambdaGost: 1.2 };
   it("bez prvog golmana: BTTS +6.8 pp, Over 2.5 +7.4 pp", () => {
-    const o = lineupDelta({
-      ...base,
-      startDom: [{ ime: "Rez", id: 99 }],
-      startGost: [],
-      jezgraDom: { golman: 1, stoperi: [] },
-      jezgraGost: { stoperi: [] },
-    });
+    const o = lineupDelta({ ...base, startDom: [{ ime: "Rez", id: 99 }], startGost: [], jezgraDom: { golman: 1, stoperi: [] }, jezgraGost: { stoperi: [] } });
     expect(o.alert).toBe(true);
     expect(o.pBtts).toBeCloseTo(0.568);
     expect(o.pOver25).toBeCloseTo(0.574);
     expect(o.oznaka).toBe("LINEUP ALERT: DEFENSIVE ROTATION DETECTED");
   });
   it("napadač na klupi: λ napada −0.18", () => {
-    const o = lineupDelta({
-      ...base,
-      startDom: [{ ime: "GK", id: 1 }],
-      startGost: [],
-      jezgraDom: { golman: 1, stoperi: [], napadac: 9 },
-      jezgraGost: { stoperi: [] },
-    });
+    const o = lineupDelta({ ...base, startDom: [{ ime: "GK", id: 1 }], startGost: [], jezgraDom: { golman: 1, stoperi: [], napadac: 9 }, jezgraGost: { stoperi: [] } });
     expect(o.lambdaDom).toBeCloseTo(1.32);
     expect(o.alert).toBe(false);
   });
@@ -98,47 +63,23 @@ describe("lineup delta", () => {
 describe("smart money", () => {
   it("pad 2.15 → 1.78 unutar 12 h je ≥8%", () => {
     const now = Date.now();
-    const p = padoviKvota(
-      [
-        { t: now - 3600_000, kvote: { "1": 2.15 } },
-        { t: now, kvote: { "1": 1.78 } },
-      ],
-      now,
-    );
+    const p = padoviKvota([{ t: now - 3600_000, kvote: { "1": 2.15 } }, { t: now, kvote: { "1": 1.78 } }], now);
     expect(p[0]?.padPct).toBeCloseTo(17.2, 1);
   });
   it("pad stariji od 12 h se ignorira", () => {
     const now = Date.now();
-    expect(
-      padoviKvota(
-        [
-          { t: now - 13 * 3600_000, kvote: { "1": 2.15 } },
-          { t: now, kvote: { "1": 1.78 } },
-        ],
-        now,
-      ),
-    ).toHaveLength(0);
+    expect(padoviKvota([{ t: now - 13 * 3600_000, kvote: { "1": 2.15 } }, { t: now, kvote: { "1": 1.78 } }], now)).toHaveLength(0);
   });
   it("budući i neispravni snimci ne stvaraju lažni pad", () => {
     const now = Date.now();
-    expect(
-      padoviKvota(
-        [
-          { t: now - 3600_000, kvote: { "1": 2.15 } },
-          { t: now + 60_000, kvote: { "1": 1.7 } },
-        ],
-        now,
-      ),
-    ).toHaveLength(0);
-    expect(
-      padoviKvota(
-        [
-          { t: now - 3600_000, kvote: { "1": Infinity } },
-          { t: now, kvote: { "1": 1.7 } },
-        ],
-        now,
-      ),
-    ).toHaveLength(0);
+    expect(padoviKvota([
+      { t: now - 3600_000, kvote: { "1": 2.15 } },
+      { t: now + 60_000, kvote: { "1": 1.7 } },
+    ], now)).toHaveLength(0);
+    expect(padoviKvota([
+      { t: now - 3600_000, kvote: { "1": Infinity } },
+      { t: now, kvote: { "1": 1.7 } },
+    ], now)).toHaveLength(0);
   });
   it("čita DNB i oznake kvota bez obzira na velika/mala slova", () => {
     expect(plosneKvote({ "Draw No Bet": { home: 1.82, away: 2.04 } })).toEqual({
@@ -187,3 +128,4 @@ it("Tier 1 lige u formatu API-Footballa (Država — Liga)", () => {
   expect(jeTier1("Ethiopia — Premier League")).toBe(false);
   expect(jeTier1("Brazil — Serie A")).toBe(false);
 });
+

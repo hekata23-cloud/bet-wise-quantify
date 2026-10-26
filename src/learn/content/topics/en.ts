@@ -476,7 +476,8 @@ export const EN_TOPICS: Topic[] = [
     ],
     listening: {
       id: "en-a2-travel-l1",
-      transcript: "Your flight to Rome is delayed by forty minutes. Please go to gate twelve.",
+      transcript:
+        "Your flight to Rome is delayed by forty minutes. Please go to gate twelve.",
       translation: "An airport announcement about a delay and a gate change.",
       questions: [
         {

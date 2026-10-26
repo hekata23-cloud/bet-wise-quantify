@@ -10,36 +10,14 @@ import { geminiChat } from "./gemini";
 import { hasKey } from "./storage";
 import { ensembleForMarket, MARKET_LABEL, type Market } from "./specialists";
 import {
-  loadAccuracy,
-  scoreMatrix,
-  marketProbs,
-  probForMarket,
-  robustMean,
-  median,
-  blendWithMarket,
-  shrinkToPrior,
-  devig,
-  parseOdds,
-  verdict,
-  saferAlternative,
-  leaguePriorTotal,
-  type MarketProbs,
-  type Verdict,
-  type AccuracyPrefs,
+  loadAccuracy, scoreMatrix, marketProbs, probForMarket, robustMean, median,
+  blendWithMarket, shrinkToPrior, devig, parseOdds, verdict,
+  saferAlternative, leaguePriorTotal, type MarketProbs, type Verdict, type AccuracyPrefs,
 } from "./accuracy";
 import {
-  loadSuper,
-  runSuperPipeline,
-  superPromptDirectives,
-  superBriefing,
-  plattCalibrate,
-  confWeightedMean,
-  coherenceCheck,
-  applyPenalty,
-  parseEloDiff,
-  type SuperPrefs,
-  type CoherenceReport,
-  type SuperPipelineOutput,
+  loadSuper, runSuperPipeline, superPromptDirectives, superBriefing, plattCalibrate,
+  confWeightedMean, coherenceCheck, applyPenalty, parseEloDiff,
+  type SuperPrefs, type CoherenceReport, type SuperPipelineOutput,
 } from "./superaccuracy";
 
 export interface MemberEstimate {
@@ -164,8 +142,7 @@ function buildTeam(market: Market, size: number): TeamMember[] {
     const ids = [...NIM_GOAL_MODELS, ...NIM_MODELS.map((m) => m.id)].filter(
       (v, i, self) => self.indexOf(v) === i,
     );
-    for (const id of ids.slice(0, size))
-      out.push({ id, name: `NIM ${id.split("/").pop()}`, provider: "nvidia" });
+    for (const id of ids.slice(0, size)) out.push({ id, name: `NIM ${id.split("/").pop()}`, provider: "nvidia" });
   }
   if (hasKey("groq")) out.push({ id: "groq", name: "Groq Llama 3.3 70B", provider: "groq" });
   if (hasKey("gemini")) out.push({ id: "gemini", name: "Gemini Flash", provider: "gemini" });
@@ -181,14 +158,10 @@ async function memberChat(
   const user = String(msgs[1]?.content ?? "");
   if (m.provider === "openrouter") return openrouterChat(m.id, msgs, { ...o, extraFallbacks: [] });
   if (m.provider === "nvidia")
-    return nvidiaChat(
-      m.id,
-      [
-        { role: "system", content: sys },
-        { role: "user", content: user },
-      ],
-      { ...o, extraFallbacks: [] },
-    );
+    return nvidiaChat(m.id, [
+      { role: "system", content: sys },
+      { role: "user", content: user },
+    ], { ...o, extraFallbacks: [] });
   if (m.provider === "groq")
     return groqChat([
       { role: "system", content: sys },
@@ -210,9 +183,7 @@ export async function runConsensus(
   const teamSize = opts.turbo ? 3 : Math.max(3, Math.min(a.members, 9));
   const team = buildTeam(market, teamSize);
   if (!team.length)
-    throw new Error(
-      "Ansambl nema nijedan dostupan mozak — unesi barem jedan API ključ u Postavkama.",
-    );
+    throw new Error("Ansambl nema nijedan dostupan mozak — unesi barem jedan API ključ u Postavkama.");
   const priorTotal = a.leaguePrior ? leaguePriorTotal(`${userText} ${ctx}`) : 2.68;
   const passes = opts.turbo ? 1 : Math.max(1, Math.min(a.passes, 3));
 
@@ -251,27 +222,14 @@ export async function runConsensus(
   if (!members.length) throw new Error("Nijedan model ansambla nije vratio valjanu procjenu.");
 
   const maxDev = Math.max(0.05, a.outlier / 100);
-  const pAgg = robustMean(
-    members.map((m) => m.pMain),
-    maxDev,
-  );
-  const lhAgg = robustMean(
-    members.map((m) => m.lambdaHome),
-    0.9,
-  );
-  const laAgg = robustMean(
-    members.map((m) => m.lambdaAway),
-    0.9,
-  );
+  const pAgg = robustMean(members.map((m) => m.pMain), maxDev);
+  const lhAgg = robustMean(members.map((m) => m.lambdaHome), 0.9);
+  const laAgg = robustMean(members.map((m) => m.lambdaAway), 0.9);
 
   // time-decay / vaganje po pouzdanosti članova
   let pEnsemble = pAgg.value;
   if (sp.modes.decay) {
-    const w = confWeightedMean(
-      members.map((m) => m.pMain),
-      members.map((m) => m.conf),
-      sp.confGamma,
-    );
+    const w = confWeightedMean(members.map((m) => m.pMain), members.map((m) => m.conf), sp.confGamma);
     if (Number.isFinite(w)) pEnsemble = 0.5 * pEnsemble + 0.5 * w;
   }
 
@@ -289,14 +247,13 @@ export async function runConsensus(
   // tržišna sidra iz kvota u tekstu (potrebna i za Elo/λ rotaciju)
   const odds = parseOdds(userText, market);
   // POPRAVAK: Dvosmjerni de-vig nije valjan za 1X2 jer izostavlja neodlučeni ishod.
-  const pMarket =
-    market === "1x2"
-      ? null
-      : odds.main && odds.alt
-        ? devig(odds.main, odds.alt)
-        : odds.main
-          ? Math.min(0.97, 1 / odds.main / 1.06)
-          : null;
+  const pMarket = market === "1x2"
+    ? null
+    : odds.main && odds.alt
+      ? devig(odds.main, odds.alt)
+      : odds.main
+        ? Math.min(0.97, 1 / odds.main / 1.06)
+        : null;
   const homeShare = market === "1x2" && pMarket !== null ? pMarket : null;
 
   // ── PIPELINE SUPER TOČNOSTI (hijerarhija, Elo, zero-inflation, overdispersion, HT/FT)
@@ -341,24 +298,17 @@ export async function runConsensus(
   let coherence: CoherenceReport | null = null;
   if (sp.modes.antiError) {
     const mcRef =
-      market === "ou25"
-        ? mc.over25
-        : market === "btts"
-          ? mc.btts
-          : market === "1x2"
-            ? mc.home
-            : null;
+      market === "ou25" ? mc.over25 : market === "btts" ? mc.btts : market === "1x2" ? mc.home : null;
     coherence = coherenceCheck(pMatrix, mcRef, pEnsemble, agreement, sp, `${userText} ${ctx}`);
     if (!coherence.ok) pMain = applyPenalty(pMain, coherence.penalty);
   }
 
   // POPRAVAK: EV/Kelly moraju koristiti kvotu izabranog ishoda; za neunesenu suprotnu 1X2/HTX kvotu ih izostavljamo.
-  const verdictOdds =
-    pMain >= 0.5
-      ? (odds.main ?? null)
-      : market === "btts" || market === "ou25"
-        ? (odds.alt ?? null)
-        : null;
+  const verdictOdds = pMain >= 0.5
+    ? odds.main ?? null
+    : market === "btts" || market === "ou25"
+      ? odds.alt ?? null
+      : null;
   const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], verdictOdds, agreement, a);
   const safer = saferAlternative(market, probs);
 
@@ -370,26 +320,11 @@ export async function runConsensus(
     .join("\n");
 
   return {
-    market,
-    members,
-    lambdaHome: lh,
-    lambdaAway: la,
-    lambdaTotal: lh + la,
-    pModel,
-    pMarket,
-    pMain,
-    pAlt: 1 - pMain,
-    probs,
-    mc,
-    verdict: v,
-    safer,
-    agreement,
-    spread,
-    summary,
-    prefs: a,
-    super: sp,
-    pipeline: pipe,
-    coherence,
+    market, members,
+    lambdaHome: lh, lambdaAway: la, lambdaTotal: lh + la,
+    pModel, pMarket, pMain, pAlt: 1 - pMain,
+    probs, mc, verdict: v, safer, agreement, spread, summary, prefs: a,
+    super: sp, pipeline: pipe, coherence,
   };
 }
 
@@ -398,19 +333,13 @@ export function consensusBriefing(c: ConsensusResult | null): string {
   if (!c) return "";
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
   const conf =
-    c.agreement >= 0.75
-      ? "VISOKA (modeli se slažu)"
-      : c.agreement >= 0.5
-        ? "SREDNJA"
-        : "NISKA (modeli se razilaze)";
+    c.agreement >= 0.75 ? "VISOKA (modeli se slažu)" : c.agreement >= 0.5 ? "SREDNJA" : "NISKA (modeli se razilaze)";
   const p = c.probs;
   return `═══ ANSAMBL KONSENZUS v5 (${c.members.length} modela × ${c.prefs.passes} prolaza · tržište: ${MARKET_LABEL[c.market]}) ═══
 λ_dom = ${c.lambdaHome.toFixed(2)} · λ_gost = ${c.lambdaAway.toFixed(2)} · λ_total = ${c.lambdaTotal.toFixed(2)}
 P(model) = ${pct(c.pModel)}${c.pMarket !== null ? ` · P(tržište, de-vig) = ${pct(c.pMarket)}` : " · kvota nije zadana"} → P(konačno) = ${pct(c.pMain)}
 KONAČNI TIP: ${c.verdict.pick} · sigurnost ${pct(c.verdict.p)} · minimalna isplativa kvota ${c.verdict.fairOdds.toFixed(2)}${
-    c.verdict.edge !== null
-      ? ` · edge ${c.verdict.edge.toFixed(1)}% · Kelly ${c.verdict.kelly?.toFixed(1)}%`
-      : ""
+    c.verdict.edge !== null ? ` · edge ${c.verdict.edge.toFixed(1)}% · Kelly ${c.verdict.kelly?.toFixed(1)}%` : ""
   } · ocjena ${"★".repeat(c.verdict.stars)}${"☆".repeat(5 - c.verdict.stars)}
 Filtar vrijednosti: ${c.verdict.valueOk ? "PROLAZI" : "NE PROLAZI"} — ${c.verdict.advice}
 Sigurnija alternativa: ${c.safer}

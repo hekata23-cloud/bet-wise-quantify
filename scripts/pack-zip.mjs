@@ -61,6 +61,4 @@ const content = await zip.generateAsync({
 fs.writeFileSync(publicZipPath, content);
 const fixedZipPath = path.join(rootDir, "public", "bet-wise-quantify-fixed.zip");
 fs.writeFileSync(fixedZipPath, content);
-console.log(
-  `Uspješno stvoren ${publicZipPath} i ${fixedZipPath} (${(content.length / 1024 / 1024).toFixed(2)} MB)`,
-);
+console.log(`Uspješno stvoren ${publicZipPath} i ${fixedZipPath} (${(content.length / 1024 / 1024).toFixed(2)} MB)`);

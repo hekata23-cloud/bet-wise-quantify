@@ -1,5 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, CheckCircle2, Circle, Layers, Lock, PlayCircle, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  Layers,
+  Lock,
+  PlayCircle,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LessonLink, ProgressLine, SectionTitle } from "@/learn/components/learn-ui";
 import { KIND_DESCRIPTIONS, KIND_LABELS, getCourse } from "@/learn/content/curriculum";
@@ -62,8 +70,7 @@ function CourseDetailPage() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">{language.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {language.nativeName} · {course.levels.length} CEFR levels · {course.unitCount}{" "}
-                units
+                {language.nativeName} · {course.levels.length} CEFR levels · {course.unitCount} units
               </p>
             </div>
           </div>
@@ -86,13 +93,8 @@ function CourseDetailPage() {
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             {cp.levels.map((lvl) => (
-              <div
-                key={lvl.level}
-                className="rounded-xl border border-border/60 bg-background/40 p-2"
-              >
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  {lvl.level}
-                </div>
+              <div key={lvl.level} className="rounded-xl border border-border/60 bg-background/40 p-2">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{lvl.level}</div>
                 <div className="text-sm font-semibold text-foreground">{lvl.percent}%</div>
               </div>
             ))}
@@ -111,13 +113,10 @@ function CourseDetailPage() {
               description={`${level.units.length} units · ${levelStat?.completed ?? 0} mastered`}
               action={
                 unlocked ? (
-                  <span className="text-xs text-muted-foreground">
-                    {levelStat?.percent ?? 0}% complete
-                  </span>
+                  <span className="text-xs text-muted-foreground">{levelStat?.percent ?? 0}% complete</span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-2.5 py-1 text-[11px] text-muted-foreground">
-                    <Lock className="h-3 w-3" /> Reach 50% of {cp.levels[levelIndex - 1]?.level} to
-                    unlock
+                    <Lock className="h-3 w-3" /> Reach 50% of {cp.levels[levelIndex - 1]?.level} to unlock
                   </span>
                 )
               }
@@ -137,17 +136,13 @@ function CourseDetailPage() {
                           ) : (
                             <Circle className="h-4 w-4 text-muted-foreground" />
                           )}
-                          <span className="text-sm font-semibold text-foreground">
-                            {unit.title}
-                          </span>
+                          <span className="text-sm font-semibold text-foreground">{unit.title}</span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">{unit.summary}</p>
                       </div>
                       <div className="text-right">
                         <div className="text-xs text-muted-foreground">Mastery</div>
-                        <div
-                          className={cn("text-sm font-semibold", complete && "text-emerald-300")}
-                        >
+                        <div className={cn("text-sm font-semibold", complete && "text-emerald-300")}>
                           {up?.mastery ?? 0}%
                         </div>
                       </div>
@@ -208,8 +203,8 @@ function CourseDetailPage() {
           ))}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Complete all four activities to master a unit. Your mastery is the average of your best
-          score in each activity.
+          Complete all four activities to master a unit. Your mastery is the average of your best score in
+          each activity.
         </p>
       </section>
     </div>

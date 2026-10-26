@@ -25,13 +25,7 @@
     8) EDGE i KELLY spram stvarnih kvota; ocjena povjerenja A+..C
    ═══════════════════════════════════════════════════════════════════ */
 
-import {
-  priorZaLigu,
-  shrinkajStopu,
-  jeMaliUzorak,
-  stropPovjerenja,
-  type LigaPrior,
-} from "./eb-shrinkage";
+import { priorZaLigu, shrinkajStopu, jeMaliUzorak, stropPovjerenja, type LigaPrior } from "./eb-shrinkage";
 import { bttsIzKopule } from "./btts-copula";
 import { kalibrirajGoalsFinal, tezinaKalibracije } from "./global-calibration";
 import type { EmpStanje } from "./accuracy-ledger";
@@ -94,11 +88,7 @@ export type GoalsIzlaz = {
   /** GLOBALNA KALIBRACIJA: log-pool finala s de-margined tržištem (dijagnostika) */
   kalibracija: { primijenjena: boolean; tezina: number; prosjecniPomak: number };
   /** STVARNA TOČNOST: temperiranje prema vlastitom rekordu (dijagnostika) */
-  empTocnost: {
-    primijenjena: boolean;
-    temp: Record<string, number>;
-    uzorak: Record<string, number>;
-  };
+  empTocnost: { primijenjena: boolean; temp: Record<string, number>; uzorak: Record<string, number> };
 };
 
 const MAX_GOL = 9;
@@ -147,30 +137,18 @@ function izgradiGrid(lam: number, mu: number, rho: number): number[][] {
       z += v;
     }
   }
-  for (let i = 0; i <= MAX_GOL; i++) for (let j = 0; j <= MAX_GOL; j++) g[i]![j] = g[i]![j]! / z;
+  for (let i = 0; i <= MAX_GOL; i++)
+    for (let j = 0; j <= MAX_GOL; j++) g[i]![j] = g[i]![j]! / z;
   return g;
 }
 
 type GridMetrike = {
-  p1: number;
-  pX: number;
-  p2: number;
-  btts: number;
-  o15: number;
-  o25: number;
-  o35: number;
-  nulaNula: number;
+  p1: number; pX: number; p2: number;
+  btts: number; o15: number; o25: number; o35: number; nulaNula: number;
 };
 
 function metrikeIzGrida(g: number[][]): GridMetrike {
-  let p1 = 0,
-    pX = 0,
-    p2 = 0,
-    btts = 0,
-    o15 = 0,
-    o25 = 0,
-    o35 = 0,
-    nulaNula = 0;
+  let p1 = 0, pX = 0, p2 = 0, btts = 0, o15 = 0, o25 = 0, o35 = 0, nulaNula = 0;
   for (let i = 0; i <= MAX_GOL; i++) {
     for (let j = 0; j <= MAX_GOL; j++) {
       const p = g[i]![j]!;
@@ -191,8 +169,7 @@ function metrikeIzGrida(g: number[][]): GridMetrike {
 /** Dvoglavi de-margin: vjerojatnosti iz para kvota bez bookmaker marže. */
 function deMargin(o: number | undefined, u: number | undefined): { pA: number; pB: number } | null {
   if (o == null || u == null || !(o >= 1.01) || !(u >= 1.01)) return null;
-  const a = 1 / o,
-    b = 1 / u;
+  const a = 1 / o, b = 1 / u;
   return { pA: a / (a + b), pB: b / (a + b) };
 }
 
@@ -203,9 +180,7 @@ function deMargin1x2(k1: number | undefined, kX: number | undefined, k2: number 
   if (kX != null && !Number.isFinite(kX)) return null;
   if (k2 != null && !Number.isFinite(k2)) return null;
   if (k1 == null || kX == null || k2 == null || k1 < 1.01 || kX < 1.01 || k2 < 1.01) return null;
-  const a = 1 / k1,
-    b = 1 / kX,
-    c = 1 / k2;
+  const a = 1 / k1, b = 1 / kX, c = 1 / k2;
   const s = a + b + c;
   return { p1: a / s, pX: b / s, p2: c / s };
 }
@@ -215,8 +190,7 @@ function lambdaIzLinije(line: number, pOver: number): number | null {
   if (!(pOver > 0.001 && pOver < 0.999)) return null;
   const k = Math.floor(line);
   const target = 1 - pOver;
-  let lo = 0.05,
-    hi = 8;
+  let lo = 0.05, hi = 8;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     // CDF je opadajuća u λ: ako je CDF veći od cilja, λ je premalen
@@ -272,9 +246,7 @@ function lambdaIzTrzista(
     [1.5, "o15", "u15", 0.25],
     [3.5, "o35", "u35", 0.25],
   ];
-  let s = 0,
-    w = 0,
-    n = 0;
+  let s = 0, w = 0, n = 0;
   for (const [line, ok, uk, tez] of linije) {
     const dm = deMargin(kvote[ok], kvote[uk]);
     if (!dm) continue;
@@ -304,7 +276,9 @@ function kalibrirajRazdobje(
   for (let r = 0.08; r <= 0.921; r += 0.04) {
     const m = metrikeIzGrida(izgradiGrid(lamUk * r, lamUk * (1 - r), 0));
     const err =
-      (m.p1 - trziste1x2.p1) ** 2 + (m.pX - trziste1x2.pX) ** 2 + (m.p2 - trziste1x2.p2) ** 2;
+      (m.p1 - trziste1x2.p1) ** 2 +
+      (m.pX - trziste1x2.pX) ** 2 +
+      (m.p2 - trziste1x2.p2) ** 2;
     if (err < bestErr) {
       bestErr = err;
       best = r;
@@ -397,27 +371,16 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   if (maliUzorak) {
     upozorenja.push(
       `⚠️ MALI UZORAK (< 5 utakmica barem jednog tima): forma je Empirical Bayes-om smanjena prema ligaškom prosjeku` +
-        `${prior.tocna ? ` ("${prior.naziv}", ${prior.ukupno.toFixed(2)} gola)` : ""} — strop povjerenja 55%.`,
+      `${prior.tocna ? ` ("${prior.naziv}", ${prior.ukupno.toFixed(2)} gola)` : ""} — strop povjerenja 55%.`,
     );
   } else if (odDom < 4 || odGost < 4) {
-    upozorenja.push(
-      "Uzorak forme je mali (< 4 utakmice barem jednog tima) — procjena timova manje pouzdana.",
-    );
+    upozorenja.push("Uzorak forme je mali (< 4 utakmice barem jednog tima) — procjena timova manje pouzdana.");
   }
   if (!dom) upozorenja.push("Forma domaćina nije dostupna — uzet ligaški prosjek.");
   if (!gost) upozorenja.push("Forma gosta nije dostupna — uzet ligaški prosjek.");
-  if (dom)
-    faktori.push(
-      `Domaćin: ${dom.postignuti}/${dom.odigrano} postignutih, ${dom.primljeni} primljenih u zadnjih ${dom.odigrano}.`,
-    );
-  if (gost)
-    faktori.push(
-      `Gost: ${gost.postignuti}/${gost.odigrano} postignutih, ${gost.primljeni} primljenih u zadnjih ${gost.odigrano}.`,
-    );
-  if (prior.tocna)
-    faktori.push(
-      `Ligaški prior (EB): "${prior.naziv}" — ${prior.ukupno.toFixed(2)} golova ukupno, shrinkage k=5.`,
-    );
+  if (dom) faktori.push(`Domaćin: ${dom.postignuti}/${dom.odigrano} postignutih, ${dom.primljeni} primljenih u zadnjih ${dom.odigrano}.`);
+  if (gost) faktori.push(`Gost: ${gost.postignuti}/${gost.odigrano} postignutih, ${gost.primljeni} primljenih u zadnjih ${gost.odigrano}.`);
+  if (prior.tocna) faktori.push(`Ligaški prior (EB): "${prior.naziv}" — ${prior.ukupno.toFixed(2)} golova ukupno, shrinkage k=5.`);
 
   /* 2+3) tržište i mješanje ukupnih golova */
   const trz = lambdaIzTrzista(kv, books);
@@ -428,8 +391,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
 
   const dm1x2 = deMargin1x2(kv["1"], kv["X"], kv["2"]);
   if (!dm1x2) upozorenja.push("Nema potpunog 1X2 tržišta — razdvoba golova je samo iz forme.");
-  if (books > 0 && books < 3)
-    upozorenja.push(`Samo ${books} kladionica vraća kvote — tržišni signal slabiji.`);
+  if (books > 0 && books < 3) upozorenja.push(`Samo ${books} kladionica vraća kvote — tržišni signal slabiji.`);
 
   /* 4) razdvoba */
   const bazaRazd = lamModel + muModel > 0 ? lamModel / (lamModel + muModel) : 0.55;
@@ -461,7 +423,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   model["bttsDa"] = kopulaModel.btts;
   faktori.push(
     `BTTS zavisnost: DC ${(kopula.dc * 100).toFixed(1)}% · BivPois(ρ=0.08) ${(kopula.bp * 100).toFixed(1)}% · ` +
-      `Frank(θ=${kopula.theta.toFixed(2)}) ${(kopula.frank * 100).toFixed(1)}% → mješavina ${(kopula.btts * 100).toFixed(1)}%.`,
+    `Frank(θ=${kopula.theta.toFixed(2)}) ${(kopula.frank * 100).toFixed(1)}% → mješavina ${(kopula.btts * 100).toFixed(1)}%.`,
   );
 
   let bttsDa = kopula.btts;
@@ -471,15 +433,9 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   if (postotakBtts.length === 2) {
     // EB: udio BTTS-a u formi se također smanjuje prema prioru kad je uzorak mali
     const nZaj = odDom + odGost;
-    const pf = shrinkajStopu(
-      nZaj,
-      (postotakBtts[0]! * odDom + postotakBtts[1]! * odGost) / nZaj,
-      kopula.btts,
-    );
+    const pf = shrinkajStopu(nZaj, (postotakBtts[0]! * odDom + postotakBtts[1]! * odGost) / nZaj, kopula.btts);
     bttsDa = 0.8 * bttsDa + 0.2 * pf;
-    faktori.push(
-      `BTTS forma: domaćin ${Math.round(postotakBtts[0]! * 100)}%, gost ${Math.round(postotakBtts[1]! * 100)}% utakmica (EB-mješavina ${(pf * 100).toFixed(1)}%).`,
-    );
+    faktori.push(`BTTS forma: domaćin ${Math.round(postotakBtts[0]! * 100)}%, gost ${Math.round(postotakBtts[1]! * 100)}% utakmica (EB-mješavina ${(pf * 100).toFixed(1)}%).`);
   }
 
   let o25 = M.o25;
@@ -497,24 +453,18 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const bttsNe = clamp(1 - bttsDa, 0.001, 0.999);
 
   let final: Record<string, number> = {
-    "1": M.p1,
-    X: M.pX,
-    "2": M.p2,
-    bttsDa,
-    bttsNe,
-    o15,
-    o25,
-    o35,
-    u15: 1 - o15,
-    u25: 1 - o25,
-    u35: 1 - o35,
+    "1": M.p1, "X": M.pX, "2": M.p2,
+    bttsDa, bttsNe,
+    o15, o25, o35,
+    u15: 1 - o15, u25: 1 - o25, u35: 1 - o35,
   };
   // distribucija ukupnih golova (za 2.5 Pro): g0..g4, g5+
   // VAŽNO: polje ide do 2*MAX_GOL jer zbroj golova (i+j) može biti do 18
   // (npr. 5:5, 7:6) — staro polje do 9 ti je rezultate gubilo iz g5+.
   {
     const pg: number[] = new Array(2 * MAX_GOL + 1).fill(0);
-    for (let i = 0; i <= MAX_GOL; i++) for (let j = 0; j <= MAX_GOL; j++) pg[i + j]! += G[i]![j]!;
+    for (let i = 0; i <= MAX_GOL; i++)
+      for (let j = 0; j <= MAX_GOL; j++) pg[i + j]! += G[i]![j]!;
     for (let k = 0; k <= 4; k++) final[`g${k}`] = pg[k]!;
     let g5 = 0;
     for (let k = 5; k <= 2 * MAX_GOL; k++) g5 += pg[k]!;
@@ -541,8 +491,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   }
 
   /* suglasnost model ↔ tržište (na 1/5 razlika preslikano u 0..1) */
-  let diffZ = 0,
-    diffN = 0;
+  let diffZ = 0, diffN = 0;
   for (const k of ["bttsDa", "o15", "o25", "o35"]) {
     if (market[k] != null && model[k] != null) {
       diffZ += Math.abs(model[k]! - market[k]!);
@@ -552,17 +501,14 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
   const avgDiff = diffN ? diffZ / diffN : null;
   const suglasnost = avgDiff == null ? 0.5 : clamp(1 - avgDiff * 5, 0, 1);
   if (avgDiff != null && avgDiff > 0.12)
-    upozorenja.push(
-      "Model i tržište se znatno razilaze — ili tržište ima infu (povrede/postave), ili je kvota iskočila.",
-    );
+    upozorenja.push("Model i tržište se znatno razilaze — ili tržište ima infu (povrede/postave), ili je kvota iskočila.");
 
   /* 7b) GLOBALNA KALIBRACIJA — logaritamski pool finala s de-margined tržištem.
      Težina raste s brojem kladionica i pokrivenošću tržišta (max 0.45);
      bez kvota je w = 0 → final ostaje čisto modelno (identitet). */
-  const paroviKal = ["o15", "o25", "o35", "bttsDa"].filter(
-    (k) =>
-      market[k] != null ||
-      (k === "bttsDa" ? market["bttsNe"] != null : market[`u${k.slice(1)}`] != null),
+  const paroviKal = ["o15", "o25", "o35", "bttsDa"].filter((k) =>
+    market[k] != null ||
+    (k === "bttsDa" ? market["bttsNe"] != null : market[`u${k.slice(1)}`] != null),
   ).length;
   const wKal = tezinaKalibracije(books, paroviKal);
   const kal = kalibrirajGoalsFinal(final, market, wKal, ulaz.empirijske);
@@ -571,21 +517,18 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     if (wKal > 0) {
       faktori.push(
         `Globalna kalibracija: final pool-an s de-margined tržištem (težina ${(wKal * 100).toFixed(0)}%), ` +
-          `prosječni pomak ${kal.prosjecniPomak.toFixed(1)} pp.`,
+        `prosječni pomak ${kal.prosjecniPomak.toFixed(1)} pp.`,
       );
       if (kal.prosjecniPomak > 6)
         upozorenja.push(
           `Kalibracija je znatno povukla model prema tržištu (${kal.prosjecniPomak.toFixed(1)} pp) — forma i tržište se razilazu (infu, povrede ili iskočila kvota); tretirajte tipove oprezno.`,
         );
     }
-    const empAktivne = Object.entries(kal.emp?.temp ?? {}).filter(
-      ([, T]) => Math.abs(T - 1) > 1e-9,
-    );
+    const empAktivne = Object.entries(kal.emp?.temp ?? {}).filter(([, T]) => Math.abs(T - 1) > 1e-9);
     if (empAktivne.length > 0) {
       faktori.push(
         "Stvarna točnost (Dnevnik): vjerojatnosti temperirane prema vlastitom rekordu (" +
-          empAktivne.map(([k, T]) => `${k} ×${T.toFixed(2)}`).join(", ") +
-          ").",
+        empAktivne.map(([k, T]) => `${k} ×${T.toFixed(2)}`).join(", ") + ").",
       );
       const maxUzorak = Math.max(0, ...Object.values(kal.emp?.uzorak ?? {}));
       if (maxUzorak >= 10 && empAktivne.some(([, T]) => Math.abs(T - 1) >= 0.12))
@@ -606,14 +549,13 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     if (o != null && o >= 1.01) {
       const e = p * o - 1;
       edge[k] = Math.round(e * 1000) / 1000;
-      if (e > 0)
-        kelly[k] = Math.round(clamp((p * (o - 1) - (1 - p)) / (o - 1), 0, 1) * 1000) / 1000;
+      if (e > 0) kelly[k] = Math.round(clamp((p * (o - 1) - (1 - p)) / (o - 1), 0, 1) * 1000) / 1000;
     }
   }
 
   /* povjerenje (s EB stropom za mali uzorak) */
-  const linije = ["bttsDa", "o15", "o25", "o35"].filter(
-    (k) => kv[k] != null && kv[k === "bttsDa" ? "bttsNe" : `u${k.slice(1)}`] != null,
+  const linije = ["bttsDa", "o15", "o25", "o35"].filter((k) =>
+    kv[k] != null && kv[k === "bttsDa" ? "bttsNe" : `u${k.slice(1)}`] != null,
   ).length;
   const pokrTrz = (linije / 4) * 25;
   const pokrKnj = (clamp(books, 0, 6) / 6) * 25;
@@ -629,8 +571,7 @@ export function goalsAnaliza(ulaz: GoalsUlaz): GoalsIzlaz {
     for (let j = 0; j <= 5; j++) top.push({ rezultat: `${i}:${j}`, p: G[i]![j]! });
   top.sort((a, b) => b.p - a.p);
 
-  if (books === 0)
-    upozorenja.push("Nema kvota s API-ja — analiza je samo modelna (bez tržišne kalibracije).");
+  if (books === 0) upozorenja.push("Nema kvota s API-ja — analiza je samo modelna (bez tržišne kalibracije).");
   if (wMarket === 0) upozorenja.push("Nema O/U linija — ukupni golovi su čisto iz forme.");
 
   return {

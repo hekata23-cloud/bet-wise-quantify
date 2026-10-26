@@ -5,14 +5,14 @@
 // ============================================================
 
 export interface SkellamLinija {
-  oznaka: string; // "DNB 1", "AH 1 +0.25"…
+  oznaka: string;      // "DNB 1", "AH 1 +0.25"…
   tim: "1" | "2";
   linija: number | null; // null = DNB
-  win: number; // P(puni dobitak) + ½·P(pola dobitka)
-  push: number; // P(povrat) (+ ½ za četvrt-linije)
-  loss: number; // P(gubitak) (+ ½ za četvrt-linije)
-  noLoss: number; // win + push → "sigurnost" noge
-  ferKvota: number; // poštena kvota uz povrat ((1 - push) / win)
+  win: number;         // P(puni dobitak) + ½·P(pola dobitka)
+  push: number;        // P(povrat) (+ ½ za četvrt-linije)
+  loss: number;        // P(gubitak) (+ ½ za četvrt-linije)
+  noLoss: number;      // win + push → "sigurnost" noge
+  ferKvota: number;    // poštena kvota uz povrat ((1 - push) / win)
 }
 
 function pois(l: number): number[] {
@@ -32,14 +32,12 @@ function pois(l: number): number[] {
 
 /** P(D = d), uz puni numerički značajan rep Poissonove raspodjele. */
 export function skellam(lh: number, la: number): Map<number, number> {
-  const h = pois(lh),
-    a = pois(la);
+  const h = pois(lh), a = pois(la);
   const out = new Map<number, number>();
-  for (let i = 0; i < h.length; i++)
-    for (let j = 0; j < a.length; j++) {
-      const d = i - j;
-      out.set(d, (out.get(d) ?? 0) + h[i]! * a[j]!);
-    }
+  for (let i = 0; i < h.length; i++) for (let j = 0; j < a.length; j++) {
+    const d = i - j;
+    out.set(d, (out.get(d) ?? 0) + h[i]! * a[j]!);
+  }
   return out;
 }
 
@@ -51,41 +49,14 @@ function zbroj(sk: Map<number, number>, f: (d: number) => boolean) {
 
 function linija(sk: Map<number, number>, tim: "1" | "2", h: number | null): SkellamLinija {
   const pd = (f: (d: number) => boolean) => zbroj(sk, (d) => f(tim === "1" ? d : -d));
-  let win = 0,
-    push = 0,
-    loss = 0;
-  if (h === null || h === 0) {
-    win = pd((d) => d > 0);
-    push = pd((d) => d === 0);
-    loss = pd((d) => d < 0);
-  } else if (h === 0.5) {
-    win = pd((d) => d >= 0);
-    loss = pd((d) => d < 0);
-  } else if (h === -0.5) {
-    win = pd((d) => d > 0);
-    loss = pd((d) => d <= 0);
-  } else if (h === 0.25) {
-    const p0 = pd((d) => d === 0);
-    win = pd((d) => d > 0) + p0 / 2;
-    push = p0 / 2;
-    loss = pd((d) => d < 0);
-  } else if (h === -0.25) {
-    const p0 = pd((d) => d === 0);
-    win = pd((d) => d > 0);
-    push = p0 / 2;
-    loss = pd((d) => d < 0) + p0 / 2;
-  }
+  let win = 0, push = 0, loss = 0;
+  if (h === null || h === 0) { win = pd((d) => d > 0); push = pd((d) => d === 0); loss = pd((d) => d < 0); }
+  else if (h === 0.5) { win = pd((d) => d >= 0); loss = pd((d) => d < 0); }
+  else if (h === -0.5) { win = pd((d) => d > 0); loss = pd((d) => d <= 0); }
+  else if (h === 0.25) { const p0 = pd((d) => d === 0); win = pd((d) => d > 0) + p0 / 2; push = p0 / 2; loss = pd((d) => d < 0); }
+  else if (h === -0.25) { const p0 = pd((d) => d === 0); win = pd((d) => d > 0); push = p0 / 2; loss = pd((d) => d < 0) + p0 / 2; }
   const oznaka = h === null ? `DNB ${tim}` : `AH ${tim} ${h > 0 ? "+" : ""}${h}`;
-  return {
-    oznaka,
-    tim,
-    linija: h,
-    win,
-    push,
-    loss,
-    noLoss: win + push,
-    ferKvota: win > 0 ? (1 - push) / win : Infinity,
-  };
+  return { oznaka, tim, linija: h, win, push, loss, noLoss: win + push, ferKvota: win > 0 ? (1 - push) / win : Infinity };
 }
 
 export const AH_LINIJE = [0.5, 0.25, -0.25, -0.5] as const;
@@ -102,11 +73,7 @@ export function parseAsianHandicapLine(raw: string): number | null {
   const drugiImaZnak = drugiRaw.startsWith("+") || drugiRaw.startsWith("-");
   const drugiPotpisan = drugiImaZnak
     ? drugi
-    : prviRaw.startsWith("-")
-      ? -Math.abs(drugi)
-      : prviRaw.startsWith("+")
-        ? Math.abs(drugi)
-        : drugi;
+    : prviRaw.startsWith("-") ? -Math.abs(drugi) : prviRaw.startsWith("+") ? Math.abs(drugi) : drugi;
   return (prvi + drugiPotpisan) / 2;
 }
 

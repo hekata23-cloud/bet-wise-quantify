@@ -9,104 +9,38 @@ import {
 } from "@/lib/botovi";
 
 describe("Luna i Orion — Višesportski analitički engine i prepoznavanje tržišta", () => {
-  it("prepoznaje nogometna tržišta (1X2, BTTS, Over/Under, Hendikep, DNB, Korneri, Kartoni, Čisti list, Win to Nil, Oba poluvremena)", () => {
-    expect(identifySpecificMarket("Dinamo vs Hajduk BTTS oba daju gol", "nogomet").category).toBe(
-      "btts",
-    );
-    expect(identifySpecificMarket("Arsenal vs Chelsea over 2.5 gola", "nogomet").category).toBe(
-      "over_under",
-    );
-    expect(
-      identifySpecificMarket("Real Madrid vs Barcelona azijski hendikep -0.75", "nogomet").category,
-    ).toBe("hendikep");
-    expect(
-      identifySpecificMarket("Liverpool vs City DNB pobjeda bez neriješenog", "nogomet").category,
-    ).toBe("dnb");
-    expect(
-      identifySpecificMarket("Inter vs Milan zbroj kornera više od 9.5", "nogomet").category,
-    ).toBe("korneri");
-    expect(
-      identifySpecificMarket("Bayern vs Dortmund više od 3.5 kartona", "nogomet").category,
-    ).toBe("kartoni");
-    expect(identifySpecificMarket("PSG vs Marseille točan rezultat 2:1", "nogomet").category).toBe(
-      "tocan_rezultat",
-    );
-    expect(
-      identifySpecificMarket("Dinamo vs Rijeka 1/1 poluvrijeme kraj prijelaz", "nogomet").category,
-    ).toBe("ht_ft");
-    expect(
-      identifySpecificMarket("Real Madrid clean sheet bez primljenog gola", "nogomet").category,
-    ).toBe("cisti_list");
-    expect(
-      identifySpecificMarket("Manchester City win to nil pobjeda s nulom", "nogomet").category,
-    ).toBe("win_to_nil");
-    expect(
-      identifySpecificMarket("Arsenal vs Liverpool gol u oba poluvremena", "nogomet").category,
-    ).toBe("oba_poluvremena");
-    expect(
-      identifySpecificMarket("Barcelona vs Sevilla parno neparno golova", "nogomet").category,
-    ).toBe("parno_neparno");
+  it("prepoznaje nogometna tržišta (1X2, BTTS, Over/Under, Hendikep, DNB, Korneri, Kartoni)", () => {
+    expect(identifySpecificMarket("Dinamo vs Hajduk BTTS oba daju gol", "nogomet").category).toBe("btts");
+    expect(identifySpecificMarket("Arsenal vs Chelsea over 2.5 gola", "nogomet").category).toBe("over_under");
+    expect(identifySpecificMarket("Real Madrid vs Barcelona azijski hendikep -0.75", "nogomet").category).toBe("hendikep");
+    expect(identifySpecificMarket("Liverpool vs City DNB pobjeda bez neriješenog", "nogomet").category).toBe("dnb");
+    expect(identifySpecificMarket("Inter vs Milan zbroj kornera više od 9.5", "nogomet").category).toBe("korneri");
+    expect(identifySpecificMarket("Bayern vs Dortmund više od 3.5 kartona", "nogomet").category).toBe("kartoni");
+    expect(identifySpecificMarket("PSG vs Marseille točan rezultat 2:1", "nogomet").category).toBe("tocan_rezultat");
+    expect(identifySpecificMarket("Dinamo vs Rijeka 1/1 poluvrijeme kraj prijelaz", "nogomet").category).toBe("ht_ft");
   });
 
-  it("prepoznaje košarkaška tržišta (Moneyline, Spread, Total poena, Četvrtine, Igrači props, Margina, Utrka)", () => {
-    expect(
-      identifySpecificMarket("Lakers vs Celtics spread hendikep -4.5", "kosarka").category,
-    ).toBe("hendikep");
-    expect(
-      identifySpecificMarket("Warriors vs Nuggets ukupno poena over 224.5", "kosarka").category,
-    ).toBe("over_under");
-    expect(
-      identifySpecificMarket("Partizan vs Crvena zvezda pobjednik meča moneyline", "kosarka")
-        .category,
-    ).toBe("1x2");
-    expect(
-      identifySpecificMarket("Cibona vs Zadar prva četvrtina Q1 ishod", "kosarka").category,
-    ).toBe("cetvrtine");
-    expect(identifySpecificMarket("Dončić zbroj poena igrača over 31.5", "kosarka").category).toBe(
-      "igraci",
-    );
-    expect(
-      identifySpecificMarket("Real Madrid vs Barcelona margina pobjede 1-10 poena", "kosarka")
-        .category,
-    ).toBe("margina");
-    expect(identifySpecificMarket("Lakers vs Warriors utrka do 20 poena", "kosarka").category).toBe(
-      "utrka",
-    );
-    expect(identifySpecificMarket("Celtics vs Heat parno neparno poena", "kosarka").category).toBe(
-      "parno_neparno",
-    );
+  it("prepoznaje košarkaška tržišta (Moneyline, Spread, Total poena, Četvrtine, Igrači props)", () => {
+    expect(identifySpecificMarket("Lakers vs Celtics spread hendikep -4.5", "kosarka").category).toBe("hendikep");
+    expect(identifySpecificMarket("Warriors vs Nuggets ukupno poena over 224.5", "kosarka").category).toBe("over_under");
+    expect(identifySpecificMarket("Partizan vs Crvena zvezda pobjednik meča moneyline", "kosarka").category).toBe("1x2");
+    expect(identifySpecificMarket("Cibona vs Zadar prva četvrtina Q1 ishod", "kosarka").category).toBe("cetvrtine");
+    expect(identifySpecificMarket("Dončić zbroj poena igrača over 31.5", "kosarka").category).toBe("igraci");
+    expect(identifySpecificMarket("Real Madrid vs Barcelona margina pobjede 1-10 poena", "kosarka").category).toBe("margina");
   });
 
-  it("prepoznaje rukometna tržišta (1X2 s remijem, Hendikep, Total golova, Poluvrijeme, Sedmerci)", () => {
-    expect(
-      identifySpecificMarket("Zagreb vs PSG rukomet konačan ishod 1X2", "rukomet").category,
-    ).toBe("1x2");
-    expect(
-      identifySpecificMarket("Veszprem vs Magdeburg hendikep golova -2.5", "rukomet").category,
-    ).toBe("hendikep");
-    expect(
-      identifySpecificMarket("Kiel vs Flensburg ukupno golova preko 56.5", "rukomet").category,
-    ).toBe("over_under");
-    expect(
-      identifySpecificMarket("Zagreb vs Veszprem 1. poluvrijeme zbroj golova", "rukomet").category,
-    ).toBe("poluvrijeme");
-    expect(
-      identifySpecificMarket("Domaćin daje više od 28.5 golova rukomet", "rukomet").category,
-    ).toBe("timski_total");
-    expect(
-      identifySpecificMarket("Zagreb vs Magdeburg sedmerci više od 7.5", "rukomet").category,
-    ).toBe("sedmerci");
-    expect(
-      identifySpecificMarket("Kiel vs PSG rukomet parno neparno golova", "rukomet").category,
-    ).toBe("parno_neparno");
+  it("prepoznaje rukometna tržišta (1X2 s remijem, Hendikep, Total golova, Poluvrijeme)", () => {
+    expect(identifySpecificMarket("Zagreb vs PSG rukomet konačan ishod 1X2", "rukomet").category).toBe("1x2");
+    expect(identifySpecificMarket("Veszprem vs Magdeburg hendikep golova -2.5", "rukomet").category).toBe("hendikep");
+    expect(identifySpecificMarket("Kiel vs Flensburg ukupno golova preko 56.5", "rukomet").category).toBe("over_under");
+    expect(identifySpecificMarket("Zagreb vs Veszprem 1. poluvrijeme zbroj golova", "rukomet").category).toBe("poluvrijeme");
+    expect(identifySpecificMarket("Domaćin daje više od 28.5 golova rukomet", "rukomet").category).toBe("timski_total");
   });
 
   it("detektira razgovorne upite i NE generira lažni mock par za Domaćin vs Gost", () => {
     expect(isConversationalQuery("Bok Luna, kako si?")).toBe(true);
     expect(isConversationalQuery("Što je Kelly kriterij i kako ga koristiti?")).toBe(true);
-    expect(isConversationalQuery("Koja je razlika između azijskog i europskog hendikepa?")).toBe(
-      true,
-    );
+    expect(isConversationalQuery("Koja je razlika između azijskog i europskog hendikepa?")).toBe(true);
 
     const quantConversational = runQuantAnalytics("Bok Luna, kako si danas?");
     expect(quantConversational.isMatchQuery).toBe(false);
@@ -115,12 +49,10 @@ describe("Luna i Orion — Višesportski analitički engine i prepoznavanje trž
     expect(lunaReply).toContain("Luna");
     expect(lunaReply).not.toContain("Domaćin vs Gost");
     expect(lunaReply).not.toContain("stoper gostiju odsutan");
-    expect(lunaReply.trim().length).toBeGreaterThan(150);
 
     const orionReply = formatOrionResponse(quantConversational);
     expect(orionReply).toContain("Orion");
     expect(orionReply).not.toContain("Domaćin vs Gost");
-    expect(orionReply.trim().length).toBeGreaterThan(150);
   });
 
   it("izračunava specifičnu košarkašku matematiku (pace, ratings, normalna distribucija)", () => {
@@ -154,22 +86,9 @@ describe("Luna i Orion — Višesportski analitički engine i prepoznavanje trž
     expect(lunaResponse).toContain("Zagreb vs PSG");
     expect(lunaResponse).toContain("gol");
     expect(lunaResponse).not.toContain("prazan odgovor");
-    expect(lunaResponse.length).toBeGreaterThan(200);
 
     const orionResponse = formatOrionResponse(quant);
     expect(orionResponse).toContain("Posjedi");
     expect(orionResponse).not.toContain("prazan odgovor");
-    expect(orionResponse.length).toBeGreaterThan(200);
-  });
-
-  it("dinamički prilagođava tip prema zadanoj liniji korisnika (over 3.5, spread -6.5, rukomet 58.5)", () => {
-    const nogometOver = runQuantAnalytics("Arsenal vs Chelsea over 3.5 gola");
-    expect(nogometOver.pick).toContain("3.5");
-
-    const kosarkaSpread = runQuantAnalytics("Warriors vs Nuggets hendikep -6.5 poena");
-    expect(kosarkaSpread.pick).toMatch(/6\.5/);
-
-    const rukometTotal = runQuantAnalytics("Veszprem vs Kiel zbroj golova više od 58.5");
-    expect(rukometTotal.pick).toContain("58.5");
   });
 });

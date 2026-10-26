@@ -81,23 +81,14 @@ async function callOnce(
     /* nije JSON */
   }
   const errMsg =
-    typeof parsed.error === "string"
-      ? parsed.error
-      : parsed.error?.message || bodyText.slice(0, 200);
+    typeof parsed.error === "string" ? parsed.error : parsed.error?.message || bodyText.slice(0, 200);
 
   if (!res.ok) {
     if (res.status === 401 || res.status === 403)
-      throw new HFError(
-        "Hugging Face token odbijen. Treba token tipa 'Read' ili 'Fine-grained' s pravom 'Make calls to Inference Providers'.",
-        false,
-      );
-    if (res.status === 429)
-      throw new HFError("Hugging Face rate limit (429). Pokušaj za par sekundi.", true);
+      throw new HFError("Hugging Face token odbijen. Treba token tipa 'Read' ili 'Fine-grained' s pravom 'Make calls to Inference Providers'.", false);
+    if (res.status === 429) throw new HFError("Hugging Face rate limit (429). Pokušaj za par sekundi.", true);
     if (res.status === 402)
-      throw new HFError(
-        "Hugging Face: potrošen besplatni mjesečni kredit za Inference Providers.",
-        false,
-      );
+      throw new HFError("Hugging Face: potrošen besplatni mjesečni kredit za Inference Providers.", false);
     if (res.status === 400 || res.status === 404)
       throw new HFError(`Model "${model}" nije serviran (${res.status}): ${errMsg}`, true);
     throw new HFError(`Hugging Face ${res.status}: ${errMsg}`, true);

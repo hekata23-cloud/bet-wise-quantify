@@ -52,6 +52,7 @@ export function listVoices(): SpeechSynthesisVoice[] {
     .sort((a, b) => scoreVoice(b) - scoreVoice(a));
 }
 
+
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 interface SpeechRecognitionLike {
   lang: string;

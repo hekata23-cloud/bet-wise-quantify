@@ -9,7 +9,10 @@
  *   i proturječnosti između modela i tržišta.
  */
 
-export type IntegrityStatus = "CERTIFICIRAN" | "OPREZ" | "PRESKOČI";
+export type IntegrityStatus =
+  | "CERTIFICIRAN"
+  | "OPREZ"
+  | "PRESKOČI";
 
 export type IntegrityInput = {
   /** Vjerojatnost odabranog tipa, u rasponu 0–1. */
@@ -68,7 +71,8 @@ export type IntegrityResult = {
 };
 
 /** Sigurno ograničavanje broja na 0–1. */
-const clamp01 = (value: number) => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+const clamp01 = (value: number) =>
+  Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 
 /**
  * Izračun tržišne vjerojatnosti iz dvije strane tržišta.
@@ -90,7 +94,10 @@ export function noVigProbability(selectedOdd: number, oppositeOdd: number): numb
 }
 
 /** Marža tržišta za dvije strane, izražena u postotcima. */
-export function twoWayMarginPercent(firstOdd: number, secondOdd: number): number | null {
+export function twoWayMarginPercent(
+  firstOdd: number,
+  secondOdd: number,
+): number | null {
   if (
     !Number.isFinite(firstOdd) ||
     !Number.isFinite(secondOdd) ||
@@ -100,22 +107,25 @@ export function twoWayMarginPercent(firstOdd: number, secondOdd: number): number
     return null;
   }
 
-  return (1 / firstOdd + 1 / secondOdd - 1) * 100;
+  return ((1 / firstOdd) + (1 / secondOdd) - 1) * 100;
 }
 
 /**
  * Glavna provjera integriteta.
  * Rezultat nikada ne vraća veću vjerojatnost od one koju je poslao engine.
  */
-export function evaluatePredictionIntegrity(input: IntegrityInput): IntegrityResult {
+export function evaluatePredictionIntegrity(
+  input: IntegrityInput,
+): IntegrityResult {
   const rawProbability = clamp01(input.probability);
-  const odds = input.odds && Number.isFinite(input.odds) && input.odds > 1 ? input.odds : null;
+  const odds =
+    input.odds && Number.isFinite(input.odds) && input.odds > 1
+      ? input.odds
+      : null;
 
   // POPRAVAK: Nevaljana tržišna vjerojatnost ne smije se pretvoriti u 0% i lažno stvoriti veliko odstupanje.
   const marketProbability =
-    input.marketProbability === null ||
-    input.marketProbability === undefined ||
-    !Number.isFinite(input.marketProbability)
+    input.marketProbability === null || input.marketProbability === undefined || !Number.isFinite(input.marketProbability)
       ? null
       : clamp01(input.marketProbability);
 
@@ -145,7 +155,9 @@ export function evaluatePredictionIntegrity(input: IntegrityInput): IntegrityRes
   } else if (dataQuality < 0.75) {
     score -= 12;
     adjustedProbability = 0.5 + (adjustedProbability - 0.5) * 0.78;
-    reasons.push("Djelomični podaci: pouzdanost je konzervativno smanjena.");
+    reasons.push(
+      "Djelomični podaci: pouzdanost je konzervativno smanjena.",
+    );
   }
 
   // 2. Nema stvarnih kvota / radi se o fallback modelu.
@@ -166,7 +178,9 @@ export function evaluatePredictionIntegrity(input: IntegrityInput): IntegrityRes
       );
     } else if (margin > 8) {
       score -= 9;
-      reasons.push(`Povišena marža tržišta (${margin.toFixed(1)}%) smanjuje kvalitetu kvote.`);
+      reasons.push(
+        `Povišena marža tržišta (${margin.toFixed(1)}%) smanjuje kvalitetu kvote.`,
+      );
     }
   }
 
@@ -196,15 +210,22 @@ export function evaluatePredictionIntegrity(input: IntegrityInput): IntegrityRes
   if (input.contradictory) {
     score -= 35;
     adjustedProbability = 0.5 + (adjustedProbability - 0.5) * 0.5;
-    reasons.push("Povezana tržišta daju proturječan signal; glavni tip je blokiran.");
+    reasons.push(
+      "Povezana tržišta daju proturječan signal; glavni tip je blokiran.",
+    );
   }
 
-  const evPercent = odds === null ? null : (adjustedProbability * odds - 1) * 100;
+  const evPercent =
+    odds === null
+      ? null
+      : (adjustedProbability * odds - 1) * 100;
 
   // 6. Negativan EV nije automatska greška modela, ali nije kandidat za tip.
   if (evPercent !== null && evPercent < -4) {
     score -= 18;
-    reasons.push(`Kvota je ispod konzervativne fer procjene (EV ${evPercent.toFixed(1)}%).`);
+    reasons.push(
+      `Kvota je ispod konzervativne fer procjene (EV ${evPercent.toFixed(1)}%).`,
+    );
   } else if (evPercent !== null && evPercent < 1) {
     score -= 7;
     reasons.push(
@@ -216,16 +237,23 @@ export function evaluatePredictionIntegrity(input: IntegrityInput): IntegrityRes
   const certaintyDistance = Math.abs(adjustedProbability - 0.5);
   if (certaintyDistance < 0.035) {
     score -= 25;
-    reasons.push("Vjerojatnosti su preblizu 50/50; profesionalni pristup je preskočiti utakmicu.");
+    reasons.push(
+      "Vjerojatnosti su preblizu 50/50; profesionalni pristup je preskočiti utakmicu.",
+    );
   } else if (certaintyDistance < 0.07) {
     score -= 10;
-    reasons.push("Signal je slab jer je tržište gotovo uravnoteženo.");
+    reasons.push(
+      "Signal je slab jer je tržište gotovo uravnoteženo.",
+    );
   }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
   adjustedProbability = clamp01(adjustedProbability);
 
-  const fairOdds = adjustedProbability > 0 ? 1 / adjustedProbability : 99;
+  const fairOdds =
+    adjustedProbability > 0
+      ? 1 / adjustedProbability
+      : 99;
 
   const hardBlock =
     input.contradictory === true ||
@@ -251,7 +279,9 @@ export function evaluatePredictionIntegrity(input: IntegrityInput): IntegrityRes
   }
 
   if (!reasons.length) {
-    reasons.push("Podaci, tržišna marža i procjena modela prolaze osnovnu provjeru integriteta.");
+    reasons.push(
+      "Podaci, tržišna marža i procjena modela prolaze osnovnu provjeru integriteta.",
+    );
   }
 
   return {
@@ -303,21 +333,25 @@ export function footballContradiction(input: {
   ) {
     return true;
   }
-
+  
   if (input.selected === "OVER_25") {
-    return (over25 !== undefined && over25 < 0.5) || (bttsYes !== undefined && bttsYes < 0.36);
+    return (over25 !== undefined && over25 < 0.5) ||
+      (bttsYes !== undefined && bttsYes < 0.36);
   }
 
   if (input.selected === "UNDER_25") {
-    return (over25 !== undefined && over25 > 0.5) || (bttsYes !== undefined && bttsYes > 0.72);
+    return (over25 !== undefined && over25 > 0.5) ||
+      (bttsYes !== undefined && bttsYes > 0.72);
   }
 
   if (input.selected === "BTTS_YES") {
-    return (bttsYes !== undefined && bttsYes < 0.5) || (over25 !== undefined && over25 < 0.3);
+    return (bttsYes !== undefined && bttsYes < 0.5) ||
+      (over25 !== undefined && over25 < 0.30);
   }
 
   if (input.selected === "BTTS_NO") {
-    return (bttsYes !== undefined && bttsYes > 0.5) || (over25 !== undefined && over25 > 0.78);
+    return (bttsYes !== undefined && bttsYes > 0.5) ||
+      (over25 !== undefined && over25 > 0.78);
   }
 
   if (input.selected === "HOME") {

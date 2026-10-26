@@ -13,12 +13,7 @@ describe("prediction integrity gate", () => {
   });
 
   it("blocks contradictory picks", () => {
-    const r = evaluatePredictionIntegrity({
-      probability: 0.7,
-      odds: 1.8,
-      dataQuality: 1,
-      contradictory: true,
-    });
+    const r = evaluatePredictionIntegrity({ probability: 0.7, odds: 1.8, dataQuality: 1, contradictory: true });
     expect(r.status).toBe("PRESKOČI");
     expect(r.approved).toBe(false);
   });
@@ -29,13 +24,7 @@ describe("prediction integrity gate", () => {
   });
 
   it("certifies strong clean value picks", () => {
-    const r = evaluatePredictionIntegrity({
-      probability: 0.7,
-      odds: 1.6,
-      marketProbability: 0.67,
-      dataQuality: 1,
-      marginPercent: 4,
-    });
+    const r = evaluatePredictionIntegrity({ probability: 0.7, odds: 1.6, marketProbability: 0.67, dataQuality: 1, marginPercent: 4 });
     expect(r.status).toBe("CERTIFICIRAN");
   });
 

@@ -23,16 +23,16 @@ export interface IgracLin {
 
 export interface PostavaTim {
   tim: string;
-  potvrdjena: boolean; // API-Football vraća postave samo kad su objavljene
+  potvrdjena: boolean;   // API-Football vraća postave samo kad su objavljene
   formacija?: string;
   startXI: IgracLin[];
   zamjene?: IgracLin[];
 }
 
 export interface PostaveIzlaz {
-  potvrdjene: boolean; // obje postave potvrđene
-  brojPostava: number; // 0, 1 ili 2
-  golmanDom: boolean; // ima li startni GK u postavi
+  potvrdjene: boolean;          // obje postave potvrđene
+  brojPostava: number;          // 0, 1 ili 2
+  golmanDom: boolean;           // ima li startni GK u postavi
   golmanGost: boolean;
 }
 
@@ -44,10 +44,10 @@ export interface PostavaRazlika {
 }
 
 export interface UtjecajPostave {
-  faktorDom: number; // množitelj λ domaćina
-  faktorGost: number; // množitelj λ gosta
-  procenat: number; // apsolutni pomak ukupne λ u postotnim bodovima
-  opisi: string[]; // ljudski opisi za banner
+  faktorDom: number;   // množitelj λ domaćina
+  faktorGost: number;  // množitelj λ gosta
+  procenat: number;    // apsolutni pomak ukupne λ u postotnim bodovima
+  opisi: string[];     // ljudski opisi za banner
   imaUtjecaj: boolean;
 }
 
@@ -115,7 +115,7 @@ export function usporediPostaveTim(
 }
 
 const TEZINE: Record<string, { protivnik: number; vlastita: number }> = {
-  G: { protivnik: 1.1, vlastita: 0.97 },
+  G: { protivnik: 1.10, vlastita: 0.97 },
   D: { protivnik: 1.06, vlastita: 1.0 },
   M: { protivnik: 1.01, vlastita: 0.94 },
   F: { protivnik: 0.99, vlastita: 0.92 },
@@ -123,9 +123,7 @@ const TEZINE: Record<string, { protivnik: number; vlastita: number }> = {
 };
 
 function primijeniIzlazake(izasli: IgracLin[]): {
-  v: number;
-  p: number;
-  opisi: string[];
+  v: number; p: number; opisi: string[];
 } {
   let v = 1;
   let p = 1;
@@ -142,23 +140,15 @@ function primijeniIzlazake(izasli: IgracLin[]): {
     v *= Math.pow(t.vlastita, g);
     p *= Math.pow(t.protivnik, g);
     const label: Record<Pozicija, string> = {
-      G: "startni golman",
-      D: "starter u obrani",
-      M: "starter u veznom redu",
-      F: "starter u napadu",
-      "?": "starter",
+      G: "startni golman", D: "starter u obrani", M: "starter u veznom redu", F: "starter u napadu", "?": "starter",
     };
-    opisi.push(
-      `Izasao ${n}× ${label[poz]} — vlastita napadačka snaga i protivnički pritisak preračunati.`,
-    );
+    opisi.push(`Izasao ${n}× ${label[poz]} — vlastita napadačka snaga i protivnički pritisak preračunati.`);
   }
   return { v, p, opisi };
 }
 
 function primijeniUlaske(usli: IgracLin[]): {
-  v: number;
-  p: number;
-  opisi: string[];
+  v: number; p: number; opisi: string[];
 } {
   let v = 1;
   let p = 1;

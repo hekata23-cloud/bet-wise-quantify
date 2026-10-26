@@ -62,7 +62,5 @@ export async function testGemini() {
   try {
     await geminiChat("Say OK", [{ role: "user", parts: [{ text: "Test" }] }]);
     return { ok: true, msg: "Google Gemini 3.8 Flash radi!" };
-  } catch (e: any) {
-    return { ok: false, msg: e.message };
-  }
+  } catch (e: any) { return { ok: false, msg: e.message }; }
 }

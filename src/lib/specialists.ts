@@ -576,6 +576,7 @@ export const AUTO_SPECIALISTS: Specialist[] = [
 SPECIALISTS.push(...HTFT_SPECIALISTS, ...EXTRA_FREE_SPECIALISTS);
 SPECIALISTS.push(...AUTO_SPECIALISTS);
 
+
 const STORE = "tm.specialists.active";
 
 export function loadActiveSpecialists(): Record<string, boolean> {
@@ -617,9 +618,7 @@ export function specialistsForMarket(market: Market): Specialist[] {
   const isGolMarket = market === "btts" || market === "ou25" || market === "htgoals";
   // Elitni ansambl pa gol-specijalisti idu prvi kad se pita za gol tržišta
   const elite = list.filter((s) => s.group === "elite" && s.markets.includes(market));
-  const gol = isGolMarket
-    ? list.filter((s) => s.group === "gol" && s.markets.includes(market))
-    : [];
+  const gol = isGolMarket ? list.filter((s) => s.group === "gol" && s.markets.includes(market)) : [];
   const head = [...elite, ...gol];
   const rest0 = list.filter((s) => !head.includes(s));
   const exact = rest0.filter((s) => s.markets.includes(market));
@@ -637,9 +636,7 @@ export function ensembleForMarket(market: Market, max = 6): Specialist[] {
   const htft = isHt
     ? HTFT_SPECIALISTS.filter((s) => active[specKey(s)] && s.markets.includes(market))
     : [];
-  const eliteRaw = ELITE_SPECIALISTS.filter(
-    (s) => active[specKey(s)] && s.markets.includes(market),
-  );
+  const eliteRaw = ELITE_SPECIALISTS.filter((s) => active[specKey(s)] && s.markets.includes(market));
   const elite = isHt ? [...htft, ...eliteRaw] : [...eliteRaw, ...htft];
   const seen = new Set(elite.map((e) => e.id));
   const extra = specialistsForMarket(market).filter((s) => !seen.has(s.id));

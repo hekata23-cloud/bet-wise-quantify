@@ -16,11 +16,7 @@ export const OR_MODELS = [
   { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B", free: true },
   { id: "nvidia/nemotron-3-super-120b-a12b:free", label: "Nemotron 3 Super 120B", free: true },
   { id: "dots-studio/dots-3-note-preview:free", label: "Dots 3 Note Preview", free: true },
-  {
-    id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    label: "Nemotron Nano Omni 30B",
-    free: true,
-  },
+  { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", label: "Nemotron Nano Omni 30B", free: true },
   { id: "xingchen-agi/xing4.0-29b-a4b:free", label: "Xing 4.0 29B", free: true },
   { id: "nvidia/nemotron-3.5-super-vl:free", label: "Nemotron 3.5 Super VL", free: true },
 ];
@@ -62,7 +58,10 @@ export function orUsageToday(): number {
 
 function zabiljeziPokusaj(): void {
   try {
-    localStorage.setItem(USAGE_KEY, JSON.stringify({ dan: danUTC(), broj: orUsageToday() + 1 }));
+    localStorage.setItem(
+      USAGE_KEY,
+      JSON.stringify({ dan: danUTC(), broj: orUsageToday() + 1 }),
+    );
   } catch {
     /* nebitno */
   }
@@ -87,7 +86,7 @@ async function call(model: string, messages: ORMessage[], opts: ORCallOptions): 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
+        "Authorization": `Bearer ${key}`,
         "X-Title": "Andromeda AI Oracle",
       },
       body: JSON.stringify({
@@ -124,7 +123,10 @@ async function call(model: string, messages: ORMessage[], opts: ORCallOptions): 
 }
 
 /** Spas: samo 2 rezervna modela, da lanac ne traje duže od potrebne mjere. */
-const RESCUE_MODELS = ["google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-lightning:free"];
+const RESCUE_MODELS = [
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3.5-lightning:free",
+];
 
 export async function openrouterChat(
   model: string,
@@ -145,10 +147,7 @@ export async function openrouterChat(
     }
     // Model umirovljen / nedostupan / preopterećen / spor / prazan → spas preko
     // živih besplatnih modela (max 2, da ukupno vrijeme ostane pod kontrolom).
-    const rescue =
-      /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|402|404|400|prazan odgovor|nema odgovora/i.test(
-        msg,
-      );
+    const rescue = /unavailable|not found|invalid model|no allowed providers|deprecated|agentic|402|404|400|prazan odgovor|nema odgovora/i.test(msg);
     if (rescue) {
       for (const m of RESCUE_MODELS) {
         if (m === model) continue;
@@ -183,7 +182,6 @@ export async function testOpenRouter() {
   try {
     await openrouterChat(specialistDefault(), [{ role: "user", content: "Say OK" }]);
     return { ok: true, msg: "OpenRouter spreman — Gemma 4 31B odgovara!" };
-  } catch (e: any) {
-    return { ok: false, msg: e.message };
-  }
+  } catch (e: any) { return { ok: false, msg: e.message }; }
 }
+

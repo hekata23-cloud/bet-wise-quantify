@@ -15,9 +15,7 @@ export function efektiUkljuceno(): boolean {
     if (typeof localStorage === "undefined") return false;
     const raw = localStorage.getItem(KLJUC);
     return raw == null ? true : raw === "1";
-  } catch {
-    return true;
-  }
+  } catch { return true; }
 }
 
 export function spremiEfekte(ukljuceno: boolean) {
@@ -26,9 +24,7 @@ export function spremiEfekte(ukljuceno: boolean) {
       localStorage.setItem(KLJUC, ukljuceno ? "1" : "0");
       window.dispatchEvent(new CustomEvent("pc:efekti-dobitka"));
     }
-  } catch {
-    /* ignoriraj */
-  }
+  } catch { /* ignoriraj */ }
 }
 
 /** Canvas konfeta — zlatno/crveno/bijele čestice, samočisti se nakon 2.6 s. */
@@ -43,10 +39,7 @@ export function pokreniKonfete(): void {
   );
   document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    canvas.remove();
-    return;
-  }
+  if (!ctx) { canvas.remove(); return; }
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = window.innerWidth * dpr;
   canvas.height = window.innerHeight * dpr;
@@ -91,10 +84,7 @@ export function pokreniKonfete(): void {
   };
   raf = requestAnimationFrame(korak);
   // sigurnosno čišćenje ako tab nije vidljiv
-  setTimeout(() => {
-    if (raf) cancelAnimationFrame(raf);
-    canvas.remove();
-  }, 3400);
+  setTimeout(() => { if (raf) cancelAnimationFrame(raf); canvas.remove(); }, 3400);
 }
 
 /** Diskretni "zlatni" zvuk dobitka — WebAudio, bez audio datoteka. */
@@ -104,8 +94,7 @@ export function svirajDobitak(): void {
     const AudioCtor: typeof AudioContext | undefined =
       typeof window === "undefined"
         ? undefined
-        : (window.AudioContext ??
-          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+        : window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtor) return;
     const ac = new AudioCtor();
     const tonovi = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
@@ -123,9 +112,7 @@ export function svirajDobitak(): void {
       osc.stop(t0 + i * 0.09 + 0.55);
     });
     setTimeout(() => void ac.close(), 1600);
-  } catch {
-    /* zvuk nije kritičan */
-  }
+  } catch { /* zvuk nije kritičan */ }
 }
 
 /** Mali preklop za "Moji listići" stranica. */
@@ -142,10 +129,7 @@ export function EfektiSwitch() {
       <input
         type="checkbox"
         checked={on}
-        onChange={(e) => {
-          setOn(e.target.checked);
-          spremiEfekte(e.target.checked);
-        }}
+        onChange={(e) => { setOn(e.target.checked); spremiEfekte(e.target.checked); }}
         className="h-4 w-4"
       />
       Efekti dobitka: {on ? "Uključeno" : "Isključeno"}
@@ -156,9 +140,7 @@ export function EfektiSwitch() {
 /** Panel za Postavke — "Efekti dobitka: Uključeno/Isključeno" + isprobaj. */
 export function EfektiDobitkaPanel() {
   const [on, setOn] = useState(true);
-  useEffect(() => {
-    setOn(efektiUkljuceno());
-  }, []);
+  useEffect(() => { setOn(efektiUkljuceno()); }, []);
   return (
     <section className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5 space-y-4">
       <div className="flex items-center gap-2">
@@ -173,24 +155,16 @@ export function EfektiDobitkaPanel() {
           <input
             type="checkbox"
             checked={on}
-            onChange={(e) => {
-              setOn(e.target.checked);
-              spremiEfekte(e.target.checked);
-            }}
+            onChange={(e) => { setOn(e.target.checked); spremiEfekte(e.target.checked); }}
             className="mt-0.5 h-4 w-4"
           />
           <span>
             Efekti dobitka: {on ? "Uključeno" : "Isključeno"}
-            <span className="block text-xs text-muted-foreground">
-              Konfeta + zvuk na novodobitnim listićima.
-            </span>
+            <span className="block text-xs text-muted-foreground">Konfeta + zvuk na novodobitnim listićima.</span>
           </span>
         </label>
         <button
-          onClick={() => {
-            pokreniKonfete();
-            svirajDobitak();
-          }}
+          onClick={() => { pokreniKonfete(); svirajDobitak(); }}
           className="inline-flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20"
         >
           <PartyPopper className="h-4 w-4" /> Isprobaj efekte

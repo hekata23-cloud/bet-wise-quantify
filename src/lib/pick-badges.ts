@@ -54,8 +54,7 @@ export type OznakeIzlaz = {
 /** Komplementarne strane istog tržišta — jedna blokira drugu. */
 function suProtivnici(a: string, b: string): boolean {
   const n = (s: string) => s.toLowerCase().replace(/\s+/g, "");
-  const x = n(a),
-    y = n(b);
+  const x = n(a), y = n(b);
   if (x === y) return false;
   const parovi: [RegExp, RegExp][] = [
     [/^over(\d+[.,]?\d*)$/, /^under(\d+[.,]?\d*)$/],
@@ -124,10 +123,7 @@ export function izradiOznake(kandidati: Kandidat[]): OznakeIzlaz {
 
   // dodjela oznaka (redoslijed: primarni > sigurnosni > value)
   for (const k of kandidati) {
-    if (blokirani.has(k.tip)) {
-      oznake[k.tip] = "blokiran";
-      continue;
-    }
+    if (blokirani.has(k.tip)) { oznake[k.tip] = "blokiran"; continue; }
     if (primarni && k.tip === primarni.tip) oznake[k.tip] = "primarni";
     else if (sigurnosni && k.tip === sigurnosni.tip) oznake[k.tip] = "sigurnosni";
     else if (value && k.tip === value.tip) oznake[k.tip] = "value";
@@ -135,22 +131,12 @@ export function izradiOznake(kandidati: Kandidat[]): OznakeIzlaz {
   }
 
   if (primarni) {
-    poruke.push({
-      tekst: `Glavni tip: ${primarni.tip} @ ${Math.round(primarni.p * 100)}%${primarni.odds ? ` (kvota ${primarni.odds.toFixed(2)})` : ""}.`,
-      razina: "info",
-    });
+    poruke.push({ tekst: `Glavni tip: ${primarni.tip} @ ${Math.round(primarni.p * 100)}%${primarni.odds ? ` (kvota ${primarni.odds.toFixed(2)})` : ""}.`, razina: "info" });
   } else {
-    poruke.push({
-      tekst:
-        "Nema ishoda s ≥ 55% vjerojatnošću — kartica ne izdaje glavni tip danas. Sigurnosni/value prikaz je informativan.",
-      razina: "skip",
-    });
+    poruke.push({ tekst: "Nema ishoda s ≥ 55% vjerojatnošću — kartica ne izdaje glavni tip danas. Sigurnosni/value prikaz je informativan.", razina: "skip" });
   }
   if (sigurnosni && (!primarni || sigurnosni.tip !== primarni.tip)) {
-    poruke.push({
-      tekst: `Najviša vjerojatnost (safe): ${sigurnosni.tip} @ ${Math.round(sigurnosni.p * 100)}% — idealno za listić.`,
-      razina: "info",
-    });
+    poruke.push({ tekst: `Najviša vjerojatnost (safe): ${sigurnosni.tip} @ ${Math.round(sigurnosni.p * 100)}% — idealno za listić.`, razina: "info" });
   }
   if (value) {
     const varijanca = value.p < PRAG_PRIMARNI;
@@ -160,11 +146,9 @@ export function izradiOznake(kandidati: Kandidat[]): OznakeIzlaz {
     });
   }
   if (sigurnosni && value && sigurnosni.tip === value.tip) {
-    poruke.push({
-      tekst: "Isti ishod nosi i najveću vjerojatnost i value edge — izuzetno tržište.",
-      razina: "info",
-    });
+    poruke.push({ tekst: "Isti ishod nosi i najveću vjerojatnost i value edge — izuzetno tržište.", razina: "info" });
   }
 
   return { sigurnosni, value, primarni, oznake, poruke, nemaPrimarnog };
 }
+

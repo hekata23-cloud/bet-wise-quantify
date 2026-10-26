@@ -6,7 +6,6 @@
 4. Otvori **Postavke** i zalijepi ključeve (OpenRouter je besplatan i preporučen, uz Gemini/Groq/NVIDIA/HF i API-Football).
 
 ## Instalacija kao aplikacija (PWA) — PC i mobitel
-
 Aplikacija ima web manifest (`public/manifest.webmanifest`) i ikone
 (`pwa-192.png`, `pwa-512.png`, `apple-touch-icon.png`) s crveno-bijelom piramidom,
 pa je Chrome prepoznaje kao instalabilnu.
@@ -20,7 +19,6 @@ Napomena: instalacija radi na objavljenoj (https) verziji. Unutar Lovable pregle
 (iframe) Chrome ne nudi instalaciju.
 
 ## Nove napredne postavke — Kvantna točnost v12
-
 U Postavkama, kartica **Kvantna točnost v12**: 16 modula (kalibracija sigurnosti,
 miks s tržištem, de-vig/edge/CLV, hijerarhijski Bayes, game-state hazard, utjecaj sastava,
 profil sudca, vrijeme i teren, umor i putovanja, kazna za mali uzorak, regresija anomalija,
@@ -29,13 +27,10 @@ post-mortem). Svi su uključeni po defaultu i **automatski se vežu na svaki odg
 uz automatsko pokretanje OMNI motora i ansambl konsenzusa.
 
 ## Preuzimanje projekta
-
 Postavke → „Preuzmi andromeda-ai.zip“ (ili direktno preuzmi `andromeda-ai.zip` / `bet-wise-quantify-fixed.zip` iz `public/`).
 
 ## Popravak „bijelog ekrana” pri objavi u Lovable-u
-
 Problem bijelog ekrana (blank screen) nastao je jer su greškom u korijen projekta dodane datoteke:
-
 1. `index.html` (s pozivom na `src/main.tsx`)
 2. `src/App.tsx` (koji je vraćao prazan `<div></div>`)
 3. `src/main.tsx` i `src/index.css`
@@ -43,7 +38,7 @@ Problem bijelog ekrana (blank screen) nastao je jer su greškom u korijen projek
 Lovable projekt koristi TanStack Start (SSR s Nitro engineom), gdje se cijela struktura generira kroz `src/routes/__root.tsx` i `src/server.ts`. Kada se u korijenu nalazi `index.html`, Vite ga automatski učitava umjesto aplikacije i renderira prazan `App.tsx` (bijeli ekran).
 
 Uklanjanjem tih datoteka i regeneracijom čistog paketa:
-
 - TanStack Start SSR ponovno radi 100% ispravno.
 - Svi moduli, rute (84+), stilovi i servisi se normalno učitavaju i prikazuju.
 - Build i testovi prolaze bez greške.
+

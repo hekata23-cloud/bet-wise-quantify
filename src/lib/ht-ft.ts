@@ -87,7 +87,7 @@ export function computeHtFtAnalysis(
   analysis: Analysis,
   match: string,
   league: string,
-  time: string,
+  time: string
 ): HtFtAnalysis {
   const lh = analysis.lh;
   const la = analysis.la;
@@ -129,7 +129,7 @@ export function computeHtFtAnalysis(
   const getBookieOdd = (code: string): number | undefined => {
     if (!htftMarket) return undefined;
     const matchOutcome = htftMarket.outcomes.find(
-      (o) => o.label.toUpperCase() === code.toUpperCase(),
+      (o) => o.label.toUpperCase() === code.toUpperCase()
     );
     return matchOutcome?.odd && matchOutcome.odd > 1 ? matchOutcome.odd : undefined;
   };
@@ -190,7 +190,9 @@ export function computeHtFtAnalysis(
   }
 
   const p00AtHalf = Number(((H1[0]?.[0] ?? 0) * 100).toFixed(1));
-  const pGoalBothHalves = Number((conv((a, b, c, d) => a + b > 0 && c + d > 0) * 100).toFixed(1));
+  const pGoalBothHalves = Number(
+    (conv((a, b, c, d) => a + b > 0 && c + d > 0) * 100).toFixed(1)
+  );
 
   // 1. GLAVNI TIP: biramo ishod s najboljim omjerom šanse i isplativosti
   const sortedByProb = [...outcomes].sort((a, b) => b.prob - a.prob);
@@ -225,18 +227,12 @@ export function computeHtFtAnalysis(
     bookieOdd: mainTipPick.bookieOdd,
     ev: mainTipPick.ev,
     confidence:
-      mainTipPick.prob >= 0.4
-        ? ("Visoka" as const)
-        : mainTipPick.prob >= 0.25
-          ? ("Srednja" as const)
-          : ("Rizično" as const),
+      mainTipPick.prob >= 0.4 ? ("Visoka" as const) : mainTipPick.prob >= 0.25 ? ("Srednja" as const) : ("Rizično" as const),
     reasoning: mainReasoning,
   };
 
   // 2. SHARP VALUE TIP: ishod s najvećim pozitivnim EV% ili taktički X/1 / X/2
-  const valueOutcomes = outcomes
-    .filter((o) => o.ev !== undefined && o.ev > 0)
-    .sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0));
+  const valueOutcomes = outcomes.filter((o) => o.ev !== undefined && o.ev > 0).sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0));
 
   let sharpValueTip: HtFtAnalysis["sharpValueTip"] = null;
   if (valueOutcomes.length > 0) {
@@ -302,8 +298,7 @@ export function computeHtFtAnalysis(
 
   const reversalRadar = {
     hasReversalSignal,
-    pick: (hasReversalSignal ? bestReversal.code : "Nema signala") as
-      "2/1" | "1/2" | "Nema signala",
+    pick: (hasReversalSignal ? bestReversal.code : "Nema signala") as "2/1" | "1/2" | "Nema signala",
     prob: bestReversal.prob,
     fairOdd: bestReversal.fairOdd,
     bookieOdd: bestReversal.bookieOdd,
@@ -338,3 +333,4 @@ export function computeHtFtAnalysis(
     reversalRadar,
   };
 }
+

@@ -1,15 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  RotateCcw,
-  Sparkles,
-  Trophy,
-  XCircle,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw, Sparkles, Trophy, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProgressLine } from "@/learn/components/learn-ui";
 import {
@@ -31,10 +23,7 @@ export const Route = createFileRoute("/learn/lesson/$topicId/$kind")({
   head: ({ params }) => ({
     meta: [
       { title: `${params.kind} · lesson — Lingua` },
-      {
-        name: "description",
-        content: "Interactive language activity: vocabulary, grammar, listening or shadowing.",
-      },
+      { name: "description", content: "Interactive language activity: vocabulary, grammar, listening or shadowing." },
     ],
   }),
   component: LessonPage,
@@ -104,9 +93,7 @@ function LessonPage() {
       });
     }
     if (outcome.unlocked.length === 0) {
-      toast.success(`+${outcome.xpGained} XP earned`, {
-        description: `${KIND_LABELS[lesson.kind]} · ${score}%`,
-      });
+      toast.success(`+${outcome.xpGained} XP earned`, { description: `${KIND_LABELS[lesson.kind]} · ${score}%` });
     }
   }
 
@@ -133,9 +120,7 @@ function LessonPage() {
       </div>
 
       <div className="mb-6">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-          Unit · {unit.title}
-        </p>
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit · {unit.title}</p>
         <h1 className="text-xl font-bold tracking-tight text-foreground">{unit.summary}</h1>
         <p className="mt-1 text-xs text-muted-foreground">{KIND_DESCRIPTIONS[lesson.kind]}</p>
       </div>
@@ -145,9 +130,7 @@ function LessonPage() {
           <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-4 border-primary/40">
             <span className="text-3xl font-bold tabular-nums text-foreground">{result.score}%</span>
           </div>
-          <div className={cn("mt-3 text-sm font-semibold", verdict?.className)}>
-            {verdict?.label}
-          </div>
+          <div className={cn("mt-3 text-sm font-semibold", verdict?.className)}>{verdict?.label}</div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
@@ -161,13 +144,7 @@ function LessonPage() {
                 <CheckCircle2 className="h-3.5 w-3.5" /> Activity
               </div>
               <div className="mt-1 text-2xl font-bold text-foreground">
-                {lesson.kind === "shadowing"
-                  ? "🎙️"
-                  : lesson.kind === "listening"
-                    ? "🎧"
-                    : lesson.kind === "grammar"
-                      ? "🧩"
-                      : "🃏"}
+                {lesson.kind === "shadowing" ? "🎙️" : lesson.kind === "listening" ? "🎧" : lesson.kind === "grammar" ? "🧩" : "🃏"}
               </div>
             </div>
           </div>
@@ -215,10 +192,7 @@ function LessonPage() {
             ) : (
               <Button
                 onClick={() =>
-                  navigate({
-                    to: "/learn/course/$courseId",
-                    params: { courseId: lesson.languageCode },
-                  })
+                  navigate({ to: "/learn/course/$courseId", params: { courseId: lesson.languageCode } })
                 }
               >
                 Back to course <ArrowRight className="ml-2 h-4 w-4" />

@@ -63,14 +63,10 @@ export function SportSettingsModal({ open, onClose, onSaved, sport }: Props) {
           limit: res.limit,
         });
         if (zaostalo <= 10) {
-          setStatus((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  msg: prev.msg + ` ⚠️ Preostalo samo ${zaostalo} od ${res.limit} dnevnih poziva.`,
-                }
-              : prev,
-          );
+          setStatus((prev) => prev ? {
+            ...prev,
+            msg: prev.msg + ` ⚠️ Preostalo samo ${zaostalo} od ${res.limit} dnevnih poziva.`,
+          } : prev);
         }
       } else {
         const poruka = res.error ?? "Nepoznata greška";
@@ -115,10 +111,7 @@ export function SportSettingsModal({ open, onClose, onSaved, sport }: Props) {
           <h3 className="text-lg font-bold text-card-foreground">
             ⚙️ Postavke {SPORT_NAZIV[sport]} API-ja
           </h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-muted-foreground hover:bg-secondary"
-          >
+          <button onClick={onClose} className="rounded-lg p-1 text-muted-foreground hover:bg-secondary">
             ✕
           </button>
         </div>
@@ -146,22 +139,17 @@ export function SportSettingsModal({ open, onClose, onSaved, sport }: Props) {
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               Besplatan račun preuzmi na{" "}
-              <a
-                href="https://dashboard.api-sports.io"
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline"
-              >
+              <a href="https://dashboard.api-sports.io" target="_blank" rel="noreferrer" className="text-primary underline">
                 api-sports.io
               </a>{" "}
-              i aktiviraj <strong>{SPORT_NAZIV[sport]}</strong> (
-              <code className="text-xs bg-secondary px-1 rounded">{SPORT_BASE[sport]}</code>) — 100
-              besplatnih poziva dnevno po sportu.
+              i aktiviraj{" "}
+              <strong>{SPORT_NAZIV[sport]}</strong>{" "}
+              (<code className="text-xs bg-secondary px-1 rounded">{SPORT_BASE[sport]}</code>) —
+              100 besplatnih poziva dnevno po sportu.
             </p>
             <p className="mt-1 text-xs text-amber-400/90">
-              ⚠️ Isti ključ radi za sve sportove, ali svaki sport ima{" "}
-              <strong>vlastitu kvotu od 100/dan</strong>. Potrošena football kvota ne utječe na
-              košarku/rukomet.
+              ⚠️ Isti ključ radi za sve sportove, ali svaki sport ima <strong>vlastitu kvotu od 100/dan</strong>.
+              Potrošena football kvota ne utječe na košarku/rukomet.
             </p>
           </div>
 
@@ -176,8 +164,7 @@ export function SportSettingsModal({ open, onClose, onSaved, sport }: Props) {
               <p className="font-semibold">{status.msg}</p>
               {status.limit !== undefined && (
                 <p className="mt-1">
-                  Iskorišteno danas ({SPORT_NAZIV[sport]}): <strong>{status.used}</strong> /{" "}
-                  {status.limit} poziva
+                  Iskorišteno danas ({SPORT_NAZIV[sport]}): <strong>{status.used}</strong> / {status.limit} poziva
                 </p>
               )}
             </div>
@@ -200,7 +187,10 @@ export function SportSettingsModal({ open, onClose, onSaved, sport }: Props) {
           </div>
 
           <div className="flex justify-end">
-            <button onClick={obrisi} className="text-xs text-destructive hover:underline">
+            <button
+              onClick={obrisi}
+              className="text-xs text-destructive hover:underline"
+            >
               🗑️ Ukloni ključ
             </button>
           </div>
@@ -208,24 +198,9 @@ export function SportSettingsModal({ open, onClose, onSaved, sport }: Props) {
           <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-xs text-blue-300">
             <p className="font-semibold mb-1">ℹ️ Kako aktivirati sport?</p>
             <ol className="space-y-1 list-decimal list-inside text-blue-300/90">
-              <li>
-                Idi na{" "}
-                <a
-                  href="https://dashboard.api-sports.io"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  dashboard.api-sports.io
-                </a>
-              </li>
-              <li>
-                Odaberi <strong>My Subscriptions</strong>
-              </li>
-              <li>
-                Pronađi <strong>{SPORT_NAZIV[sport]}</strong> i klikni <strong>Subscribe</strong>{" "}
-                (besplatno)
-              </li>
+              <li>Idi na <a href="https://dashboard.api-sports.io" target="_blank" rel="noreferrer" className="underline">dashboard.api-sports.io</a></li>
+              <li>Odaberi <strong>My Subscriptions</strong></li>
+              <li>Pronađi <strong>{SPORT_NAZIV[sport]}</strong> i klikni <strong>Subscribe</strong> (besplatno)</li>
               <li>Isti API ključ vrijedi za sve sportove</li>
             </ol>
           </div>

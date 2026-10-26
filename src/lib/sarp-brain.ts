@@ -16,23 +16,11 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 import {
-  clamp,
-  deMargin2,
-  deMargin3,
-  izgradiGrid,
-  lambdaIzForme,
-  kellyUlogPct,
-  metrikeIzGrida,
-  monteCarlo,
-  skellam1x2,
-  okolisPomak,
-  sudacProfil,
-  type FormaGolovi,
-  type McIzlaz,
-  type OkolisIzlaz,
-  type OkolisUlaz,
-  type SudacIzlaz,
-  type SudacUlaz,
+  clamp, deMargin2, deMargin3, izgradiGrid, lambdaIzForme,
+  kellyUlogPct, metrikeIzGrida, monteCarlo, skellam1x2,
+  okolisPomak, sudacProfil,
+  type FormaGolovi, type McIzlaz, type OkolisIzlaz, type OkolisUlaz,
+  type SudacIzlaz, type SudacUlaz,
 } from "./math-engine";
 import { HAZARD_BETA, ahSkellam } from "./skellam";
 import type { GoalsIzlaz } from "./goals-motor";
@@ -93,7 +81,7 @@ export type SarpIzlaz = {
   obrazlozenje: string[];
   rizici: string[];
   ocjena: "A" | "B" | "C";
-  povjerenje: number; // 0..100
+  povjerenje: number;      // 0..100
   brojIzvora: number;
   lambdaDom: number;
   lambdaGost: number;
@@ -108,13 +96,7 @@ export type SarpIzlaz = {
 export type KvantAh = { linija: string; win: number; push: number; loss: number; fer: number };
 export type KvantKontekst = {
   skellam: { p1: number; pX: number; p2: number; ah: KvantAh[]; pushRizikMax: number };
-  hazard: {
-    beta: number;
-    primijenjen: boolean;
-    scenarij: string;
-    lamDomEf: number;
-    lamGostEf: number;
-  };
+  hazard: { beta: number; primijenjen: boolean; scenarij: string; lamDomEf: number; lamGostEf: number };
   /** OKOLIS (v6): weather drag — pomak golova i kornera */
   okolis?: OkolisIzlaz;
   /** SUDAC (v6): strog sudac i rizik crvenog kartona */
@@ -179,11 +161,11 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   const odDom = formaDomCista?.odigrano ?? 0;
   const odGost = formaGostCista?.odigrano ?? 0;
   const brojIzvora =
-    (brojTrzista > 0 ? 1 : 0) + // kvote
-    (books > 0 ? 1 : 0) + // više kladionica
-    (odDom > 0 ? 1 : 0) + // forma domaćina
-    (odGost > 0 ? 1 : 0) + // forma gosta
-    (ulaz.goals ? 1 : 0); // goals-motor
+    (brojTrzista > 0 ? 1 : 0) +   // kvote
+    (books > 0 ? 1 : 0) +         // više kladionica
+    (odDom > 0 ? 1 : 0) +         // forma domaćina
+    (odGost > 0 ? 1 : 0) +        // forma gosta
+    (ulaz.goals ? 1 : 0);         // goals-motor
   faze.push({
     broj: 1,
     naziv: "Skup podataka",
@@ -192,12 +174,8 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
       ...TRZISTA.filter((t) => kv[t.kljuc] != null && kv[t.kljuc]! >= 1.01).map(
         (t) => `${t.label}: ${kv[t.kljuc]!.toFixed(2)}`,
       ),
-      odDom > 0
-        ? `Forma domaćina: ${formaDomCista!.postignuti} postignutih / ${formaDomCista!.primljeni} primljenih u ${odDom} utakmica`
-        : "Forma domaćina: nedostupna (ligaški prosjek)",
-      odGost > 0
-        ? `Forma gosta: ${formaGostCista!.postignuti} postignutih / ${formaGostCista!.primljeni} primljenih u ${odGost} utakmica`
-        : "Forma gosta: nedostupna (ligaški prosjek)",
+      odDom > 0 ? `Forma domaćina: ${formaDomCista!.postignuti} postignutih / ${formaDomCista!.primljeni} primljenih u ${odDom} utakmica` : "Forma domaćina: nedostupna (ligaški prosjek)",
+      odGost > 0 ? `Forma gosta: ${formaGostCista!.postignuti} postignutih / ${formaGostCista!.primljeni} primljenih u ${odGost} utakmica` : "Forma gosta: nedostupna (ligaški prosjek)",
     ],
   });
 
@@ -209,12 +187,8 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     naziv: "Struktura (forma)",
     sazetak: `Model procjenjuje ${lamF.toFixed(2)} očekivanih golova domaćina i ${muF.toFixed(2)} gosta (ukupno ${(lamF + muF).toFixed(2)}).${uzorakMali ? " Uzorak je mali — procjena je povučena prema ligaškom prosjeku." : ""}`,
     podaci: [
-      odDom > 0
-        ? `Domaćin: napad ${fmtPct(formaDomCista!.postignuti / odDom / 1.35)} od ligaškog prosjeka, obrana prima ${(formaDomCista!.primljeni / odDom).toFixed(2)}/utakmici`
-        : "Domaćin: ligaški prosjek 1.35",
-      odGost > 0
-        ? `Gost: napad ${fmtPct(formaGostCista!.postignuti / odGost / 1.35)} od ligaškog prosjeka, obrana prima ${(formaGostCista!.primljeni / odGost).toFixed(2)}/utakmici`
-        : "Gost: ligaški prosjek 1.35",
+      odDom > 0 ? `Domaćin: napad ${fmtPct((formaDomCista!.postignuti / odDom) / 1.35)} od ligaškog prosjeka, obrana prima ${(formaDomCista!.primljeni / odDom).toFixed(2)}/utakmici` : "Domaćin: ligaški prosjek 1.35",
+      odGost > 0 ? `Gost: napad ${fmtPct((formaGostCista!.postignuti / odGost) / 1.35)} od ligaškog prosjeka, obrana prima ${(formaGostCista!.primljeni / odGost).toFixed(2)}/utakmici` : "Gost: ligaški prosjek 1.35",
       `λ domaćin = ${lamF.toFixed(2)}, λ gost = ${muF.toFixed(2)}`,
     ],
   });
@@ -226,27 +200,11 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   const dmO15 = deMargin2(kv["o15"], kv["u15"]);
   const dmO35 = deMargin2(kv["o35"], kv["u35"]);
   const trziste: Record<string, number> = {};
-  if (dm1x2) {
-    trziste["1"] = dm1x2.p1;
-    trziste["X"] = dm1x2.pX;
-    trziste["2"] = dm1x2.p2;
-  }
-  if (dmBtts) {
-    trziste["bttsDa"] = dmBtts.pA;
-    trziste["bttsNe"] = dmBtts.pB;
-  }
-  if (dmO15) {
-    trziste["o15"] = dmO15.pA;
-    trziste["u15"] = dmO15.pB;
-  }
-  if (dmO25) {
-    trziste["o25"] = dmO25.pA;
-    trziste["u25"] = dmO25.pB;
-  }
-  if (dmO35) {
-    trziste["o35"] = dmO35.pA;
-    trziste["u35"] = dmO35.pB;
-  }
+  if (dm1x2) { trziste["1"] = dm1x2.p1; trziste["X"] = dm1x2.pX; trziste["2"] = dm1x2.p2; }
+  if (dmBtts) { trziste["bttsDa"] = dmBtts.pA; trziste["bttsNe"] = dmBtts.pB; }
+  if (dmO15) { trziste["o15"] = dmO15.pA; trziste["u15"] = dmO15.pB; }
+  if (dmO25) { trziste["o25"] = dmO25.pA; trziste["u25"] = dmO25.pB; }
+  if (dmO35) { trziste["o35"] = dmO35.pA; trziste["u35"] = dmO35.pB; }
   const nTrz = Object.keys(trziste).length;
   // implicitni ukupni golovi iz linija (težina: 2.5 najveća)
   let lamTrz: number | null = null;
@@ -254,23 +212,17 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     const dijelovi: Array<{ lam: number; w: number }> = [];
     const lambdaIzOu = (line: number, pOver: number) => {
       const k = Math.floor(line);
-      let lo = 0.05,
-        hi = 8;
+      let lo = 0.05, hi = 8;
       for (let i = 0; i < 60; i++) {
         const mid = (lo + hi) / 2;
         // P(≤ k) je 1 − pOver; CDF opada s λ
         // (ista bisekcija kao u goals-motoru)
         const cdf = (l: number) => {
-          let p = Math.exp(-l);
-          let s = p;
-          for (let j = 1; j <= k; j++) {
-            p *= l / j;
-            s += p;
-          }
+          let p = Math.exp(-l); let s = p;
+          for (let j = 1; j <= k; j++) { p *= l / j; s += p; }
           return s;
         };
-        if (cdf(mid) > 1 - pOver) lo = mid;
-        else hi = mid;
+        if (cdf(mid) > 1 - pOver) lo = mid; else hi = mid;
       }
       return (lo + hi) / 2;
     };
@@ -288,9 +240,7 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     sazetak: nTrz
       ? `Uklonjena bookmaker marža s ${nTrz} stavki. Tržište implicira ${lamTrz != null ? `${lamTrz.toFixed(2)} ukupnih golova` : "raspored bez ukupne linije"}${dm1x2 ? `, pobjeda domaćina ${fmtPct(dm1x2.p1)}, neriješeno ${fmtPct(dm1x2.pX)}, gost ${fmtPct(dm1x2.p2)}` : ""}.`
       : "Kvote nisu dostupne — model radi bez tržišne kalibracije.",
-    podaci: Object.entries(trziste).map(
-      ([k, p]) => `${TRZISTA.find((t) => t.kljuc === k)?.label ?? k}: ${fmtPct(p)}`,
-    ),
+    podaci: Object.entries(trziste).map(([k, p]) => `${TRZISTA.find((t) => t.kljuc === k)?.label ?? k}: ${fmtPct(p)}`),
   });
 
   /* ── FAZA 4: MODEL (grid + Skellam) ── */
@@ -301,15 +251,11 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   const bazaRazd = lamF + muF > 0 ? lamF / (lamF + muF) : 0.55;
   let razd = bazaRazd;
   if (dm1x2) {
-    let best = bazaRazd,
-      bestErr = Infinity;
+    let best = bazaRazd, bestErr = Infinity;
     for (let r = 0.08; r <= 0.921; r += 0.04) {
       const m = metrikeIzGrida(izgradiGrid(lamUk * r, lamUk * (1 - r), 0));
       const err = (m.p1 - dm1x2.p1) ** 2 + (m.pX - dm1x2.pX) ** 2 + (m.p2 - dm1x2.p2) ** 2;
-      if (err < bestErr) {
-        bestErr = err;
-        best = r;
-      }
+      if (err < bestErr) { bestErr = err; best = r; }
     }
     razd = best;
   }
@@ -350,15 +296,11 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   // rho: fit na tržište U 1.5 kad postoji
   let rho = -0.05;
   if (dmO15) {
-    let best = -0.05,
-      bestErr = Infinity;
+    let best = -0.05, bestErr = Infinity;
     for (let r = -0.18; r <= 0.181; r += 0.02) {
       const m = metrikeIzGrida(izgradiGrid(lamH, lamA, r));
       const err = Math.abs(1 - m.o15 - (1 - dmO15.pA));
-      if (err < bestErr) {
-        bestErr = err;
-        best = r;
-      }
+      if (err < bestErr) { bestErr = err; best = r; }
     }
     rho = best;
   }
@@ -367,17 +309,13 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   const sk = skellam1x2(lamH, lamA);
   const suglasnostSkellam = clamp(
     1 - (Math.abs(M.p1 - sk.p1) + Math.abs(M.pX - sk.pX) + Math.abs(M.p2 - sk.p2)),
-    0,
-    1,
+    0, 1,
   );
 
   // KVANT NADGRADNJA (v5): egzaktni Skellam AH — ključne linije za
   // domaćina i gosta s vidljivim PUSH RISK % na cjelobrojnim linijama.
   const AH_LINIJE: Array<[string, number]> = [
-    ["−1.0", -1],
-    ["−1.5", -1.5],
-    ["+0.5", 0.5],
-    ["+1.0", 1],
+    ["−1.0", -1], ["−1.5", -1.5], ["+0.5", 0.5], ["+1.0", 1],
   ];
   const ahDom = AH_LINIJE.map(([label, L]) => {
     const r = ahSkellam(lamH, lamA, L);
@@ -394,9 +332,7 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   const underdogGost = lamA < lamH;
   const kvant: KvantKontekst = {
     skellam: {
-      p1: sk.p1,
-      pX: sk.pX,
-      p2: sk.p2,
+      p1: sk.p1, pX: sk.pX, p2: sk.p2,
       ah: [...ahDom, ...ahGost],
       pushRizikMax: Math.round(pushRizikMax * 1000) / 1000,
     },
@@ -441,37 +377,17 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   let tezinaGoals = 0;
   if (ulaz.goals?.final) {
     const gf = ulaz.goals.final;
-    const kljucevi = [
-      "1",
-      "X",
-      "2",
-      "bttsDa",
-      "bttsNe",
-      "o15",
-      "u15",
-      "o25",
-      "u25",
-      "o35",
-      "u35",
-    ].filter((k) => typeof gf[k] === "number");
+    const kljucevi = ["1", "X", "2", "bttsDa", "bttsNe", "o15", "u15", "o25", "u25", "o35", "u35"]
+      .filter((k) => typeof gf[k] === "number");
     // težina goals-motoru po njegovom povjerenju (0..100 → 0.35..0.65)
     tezinaGoals = clamp(0.35 + (ulaz.goals.povjerenje / 100) * 0.3, 0.35, 0.65);
     // miješamo goals-final i SARP grid za zajedničke ključeve
     const gridP: Record<string, number> = {
-      "1": M.p1,
-      X: M.pX,
-      "2": M.p2,
-      bttsDa: M.btts,
-      bttsNe: 1 - M.btts,
-      o15: M.o15,
-      u15: 1 - M.o15,
-      o25: M.o25,
-      u25: 1 - M.o25,
-      o35: M.o35,
-      u35: 1 - M.o35,
+      "1": M.p1, "X": M.pX, "2": M.p2,
+      bttsDa: M.btts, bttsNe: 1 - M.btts,
+      o15: M.o15, u15: 1 - M.o15, o25: M.o25, u25: 1 - M.o25, o35: M.o35, u35: 1 - M.o35,
     };
-    for (const k of kljucevi)
-      konsenzus[k] = tezinaGoals * gf[k]! + (1 - tezinaGoals) * (gridP[k] ?? gf[k]!);
+    for (const k of kljucevi) konsenzus[k] = tezinaGoals * gf[k]! + (1 - tezinaGoals) * (gridP[k] ?? gf[k]!);
   } else {
     konsenzus["1"] = M.p1;
     konsenzus["X"] = M.pX;
@@ -496,9 +412,8 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     sazetak: ulaz.goals
       ? `Konsenzus SARP-matrice i goals-motora (težina motora ${(tezinaGoals * 100).toFixed(0)}%${avgRazlika != null ? `, prosječno odstupanje od tržišta ${(avgRazlika * 100).toFixed(1)} pp` : ""}).`
       : "SARP matrica je jedini model (goals-motor nije bio dostupan).",
-    podaci: Object.entries(konsenzus)
-      .slice(0, 8)
-      .map(([k, p]) => `${TRZISTA.find((t) => t.kljuc === k)?.label ?? k}: ${fmtPct(p)}`),
+    podaci: Object.entries(konsenzus).slice(0, 8).map(([k, p]) =>
+      `${TRZISTA.find((t) => t.kljuc === k)?.label ?? k}: ${fmtPct(p)}`),
   });
 
   /* ── FAZA 6: MONTE CARLO ── */
@@ -506,7 +421,7 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
   faze.push({
     broj: 6,
     naziv: "Monte Carlo (10.000 simulacija)",
-    sazetak: `Od 10.000 simulacija najčešći rezultat je ${mc.topRezultati[0]?.rezultat ?? "—"} (${mc.topRezultati[0]?.broj ?? 0}×), BTTS u ${fmtPct(mc.btts)}, O2.5 u ${fmtPct(mc.o25)} simulacija.`,
+    sazetak: `Od 10.000 simulacija najčešći rezultat je ${mc.topRezultati[0]?.rezultat ?? "—"} (${(mc.topRezultati[0]?.broj ?? 0)}×), BTTS u ${fmtPct(mc.btts)}, O2.5 u ${fmtPct(mc.o25)} simulacija.`,
     podaci: mc.topRezultati.map((t) => `${t.rezultat}: ${t.broj}× (${fmtPct(t.p)})`),
   });
 
@@ -521,57 +436,28 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     const kellyPct = kvo != null && kvo >= 1.01 ? kellyUlogPct(p, kvo) : 0;
     if (edge != null && edge >= 0.02) {
       if (!core || (core.edge ?? -1) < edge) {
-        core = {
-          kljuc: t.kljuc,
-          label: t.label,
-          p,
-          kvota: kvo,
-          edge,
-          kellyPct,
-          izvor: "konsenzus",
-        };
+        core = { kljuc: t.kljuc, label: t.label, p, kvota: kvo, edge, kellyPct, izvor: "konsenzus" };
       }
     }
   }
   if (!core) {
     // nema vrijednosti u kvotama → najvjerojatniji ishod s kvotom, inače čisti model
-    const sKvotom = TRZISTA.map((t) => ({ t, p: konsenzus[t.kljuc] ?? -1, kvo: kv[t.kljuc] }))
+    const sKvotom = TRZISTA
+      .map((t) => ({ t, p: konsenzus[t.kljuc] ?? -1, kvo: kv[t.kljuc] }))
       .filter((x) => x.p >= 0.3 && x.kvo != null && x.kvo >= 1.01)
       .sort((a, b) => b.p - a.p)[0];
     if (sKvotom) {
       core = {
-        kljuc: sKvotom.t.kljuc,
-        label: sKvotom.t.label,
-        p: sKvotom.p,
-        kvota: sKvotom.kvo ?? null,
-        edge: sKvotom.p * (sKvotom.kvo ?? 1) - 1,
-        kellyPct: kellyUlogPct(sKvotom.p, sKvotom.kvo ?? 1),
-        izvor: "konsenzus",
+        kljuc: sKvotom.t.kljuc, label: sKvotom.t.label, p: sKvotom.p, kvota: sKvotom.kvo ?? null,
+        edge: sKvotom.p * (sKvotom.kvo ?? 1) - 1, kellyPct: kellyUlogPct(sKvotom.p, sKvotom.kvo ?? 1), izvor: "konsenzus",
       };
     } else {
-      const bezKvote = TRZISTA.map((t) => ({ t, p: konsenzus[t.kljuc] ?? -1 })).sort(
-        (a, b) => b.p - a.p,
-      )[0];
+      const bezKvote = TRZISTA.map((t) => ({ t, p: konsenzus[t.kljuc] ?? -1 }))
+        .sort((a, b) => b.p - a.p)[0];
       if (bezKvote && bezKvote.p >= 0.3) {
-        core = {
-          kljuc: bezKvote.t.kljuc,
-          label: bezKvote.t.label,
-          p: bezKvote.p,
-          kvota: null,
-          edge: null,
-          kellyPct: 0,
-          izvor: "model",
-        };
+        core = { kljuc: bezKvote.t.kljuc, label: bezKvote.t.label, p: bezKvote.p, kvota: null, edge: null, kellyPct: 0, izvor: "model" };
       } else {
-        core = {
-          kljuc: "o25",
-          label: "Više od 2.5 golova",
-          p: konsenzus["o25"] ?? 0.5,
-          kvota: null,
-          edge: null,
-          kellyPct: 0,
-          izvor: "model",
-        };
+        core = { kljuc: "o25", label: "Više od 2.5 golova", p: konsenzus["o25"] ?? 0.5, kvota: null, edge: null, kellyPct: 0, izvor: "model" };
       }
     }
   }
@@ -587,9 +473,7 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     const kvo = kv[t.kljuc];
     if (!alt || p > alt.p) {
       alt = {
-        kljuc: t.kljuc,
-        label: t.label,
-        p,
+        kljuc: t.kljuc, label: t.label, p,
         kvota: kvo != null && kvo >= 1.01 ? kvo : null,
         edge: kvo != null && kvo >= 1.01 ? p * kvo - 1 : null,
         kellyPct: kvo != null && kvo >= 1.01 ? kellyUlogPct(p, kvo) : 0,
@@ -600,39 +484,22 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
 
   /* rizici */
   const rizici: string[] = [];
-  if (uzorakMali)
-    rizici.push(
-      "Mali uzorak forme (< 4 utakmice) — prosjeke vodi više ligaški prosjek nego stvarna forma.",
-    );
-  if (nTrz === 0)
-    rizici.push(
-      "Bez kvota — nema tržišne kalibracije ni realnog uloga (Kelly = 0 dok kvote ne dođu).",
-    );
-  if (avgRazlika != null && avgRazlika > 0.1)
-    rizici.push(
-      `Model i tržište se znatno razilaze (${(avgRazlika * 100).toFixed(1)} pp) — tržište često zna za ozljede, postave ili motivaciju koje model ne vidi.`,
-    );
+  if (uzorakMali) rizici.push("Mali uzorak forme (< 4 utakmice) — prosjeke vodi više ligaški prosjek nego stvarna forma.");
+  if (nTrz === 0) rizici.push("Bez kvota — nema tržišne kalibracije ni realnog uloga (Kelly = 0 dok kvote ne dođu).");
+  if (avgRazlika != null && avgRazlika > 0.10) rizici.push(`Model i tržište se znatno razilaze (${(avgRazlika * 100).toFixed(1)} pp) — tržište često zna za ozljede, postave ili motivaciju koje model ne vidi.`);
   rizici.push("Model ne vidi ozljede, suspenzije ni postave — provjeri tim vijesti prije uloga.");
-  rizici.push(
-    "Crveni karton ili rani gol dramatično mijenjaju tok — planiraj ulog koji takav scenarij ne slama.",
-  );
-  if (books > 0 && books < 3)
-    rizici.push(`Samo ${books} kladionica daje kvote — tržišni signal je slabiji.`);
-  if (sudac.strog)
-    rizici.push(`STROG SUDAC: ${sudac.opis} — HT/FT i tržišta kartona nose dodatnu varijancu.`);
-  if (okolis.primijenjeno)
-    rizici.push(`Okolis: ${okolis.opis} — projekcija ukupnih golova i kornera smanjena.`);
-  if (suglasnostSkellam < 0.85)
-    rizici.push("Poisson i Skellam (bez korelacije) se razilaze — visoka varijanca u ishodu.");
+  rizici.push("Crveni karton ili rani gol dramatično mijenjaju tok — planiraj ulog koji takav scenarij ne slama.");
+  if (books > 0 && books < 3) rizici.push(`Samo ${books} kladionica daje kvote — tržišni signal je slabiji.`);
+  if (sudac.strog) rizici.push(`STROG SUDAC: ${sudac.opis} — HT/FT i tržišta kartona nose dodatnu varijancu.`);
+  if (okolis.primijenjeno) rizici.push(`Okolis: ${okolis.opis} — projekcija ukupnih golova i kornera smanjena.`);
+  if (suglasnostSkellam < 0.85) rizici.push("Poisson i Skellam (bez korelacije) se razilaze — visoka varijanca u ishodu.");
 
   /* obrazloženje (3–6 rečenica) */
   const obrazlozenje: string[] = [];
   obrazlozenje.push(
     `Faza forma+tržište: model miješa formu (${lamF.toFixed(2)} + ${muF.toFixed(2)} golova)` +
-      (lamTrz != null
-        ? ` s tržišnom procjenom ukupnih golova (${lamTrz.toFixed(2)}) u omjeru ${(100 - wMarket * 100).toFixed(0)}/${(wMarket * 100).toFixed(0)}`
-        : "") +
-      `, pa ukupno očekuje ${lamUk.toFixed(2)} golova.`,
+    (lamTrz != null ? ` s tržišnom procjenom ukupnih golova (${lamTrz.toFixed(2)}) u omjeru ${(100 - wMarket * 100).toFixed(0)}/${(wMarket * 100).toFixed(0)}` : "") +
+    `, pa ukupno očekuje ${lamUk.toFixed(2)} golova.`,
   );
   obrazlozenje.push(
     `Razdvoba po timovima: domaćin ${lamH.toFixed(2)}, gost ${lamA.toFixed(2)}${dm1x2 ? " — kalibrirano de-marginiranim 1X2 tržištem" : " — iz forme (1X2 kvote nisu dostupne)"}.`,
@@ -649,9 +516,7 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
       : `Glavni tip "${core.label}" je najvjerojatniji ishod${core.kvota ? `, ali tržište ga već dobro cijeni (nema značajnog edgea)` : " — kvota još nije objavljena"}.`,
   );
   if (alt) {
-    obrazlozenje.push(
-      `Sigurnija alternativa je "${alt.label}" s ${fmtPct(alt.p)} vjerojatnosti${alt.kvota ? ` na kvoti ${alt.kvota.toFixed(2)}` : ""} — za manji rizik ili duplu pokrivenost.`,
-    );
+    obrazlozenje.push(`Sigurnija alternativa je "${alt.label}" s ${fmtPct(alt.p)} vjerojatnosti${alt.kvota ? ` na kvoti ${alt.kvota.toFixed(2)}` : ""} — za manji rizik ili duplu pokrivenost.`);
   }
 
   /* povjerenje i ocjena A/B/C */
@@ -669,7 +534,8 @@ export function sarpBrain(ulaz: SarpUlaz): SarpIzlaz {
     naslov: `${ulaz.utakmica.home} — ${ulaz.utakmica.away}`,
     liga: [ulaz.utakmica.country, ulaz.utakmica.league].filter(Boolean).join(" · "),
     vrijeme: ulaz.utakmica.time ?? null,
-    kvote: TRZISTA.filter((t) => kv[t.kljuc] != null && kv[t.kljuc]! >= 1.01)
+    kvote: TRZISTA
+      .filter((t) => kv[t.kljuc] != null && kv[t.kljuc]! >= 1.01)
       .slice(0, 7)
       .map((t) => ({ kljuc: t.kljuc, label: t.label, kvota: kv[t.kljuc]! })),
   };

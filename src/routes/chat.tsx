@@ -22,12 +22,7 @@ import {
 } from "lucide-react";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
 import { formatLunaResponse, runQuantAnalytics } from "@/lib/botovi";
-import {
-  ucitajKontekstMeca,
-  izgradiKontekstTekst,
-  ucitajKontekstTiketa,
-  izgradiTiketTekst,
-} from "@/lib/ai-context";
+import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
 import { loadMastermind } from "@/lib/mastermind";
@@ -68,11 +63,7 @@ export const Route = createFileRoute("/chat")({
 const KEY = "tm.chat.history";
 
 function ChatPage() {
-  const [messages, setMessages] = useState<ChatTurn[]>(() =>
-    loadJSON<ChatTurn[]>(KEY, []).filter(
-      (t) => t.content && t.content.trim() && !/^prazan odgovor$/i.test(t.content.trim()),
-    ),
-  );
+  const [messages, setMessages] = useState<ChatTurn[]>(() => loadJSON<ChatTurn[]>(KEY, []));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -106,9 +97,7 @@ function ChatPage() {
       if (!q) return;
       localStorage.removeItem("pc.luna.pitanje");
       setTimeout(() => void send(q), 400);
-    } catch {
-      /* ignoriraj */
-    }
+    } catch { /* ignoriraj */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -178,19 +167,13 @@ function ChatPage() {
       // automatski u prompt — pohranjena poruka ostaje čista.
       const kontekst = ucitajKontekstMeca();
       const tiket = ucitajKontekstTiketa();
-      const tekstZaAI = [
-        text,
-        kontekst ? izgradiKontekstTekst(kontekst) : "",
-        tiket ? izgradiTiketTekst(tiket) : "",
-      ]
-        .filter((s) => s)
-        .join("\n\n");
-      let reply = await askAi(tekstZaAI, messages, attSnapshot, {
-        voice: voiceMode,
-        agent: "luna",
-      });
+      const tekstZaAI =
+        [text, kontekst ? izgradiKontekstTekst(kontekst) : "", tiket ? izgradiTiketTekst(tiket) : ""]
+          .filter((s) => s)
+          .join("\n\n");
+      let reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
       if (!reply || !reply.trim() || /^prazan odgovor$/i.test(reply.trim())) {
-        reply = formatLunaResponse(runQuantAnalytics(text, mecNaziv));
+        reply = formatLunaResponse(runQuantAnalytics(text));
       }
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
@@ -198,7 +181,7 @@ function ChatPage() {
         speak(reply, () => setSpeaking(false));
       }
     } catch {
-      const fallback = formatLunaResponse(runQuantAnalytics(text, mecNaziv));
+      const fallback = formatLunaResponse(runQuantAnalytics(text));
       setMessages((m) => [...m, { role: "assistant", content: fallback, ts: Date.now() }]);
       if (voiceMode) {
         setSpeaking(true);
@@ -293,8 +276,7 @@ function ChatPage() {
           <div>
             <h1 className="text-2xl font-bold">Luna — AI chat mozak</h1>
             <p className="text-sm text-muted-foreground">
-              Zovi je Luna (ili Callisto) · ženski hrvatski glas · OpenRouter/Gemini/Groq/HF ·
-              upload slika, koda, ZIP-a i mapa
+              Zovi je Luna (ili Callisto) · ženski hrvatski glas · OpenRouter/Gemini/Groq/HF · upload slika, koda, ZIP-a i mapa
             </p>
           </div>
         </div>
@@ -359,9 +341,9 @@ function ChatPage() {
           {messages.length === 0 && (
             <div className="text-center text-sm text-muted-foreground py-10">
               <Bot className="mx-auto h-8 w-8 text-primary mb-3" />
-              Pitaj me bilo što o predikcijama, kvotama, timovima, matematici iza tipova ili razvoju
-              aplikacija. Možeš uploadati slike, kod, ZIP ili cijelu mapu — pa i pričati sa mnom na
-              hrvatskom.
+              Pitaj me bilo što o predikcijama, kvotama, timovima, matematici iza tipova ili
+              razvoju aplikacija. Možeš uploadati slike, kod, ZIP ili cijelu mapu — pa i pričati
+              sa mnom na hrvatskom.
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {suggestions.map((s) => (
                   <button
@@ -436,7 +418,11 @@ function ChatPage() {
                     title={a.path}
                   >
                     {a.kind === "image" && a.dataUrl ? (
-                      <img src={a.dataUrl} alt={a.name} className="h-8 w-8 rounded object-cover" />
+                      <img
+                        src={a.dataUrl}
+                        alt={a.name}
+                        className="h-8 w-8 rounded object-cover"
+                      />
                     ) : (
                       <Icon className="h-4 w-4 text-primary" />
                     )}
@@ -524,11 +510,7 @@ function ChatPage() {
               className="inline-flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-50 hover:opacity-90"
               style={{ boxShadow: "var(--shadow-glow)" }}
             >
-              {processing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+              {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">

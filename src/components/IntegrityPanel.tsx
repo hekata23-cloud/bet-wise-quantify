@@ -16,11 +16,7 @@ export function IntegrityPanel({
 }) {
   if (!result) return null;
   const Icon =
-    result.status === "CERTIFICIRAN"
-      ? ShieldCheck
-      : result.status === "OPREZ"
-        ? ShieldAlert
-        : ShieldX;
+    result.status === "CERTIFICIRAN" ? ShieldCheck : result.status === "OPREZ" ? ShieldAlert : ShieldX;
 
   const chip = (
     <span
@@ -34,9 +30,7 @@ export function IntegrityPanel({
   if (compact) return chip;
 
   return (
-    <div
-      className={`mt-3 rounded-lg border p-3 text-left text-xs ${integrityClass(result.status)}`}
-    >
+    <div className={`mt-3 rounded-lg border p-3 text-left text-xs ${integrityClass(result.status)}`}>
       <div className="flex flex-wrap items-center gap-2">
         <Icon className="h-4 w-4" />
         <span className="font-bold uppercase tracking-wide">{title}</span>
@@ -45,8 +39,7 @@ export function IntegrityPanel({
           {result.score}/100 · kalibrirano {(result.probability * 100).toFixed(1)}%
           {result.rawProbability !== result.probability &&
             ` (model ${(result.rawProbability * 100).toFixed(1)}%)`}
-          {result.evPercent !== null &&
-            ` · EV ${result.evPercent >= 0 ? "+" : ""}${result.evPercent.toFixed(1)}%`}
+          {result.evPercent !== null && ` · EV ${result.evPercent >= 0 ? "+" : ""}${result.evPercent.toFixed(1)}%`}
         </span>
       </div>
       <ul className="mt-2 list-disc space-y-0.5 pl-4 opacity-90">

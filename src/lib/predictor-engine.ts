@@ -2,63 +2,28 @@ export const OUTCOMES = ["1/1", "X/1", "2/1", "1/X", "X/X", "2/X", "1/2", "X/2",
 export type Outcome = (typeof OUTCOMES)[number];
 
 export const TOP_SCORES = [
-  "1:0",
-  "2:0",
-  "2:1",
-  "3:0",
-  "3:1",
-  "3:2",
-  "0:0",
-  "1:1",
-  "2:2",
-  "0:1",
-  "0:2",
-  "1:2",
-  "0:3",
-  "1:3",
-  "2:3",
+  "1:0", "2:0", "2:1", "3:0", "3:1", "3:2",
+  "0:0", "1:1", "2:2",
+  "0:1", "0:2", "1:2", "0:3", "1:3", "2:3"
 ] as const;
 export type TopScore = (typeof TOP_SCORES)[number];
 
 export type Inputs = {
-  ft1: string;
-  ftx: string;
-  ft2: string;
-  ht1: string;
-  htx: string;
-  ht2: string;
-  o25: string;
-  u25: string;
-  hto05: string;
-  htu05: string;
-  o15: string;
-  u15: string;
-  o35: string;
-  u35: string;
-  bttsYes: string;
-  bttsNo: string;
+  ft1: string; ftx: string; ft2: string;
+  ht1: string; htx: string; ht2: string;
+  o25: string; u25: string; hto05: string; htu05: string;
+  o15: string; u15: string; o35: string; u35: string;
+  bttsYes: string; bttsNo: string;
   ft1Open: string;
   book: Record<Outcome, string>;
   bookScores: Record<string, string>;
 };
 
 export const emptyInputs = (): Inputs => ({
-  ft1: "",
-  ftx: "",
-  ft2: "",
-  ht1: "",
-  htx: "",
-  ht2: "",
-  o25: "",
-  u25: "",
-  hto05: "",
-  htu05: "",
-  o15: "",
-  u15: "",
-  o35: "",
-  u35: "",
-  bttsYes: "",
-  bttsNo: "",
+  ft1: "", ftx: "", ft2: "", ht1: "", htx: "", ht2: "",
+  o25: "", u25: "", hto05: "", htu05: "",
+  o15: "", u15: "", o35: "", u35: "",
+  bttsYes: "", bttsNo: "",
   ft1Open: "",
   book: Object.fromEntries(OUTCOMES.map((o) => [o, ""])) as Record<Outcome, string>,
   bookScores: Object.fromEntries(TOP_SCORES.map((s) => [s, ""])),
@@ -78,9 +43,7 @@ export function devig(odds: number[]) {
   if (odds.length === 0) return { p: [] as unknown as [number, number, number], margin: 0 };
 
   // POPRAVAK: Power de-vig eksponent mora obuhvatiti i visoke kvote i kvote blizu 1.
-  let low = 0,
-    high = 1,
-    k = 1;
+  let low = 0, high = 1, k = 1;
   while (odds.reduce((acc, o) => acc + Math.pow(1 / o, high), 0) > 1 && high < 128) high *= 2;
   for (let iter = 0; iter < 48; iter++) {
     k = (low + high) / 2;
@@ -109,14 +72,7 @@ export type ConcreteTip = {
   reason: string;
 };
 
-export type Row = {
-  outcome: Outcome;
-  prob: number;
-  fair: number;
-  market: number | null;
-  value: number | null;
-  hasValue: boolean;
-};
+export type Row = { outcome: Outcome; prob: number; fair: number; market: number | null; value: number | null; hasValue: boolean };
 export type Result = {
   rows: Row[];
   ftMargin: number;
@@ -133,16 +89,9 @@ export type Result = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const MAXG = 10;
-const FACT = (() => {
-  const f = [1];
-  for (let k = 1; k <= 25; k++) f[k] = f[k - 1]! * k;
-  return f;
-})();
+const FACT = (() => { const f = [1]; for (let k = 1; k <= 25; k++) f[k] = f[k - 1]! * k; return f; })();
 // POPRAVAK: Nevažeći λ ili broj golova ne smije proslijediti NaN u matricu rezultata.
-const poisson = (k: number, l: number) =>
-  !Number.isInteger(k) || k < 0 || !Number.isFinite(l) || l < 0
-    ? 0
-    : (Math.exp(-l) * l ** k) / FACT[k]!;
+const poisson = (k: number, l: number) => !Number.isInteger(k) || k < 0 || !Number.isFinite(l) || l < 0 ? 0 : Math.exp(-l) * l ** k / FACT[k]!;
 
 function dcTau(h: number, a: number, lH: number, lA: number, rho: number): number {
   if (h === 0 && a === 0) return 1 - lH * lA * rho;
@@ -172,30 +121,18 @@ export function scoreMatrix(lH: number, lA: number, rho = -0.06, dc = true): num
 
 const msum = (m: number[][], f: (h: number, a: number) => boolean) => {
   let s = 0;
-  for (let h = 0; h < m.length; h++)
-    for (let a = 0; a < m[h]!.length; a++) if (f(h, a)) s += m[h]![a]!;
+  for (let h = 0; h < m.length; h++) for (let a = 0; a < m[h]!.length; a++) if (f(h, a)) s += m[h]![a]!;
   return s;
 };
 
 type Target = { f: (m: number[][]) => number; p: number; w: number };
 
 export type Model = {
-  lh: number;
-  la: number;
-  htShare: number;
-  rho: number;
-  M: number[][];
-  H1: number[][];
-  H2: number[][];
-  p1: number;
-  px: number;
-  p2: number;
-  ht1: number;
-  htx: number;
-  ht2: number;
-  fitError: number;
-  balanced: boolean;
-  usedLowScores: boolean;
+  lh: number; la: number; htShare: number; rho: number;
+  M: number[][]; H1: number[][]; H2: number[][];
+  p1: number; px: number; p2: number;
+  ht1: number; htx: number; ht2: number;
+  fitError: number; balanced: boolean; usedLowScores: boolean;
 };
 
 function two(o: number, u: number): number | null {
@@ -221,24 +158,11 @@ function fit(targets: Target[], rho: number) {
     let moved = true;
     while (moved) {
       moved = false;
-      for (const [dh, da] of [
-        [step, 0],
-        [-step, 0],
-        [0, step],
-        [0, -step],
-        [step, step],
-        [-step, -step],
-        [step, -step],
-        [-step, step],
-      ] as const) {
-        const lh = best.lh + dh,
-          la = best.la + da;
+      for (const [dh, da] of [[step, 0], [-step, 0], [0, step], [0, -step], [step, step], [-step, -step], [step, -step], [-step, step]] as const) {
+        const lh = best.lh + dh, la = best.la + da;
         if (lh < 0.08 || la < 0.08) continue;
         const e = loss(lh, la);
-        if (e < best.e) {
-          best = { lh, la, e };
-          moved = true;
-        }
+        if (e < best.e) { best = { lh, la, e }; moved = true; }
       }
     }
   }
@@ -263,11 +187,7 @@ export function buildModel(i: Inputs, sharps = false): Model | null {
     t.push({ f: (m) => msum(m, (h, x) => h === x), p: b, w: 2.5 });
     t.push({ f: (m) => msum(m, (h, x) => h < x), p: c, w: 3 });
   }
-  const lines: [string, string, number, number][] = [
-    [i.o15, i.u15, 1.5, 1.5],
-    [i.o25, i.u25, 2.5, 3],
-    [i.o35, i.u35, 3.5, 1.5],
-  ];
+  const lines: [string, string, number, number][] = [[i.o15, i.u15, 1.5, 1.5], [i.o25, i.u25, 2.5, 3], [i.o35, i.u35, 3.5, 1.5]];
   for (const [o, u, L, w] of lines) {
     const p = two(n(o), n(u));
     if (p !== null) t.push({ f: (m) => msum(m, (h, a) => h + a > L), p, w });
@@ -285,10 +205,7 @@ export function buildModel(i: Inputs, sharps = false): Model | null {
     usedLowScores = true;
   }
 
-  if (t.length === 0) {
-    cache.set(key, null);
-    return null;
-  }
+  if (t.length === 0) { cache.set(key, null); return null; }
 
   // Sharps: izjednačene utakmice imaju više neriješenih niskih rezultata (jači DC ρ)
   const rho = sharps && balanced ? -0.1 : -0.06;
@@ -311,34 +228,18 @@ export function buildModel(i: Inputs, sharps = false): Model | null {
     let bestE = Infinity;
     for (let s = 0.34; s <= 0.54; s += 0.0025) {
       const m = scoreMatrix(lh * s, la * s, rho * 0.5);
-      const e =
-        htT.reduce((acc, x) => acc + x.w * (x.f(m) - x.p) ** 2, 0) + 0.02 * (s - 0.445) ** 2;
-      if (e < bestE) {
-        bestE = e;
-        htShare = s;
-      }
+      const e = htT.reduce((acc, x) => acc + x.w * (x.f(m) - x.p) ** 2, 0) + 0.02 * (s - 0.445) ** 2;
+      if (e < bestE) { bestE = e; htShare = s; }
     }
   }
   const H1 = scoreMatrix(lh * htShare, la * htShare, rho * 0.5);
   const H2 = scoreMatrix(lh * (1 - htShare), la * (1 - htShare), 0, false);
 
   const model: Model = {
-    lh,
-    la,
-    htShare,
-    rho,
-    M,
-    H1,
-    H2,
-    p1: msum(M, (h, a) => h > a),
-    px: msum(M, (h, a) => h === a),
-    p2: msum(M, (h, a) => h < a),
-    ht1: msum(H1, (h, a) => h > a),
-    htx: msum(H1, (h, a) => h === a),
-    ht2: msum(H1, (h, a) => h < a),
-    fitError: err,
-    balanced,
-    usedLowScores,
+    lh, la, htShare, rho, M, H1, H2,
+    p1: msum(M, (h, a) => h > a), px: msum(M, (h, a) => h === a), p2: msum(M, (h, a) => h < a),
+    ht1: msum(H1, (h, a) => h > a), htx: msum(H1, (h, a) => h === a), ht2: msum(H1, (h, a) => h < a),
+    fitError: err, balanced, usedLowScores,
   };
   if (cache.size > 50) cache.clear();
   cache.set(key, model);
@@ -351,16 +252,14 @@ const ftSign = (h: number, a: number) => (h > a ? "1" : h === a ? "X" : "2");
 export function htftProbs(m: Model): Record<Outcome, number> {
   const out = Object.fromEntries(OUTCOMES.map((o) => [o, 0])) as Record<Outcome, number>;
   // POPRAVAK: Uzimamo sve redove matrica poluvremena umjesto rezanja golova nakon 7.
-  for (let a = 0; a < m.H1.length; a++)
-    for (let b = 0; b < m.H1[a]!.length; b++) {
-      const p1 = m.H1[a]![b]!;
-      if (p1 < 1e-9) continue;
-      for (let c = 0; c < m.H2.length; c++)
-        for (let d = 0; d < m.H2[c]!.length; d++) {
-          const k = `${ftSign(a, b)}/${ftSign(a + c, b + d)}` as Outcome;
-          out[k] += p1 * m.H2[c]![d]!;
-        }
+  for (let a = 0; a < m.H1.length; a++) for (let b = 0; b < m.H1[a]!.length; b++) {
+    const p1 = m.H1[a]![b]!;
+    if (p1 < 1e-9) continue;
+    for (let c = 0; c < m.H2.length; c++) for (let d = 0; d < m.H2[c]!.length; d++) {
+      const k = `${ftSign(a, b)}/${ftSign(a + c, b + d)}` as Outcome;
+      out[k] += p1 * m.H2[c]![d]!;
     }
+  }
   const s = OUTCOMES.reduce((x, o) => x + out[o], 0);
   // POPRAVAK: Za praznu/degeneriranu matricu izbjegavamo dijeljenje s nulom.
   for (const o of OUTCOMES) out[o] /= s || 1;
@@ -381,8 +280,7 @@ export function calculate(i: Inputs, sharps = false): Result | { error: string }
   const ht = [n(i.ht1), n(i.htx), n(i.ht2)];
   const ftMargin = devig(ft).margin;
   const htMargin = ht.some(isNaN) ? 0 : devig(ht).margin;
-  const o25 = n(i.o25),
-    u25 = n(i.u25);
+  const o25 = n(i.o25), u25 = n(i.u25);
   const goalsMargin = !isNaN(o25) && !isNaN(u25) ? devig([o25, u25]).margin : null;
 
   const probs = htftProbs(m);
@@ -391,32 +289,13 @@ export function calculate(i: Inputs, sharps = false): Result | { error: string }
     const mk = n(i.book[o]);
     const market = isNaN(mk) ? null : mk;
     const value = market ? prob * market - 1 : null;
-    return {
-      outcome: o,
-      prob,
-      fair: 1 / prob,
-      market,
-      value,
-      hasValue: Boolean(value && value > 0),
-    };
+    return { outcome: o, prob, fair: 1 / prob, market, value, hasValue: Boolean(value && value > 0) };
   });
 
   // Dosljedan tip: HT dio prati najvjerojatniji ishod poluvremena, FT dio najvjerojatniji
   // konačni ishod (kad su dovoljno jasni) — tako se ne kosi s karticama 1X2 i "X na poluvremenu".
-  const ftBest = (
-    [
-      ["1", m.p1],
-      ["X", m.px],
-      ["2", m.p2],
-    ] as const
-  ).reduce((a, b) => (b[1] > a[1] ? b : a));
-  const htBest = (
-    [
-      ["1", m.ht1],
-      ["X", m.htx],
-      ["2", m.ht2],
-    ] as const
-  ).reduce((a, b) => (b[1] > a[1] ? b : a));
+  const ftBest = ([["1", m.p1], ["X", m.px], ["2", m.p2]] as const).reduce((a, b) => (b[1] > a[1] ? b : a));
+  const htBest = ([["1", m.ht1], ["X", m.htx], ["2", m.ht2]] as const).reduce((a, b) => (b[1] > a[1] ? b : a));
   let cand = rows;
   if (ftBest[1] >= 0.45) cand = cand.filter((r) => r.outcome.endsWith(ftBest[0]));
   if (htBest[1] >= 0.42) {
@@ -458,8 +337,7 @@ export function calculateBtts(i: Inputs, sharps = false): BttsResult | { error: 
   if (!m) return { error: NEED };
   const pYes = msum(m.M, (h, a) => h > 0 && a > 0);
   const pNo = 1 - pYes;
-  const mYes = n(i.bttsYes),
-    mNo = n(i.bttsNo);
+  const mYes = n(i.bttsYes), mNo = n(i.bttsNo);
   const marketYes = isNaN(mYes) ? null : mYes;
   const marketNo = isNaN(mNo) ? null : mNo;
   const valueYes = marketYes ? pYes * marketYes - 1 : null;
@@ -482,48 +360,26 @@ export function calculateBtts(i: Inputs, sharps = false): BttsResult | { error: 
       : `Dixon-Coles matrica (xG: Dom ${m.lh.toFixed(2)}, Gost ${m.la.toFixed(2)}) daje ${(pNo * 100).toFixed(1)}% da barem jedna ekipa ne zabije.`,
   };
   return {
-    probYes: pYes,
-    probNo: pNo,
-    fairYes: 1 / pYes,
-    fairNo: 1 / pNo,
-    marketYes,
-    marketNo,
-    valueYes,
-    valueNo,
-    concretePick,
-    explanation: concretePick.reason,
+    probYes: pYes, probNo: pNo, fairYes: 1 / pYes, fairNo: 1 / pNo,
+    marketYes, marketNo, valueYes, valueNo, concretePick, explanation: concretePick.reason,
   };
 }
 
 // 3. Over/Under (zajednička logika za 1.5 / 2.5 / 3.5)
 export type OuResult = {
-  probOver: number;
-  probUnder: number;
-  fairOver: number;
-  fairUnder: number;
-  marketOver: number | null;
-  marketUnder: number | null;
-  valueOver: number | null;
-  valueUnder: number | null;
-  concretePick: ConcreteTip;
-  explanation: string;
+  probOver: number; probUnder: number; fairOver: number; fairUnder: number;
+  marketOver: number | null; marketUnder: number | null;
+  valueOver: number | null; valueUnder: number | null;
+  concretePick: ConcreteTip; explanation: string;
 };
 export type Ou35Result = OuResult;
 
-function ouLine(
-  i: Inputs,
-  L: 2.5 | 3.5,
-  oS: string,
-  uS: string,
-  sharps: boolean,
-  hi: number,
-): OuResult | { error: string } {
+function ouLine(i: Inputs, L: 2.5 | 3.5, oS: string, uS: string, sharps: boolean, hi: number): OuResult | { error: string } {
   const m = buildModel(i, sharps);
   if (!m) return { error: NEED };
   const pOver = msum(m.M, (h, a) => h + a > L);
   const pUnder = 1 - pOver;
-  const o = n(oS),
-    u = n(uS);
+  const o = n(oS), u = n(uS);
   const marketOver = isNaN(o) ? null : o;
   const marketUnder = isNaN(u) ? null : u;
   const valueOver = marketOver ? pOver * marketOver - 1 : null;
@@ -544,16 +400,8 @@ function ouLine(
     reason: `Očekivano ${(m.lh + m.la).toFixed(2)} gola (Dom ${m.lh.toFixed(2)} + Gost ${m.la.toFixed(2)}) → ${(prob * 100).toFixed(1)}% za ${pick}.`,
   };
   return {
-    probOver: pOver,
-    probUnder: pUnder,
-    fairOver: 1 / pOver,
-    fairUnder: 1 / pUnder,
-    marketOver,
-    marketUnder,
-    valueOver,
-    valueUnder,
-    concretePick,
-    explanation: concretePick.reason,
+    probOver: pOver, probUnder: pUnder, fairOver: 1 / pOver, fairUnder: 1 / pUnder,
+    marketOver, marketUnder, valueOver, valueUnder, concretePick, explanation: concretePick.reason,
   };
 }
 
@@ -567,16 +415,10 @@ export function calculateOu35(i: Inputs, sharps = false): Ou35Result | { error: 
 
 // 5. X na Poluvremenu (HT Draw)
 export type HtDrawResult = {
-  probDraw: number;
-  probNotDraw: number;
-  fairDraw: number;
-  fairNotDraw: number;
-  marketDraw: number | null;
-  marketNotDraw: number | null;
-  valueDraw: number | null;
-  valueNotDraw: number | null;
-  concretePick: ConcreteTip;
-  explanation: string;
+  probDraw: number; probNotDraw: number; fairDraw: number; fairNotDraw: number;
+  marketDraw: number | null; marketNotDraw: number | null;
+  valueDraw: number | null; valueNotDraw: number | null;
+  concretePick: ConcreteTip; explanation: string;
 };
 
 export function calculateHtDraw(i: Inputs, sharps = false): HtDrawResult | { error: string } {
@@ -584,9 +426,7 @@ export function calculateHtDraw(i: Inputs, sharps = false): HtDrawResult | { err
   if (!m) return { error: "Unesite tečajeve poluvremena (HT) ili kraja (FT)." };
   const pDraw = m.htx;
   const pNotDraw = 1 - pDraw;
-  const ht1 = n(i.ht1),
-    htx = n(i.htx),
-    ht2 = n(i.ht2);
+  const ht1 = n(i.ht1), htx = n(i.htx), ht2 = n(i.ht2);
   const marketDraw = isNaN(htx) ? null : htx;
   const marketNotDraw = !isNaN(ht1) && !isNaN(ht2) ? 1 / (1 / ht1 + 1 / ht2) : null;
   const valueDraw = marketDraw ? pDraw * marketDraw - 1 : null;
@@ -607,29 +447,15 @@ export function calculateHtDraw(i: Inputs, sharps = false): HtDrawResult | { err
     reason: `Očekivano ${((m.lh + m.la) * m.htShare).toFixed(2)} gola do odmora (${Math.round(m.htShare * 100)}% ukupnih) → X na poluvremenu ${(pDraw * 100).toFixed(1)}%.`,
   };
   return {
-    probDraw: pDraw,
-    probNotDraw: pNotDraw,
-    fairDraw: 1 / pDraw,
-    fairNotDraw: 1 / pNotDraw,
-    marketDraw,
-    marketNotDraw,
-    valueDraw,
-    valueNotDraw,
-    concretePick,
-    explanation: concretePick.reason,
+    probDraw: pDraw, probNotDraw: pNotDraw, fairDraw: 1 / pDraw, fairNotDraw: 1 / pNotDraw,
+    marketDraw, marketNotDraw, valueDraw, valueNotDraw, concretePick, explanation: concretePick.reason,
   };
 }
 
 // 6. Točan rezultat
 export type ScoreCell = {
-  home: number;
-  away: number;
-  score: string;
-  prob: number;
-  fair: number;
-  market: number | null;
-  value: number | null;
-  hasValue: boolean;
+  home: number; away: number; score: string; prob: number; fair: number;
+  market: number | null; value: number | null; hasValue: boolean;
 };
 
 export type CorrectScoreResult = {
@@ -644,10 +470,7 @@ export type CorrectScoreResult = {
   explanation: string;
 };
 
-export function calculateCorrectScore(
-  i: Inputs,
-  sharps = false,
-): CorrectScoreResult | { error: string } {
+export function calculateCorrectScore(i: Inputs, sharps = false): CorrectScoreResult | { error: string } {
   const m = buildModel(i, sharps);
   if (!m) return { error: "Unesite tečajeve 1X2 za izračun točnog rezultata." };
 
@@ -661,16 +484,7 @@ export function calculateCorrectScore(
       const o = n(i.bookScores[score] ?? "");
       const market = isNaN(o) ? null : o;
       const value = market ? prob * market - 1 : null;
-      const cell: ScoreCell = {
-        home: h,
-        away: a,
-        score,
-        prob,
-        fair: 1 / prob,
-        market,
-        value,
-        hasValue: Boolean(value && value > 0),
-      };
+      const cell: ScoreCell = { home: h, away: a, score, prob, fair: 1 / prob, market, value, hasValue: Boolean(value && value > 0) };
       row.push(cell);
       allScores.push(cell);
     }
@@ -682,16 +496,10 @@ export function calculateCorrectScore(
   // Dosljedan rezultat: mora se slagati s jasnim tipovima ostalih kartica (1X2, 2.5, GG).
   const pO25 = msum(m.M, (h, a) => h + a > 2.5);
   const pGG = msum(m.M, (h, a) => h > 0 && a > 0);
-  const ftBest = (
-    [
-      ["1", m.p1],
-      ["X", m.px],
-      ["2", m.p2],
-    ] as const
-  ).reduce((a, b) => (b[1] > a[1] ? b : a));
+  const ftBest = ([["1", m.p1], ["X", m.px], ["2", m.p2]] as const).reduce((a, b) => (b[1] > a[1] ? b : a));
   const rules: ((c: ScoreCell) => boolean)[] = [];
   if (ftBest[1] >= 0.45) rules.push((c) => ftSign(c.home, c.away) === ftBest[0]);
-  if (Math.max(pO25, 1 - pO25) >= 0.58) rules.push((c) => c.home + c.away > 2.5 === pO25 > 0.5);
+  if (Math.max(pO25, 1 - pO25) >= 0.58) rules.push((c) => (c.home + c.away > 2.5) === pO25 > 0.5);
   if (Math.max(pGG, 1 - pGG) >= 0.58) rules.push((c) => (c.home > 0 && c.away > 0) === pGG > 0.5);
   let pool = allScores;
   for (const r of rules) {
@@ -706,43 +514,27 @@ export function calculateCorrectScore(
     market: "Točan Rezultat",
     pick: `Rezultat ${bestScore.score}`,
     confidenceScore: conf,
-    confidenceLevel:
-      conf >= 14 ? "VISOKA SIGURNOST" : conf >= 9 ? "UMJERENA SIGURNOST" : "SPEKULATIVNO (VALUE)",
+    confidenceLevel: conf >= 14 ? "VISOKA SIGURNOST" : conf >= 9 ? "UMJERENA SIGURNOST" : "SPEKULATIVNO (VALUE)",
     fairOdds: bestScore.fair,
     marketOdds: bestScore.market,
     valueEdge: bestScore.value !== null ? bestScore.value * 100 : null,
     reason: `Najvjerojatniji rezultat usklađen s tipovima 1X2/golova/GG: ${bestScore.score} (${(bestScore.prob * 100).toFixed(1)}%, fer tečaj ${bestScore.fair.toFixed(2)}).`,
   };
   return {
-    matrix,
-    allScores,
-    top3,
-    bestScore,
-    concretePick,
-    lambdaHome: m.lh,
-    lambdaAway: m.la,
-    totalXG: total,
+    matrix, allScores, top3, bestScore, concretePick,
+    lambdaHome: m.lh, lambdaAway: m.la, totalXG: total,
     explanation: `Dixon-Coles model fitan na sve unesene kvote: xG Domaćin ${m.lh.toFixed(2)}, Gost ${m.la.toFixed(2)} (ukupno ${total.toFixed(2)}). Najvjerojatniji rezultat je ${bestScore.score}.`,
   };
 }
 
 // 7. 1.5 Goals Predictor
 export type Ou15Result = {
-  probOver: number;
-  probUnder: number;
-  fairOver: number;
-  fairUnder: number;
-  marketOver: number | null;
-  marketUnder: number | null;
-  valueOver: number | null;
-  valueUnder: number | null;
-  isOver: boolean;
-  confidence: number;
+  probOver: number; probUnder: number; fairOver: number; fairUnder: number;
+  marketOver: number | null; marketUnder: number | null;
+  valueOver: number | null; valueUnder: number | null;
+  isOver: boolean; confidence: number;
   csOdds: { "0:0": number | null; "1:0": number | null; "0:1": number | null };
-  lowSum: number;
-  ruleMet: boolean;
-  lowOddsShift: boolean;
-  sharpsBuffer: boolean;
+  lowSum: number; ruleMet: boolean; lowOddsShift: boolean; sharpsBuffer: boolean;
   breakdown: string;
 };
 
@@ -753,57 +545,35 @@ export function calculateOu15(i: Inputs, sharps = false): Ou15Result | { error: 
   const pU = 1 - pO;
   const keys = ["0:0", "1:0", "0:1"] as const;
   const odds = keys.map((k) => n(i.bookScores[k] ?? ""));
-  const csOdds = {
-    "0:0": isNaN(odds[0]!) ? null : odds[0]!,
-    "1:0": isNaN(odds[1]!) ? null : odds[1]!,
-    "0:1": isNaN(odds[2]!) ? null : odds[2]!,
-  };
+  const csOdds = { "0:0": isNaN(odds[0]!) ? null : odds[0]!, "1:0": isNaN(odds[1]!) ? null : odds[1]!, "0:1": isNaN(odds[2]!) ? null : odds[2]! };
   const lowSum = m.M[0]![0]! + m.M[1]![0]! + m.M[0]![1]!;
   const highCount = odds.filter((o) => !isNaN(o) && o >= 10).length;
   const ruleMet = highCount >= 2 && lowSum < 0.25;
 
-  const o15 = n(i.o15),
-    u15 = n(i.u15);
-  const mO = isNaN(o15) ? null : o15,
-    mU = isNaN(u15) ? null : u15;
+  const o15 = n(i.o15), u15 = n(i.u15);
+  const mO = isNaN(o15) ? null : o15, mU = isNaN(u15) ? null : u15;
   const isOver = pO >= pU;
   const f = (x: number | null) => (x ? x.toFixed(2) : "—");
   return {
-    probOver: pO,
-    probUnder: pU,
-    fairOver: 1 / pO,
-    fairUnder: 1 / pU,
-    marketOver: mO,
-    marketUnder: mU,
-    valueOver: mO ? pO * mO - 1 : null,
-    valueUnder: mU ? pU * mU - 1 : null,
-    isOver,
-    confidence: Math.round((isOver ? pO : pU) * 100),
-    csOdds,
-    lowSum,
-    ruleMet,
-    lowOddsShift: m.usedLowScores,
-    sharpsBuffer: sharps && m.balanced,
+    probOver: pO, probUnder: pU, fairOver: 1 / pO, fairUnder: 1 / pU,
+    marketOver: mO, marketUnder: mU,
+    valueOver: mO ? pO * mO - 1 : null, valueUnder: mU ? pU * mU - 1 : null,
+    isOver, confidence: Math.round((isOver ? pO : pU) * 100),
+    csOdds, lowSum, ruleMet, lowOddsShift: m.usedLowScores, sharpsBuffer: sharps && m.balanced,
     breakdown: `Točni rezultati: [0:0 ${f(csOdds["0:0"])} | 1:0 ${f(csOdds["1:0"])} | 0:1 ${f(csOdds["0:1"])}] → ${ruleMet ? "potvrđuju Više 1.5" : "bez dodatne potvrde"} (model Σ 0:0+1:0+0:1 = ${(lowSum * 100).toFixed(1)}%)`,
   };
 }
 
+
 // 8. Dutching kalkulator
 export function dutch(stake: number, oddsA: number, oddsB: number) {
   // POPRAVAK: Nulti/nevaljani ulog ili kvote ne smiju proizvesti NaN/Infinity u isplati.
-  if (
-    !Number.isFinite(stake) ||
-    stake <= 0 ||
-    !Number.isFinite(oddsA) ||
-    oddsA <= 1 ||
-    !Number.isFinite(oddsB) ||
-    oddsB <= 1
-  ) {
+  if (!Number.isFinite(stake) || stake <= 0 || !Number.isFinite(oddsA) || oddsA <= 1 || !Number.isFinite(oddsB) || oddsB <= 1) {
     return { sA: 0, sB: 0, profit: 0, roi: 0 };
   }
   const inv = 1 / oddsA + 1 / oddsB;
-  const sA = stake / oddsA / inv,
-    sB = stake / oddsB / inv;
+  const sA = (stake / oddsA) / inv, sB = (stake / oddsB) / inv;
   const ret = stake / inv;
   return { sA, sB, profit: ret - stake, roi: (ret - stake) / stake };
 }
+

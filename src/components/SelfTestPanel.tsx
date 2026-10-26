@@ -15,11 +15,7 @@ export function SelfTestPanel() {
         setIzvjestaj(pokreniSelftest());
       } catch (e) {
         setIzvjestaj({
-          brTestova: 1,
-          brProslo: 0,
-          brPalih: 1,
-          sviProsli: false,
-          trajanjeMs: 0,
+          brTestova: 1, brProslo: 0, brPalih: 1, sviProsli: false, trajanjeMs: 0,
           testovi: [{ naziv: "Pokretanje audita", ok: false, detalj: String(e) }],
         });
       }
@@ -39,9 +35,7 @@ export function SelfTestPanel() {
           {trci ? "Testiram…" : "Pokreni samotest (18 provjera)"}
         </button>
         {izvjestaj && (
-          <span
-            className={`text-sm font-semibold ${izvjestaj.sviProsli ? "text-emerald-400" : "text-red-400"}`}
-          >
+          <span className={`text-sm font-semibold ${izvjestaj.sviProsli ? "text-emerald-400" : "text-red-400"}`}>
             {izvjestaj.sviProsli
               ? `Sve prolazi: ${izvjestaj.brProslo}/${izvjestaj.brTestova} (${izvjestaj.trajanjeMs} ms)`
               : `PALO ${izvjestaj.brPalih} od ${izvjestaj.brTestova} testova!`}
@@ -52,10 +46,7 @@ export function SelfTestPanel() {
       {izvjestaj && (
         <ul className="grid gap-1.5">
           {izvjestaj.testovi.map((t) => (
-            <li
-              key={t.naziv}
-              className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 p-2 text-xs"
-            >
+            <li key={t.naziv} className="flex items-start gap-2 rounded-lg border border-border/50 bg-background/40 p-2 text-xs">
               {t.ok ? (
                 <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-emerald-400" />
               ) : (
@@ -72,3 +63,4 @@ export function SelfTestPanel() {
     </div>
   );
 }
+

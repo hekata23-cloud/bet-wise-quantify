@@ -19,10 +19,7 @@ export type KladionicaMetodeRezultat = {
   upozorenja: string[];
 };
 
-export function shinDeMarza(
-  kvotaA: number,
-  kvotaB: number,
-): {
+export function shinDeMarza(kvotaA: number, kvotaB: number): {
   fairA: number;
   fairB: number;
   z: number;
@@ -102,11 +99,7 @@ export function negBinomnaVjerojatnostGola(k: number, mu: number, r = 4.5): numb
 }
 
 // POPRAVAK: uključuje rep raspodjele koji je pri λ do 6.5 značajan iznad 12 golova.
-export function negBinomZbrojGolova(
-  lambdaTotal: number,
-  uvjet: (golovi: number) => boolean,
-  maxGolova = 40,
-): number {
+export function negBinomZbrojGolova(lambdaTotal: number, uvjet: (golovi: number) => boolean, maxGolova = 40): number {
   let suma = 0;
   for (let g = 0; g <= maxGolova; g++) {
     if (uvjet(g)) {
@@ -124,8 +117,7 @@ export function negBinomLambdaIzOver25(pOver25: number): number {
   for (let i = 0; i < 40; i++) {
     const mid = (lo + hi) / 2;
     const pOver = negBinomZbrojGolova(mid, (g) => g >= 3);
-    if (pOver < target) lo = mid;
-    else hi = mid;
+    if (pOver < target) lo = mid; else hi = mid;
   }
   return (lo + hi) / 2;
 }
@@ -151,10 +143,7 @@ export function provjeriKonzistentnost(
   return { ok: true, razlika, poruka: null };
 }
 
-export function primijeniMetodeKladionica(
-  id: IndikatorId,
-  ulaz: RadarUlaz,
-): KladionicaMetodeRezultat {
+export function primijeniMetodeKladionica(id: IndikatorId, ulaz: RadarUlaz): KladionicaMetodeRezultat {
   const { odds } = ulaz;
   const signali: string[] = [];
   const upozorenja: string[] = [];
@@ -203,16 +192,13 @@ export function primijeniMetodeKladionica(
       );
 
       if (shin.z > 0.08) {
-        upozorenja.push(
-          `Povišen rizik asimetrije na tržištu (Shin z = ${(shin.z * 100).toFixed(1)}%).`,
-        );
+        upozorenja.push(`Povišen rizik asimetrije na tržištu (Shin z = ${(shin.z * 100).toFixed(1)}%).`);
       }
     }
   }
 
   let negBinomVjerojatnost: number | null = null;
-  const o25 = broj(odds["o25"]),
-    u25 = broj(odds["u25"]);
+  const o25 = broj(odds["o25"]), u25 = broj(odds["u25"]);
   if (o25 && u25 && ispravnaKvota(o25) && ispravnaKvota(u25)) {
     const probOver = 1 / o25 / (1 / o25 + 1 / u25);
     const lambdaProcjena = negBinomLambdaIzOver25(probOver);
@@ -268,3 +254,6 @@ export function primijeniMetodeKladionica(
     upozorenja,
   };
 }
+
+
+

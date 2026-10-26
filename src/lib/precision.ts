@@ -28,15 +28,7 @@ export interface PrecisionPrefs {
 
 export const DEFAULT_PRECISION: PrecisionPrefs = {
   enabled: false,
-  markets: {
-    btts: true,
-    ou25: true,
-    "1x2": true,
-    htft: true,
-    htx: true,
-    htgoals: true,
-    opce: true,
-  },
+  markets: { btts: true, ou25: true, "1x2": true, htft: true, htx: true, htgoals: true, opce: true },
   calibration: true,
   dualMethod: true,
   numericAudit: true,

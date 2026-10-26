@@ -1,6 +1,6 @@
 /**
  * HT/FT Kvantni Prediktor — Samostalni Kvantitativni Engine
- *
+ * 
  * 4 Specijalne Metode:
  * 1. Dixon-Coles Bivarijatni Poisson s vremenskim razdvajanjem poluvremena (Time-Decay)
  * 2. Markovljevi lanci i matrica vjerojatnosti prijelaza stanja (HT -> FT)
@@ -70,7 +70,7 @@ export function computeQuantumHtFt(
   analysis: Analysis,
   match: string,
   league: string,
-  time: string,
+  time: string
 ): MasterHtFtPrediction {
   // POPRAVAK: nula je valjana λ i ne treba je zamijeniti prosječnom vrijednošću.
   const lh = Number.isFinite(analysis.lh) && analysis.lh >= 0 ? analysis.lh : 1.4;
@@ -78,10 +78,9 @@ export function computeQuantumHtFt(
 
   // 1. METODA: Dixon-Coles vremensko razdvajanje (1. poluvrijeme 44%, 2. poluvrijeme 56%)
   // POPRAVAK: dopuštena nulta vrijednost ne smije se zamijeniti zadanim udjelom.
-  const htShare =
-    Number.isFinite(analysis.htShare) && analysis.htShare >= 0 && analysis.htShare <= 1
-      ? analysis.htShare
-      : 0.44;
+  const htShare = Number.isFinite(analysis.htShare) && analysis.htShare >= 0 && analysis.htShare <= 1
+    ? analysis.htShare
+    : 0.44;
   // POPRAVAK: ne dodajte minimalnu λ poluvremenu kada je očekivana vrijednost nula.
   const lh1H = lh * htShare;
   const la1H = la * htShare;
@@ -135,12 +134,7 @@ export function computeQuantumHtFt(
   // Dohvat stvarnih kvota iz kladionice
   const htftMarket = analysis.markets.find((m) => {
     const n = m.name.toLowerCase();
-    return (
-      n.includes("poluvrijeme / kraj") ||
-      n.includes("poluvrijeme/kraj") ||
-      n.includes("ht/ft") ||
-      n.includes("half time")
-    );
+    return n.includes("poluvrijeme / kraj") || n.includes("poluvrijeme/kraj") || n.includes("ht/ft") || n.includes("half time");
   });
 
   const findOdd = (code: string): number | undefined => {
@@ -168,7 +162,7 @@ export function computeQuantumHtFt(
   } else if (p1H_Away >= 0.34 && markovP_AwayLeadKept >= 0.65) {
     markovPicked = "2/2";
     markovScore = markovP_AwayLeadKept;
-  } else if (p1H_00 >= 0.32 && Math.abs(lh - la) <= 0.3) {
+  } else if (p1H_00 >= 0.32 && Math.abs(lh - la) <= 0.30) {
     markovPicked = "X/X";
     markovScore = markovP_DrawKept;
   } else if (la > lh * 1.15) {
@@ -192,8 +186,8 @@ export function computeQuantumHtFt(
     entropy < 2.3
       ? "NISKA (Čvrst Signal)"
       : entropy < 2.85
-        ? "UMJERENA (Stabilno)"
-        : "VISOKA (Povećan rizik)";
+      ? "UMJERENA (Stabilno)"
+      : "VISOKA (Povećan rizik)";
 
   // 4. METODA: Bayesovski omjer rane dominacije (Early Dominance)
   let bayesPicked = "X/1";
@@ -246,8 +240,7 @@ export function computeQuantumHtFt(
       fairOdd,
       bookieOdd,
       ev,
-      markovScore:
-        code === "1/1" ? markovP_HomeLeadKept : code === "2/2" ? markovP_AwayLeadKept : 0.5,
+      markovScore: code === "1/1" ? markovP_HomeLeadKept : code === "2/2" ? markovP_AwayLeadKept : 0.5,
     };
   });
 
@@ -272,28 +265,28 @@ export function computeQuantumHtFt(
     grade = p11 >= 0.44 ? "MAKSIMALNA (A+)" : "VISOKA (A)";
   }
   // 2. Dominantni gostujući favorit -> 2/2
-  else if (la >= 1.65 && ratioA >= 1.5 && p22 >= 0.3) {
+  else if (la >= 1.65 && ratioA >= 1.5 && p22 >= 0.30) {
     definitiveCode = "2/2";
     tacticalReason = `Izraziti gostujući favorit (xG ${la.toFixed(2)} vs ${lh.toFixed(2)}). Rana kontrola utakmice i pobjeda.`;
-    grade = p22 >= 0.4 ? "MAKSIMALNA (A+)" : "VISOKA (A)";
+    grade = p22 >= 0.40 ? "MAKSIMALNA (A+)" : "VISOKA (A)";
   }
   // 3. Tvrda taktička utakmica s malim zbrojem golova -> X/X
-  else if (totXg <= 2.3 && Math.abs(lh - la) <= 0.35 && pXX >= 0.16) {
+  else if (totXg <= 2.30 && Math.abs(lh - la) <= 0.35 && pXX >= 0.16) {
     definitiveCode = "X/X";
     tacticalReason = `Tvrda utakmica s malim zbrojem golova (xG ${totXg.toFixed(2)}) i visokom šansom za 0:0 na odmoru (${(p1H_00 * 100).toFixed(0)}%).`;
     grade = "TAKTIČKA (B+)";
   }
   // 4. Umjereni domaći favorit -> X/1 (Taktički proboj u 2. dijelu)
-  else if (ratioH >= 1.2 || (lh > la && pX1 >= 0.14)) {
+  else if (ratioH >= 1.20 || (lh > la && pX1 >= 0.14)) {
     definitiveCode = "X/1";
     tacticalReason = `Taktički proboj: Domaćin je favorit, ali čvrsto 1. poluvrijeme vodi do rješenja u nastavku (visoka vrijednost tečaja).`;
-    grade = pX1 >= 0.2 ? "VISOKA (A)" : "TAKTIČKA (B+)";
+    grade = pX1 >= 0.20 ? "VISOKA (A)" : "TAKTIČKA (B+)";
   }
   // 5. Umjereni gostujući favorit -> X/2
   else if (ratioA >= 1.15 || (la > lh && pX2 >= 0.14)) {
     definitiveCode = "X/2";
     tacticalReason = `Taktički proboj: Gost slama protivnika u drugom dijelu utakmice.`;
-    grade = pX2 >= 0.2 ? "VISOKA (A)" : "TAKTIČKA (B+)";
+    grade = pX2 >= 0.20 ? "VISOKA (A)" : "TAKTIČKA (B+)";
   }
   // 6. Rezervni balansirani ishod
   else {
@@ -315,34 +308,20 @@ export function computeQuantumHtFt(
     matchCount >= 4
       ? "4/4 Metode Jednoglasno (Maksimalna preciznost)"
       : matchCount === 3
-        ? "3/4 Metode Potvrđuju Tip"
-        : "Algoritamska Prednost Modeliranja";
+      ? "3/4 Metode Potvrđuju Tip"
+      : "Algoritamska Prednost Modeliranja";
 
   // Sigurnosni hedge
   let hedgePick = "1X na kraju";
   let hedgeDesc = "Dvostruka šansa domaćina";
   // POPRAVAK: 1X uključuje sve poluvremenske ishode koji završavaju pobjedom ili remijem domaćina.
-  let hedgeP =
-    (probs["1/1"]! +
-      probs["X/1"]! +
-      probs["2/1"]! +
-      probs["1/X"]! +
-      probs["X/X"]! +
-      probs["2/X"]!) *
-    100;
+  let hedgeP = (probs["1/1"]! + probs["X/1"]! + probs["2/1"]! + probs["1/X"]! + probs["X/X"]! + probs["2/X"]!) * 100;
 
   if (definitiveCode.endsWith("2")) {
     hedgePick = "X2 na kraju";
     hedgeDesc = "Dvostruka šansa gosta";
     // POPRAVAK: X2 uključuje sve poluvremenske ishode koji završavaju remijem ili pobjedom gosta.
-    hedgeP =
-      (probs["1/2"]! +
-        probs["X/2"]! +
-        probs["2/2"]! +
-        probs["1/X"]! +
-        probs["X/X"]! +
-        probs["2/X"]!) *
-      100;
+    hedgeP = (probs["1/2"]! + probs["X/2"]! + probs["2/2"]! + probs["1/X"]! + probs["X/X"]! + probs["2/X"]!) * 100;
   } else if (definitiveCode === "X/X") {
     hedgePick = "Manje od 2.5 gola";
     hedgeDesc = "Obrana dominira utakmicom";
@@ -404,3 +383,4 @@ export function computeQuantumHtFt(
     allOutcomes,
   };
 }
+

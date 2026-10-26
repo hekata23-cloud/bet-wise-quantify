@@ -12,32 +12,12 @@ import { groqChat } from "./groq";
 import { geminiChat } from "./gemini";
 import { specialistsForMarket } from "./specialists";
 import {
-  loadAccuracy,
-  scoreMatrix,
-  marketProbs,
-  robustMean,
-  median,
-  devig,
-  parseOdds,
-  monteCarlo,
-  verdict,
-  blendWithMarket,
-  shrinkToPrior,
-  leaguePriorTotal,
-  type Verdict,
+  loadAccuracy, scoreMatrix, marketProbs, robustMean, median, devig, parseOdds,
+  monteCarlo, verdict, blendWithMarket, shrinkToPrior, leaguePriorTotal, type Verdict,
 } from "./accuracy";
 import {
-  bttsCopula,
-  ouGameStateHazard,
-  entropy,
-  kelly,
-  fairOdds,
-  edge as edgeOf,
-  devigShin,
-  devigPower,
-  devigMultiplicative,
-  skellam,
-  bayesLambda,
+  bttsCopula, ouGameStateHazard, entropy, kelly, fairOdds, edge as edgeOf,
+  devigShin, devigPower, devigMultiplicative, skellam, bayesLambda,
 } from "./formulas";
 import { loadSuper, plattCalibrate, confWeightedMean } from "./superaccuracy";
 
@@ -206,14 +186,10 @@ async function callBrain(
       return nvidiaChat(model, msgs, { temperature: 0.2, maxTokens });
     }
     case "huggingface":
-      return huggingfaceChat(
-        model,
-        [
-          { role: "system", content: sys },
-          { role: "user", content: text },
-        ],
-        { temperature: 0.2, maxTokens },
-      );
+      return huggingfaceChat(model, [
+        { role: "system", content: sys },
+        { role: "user", content: text },
+      ], { temperature: 0.2, maxTokens });
     case "groq":
       return groqChat([
         { role: "system", content: sys },
@@ -228,9 +204,7 @@ function modelsFor(brain: OmniBrain, p: OmniPrefs): string[] {
   const n = Math.max(1, Math.min(8, p.modelsPerBrain));
   switch (brain) {
     case "openrouter":
-      return specialistsForMarket("btts")
-        .slice(0, n)
-        .map((s) => s.id);
+      return specialistsForMarket("btts").slice(0, n).map((s) => s.id);
     case "nvidia":
       return NIM_GOAL_MODELS.slice(0, n);
     case "huggingface":
@@ -295,6 +269,7 @@ export async function runOmni(
     ? { ...p, passes: 1, modelsPerBrain: Math.min(2, p.modelsPerBrain) }
     : p;
 
+
   const jobs: Array<Promise<OmniEstimate | null>> = [];
   const brainsUsed: OmniBrain[] = [];
   const KEY_FOR: Record<OmniBrain, "openrouter" | "nvidia" | "huggingface" | "groq" | "gemini"> = {
@@ -309,17 +284,13 @@ export async function runOmni(
     if (!hasKey(KEY_FOR[b])) return;
     brainsUsed.push(b);
     for (const model of modelsFor(b, pEff)) {
+
       jobs.push(
         (async () => {
           const runs: Omit<OmniEstimate, "brain" | "model">[] = [];
           for (let i = 1; i <= passes; i++) {
             try {
-              const raw = await callBrain(
-                b,
-                model,
-                prompt(userText, ctx, priorTotal, i),
-                opts.turbo ? 420 : 700,
-              );
+              const raw = await callBrain(b, model, prompt(userText, ctx, priorTotal, i), opts.turbo ? 420 : 700);
               const parsed = parseEst(raw);
               if (parsed) runs.push(parsed);
             } catch {
@@ -351,20 +322,12 @@ export async function runOmni(
   const estimates = settled.filter((e): e is OmniEstimate => !!e);
   if (!estimates.length) throw new Error("OMNI: nijedan model nije vratio valjanu procjenu.");
 
-  const methods: string[] = [
-    `višemozgovni ansambl (${estimates.length} modela / ${brainsUsed.length} mozgova)`,
-  ];
+  const methods: string[] = [`višemozgovni ansambl (${estimates.length} modela / ${brainsUsed.length} mozgova)`];
 
   // ── spajanje λ i vjerojatnosti (robusna statistika + vaganje pouzdanosti)
   const maxDev = Math.max(0.05, p.outlierPb / 100);
-  let lh = robustMean(
-    estimates.map((e) => e.lambdaHome),
-    0.9,
-  ).value;
-  let la = robustMean(
-    estimates.map((e) => e.lambdaAway),
-    0.9,
-  ).value;
+  let lh = robustMean(estimates.map((e) => e.lambdaHome), 0.9).value;
+  let la = robustMean(estimates.map((e) => e.lambdaAway), 0.9).value;
 
   if (p.useBayes) {
     const share = lh + la > 0 ? lh / (lh + la) : 0.5;
@@ -382,20 +345,8 @@ export async function runOmni(
   const aggB = bttsList.length ? robustMean(bttsList, maxDev) : null;
   const aggO = ouList.length ? robustMean(ouList, maxDev) : null;
 
-  const wB = aggB
-    ? confWeightedMean(
-        bttsList,
-        bttsEstimates.map((e) => e.conf),
-        sp.confGamma,
-      )
-    : NaN;
-  const wO = aggO
-    ? confWeightedMean(
-        ouList,
-        ouEstimates.map((e) => e.conf),
-        sp.confGamma,
-      )
-    : NaN;
+  const wB = aggB ? confWeightedMean(bttsList, bttsEstimates.map((e) => e.conf), sp.confGamma) : NaN;
+  const wO = aggO ? confWeightedMean(ouList, ouEstimates.map((e) => e.conf), sp.confGamma) : NaN;
 
   // ── vlastita matematika
   const sm = scoreMatrix(lh, la, a.tau, a.rho);
@@ -428,7 +379,7 @@ export async function runOmni(
     wO,
   );
   // POPRAVAK: MC simulira neovisni Poisson, ne kopulu/game-state ni Dixon-Coles; služi samo kao kontrola.
-
+  
   pBtts = shrinkToPrior(pBtts, p.shrink, 0.5);
   pOver = shrinkToPrior(pOver, p.shrink, 0.5);
   if (p.usePlatt) {
@@ -443,11 +394,7 @@ export async function runOmni(
   if (p.useDevig && odds.main && odds.alt) {
     const pair = [odds.main, odds.alt];
     const dv =
-      sp.devig === "shin"
-        ? devigShin(pair)
-        : sp.devig === "power"
-          ? devigPower(pair)
-          : devigMultiplicative(pair);
+      sp.devig === "shin" ? devigShin(pair) : sp.devig === "power" ? devigPower(pair) : devigMultiplicative(pair);
     pMarket = dv[0];
     methods.push(`de-vig (${sp.devig})`);
   } else if (odds.main) {
@@ -467,7 +414,7 @@ export async function runOmni(
   const agreement = list.length > 1 ? Math.max(0, Math.min(1, 1 - spread / 0.4)) : 0;
 
   // POPRAVAK: EV/Kelly računaju se kvotom ishoda koji je stvarno odabran.
-  const verdictOdds = pMain >= 0.5 ? (odds.main ?? null) : (odds.alt ?? null);
+  const verdictOdds = pMain >= 0.5 ? odds.main ?? null : odds.alt ?? null;
   const v = verdict(pMain, MAIN_LABEL[market], ALT_LABEL[market], verdictOdds, agreement, {
     ...a,
     minConfidence: p.minConfidence,
@@ -485,28 +432,13 @@ export async function runOmni(
     .join("\n");
 
   return {
-    market,
-    prefs: p,
-    estimates,
-    brainsUsed,
-    lambdaHome: lh,
-    lambdaAway: la,
-    lambdaTotal: lh + la,
-    pBtts,
-    pOver25: pOver,
-    pMain,
-    pMarket,
-    agreement,
-    spread,
-    copula,
-    hazard,
-    mc,
-    matrix: mp,
+    market, prefs: p, estimates, brainsUsed,
+    lambdaHome: lh, lambdaAway: la, lambdaTotal: lh + la,
+    pBtts, pOver25: pOver, pMain, pMarket, agreement, spread,
+    copula, hazard, mc, matrix: mp,
     entropy3: entropy([mp.home, mp.draw, mp.away]),
     skellamDraw,
-    verdict: v,
-    methods,
-    summary,
+    verdict: v, methods, summary,
   };
 }
 
@@ -525,7 +457,7 @@ P(Over 2.5) = ${pct(o.pOver25)} · P(Under 2.5) = ${pct(1 - o.pOver25)}
 P(Over 1.5) = ${pct(o.matrix.over15)} · P(Over 3.5) = ${pct(o.matrix.over35)}
 Kombo referenca: GG+Over 2.5 ≈ ${pct(Math.max(0.02, o.pBtts * o.pOver25 * 1.12))} (korelirano, ne množi naslijepo)
 ${o.copula ? `Kopula: GG ${pct(o.copula.gg)} vs neovisni Poisson ${pct(o.copula.ggIndependent)} → pomak ${o.copula.shiftPb.toFixed(1)} pb · P(0:0) ${pct(o.copula.p00)}` : "Kopula: isključena"}
-${o.hazard ? `Game-state: λ_eff ${o.hazard.lambdaEff.toFixed(2)} (baza ${o.lambdaTotal.toFixed(2)}) · Over 2.5 pomak ${o.hazard.shiftPb.toFixed(1)} pb · golovi po trećinama ${o.hazard.thirds.map((t) => t.toFixed(2)).join(" / ")}` : "Game-state hazard: isključen"}
+${o.hazard ? `Game-state: λ_eff ${o.hazard.lambdaEff.toFixed(2)} (baza ${(o.lambdaTotal).toFixed(2)}) · Over 2.5 pomak ${o.hazard.shiftPb.toFixed(1)} pb · golovi po trećinama ${o.hazard.thirds.map((t) => t.toFixed(2)).join(" / ")}` : "Game-state hazard: isključen"}
 ${o.mc ? `Monte Carlo kontrola: GG ${pct(o.mc.btts)} · Over 2.5 ${pct(o.mc.over25)} · 1 ${pct(o.mc.home)} · X ${pct(o.mc.draw)}` : "Monte Carlo: isključen"}
 Skellam P(remi) = ${pct(o.skellamDraw)} · entropija 1X2 = ${o.entropy3.toFixed(2)}
 ${o.pMarket !== null ? `Tržište (de-vig): ${pct(o.pMarket)} · fer kvota modela ${fairOdds(o.pMain).toFixed(2)}` : "Kvota nije zadana — nema edge računa."}

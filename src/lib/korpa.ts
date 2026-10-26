@@ -12,15 +12,15 @@
 export type Sport = "nogomet" | "košarka" | "rukomet";
 
 export interface KorpaTip {
-  id: string; // jedinstveno: sport|utakmica|trziste|tip
+  id: string;            // jedinstveno: sport|utakmica|trziste|tip
   sport: Sport;
-  utakmica: string; // "Domaćin - Gost"
+  utakmica: string;      // "Domaćin - Gost"
   liga?: string;
-  trziste: string; // "1X2", "BTTS", "O/U 2.5", "HT/FT", "Moneyline", "Spread", "Total"...
-  tip: string; // "GG", "Over 2.5", "1/1", "Domaćin -5.5"...
-  kvota: number; // > 1
-  vjerojatnost: number; // 0..1 — koliko model vjeruje
-  fixtureId?: number; // API ID utakmice — za automatsko poravnanje u "Moji listići"
+  trziste: string;       // "1X2", "BTTS", "O/U 2.5", "HT/FT", "Moneyline", "Spread", "Total"...
+  tip: string;           // "GG", "Over 2.5", "1/1", "Domaćin -5.5"...
+  kvota: number;         // > 1
+  vjerojatnost: number;  // 0..1 — koliko model vjeruje
+  fixtureId?: number;    // API ID utakmice — za automatsko poravnanje u "Moji listići"
   dodano?: number;
 }
 
@@ -34,20 +34,7 @@ export function loadKorpa(): KorpaTip[] {
   try {
     const raw = localStorage.getItem(KORPA_KEY);
     const arr = raw ? (JSON.parse(raw) as KorpaTip[]) : [];
-    return Array.isArray(arr)
-      ? arr
-          .filter(
-            (t) =>
-              t &&
-              typeof t.id === "string" &&
-              Number.isFinite(t.kvota) &&
-              t.kvota > 1 &&
-              Number.isFinite(t.vjerojatnost) &&
-              t.vjerojatnost > 0 &&
-              t.vjerojatnost <= 1,
-          )
-          .slice(0, 30)
-      : [];
+    return Array.isArray(arr) ? arr.filter((t) => t && typeof t.id === "string" && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost > 0 && t.vjerojatnost <= 1).slice(0, 30) : [];
   } catch {
     return [];
   }
@@ -91,14 +78,14 @@ export function ocistiKorpu() {
 
 export interface IzracunKorpe {
   n: number;
-  kvota: number; // kombinirana kvota
-  vjerojatnost: number; // kombinirana vjerojatnost modela
-  edge: number; // kvota*vjer - 1 (očekivani povrat na 1 jedinicu)
-  kelly: number; // puna Kelly frakcija
-  ulogPerc: number; // preporučeni ulog u % bankrolla (frakcijski, cap 3%)
-  ulogIznos: number; // u novcu
-  stdRet: number; // std. dev. povrata po jedinici uloga
-  rizikPerc: number; // 0..100 vizualni rizik
+  kvota: number;          // kombinirana kvota
+  vjerojatnost: number;   // kombinirana vjerojatnost modela
+  edge: number;           // kvota*vjer - 1 (očekivani povrat na 1 jedinicu)
+  kelly: number;          // puna Kelly frakcija
+  ulogPerc: number;       // preporučeni ulog u % bankrolla (frakcijski, cap 3%)
+  ulogIznos: number;      // u novcu
+  stdRet: number;         // std. dev. povrata po jedinici uloga
+  rizikPerc: number;      // 0..100 vizualni rizik
   jedinstvenihUtakmica: number;
   korelacijaUpozorenje: boolean;
   isplativo: boolean;
@@ -116,29 +103,11 @@ export function izracunajKorpu(
   const bankroll = Number.isFinite(bankrollRaw) ? Math.max(0, bankrollRaw) : 0;
   const kellyFrac = Number.isFinite(kellyRaw) ? Math.min(1, Math.max(0.05, kellyRaw)) : 0.25;
   const maxUlogPerc = Number.isFinite(maxRaw) ? Math.min(10, Math.max(0.5, maxRaw)) : 3;
-  const safeTips = tipovi.filter(
-    (t) =>
-      t &&
-      Number.isFinite(t.kvota) &&
-      t.kvota > 1 &&
-      Number.isFinite(t.vjerojatnost) &&
-      t.vjerojatnost >= 0 &&
-      t.vjerojatnost <= 1,
-  );
+  const safeTips = tipovi.filter((t) => t && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost >= 0 && t.vjerojatnost <= 1);
   const n = safeTips.length;
   const prazno: IzracunKorpe = {
-    n: 0,
-    kvota: 1,
-    vjerojatnost: 0,
-    edge: 0,
-    kelly: 0,
-    ulogPerc: 0,
-    ulogIznos: 0,
-    stdRet: 0,
-    rizikPerc: 0,
-    jedinstvenihUtakmica: 0,
-    korelacijaUpozorenje: false,
-    isplativo: false,
+    n: 0, kvota: 1, vjerojatnost: 0, edge: 0, kelly: 0, ulogPerc: 0, ulogIznos: 0,
+    stdRet: 0, rizikPerc: 0, jedinstvenihUtakmica: 0, korelacijaUpozorenje: false, isplativo: false,
     varijanca: varijancaTiketa([]),
   };
   if (n === 0) return prazno;
@@ -165,17 +134,9 @@ export function izracunajKorpu(
   const rizikPerc = Math.min(100, Math.round((stdRet / Math.max(0.01, kvota)) * 100));
 
   return {
-    n,
-    kvota,
-    vjerojatnost: p,
-    edge,
-    kelly,
-    ulogPerc,
-    ulogIznos,
-    stdRet,
-    rizikPerc,
-    jedinstvenihUtakmica,
-    korelacijaUpozorenje,
+    n, kvota, vjerojatnost: p, edge, kelly,
+    ulogPerc, ulogIznos, stdRet, rizikPerc,
+    jedinstvenihUtakmica, korelacijaUpozorenje,
     isplativo: edge > 0 && ulogPerc > 0,
     varijanca: varijancaTiketa(safeTips),
   };
@@ -209,7 +170,9 @@ const LN2 = Math.LN2;
 /** Binarna Shannon entropija, normalizirana na 0..1 (0·ln0 = 0). */
 export function entropijaNozice(p: number): number {
   const x = clamp01(p);
-  const h = x <= 0 || x >= 1 ? 0 : -x * Math.log(x) - (1 - x) * Math.log(1 - x);
+  const h = x <= 0 || x >= 1
+    ? 0
+    : -x * Math.log(x) - (1 - x) * Math.log(1 - x);
   return h / LN2;
 }
 
@@ -238,14 +201,16 @@ export function nogaRemiIliPush(t: KorpaTip): boolean {
 /** Ticket Variance Score cijelog tiketa. */
 export function varijancaTiketa(tipovi: KorpaTip[]): VarijansaTiketa {
   const n = tipovi.length;
-  if (n === 0) return { razina: "niska", entropija: 0, remiPushNoge: 0, upozorenje: null };
+  if (n === 0)
+    return { razina: "niska", entropija: 0, remiPushNoge: 0, upozorenje: null };
   const ent = tipovi.reduce((a, t) => a + entropijaNozice(t.vjerojatnost), 0) / n;
   const razina: VarijansaRazina = ent > 0.9 ? "visoka" : ent >= 0.75 ? "balansirana" : "niska";
   const remiPush = tipovi.filter(nogaRemiIliPush);
   let upozorenje: string | null = null;
   if (n >= 3 && remiPush.length > 0) {
     const najlosija = remiPush.reduce((a, b) => (b.vjerojatnost < a.vjerojatnost ? b : a));
-    upozorenje = `Variance warning: visoka vjerojatnost remi/push ishoda na selekciji "${najlosija.tip}" (${najlosija.utakmica}). Razmotri DNB (Draw No Bet) ili azijske linije.`;
+    upozorenje =
+      `Variance warning: visoka vjerojatnost remi/push ishoda na selekciji "${najlosija.tip}" (${najlosija.utakmica}). Razmotri DNB (Draw No Bet) ili azijske linije.`;
   }
   return {
     razina,

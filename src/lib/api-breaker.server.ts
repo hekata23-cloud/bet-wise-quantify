@@ -32,13 +32,7 @@ export function scopeKey(service: string, apiKey: string): string {
 function get(scope: string): Stanje {
   let s = stanja.get(scope);
   if (!s || s.day !== utcDay()) {
-    s = {
-      day: utcDay(),
-      remaining: -1,
-      cooldownUntil: 0,
-      blockedUntil: s?.blockedUntil ?? 0,
-      reason: s?.reason ?? null,
-    };
+    s = { day: utcDay(), remaining: -1, cooldownUntil: 0, blockedUntil: s?.blockedUntil ?? 0, reason: s?.reason ?? null };
     stanja.set(scope, s);
   }
   return s;
@@ -48,8 +42,7 @@ function get(scope: string): Stanje {
 export function breakerCheck(scope: string): string | null {
   const s = get(scope);
   const now = Date.now();
-  if (s.blockedUntil > now)
-    return s.reason ?? "ACCOUNT: pozivi su privremeno zaustavljeni radi zaštite računa.";
+  if (s.blockedUntil > now) return s.reason ?? "ACCOUNT: pozivi su privremeno zaustavljeni radi zaštite računa.";
   if (s.cooldownUntil > now)
     return `RATE_LIMIT: hlađenje API-ja još ${Math.ceil((s.cooldownUntil - now) / 1000)} s — zaštita od suspenzije.`;
   if (s.remaining >= 0 && s.remaining <= RESERVE)
@@ -58,10 +51,7 @@ export function breakerCheck(scope: string): string | null {
 }
 
 /** Zabilježi ishod poziva. */
-export function breakerRecord(
-  scope: string,
-  r: { status: number; remainingDay: number; error: string | null },
-) {
+export function breakerRecord(scope: string, r: { status: number; remainingDay: number; error: string | null }) {
   const s = get(scope);
   const now = Date.now();
   if (r.remainingDay >= 0) s.remaining = r.remainingDay;
@@ -72,10 +62,9 @@ export function breakerRecord(
   }
   if (/DNEVNI_LIMIT|for the day|daily/i.test(err) || r.remainingDay === 0) {
     s.blockedUntil = nextUtcMidnight();
-    s.reason =
-      "DNEVNI_LIMIT: dnevni limit je potrošen — pozivi su zaustavljeni do ponoći UTC da račun ne bude suspendiran.";
+    s.reason = "DNEVNI_LIMIT: dnevni limit je potrošen — pozivi su zaustavljeni do ponoći UTC da račun ne bude suspendiran.";
   } else if (err.startsWith("RATE_LIMIT") || r.status === 429) {
-    s.cooldownUntil = now + 8_000; // kratko hlađenje — novi pozivi dolaze tek nakon MIN_GAP_MS
+    s.cooldownUntil = now + 8_000;   // kratko hlađenje — novi pozivi dolaze tek nakon MIN_GAP_MS
   } else if (/suspend/i.test(err)) {
     s.blockedUntil = now + 6 * 60 * 60_000;
     s.reason = `ACCOUNT: račun je označen kao suspendiran — pozivi su zaustavljeni. Provjeri dashboard.api-football.com.`;

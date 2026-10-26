@@ -71,26 +71,23 @@ function grid(lam: number, mu: number, rho: number): number[][] {
 }
 
 /** P(golova ukupno u 1. pol. = 0 / 1 / 2 / 3+), točno iz Poissona. */
-export function htGolovi(
-  lamH: number,
-  lamA: number,
-): { nula: number; jedan: number; dva: number; triPlus: number } {
+export function htGolovi(lamH: number, lamA: number): { nula: number; jedan: number; dva: number; triPlus: number } {
   const L = Math.max(0.01, HT_UDIO * (lamH + lamA));
   const p0 = Math.exp(-L);
   const p1 = L * Math.exp(-L);
-  const p2 = ((L * L) / 2) * Math.exp(-L);
+  const p2 = (L * L / 2) * Math.exp(-L);
   return { nula: p0, jedan: p1, dva: p2, triPlus: Math.max(0, 1 - p0 - p1 - p2) };
 }
 
 export type HtFtNogometIzlaz = {
-  lamHT: number; // ukupni očekivani golovi 1. poluvremena
+  lamHT: number;           // ukupni očekivani golovi 1. poluvremena
   htGolovi: { nula: number; jedan: number; dva: number; triPlus: number };
   ht: { p1: number; pX: number; p2: number };
   stanja: { kod: string; p: number; ferOdd: number }[]; // svih 9
   top3: { kod: string; p: number; ferOdd: number }[];
   prijelazi: Record<"1" | "X" | "2", Record<"1" | "X" | "2", number>>;
-  drzanje: number; // Σ P(HT=s)·P(FT=s|HT=s)
-  okretanje: number; // 1 − drzanje
+  drzanje: number;         // Σ P(HT=s)·P(FT=s|HT=s)
+  okretanje: number;       // 1 − drzanje
   /** REVERSE RISK: P(1/2) + P(2/1) — potpuni preokreti */
   preokreti: number;
   preokret12: number;
@@ -114,7 +111,7 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   const gHT = grid(lamHT_H, lamHT_A, -0.02);
 
   // stanje HT: "1" dom vodi, "X", "2" gost vodi
-  const pHTs: Record<"1" | "X" | "2", number> = { "1": 0, X: 0, "2": 0 };
+  const pHTs: Record<"1" | "X" | "2", number> = { "1": 0, "X": 0, "2": 0 };
   const uvjetRazd: Record<"1" | "X" | "2", number[][]> = {} as never;
   for (const s of ["1", "X", "2"] as const) {
     const g: number[][] = [];
@@ -122,7 +119,8 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
     for (let h = 0; h <= N; h++) {
       g[h] = [];
       for (let a = 0; a <= N; a++) {
-        const dodjeli = s === "1" ? h > a : s === "X" ? h === a : h < a;
+        const dodjeli =
+          s === "1" ? h > a : s === "X" ? h === a : h < a;
         const v = dodjeli ? gHT[h]![a]! : 0;
         g[h]![a] = v;
         z += v;
@@ -132,11 +130,7 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
     uvjetRazd[s] = g;
     pHTs[s] = z;
   }
-  const ht: { p1: number; pX: number; p2: number } = {
-    p1: pHTs["1"],
-    pX: pHTs["X"],
-    p2: pHTs["2"],
-  };
+  const ht: { p1: number; pX: number; p2: number } = { p1: pHTs["1"], pX: pHTs["X"], p2: pHTs["2"] };
 
   // 2. poluvrijeme: prijelazna dinamika po HT stanju
   // HAZARD MODEL (β=1.18, v5): ako UNDERDOG (tim s nižom pred-meč λ)
@@ -150,11 +144,11 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   const betaGostVodi = underdogGost ? HAZARD_BETA : 1; // gost vodi na HT (stanje 2)
   const dinamika: Record<"1" | "X" | "2", { h: number; a: number }> = {
     // dom vodi: gost tlači (A ×1.25), dom drži (H ×0.90) [+ hazard ako je dom underdog]
-    "1": { h: lam2H_H * 0.9 * betaDomVodi, a: lam2H_A * 1.25 * betaDomVodi },
+    "1": { h: lam2H_H * 0.90 * betaDomVodi, a: lam2H_A * 1.25 * betaDomVodi },
     // remi: oba otvoreno
-    X: { h: lam2H_H * 1.05, a: lam2H_A * 1.05 },
+    "X": { h: lam2H_H * 1.05, a: lam2H_A * 1.05 },
     // gost vodi: dom tlači [+ hazard ako je gost underdog]
-    "2": { h: lam2H_H * 1.25 * betaGostVodi, a: lam2H_A * 0.9 * betaGostVodi },
+    "2": { h: lam2H_H * 1.25 * betaGostVodi, a: lam2H_A * 0.90 * betaGostVodi },
   };
 
   // P(2H razlika = d) za dato stanje (zbrajanje po gridu 0..N)
@@ -162,8 +156,7 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   for (const s of ["1", "X", "2"] as const) {
     const { h: lh, a: la } = dinamika[s];
     const d: number[] = new Array(2 * N + 1).fill(0);
-    for (let h = 0; h <= N; h++)
-      for (let a = 0; a <= N; a++) d[h - a + N]! += pois(h, lh) * pois(a, la);
+    for (let h = 0; h <= N; h++) for (let a = 0; a <= N; a++) d[h - a + N]! += pois(h, lh) * pois(a, la);
     razd2H[s] = d;
   }
 
@@ -171,11 +164,11 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   type Celija = { kod: string; p: number; ferOdd: number };
   const celije: Celija[] = [];
   const prijelazi: Record<"1" | "X" | "2", Record<"1" | "X" | "2", number>> = {
-    "1": { "1": 0, X: 0, "2": 0 },
-    X: { "1": 0, X: 0, "2": 0 },
-    "2": { "1": 0, X: 0, "2": 0 },
+    "1": { "1": 0, "X": 0, "2": 0 },
+    "X": { "1": 0, "X": 0, "2": 0 },
+    "2": { "1": 0, "X": 0, "2": 0 },
   };
-  const kodovi: Record<"1" | "X" | "2", string> = { "1": "1", X: "X", "2": "2" };
+  const kodovi: Record<"1" | "X" | "2", string> = { "1": "1", "X": "X", "2": "2" };
   for (const s of ["1", "X", "2"] as const) {
     for (const f of ["1", "X", "2"] as const) {
       let p = 0;
@@ -194,11 +187,7 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
         }
       }
       prijelazi[s][f] = p;
-      celije.push({
-        kod: `${kodovi[s]}/${kodovi[f]}`,
-        p: pHTs[s] * p,
-        ferOdd: pHTs[s] * p > 0.0005 ? 1 / (pHTs[s] * p) : 9999,
-      });
+      celije.push({ kod: `${kodovi[s]}/${kodovi[f]}`, p: pHTs[s] * p, ferOdd: pHTs[s] * p > 0.0005 ? 1 / (pHTs[s] * p) : 9999 });
     }
   }
   const zbroj = celije.reduce((a, c) => a + c.p, 0);
@@ -208,9 +197,7 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
   celije.sort((a, b) => b.p - a.p);
 
   const drzanje =
-    pHTs["1"] * prijelazi["1"]["1"] +
-    pHTs["X"] * prijelazi["X"]["X"] +
-    pHTs["2"] * prijelazi["2"]["2"];
+    pHTs["1"] * prijelazi["1"]["1"] + pHTs["X"] * prijelazi["X"]["X"] + pHTs["2"] * prijelazi["2"]["2"];
   const preokret12 = celije.find((c) => c.kod === "1/2")!.p;
   const preokret21 = celije.find((c) => c.kod === "2/1")!.p;
   const preokreti = preokret12 + preokret21;
@@ -241,14 +228,9 @@ export function htftNogomet(lamH: number, lamA: number): HtFtNogometIzlaz {
 export const KO_1H_DIO = 0.505; // 1H ~2.5% brže od 2H (namjerni prekršaji u Q4)
 
 function erf(x: number): number {
-  const s = Math.sign(x);
-  x = Math.abs(x);
+  const s = Math.sign(x); x = Math.abs(x);
   const t = 1 / (1 + 0.3275911 * x);
-  const y =
-    1 -
-    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
-      t *
-      Math.exp(-x * x);
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
   return s * y;
 }
 /** Standardna normalna CDF. */
@@ -257,13 +239,9 @@ export function Phi(z: number): number {
 }
 
 export type HtFtKosarkaIzlaz = {
-  exp1H_H: number;
-  exp1H_A: number;
-  sigmaHT: number;
-  sigma2H: number;
-  pHTHome: number;
-  pHTDraw: number;
-  pHTAway: number;
+  exp1H_H: number; exp1H_A: number;
+  sigmaHT: number; sigma2H: number;
+  pHTHome: number; pHTDraw: number; pHTAway: number;
   kombinacije: { kod: string; label: string; p: number; ferOdd: number }[];
   /** HT vodstvo dom → FT pobjeda dom */
   konverzija: { home: number; away: number };
@@ -278,9 +256,9 @@ export type HtFtKosarkaIzlaz = {
 export function htftKosarka(expHome: number, expAway: number, sigmaFT: number): HtFtKosarkaIzlaz {
   const exp1H_H = expHome * KO_1H_DIO;
   const exp1H_A = expAway * KO_1H_DIO;
-  const mu1 = exp1H_H - exp1H_A; // očekivana HT marža
+  const mu1 = exp1H_H - exp1H_A;                 // očekivana HT marža
   const sigmaHT = Math.max(1, sigmaFT / Math.SQRT2);
-  const mu2 = expHome - expAway - mu1; // očekivana 2H marža
+  const mu2 = (expHome - expAway) - mu1;         // očekivana 2H marža
   const sigma2H = Math.max(1, Math.sqrt(Math.max(sigmaFT * sigmaFT - sigmaHT * sigmaHT, 1)));
 
   // HT marža je praktično cjelobrojna → remi je |M1| < 0.5,
@@ -298,11 +276,12 @@ export function htftKosarka(expHome: number, expAway: number, sigmaFT: number): 
     const korak = sigmaHT / 40;
     for (let m = -8 * sigmaHT; m <= 8 * sigmaHT; m += korak) {
       // težina pojasa [m − k/2, m + k/2] — egzaktnija od točke
-      const w = Phi((m + korak / 2 - mu1) / sigmaHT) - Phi((m - korak / 2 - mu1) / sigmaHT);
+      const w =
+        Phi((m + korak / 2 - mu1) / sigmaHT) -
+        Phi((m - korak / 2 - mu1) / sigmaHT);
       if (w <= 0) continue;
       const pF = ft === "dom" ? Phi((m + mu2) / sigma2H) : 1 - Phi((m + mu2) / sigma2H);
-      const htW =
-        ht === "dom" ? (m >= 0.5 ? 1 : m <= -0.5 ? 0 : 0.5) : m <= -0.5 ? 1 : m >= 0.5 ? 0 : 0.5;
+      const htW = ht === "dom" ? (m >= 0.5 ? 1 : m <= -0.5 ? 0 : 0.5) : (m <= -0.5 ? 1 : m >= 0.5 ? 0 : 0.5);
       s += w * pF * htW;
     }
     return s;
@@ -320,8 +299,7 @@ export function htftKosarka(expHome: number, expAway: number, sigmaFT: number): 
     { kod: "2/2", label: "Gost vodi na HT i pobjeđuje", p: pAA },
   ].map((k) => ({ ...k, ferOdd: k.p > 0.001 ? 1 / k.p : 9999 }));
 
-  const preokreti =
-    kombinacije.find((k) => k.kod === "1/2")!.p + kombinacije.find((k) => k.kod === "2/1")!.p;
+  const preokreti = kombinacije.find((k) => k.kod === "1/2")!.p + kombinacije.find((k) => k.kod === "2/1")!.p;
   return {
     exp1H_H: Math.round(exp1H_H * 10) / 10,
     exp1H_A: Math.round(exp1H_A * 10) / 10,
@@ -346,13 +324,8 @@ export const RU_1H_DIO = 0.47; // udio golova u 1. poluvremenu
 const RN = 40;
 
 export type HtFtRukometIzlaz = {
-  exp1H_H: number;
-  exp1H_A: number;
-  exp2H_H: number;
-  exp2H_A: number;
-  pHTHome: number;
-  pHTDraw: number;
-  pHTAway: number;
+  exp1H_H: number; exp1H_A: number; exp2H_H: number; exp2H_A: number;
+  pHTHome: number; pHTDraw: number; pHTAway: number;
   kombinacije: { kod: string; label: string; p: number; ferOdd: number }[];
   konverzija: { home: number; away: number };
   preokreti: number;
@@ -377,8 +350,8 @@ export function htftRukomet(
   const l1H = Math.max(3, lamHome * RU_1H_DIO + korekH);
   const m1H = Math.max(3, lamAway * RU_1H_DIO + korekA);
   // 2H: golman-umor → napadi efikasniji (+3%), ostatak golova
-  const ostH = lamHome - lamHome * RU_1H_DIO;
-  const ostA = lamAway - lamAway * RU_1H_DIO;
+  const ostH = lamHome - (lamHome * RU_1H_DIO);
+  const ostA = lamAway - (lamAway * RU_1H_DIO);
   const l2H0 = ostH * 1.03;
   const m2H0 = ostA * 1.03;
 
@@ -408,24 +381,20 @@ export function htftRukomet(
       g[h] = [];
       for (let a = 0; a <= RN; a++) {
         const ok = s === "1" ? h > a : s === "X" ? h === a : h < a;
-        const v = ok ? (g1H[h]?.[a] ?? 0) : 0;
+        const v = ok ? g1H[h]?.[a] ?? 0 : 0;
         g[h]![a] = v;
         zz += v;
       }
     }
-    if (zz > 0)
-      for (let h = 0; h <= RN; h++) for (let a = 0; a <= RN; a++) g[h]![a] = g[h]![a]! / zz;
+    if (zz > 0) for (let h = 0; h <= RN; h++) for (let a = 0; a <= RN; a++) g[h]![a] = g[h]![a]! / zz;
     uvjet[s] = g;
   }
 
   const pHT: { "1": number; X: number; "2": number } = { "1": 0, X: 0, "2": 0 };
-  for (let h = 0; h <= RN; h++)
-    for (let a = 0; a <= RN; a++) {
-      const p = g1H[h]?.[a] ?? 0;
-      if (h > a) pHT["1"] += p;
-      else if (h === a) pHT.X += p;
-      else pHT["2"] += p;
-    }
+  for (let h = 0; h <= RN; h++) for (let a = 0; a <= RN; a++) {
+    const p = g1H[h]?.[a] ?? 0;
+    if (h > a) pHT["1"] += p; else if (h === a) pHT.X += p; else pHT["2"] += p;
+  }
 
   // 2H dinamika po HT stanju
   // Aditivna dinamika (λ po poluvremenu je velik ~16 golova, pa se
@@ -433,7 +402,7 @@ export function htftRukomet(
   // tim koji vodi −0.3 gola, remi → oba +0.1.
   const dyn: Record<"1" | "X" | "2", { h: number; a: number }> = {
     "1": { h: l2H0 - 0.3, a: m2H0 + 0.6 },
-    X: { h: l2H0 + 0.1, a: m2H0 + 0.1 },
+    "X": { h: l2H0 + 0.1, a: m2H0 + 0.1 },
     "2": { h: l2H0 + 0.6, a: m2H0 - 0.3 },
   };
 
@@ -442,38 +411,30 @@ export function htftRukomet(
   for (const s of ["1", "X", "2"] as const) {
     const { h: lh, a: la } = dyn[s];
     const d: number[] = new Array(2 * RN + 1).fill(0);
-    for (let h = 0; h <= RN; h++)
-      for (let a = 0; a <= RN; a++) d[h - a + RN]! += pois(h, lh) * pois(a, la);
+    for (let h = 0; h <= RN; h++) for (let a = 0; a <= RN; a++) d[h - a + RN]! += pois(h, lh) * pois(a, la);
     const pFT: { "1": number; X: number; "2": number } = { "1": 0, X: 0, "2": 0 };
     const gu = uvjet[s];
-    for (let hHT = 0; hHT <= RN; hHT++)
-      for (let aHT = 0; aHT <= RN; aHT++) {
-        const pUv = gu[hHT]?.[aHT] ?? 0;
-        if (pUv <= 0) continue;
-        const rHT = hHT - aHT;
-        for (let dd = -RN; dd <= RN; dd++) {
-          const w = d[dd + RN]!;
-          if (w <= 0) continue;
-          const rFT = rHT + dd;
-          const ishod = rFT > 0 ? "1" : rFT === 0 ? "X" : "2";
-          pFT[ishod]! += pUv * w;
-        }
+    for (let hHT = 0; hHT <= RN; hHT++) for (let aHT = 0; aHT <= RN; aHT++) {
+      const pUv = gu[hHT]?.[aHT] ?? 0;
+      if (pUv <= 0) continue;
+      const rHT = hHT - aHT;
+      for (let dd = -RN; dd <= RN; dd++) {
+        const w = d[dd + RN]!;
+        if (w <= 0) continue;
+        const rFT = rHT + dd;
+        const ishod = rFT > 0 ? "1" : rFT === 0 ? "X" : "2";
+        pFT[ishod]! += pUv * w;
       }
+    }
     const mape: Record<"1" | "X" | "2", string[]> = {
       "1": ["1/1", "1/X", "1/2"],
       X: ["X/1", "X/X", "X/2"],
       "2": ["2/1", "2/X", "2/2"],
     };
     const labele: Record<string, string> = {
-      "1/1": "Domaćin vodi i pobjeđuje",
-      "1/X": "Domaćin vodi, remi na kraju",
-      "1/2": "Domaćin vodi, gost pobjeđuje (preokret)",
-      "X/1": "Remi na HT, domaćin pobjeđuje",
-      "X/X": "Remi na HT i na kraju",
-      "X/2": "Remi na HT, gost pobjeđuje",
-      "2/1": "Gost vodi, domaćin pobjeđuje (preokret)",
-      "2/X": "Gost vodi, remi na kraju",
-      "2/2": "Gost vodi i pobjeđuje",
+      "1/1": "Domaćin vodi i pobjeđuje", "1/X": "Domaćin vodi, remi na kraju", "1/2": "Domaćin vodi, gost pobjeđuje (preokret)",
+      "X/1": "Remi na HT, domaćin pobjeđuje", "X/X": "Remi na HT i na kraju", "X/2": "Remi na HT, gost pobjeđuje",
+      "2/1": "Gost vodi, domaćin pobjeđuje (preokret)", "2/X": "Gost vodi, remi na kraju", "2/2": "Gost vodi i pobjeđuje",
     };
     mape[s].forEach((kod, i) => {
       const f = (["1", "X", "2"] as const)[i]!;
@@ -484,16 +445,11 @@ export function htftRukomet(
   }
 
   const z = kombinacije.reduce((a, k) => a + k.p, 0);
-  if (false && typeof (globalThis as any).__DBG !== "undefined")
-    (globalThis as any).__DBG({ pHT, conv, p11: kombinacije.find((k) => k.kod === "1/1")!.p, z });
-  for (const k of kombinacije) {
-    k.p /= z || 1;
-    k.ferOdd = k.p > 0.001 ? 1 / k.p : 9999;
-  }
+  if (false && typeof (globalThis as any).__DBG !== "undefined") (globalThis as any).__DBG({ pHT, conv, p11: kombinacije.find((k) => k.kod === "1/1")!.p, z });
+  for (const k of kombinacije) { k.p /= z || 1; k.ferOdd = k.p > 0.001 ? 1 / k.p : 9999; }
   kombinacije.sort((a, b) => b.p - a.p);
 
-  const preokreti =
-    kombinacije.find((k) => k.kod === "1/2")!.p + kombinacije.find((k) => k.kod === "2/1")!.p;
+  const preokreti = kombinacije.find((k) => k.kod === "1/2")!.p + kombinacije.find((k) => k.kod === "2/1")!.p;
 
   return {
     exp1H_H: Math.round(l1H * 10) / 10,
@@ -505,13 +461,10 @@ export function htftRukomet(
     pHTAway: pHT["2"],
     kombinacije,
     // conv.* je već UVJETNA vjerojatnost P(FT pobjeda | HT vodstvo)
-    konverzija: {
-      home: Math.min(1, Math.max(0, conv.home)),
-      away: Math.min(1, Math.max(0, conv.away)),
-    },
+    konverzija: { home: Math.min(1, Math.max(0, conv.home)), away: Math.min(1, Math.max(0, conv.away)) },
     preokreti,
     razinaPreokreta: preokreti >= 0.15 ? "visoko" : preokreti >= 0.09 ? "srednje" : "nisko",
-    napomena:
-      "1H = 47% golova · golman-umor 2H (+3%) · tlačenje zaostajeg tima (×1.12) · isključenja korigiraju 1H",
+    napomena: "1H = 47% golova · golman-umor 2H (+3%) · tlačenje zaostajeg tima (×1.12) · isključenja korigiraju 1H",
   };
 }
+

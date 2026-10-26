@@ -7,10 +7,7 @@ export interface MomentumFactor {
 }
 
 /** Računa koliko umor i nizovi utječu na oštrinu tima */
-export function calculateMomentum(
-  daysSinceLastMatch: number,
-  currentStreak: number,
-): MomentumFactor {
+export function calculateMomentum(daysSinceLastMatch: number, currentStreak: number): MomentumFactor {
   let penalty = 1.0;
   let risk: string | null = null;
   let motivation: "VISOKA" | "KRITIČNA" | "OPUŠTENA" = "VISOKA";
@@ -19,7 +16,7 @@ export function calculateMomentum(
   if (daysSinceLastMatch <= 3) {
     penalty = 0.82; // Veliki pad energije - tim je igrao prije 3 dana
   } else if (daysSinceLastMatch <= 4) {
-    penalty = 0.9; // Blagi pad oštrine
+    penalty = 0.90; // Blagi pad oštrine
   }
 
   // Regresija prema sredini (Streak Risk)
@@ -31,6 +28,6 @@ export function calculateMomentum(
   return {
     fatiguePenalty: penalty,
     streakRisk: risk,
-    motivationLevel: motivation,
+    motivationLevel: motivation
   };
 }

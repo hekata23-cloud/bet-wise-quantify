@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { useSharpFilter, SHARP_PRESETS, type SharpPreset } from "@/lib/sharp-filter";
+import {
+  useSharpFilter,
+  SHARP_PRESETS,
+  type SharpPreset,
+} from "@/lib/sharp-filter";
 import {
   Shield,
   Zap,
@@ -69,7 +73,9 @@ export function SharpFilterToggle() {
                   <Zap className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold tracking-tight">Sharp Sindikat Profiler</h3>
+                  <h3 className="text-base font-bold tracking-tight">
+                    Sharp Sindikat Profiler
+                  </h3>
                   <p className="text-xs text-muted-foreground">
                     Automatsko skeniranje i filtriranje tipova na svim karticama
                   </p>
@@ -95,9 +101,7 @@ export function SharpFilterToggle() {
               <div>
                 <div className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                   <span>Status filtera:</span>
-                  <span
-                    className={enabled ? "text-emerald-400 font-bold" : "text-muted-foreground"}
-                  >
+                  <span className={enabled ? "text-emerald-400 font-bold" : "text-muted-foreground"}>
                     {enabled ? "AKTIVAN NA SVIM KARTICAMA" : "ISKLJUČEN (STANDARDNI PRIKAZ)"}
                   </span>
                 </div>
@@ -145,9 +149,13 @@ export function SharpFilterToggle() {
                           <span>{p.icon}</span>
                           <span>{p.name}</span>
                         </span>
-                        {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                        {isSelected && (
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
+                        )}
                       </div>
-                      <span className="text-[11px] leading-tight opacity-80">{p.desc}</span>
+                      <span className="text-[11px] leading-tight opacity-80">
+                        {p.desc}
+                      </span>
                     </button>
                   );
                 })}
@@ -183,7 +191,9 @@ export function SharpFilterToggle() {
                   max="85"
                   step="1"
                   value={settings.minProb * 100}
-                  onChange={(e) => updateSettings({ minProb: parseFloat(e.target.value) / 100 })}
+                  onChange={(e) =>
+                    updateSettings({ minProb: parseFloat(e.target.value) / 100 })
+                  }
                   className="w-full accent-primary h-1.5 bg-muted rounded-lg cursor-pointer"
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -212,7 +222,9 @@ export function SharpFilterToggle() {
                   max="8"
                   step="0.5"
                   value={settings.minEV}
-                  onChange={(e) => updateSettings({ minEV: parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    updateSettings({ minEV: parseFloat(e.target.value) })
+                  }
                   className="w-full accent-emerald-500 h-1.5 bg-muted rounded-lg cursor-pointer"
                 />
               </div>
@@ -231,7 +243,9 @@ export function SharpFilterToggle() {
                   max="10"
                   step="0.5"
                   value={settings.maxMargin}
-                  onChange={(e) => updateSettings({ maxMargin: parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    updateSettings({ maxMargin: parseFloat(e.target.value) })
+                  }
                   className="w-full accent-primary h-1.5 bg-muted rounded-lg cursor-pointer"
                 />
                 <div className="text-[10px] text-muted-foreground">
@@ -253,7 +267,9 @@ export function SharpFilterToggle() {
                   <input
                     type="checkbox"
                     checked={settings.antiDrawFilter}
-                    onChange={(e) => updateSettings({ antiDrawFilter: e.target.checked })}
+                    onChange={(e) =>
+                      updateSettings({ antiDrawFilter: e.target.checked })
+                    }
                     className="accent-primary h-4 w-4 rounded cursor-pointer"
                   />
                 </label>
@@ -270,7 +286,9 @@ export function SharpFilterToggle() {
                   <input
                     type="checkbox"
                     checked={settings.onlyCertified}
-                    onChange={(e) => updateSettings({ onlyCertified: e.target.checked })}
+                    onChange={(e) =>
+                      updateSettings({ onlyCertified: e.target.checked })
+                    }
                     className="accent-primary h-4 w-4 rounded cursor-pointer"
                   />
                 </label>
@@ -297,3 +315,4 @@ export function SharpFilterToggle() {
     </>
   );
 }
+

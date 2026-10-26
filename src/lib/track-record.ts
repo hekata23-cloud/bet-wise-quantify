@@ -10,14 +10,14 @@ import { dnevnikUnosi, type DnevnikUnos } from "@/lib/dnevnik";
 export type SportFilter = "sve" | "nogomet" | "kosarka" | "rukomet";
 
 export interface DanStat {
-  datum: string; // YYYY-MM-DD (lokalni dan zapisa tipa)
-  igrano: number; // settled picks (pogodak + promašaj)
+  datum: string;        // YYYY-MM-DD (lokalni dan zapisa tipa)
+  igrano: number;       // settled picks (pogodak + promašaj)
   pogodci: number;
   promasaji: number;
-  cekaju: number; // još neprovjereni tipovi tog dana
+  cekaju: number;       // još neprovjereni tipovi tog dana
   winRate: number | null; // 0..1, null ako nema settled
-  roi: number | null; // postotak, null ako nema settled
-  profit: number; // u jedinicama (ulog = 1 po tipu)
+  roi: number | null;     // postotak, null ako nema settled
+  profit: number;         // u jedinicama (ulog = 1 po tipu)
 }
 
 export interface UkupnoStat {
@@ -27,8 +27,8 @@ export interface UkupnoStat {
   cekaju: number;
   winRate: number | null;
   roi: number | null;
-  profit: number; // u jedinicama
-  staked: number; // settled broj tipova (ulog 1 po tipu)
+  profit: number;         // u jedinicama
+  staked: number;         // settled broj tipova (ulog 1 po tipu)
 }
 
 const danOd = (iso: string): string => {
@@ -47,22 +47,13 @@ function profitTipa(u: DnevnikUnos): number {
 }
 
 export function dnevnaStatistika(unosi: DnevnikUnos[] = dnevnikUnosi()): DanStat[] {
-  const mapa = new Map<
-    string,
-    { igrano: number; pogodci: number; promasaji: number; cekaju: number; profit: number }
-  >();
+  const mapa = new Map<string, { igrano: number; pogodci: number; promasaji: number; cekaju: number; profit: number }>();
   for (const u of unosi) {
     const d = danOd(u.datum);
     const s = mapa.get(d) ?? { igrano: 0, pogodci: 0, promasaji: 0, cekaju: 0, profit: 0 };
-    if (u.status === "pogodak") {
-      s.igrano++;
-      s.pogodci++;
-      s.profit += profitTipa(u);
-    } else if (u.status === "promasaj") {
-      s.igrano++;
-      s.promasaji++;
-      s.profit += profitTipa(u);
-    } else s.cekaju++;
+    if (u.status === "pogodak") { s.igrano++; s.pogodci++; s.profit += profitTipa(u); }
+    else if (u.status === "promasaj") { s.igrano++; s.promasaji++; s.profit += profitTipa(u); }
+    else s.cekaju++;
     mapa.set(d, s);
   }
   return Array.from(mapa.entries())
@@ -80,21 +71,11 @@ export function dnevnaStatistika(unosi: DnevnikUnos[] = dnevnikUnosi()): DanStat
 }
 
 export function ukupnaStatistika(unosi: DnevnikUnos[] = dnevnikUnosi()): UkupnoStat {
-  let igrano = 0,
-    pogodci = 0,
-    promasaji = 0,
-    cekaju = 0,
-    profit = 0;
+  let igrano = 0, pogodci = 0, promasaji = 0, cekaju = 0, profit = 0;
   for (const u of unosi) {
-    if (u.status === "pogodak") {
-      igrano++;
-      pogodci++;
-      profit += profitTipa(u);
-    } else if (u.status === "promasaj") {
-      igrano++;
-      promasaji++;
-      profit += profitTipa(u);
-    } else cekaju++;
+    if (u.status === "pogodak") { igrano++; pogodci++; profit += profitTipa(u); }
+    else if (u.status === "promasaj") { igrano++; promasaji++; profit += profitTipa(u); }
+    else cekaju++;
   }
   return {
     igrano,

@@ -60,7 +60,9 @@ function tauFactor(x: number, y: number, lambdaH: number, lambdaA: number, rho =
 // Stabilan numerički rješavač lambde bez mogućnosti divergencije ili NaN
 export function solveLambdaFromOver(pOverTarget: number): number {
   // POPRAVAK: ne dopustite da neispravan cilj propagira NaN kroz bisekciju.
-  const target = Number.isFinite(pOverTarget) ? Math.min(0.88, Math.max(0.12, pOverTarget)) : 0.5;
+  const target = Number.isFinite(pOverTarget)
+    ? Math.min(0.88, Math.max(0.12, pOverTarget))
+    : 0.5;
   let low = 0.5;
   let high = 6.0;
   for (let i = 0; i < 24; i++) {
@@ -76,11 +78,7 @@ export function solveLambdaFromOver(pOverTarget: number): number {
   return (low + high) / 2;
 }
 
-export function generatePoissonMatrix(
-  kOver25: number,
-  kGg: number,
-  k22: number,
-): PoissonMatrixResult {
+export function generatePoissonMatrix(kOver25: number, kGg: number, k22: number): PoissonMatrixResult {
   // 1. Izračun očekivanih ukupnih golova (lambda) iz Over 2.5 kvote
   const pOverClean = Math.min(0.85, Math.max(0.15, 1 / (Math.max(1.05, kOver25) * 1.05)));
   const lambdaTotal = solveLambdaFromOver(pOverClean);
@@ -89,25 +87,21 @@ export function generatePoissonMatrix(
   const pGgClean = Math.min(0.8, Math.max(0.2, 1 / (Math.max(1.05, kGg) * 1.05)));
   // GG = (1 − e^−λh)(1 − e^−λa). Za zadani λ_total tražimo udio domaćina r ≥ 0.5
   // (GG pada kako se λ odvaja). Bisekcija; ako je GG viši od maksimuma, r = 0.5.
-  const ggAt = (r: number) =>
-    (1 - Math.exp(-lambdaTotal * r)) * (1 - Math.exp(-lambdaTotal * (1 - r)));
+  const ggAt = (r: number) => (1 - Math.exp(-lambdaTotal * r)) * (1 - Math.exp(-lambdaTotal * (1 - r)));
   let homeRatio = 0.5;
   if (pGgClean < ggAt(0.5)) {
-    let lo = 0.5,
-      hi = 0.85;
+    let lo = 0.5, hi = 0.85;
     for (let i = 0; i < 40; i++) {
       const mid = (lo + hi) / 2;
-      if (ggAt(mid) > pGgClean) lo = mid;
-      else hi = mid;
+      if (ggAt(mid) > pGgClean) lo = mid; else hi = mid;
     }
     homeRatio = (lo + hi) / 2;
   }
   void k22;
   // POPRAVAK: zaštitni minimum λ ne smije promijeniti ukupni očekivani broj golova.
-  const safeHomeRatio =
-    lambdaTotal >= 0.8
-      ? Math.min(Math.min(0.85, 1 - 0.4 / lambdaTotal), Math.max(0.5, homeRatio))
-      : homeRatio;
+  const safeHomeRatio = lambdaTotal >= 0.8
+    ? Math.min(Math.min(0.85, 1 - 0.4 / lambdaTotal), Math.max(0.5, homeRatio))
+    : homeRatio;
   const lambdaHome = lambdaTotal * safeHomeRatio;
   const lambdaAway = lambdaTotal * (1 - safeHomeRatio);
 

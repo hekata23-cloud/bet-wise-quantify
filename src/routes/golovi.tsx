@@ -55,7 +55,7 @@ function goalTips(a: Analysis): Tip[] {
     const o = sum(m, (i, j) => i + j > l);
     t.push(
       { group: "Ukupno golova", label: `Over ${l}`, p: o },
-      { group: "Ukupno golova", label: `Under ${l}`, p: 1 - o },
+      { group: "Ukupno golova", label: `Under ${l}`, p: 1 - o }
     );
   }
 
@@ -65,15 +65,8 @@ function goalTips(a: Analysis): Tip[] {
   }
 
   const gg = sum(m, (i, j) => i > 0 && j > 0);
-  t.push(
-    { group: "Oba daju gol", label: "GG", p: gg },
-    { group: "Oba daju gol", label: "NG", p: 1 - gg },
-  );
-  t.push({
-    group: "Oba daju gol",
-    label: "GG + Over 2.5",
-    p: sum(m, (i, j) => i > 0 && j > 0 && i + j > 2),
-  });
+  t.push({ group: "Oba daju gol", label: "GG", p: gg }, { group: "Oba daju gol", label: "NG", p: 1 - gg });
+  t.push({ group: "Oba daju gol", label: "GG + Over 2.5", p: sum(m, (i, j) => i > 0 && j > 0 && i + j > 2) });
 
   for (const l of [0.5, 1.5]) {
     t.push({ group: "1. poluvrijeme", label: `1.pol Over ${l}`, p: sum(mh, (i, j) => i + j > l) });
@@ -90,7 +83,7 @@ function goalTips(a: Analysis): Tip[] {
 
   t.push(
     { group: "Čisti listovi", label: "Domaćin bez primljenog", p: sum(m, (_, j) => j === 0) },
-    { group: "Čisti listovi", label: "Gost bez primljenog", p: sum(m, (i) => i === 0) },
+    { group: "Čisti listovi", label: "Gost bez primljenog", p: sum(m, (i) => i === 0) }
   );
 
   return t;
@@ -98,7 +91,7 @@ function goalTips(a: Analysis): Tip[] {
 
 function bestOf(a: Analysis) {
   const all: Tip[] = a.markets.flatMap((mk) =>
-    mk.outcomes.map((o: Outcome) => ({ group: mk.name, label: o.label, p: o.p, odd: o.odd })),
+    mk.outcomes.map((o: Outcome) => ({ group: mk.name, label: o.label, p: o.p, odd: o.odd }))
   );
   const value = all
     .filter((x) => x.odd && x.p * x.odd > 1.03 && x.p >= 0.35)
@@ -134,7 +127,7 @@ function Row({ t, hi }: { t: Tip; hi?: boolean }) {
         {t.integrity && (
           <span
             className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-bold border ${integrityClass(
-              t.integrity.status,
+              t.integrity.status
             )}`}
           >
             {t.integrity.status}
@@ -172,7 +165,7 @@ function Golovi() {
         "fixtures",
         1,
         () => getZtFixtures({ data: { date: zagrebDay(), apiKey } }),
-        wait,
+        wait
       );
       if (r.error) {
         setMsg(err(r.error));
@@ -199,7 +192,7 @@ function Golovi() {
         `match.${f.id}`,
         2,
         () => getZtMatch({ data: { id: f.id, apiKey } }),
-        wait,
+        wait
       );
       if (r.error === "RATE_LIMIT" || r.error?.startsWith("ACCOUNT")) return setMsg(err(r.error));
       if (!Object.keys(r.markets).length && !r.home)
@@ -208,7 +201,7 @@ function Golovi() {
       setMsg(
         r.bookmaker
           ? `Učitano ${Object.keys(r.markets).length} tržišta (${r.bookmaker}) + statistika timova.`
-          : "Kvote još nisu objavljene — prognoza samo iz statistike (manje pouzdano).",
+          : "Kvote još nisu objavljene — prognoza samo iz statistike (manje pouzdano)."
       );
     } catch (e: any) {
       setMsg(e?.message ?? "Greška");
@@ -256,22 +249,22 @@ function Golovi() {
         }))
       : [];
 
-  const goldenIntegrity = a?.golden
-    ? evaluatePredictionIntegrity({
-        probability: a.golden.outcome.p,
-        odds: a.golden.outcome.odd,
-        dataQuality: Object.keys(a.markets).length > 3 ? 0.95 : 0.65,
-        market: a.golden.market,
-      })
-    : null;
+  const goldenIntegrity =
+    a?.golden
+      ? evaluatePredictionIntegrity({
+          probability: a.golden.outcome.p,
+          odds: a.golden.outcome.odd,
+          dataQuality: Object.keys(a.markets).length > 3 ? 0.95 : 0.65,
+          market: a.golden.market,
+        })
+      : null;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Golovi Pro</h1>
         <p className="text-sm text-muted-foreground">
-          Svi tipovi na golove i ostala tržišta iz jednog modela uz verifikaciju kroz Prediction
-          Integrity Gate.
+          Svi tipovi na golove i ostala tržišta iz jednog modela uz verifikaciju kroz Prediction Integrity Gate.
         </p>
       </div>
 
@@ -342,17 +335,12 @@ function Golovi() {
                 <div className="text-xl font-bold tabular-nums">
                   {a.lh.toFixed(2)} : {a.la.toFixed(2)}
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  ukupno {(a.lh + a.la).toFixed(2)}
-                </div>
+                <div className="text-xs text-muted-foreground">ukupno {(a.lh + a.la).toFixed(2)}</div>
               </div>
               <div className="rounded-lg bg-muted/40 p-3">
                 Najvjerojatniji rezultati
                 <div className="font-semibold">
-                  {a.topScores
-                    .slice(0, 3)
-                    .map((s) => `${s.score} (${pct(s.p)})`)
-                    .join(" · ")}
+                  {a.topScores.slice(0, 3).map((s) => `${s.score} (${pct(s.p)})`).join(" · ")}
                 </div>
               </div>
               <div className="rounded-lg bg-primary/15 p-3 text-primary">
@@ -364,7 +352,7 @@ function Golovi() {
                   <div className="mt-1 text-xs">
                     <span
                       className={`inline-flex items-center rounded px-1.5 py-0.5 font-bold border ${integrityClass(
-                        mainGoalIntegrity.status,
+                        mainGoalIntegrity.status
                       )}`}
                     >
                       {mainGoalIntegrity.label}
@@ -424,9 +412,7 @@ function Golovi() {
 
             <Card title="Najsigurniji tipovi (72–93%)">
               {best.safe.length ? (
-                best.safe.map((t) => (
-                  <Row key={t.group + t.label} t={{ ...t, label: `${t.group}: ${t.label}` }} />
-                ))
+                best.safe.map((t) => <Row key={t.group + t.label} t={{ ...t, label: `${t.group}: ${t.label}` }} />)
               ) : (
                 <p className="text-sm text-muted-foreground">Nema dovoljno sigurnog tipa.</p>
               )}
@@ -467,8 +453,7 @@ function Golovi() {
             </div>
           </Card>
           <p className="text-xs text-muted-foreground">
-            Fer kvota = kvota bez marže. Igraj samo kad je kvota kladionice veća od fer kvote (+%).
-            Kladi se odgovorno, 18+.
+            Fer kvota = kvota bez marže. Igraj samo kad je kvota kladionice veća od fer kvote (+%). Kladi se odgovorno, 18+.
           </p>
         </>
       )}

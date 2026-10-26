@@ -4,10 +4,7 @@ const TTL = 24 * 60 * 60 * 1000;
 const ODDS_TTL = 10 * 60 * 1000;
 
 export class LimitError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-  ) {
+  constructor(public statusCode: number, message: string) {
     super(message);
     this.name = "LimitError";
   }
@@ -122,13 +119,7 @@ function getFootballApiConfig(key: string): { baseUrl: string; headers: Record<s
   };
 }
 
-async function getJson(
-  url: string,
-  headers: Record<string, string>,
-  key: string,
-  force = false,
-  maxAge = TTL,
-) {
+async function getJson(url: string, headers: Record<string, string>, key: string, force = false, maxAge = TTL) {
   if (!force) {
     const cached = cacheGet<any>(key, maxAge);
     if (cached) {
@@ -139,10 +130,7 @@ async function getJson(
   const res = await fetch(url, { headers });
 
   if (res.status === 429) {
-    throw new LimitError(
-      429,
-      "Dosegnut je limit API zahtjeva (429). Račun je zaštićen prebacivanjem na memoriju.",
-    );
+    throw new LimitError(429, "Dosegnut je limit API zahtjeva (429). Račun je zaštićen prebacivanjem na memoriju.");
   }
   if (res.status === 403 || res.status === 401) {
     throw new LimitError(res.status, "Nevažeći API ključ ili pretplata nije aktivirana (403/401).");
@@ -153,8 +141,7 @@ async function getJson(
 
   const data = await res.json();
   if (data?.errors && Object.keys(data.errors).length > 0) {
-    const errMsg =
-      typeof data.errors === "object" ? Object.values(data.errors).join(", ") : String(data.errors);
+    const errMsg = typeof data.errors === "object" ? Object.values(data.errors).join(", ") : String(data.errors);
     if (errMsg.toLowerCase().includes("limit") || errMsg.toLowerCase().includes("requests")) {
       throw new LimitError(429, errMsg);
     }
@@ -175,7 +162,7 @@ export async function fetchFixtures(keys: Keys, force = false) {
     `${config.baseUrl}/fixtures?date=${zagrebDate}&timezone=Europe/Zagreb`,
     config.headers,
     cacheKey,
-    force,
+    force
   );
 
   const rawList = data?.response ?? [];
@@ -219,7 +206,7 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
         config.headers,
         `afodds:${fx.id}`,
         force,
-        ODDS_TTL,
+        ODDS_TTL
       );
       oddsUpdatedAt = Math.max(oddsUpdatedAt, af.updatedAt);
       cached &&= af.cached;
@@ -241,8 +228,7 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
         }
         return null;
       };
-      const v = (vals: any[] | null, label: string) =>
-        fmt(vals?.find((x) => x.value === label)?.odd);
+      const v = (vals: any[] | null, label: string) => fmt(vals?.find((x) => x.value === label)?.odd);
 
       const mw = pick("Match Winner");
       inp.ft1 = v(mw, "Home");
@@ -295,27 +281,24 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
         {},
         `oddsapi:${keys.sport}`,
         force,
-        ODDS_TTL,
+        ODDS_TTL
       );
       oddsUpdatedAt = Math.max(oddsUpdatedAt, od.updatedAt);
       cached &&= od.cached;
 
       const ev = (od.data as any[]).find((e) => {
-        const h = norm(e.home_team),
-          a = norm(e.away_team);
-        const H = norm(fx.home),
-          A = norm(fx.away);
+        const h = norm(e.home_team), a = norm(e.away_team);
+        const H = norm(fx.home), A = norm(fx.away);
         return (h.includes(H) || H.includes(h)) && (a.includes(A) || A.includes(a));
       });
 
       if (ev) {
         const preferredOddsKeys = ["pinnacle", "betfair_ex_eu", "bet365", "unibet_eu"];
-        const bk =
-          ev.bookmakers.sort((a: any, b: any) => {
-            const rankA = preferredOddsKeys.indexOf(a.key);
-            const rankB = preferredOddsKeys.indexOf(b.key);
-            return (rankA === -1 ? 999 : rankA) - (rankB === -1 ? 999 : rankB);
-          })[0] ?? ev.bookmakers[0];
+        const bk = ev.bookmakers.sort((a: any, b: any) => {
+          const rankA = preferredOddsKeys.indexOf(a.key);
+          const rankB = preferredOddsKeys.indexOf(b.key);
+          return (rankA === -1 ? 999 : rankA) - (rankB === -1 ? 999 : rankB);
+        })[0] ?? ev.bookmakers[0];
 
         const h2h = bk?.markets.find((m: any) => m.key === "h2h")?.outcomes ?? [];
         const g = (name: string) => fmt(h2h.find((o: any) => o.name === name)?.price);
@@ -354,3 +337,4 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
 
   return { inputs: inp, cached, oddsUpdatedAt };
 }
+

@@ -21,14 +21,14 @@ export type GuardResult = {
 import { breakerCheck, breakerRecord, scopeKey } from "./api-breaker.server";
 
 const BASE = "https://v3.football.api-sports.io";
-const MIN_GAP_MS = 650; // minimalni razmak između poziva
-const MAX_PER_MIN = 8; // ispod free-limita od 10/min
+const MIN_GAP_MS = 650;          // minimalni razmak između poziva
+const MAX_PER_MIN = 8;           // ispod free-limita od 10/min
 const WINDOW_MS = 60_000;
-const RETRY_DELAYS = [10_000]; // jedan ponovni pokušaj nakon 10 s na RATE_LIMIT
+const RETRY_DELAYS = [10_000];   // jedan ponovni pokušaj nakon 10 s na RATE_LIMIT
 
 const cache = new Map<string, { t: number; ttl: number; v: unknown }>();
 const inflight = new Map<string, Promise<GuardResult>>();
-const stamps: number[] = []; // pozivi u zadnjoj minuti
+const stamps: number[] = [];     // pozivi u zadnjoj minuti
 let lastCallAt = 0;
 
 function sleep(ms: number): Promise<void> {
@@ -40,10 +40,10 @@ export function defaultTtl(path: string): number {
   const p = (path.split("?")[0] ?? path).replace(/^\//, "/");
   if (p === "/status") return 0;
   if (p === "/fixtures") {
-    if (path.includes("date=")) return 5 * 60_000; // raspored dana — živ podatak
-    return 6 * 60 * 60_000; // forma zadnjih utakmica — sporo se mijenja
+    if (path.includes("date=")) return 5 * 60_000;        // raspored dana — živ podatak
+    return 6 * 60 * 60_000;                                // forma zadnjih utakmica — sporo se mijenja
   }
-  if (p === "/odds") return 10 * 60_000; // kvote — dovoljno svježe, štedi kvotu
+  if (p === "/odds") return 10 * 60_000;                   // kvote — dovoljno svježe, štedi kvotu
   if (p === "/teams" || p === "/predictions" || p === "/injuries") return 24 * 60 * 60_000;
   return 30 * 60_000;
 }
@@ -62,16 +62,8 @@ async function waitSlot(): Promise<void> {
 }
 
 async function guardFetch(path: string, apiKey: string): Promise<GuardResult> {
-  const meta = (
-    status: number,
-    remainingDay: number,
-    dayLimit: number,
-    remainingMinute: number,
-  ) => ({
-    status,
-    remainingDay,
-    dayLimit,
-    remainingMinute,
+  const meta = (status: number, remainingDay: number, dayLimit: number, remainingMinute: number) => ({
+    status, remainingDay, dayLimit, remainingMinute,
   });
   try {
     await waitSlot();
@@ -86,41 +78,23 @@ async function guardFetch(path: string, apiKey: string): Promise<GuardResult> {
     );
     if (res.status === 429) return { ...m, error: "RATE_LIMIT", data: null };
     if (res.status === 401 || res.status === 403)
-      return {
-        ...m,
-        error: "ACCOUNT: API ključ nije važeći ili pretplata nije aktivna.",
-        data: null,
-      };
+      return { ...m, error: "ACCOUNT: API ključ nije važeći ili pretplata nije aktivna.", data: null };
     if (!res.ok) return { ...m, error: `API greška ${res.status}.`, data: null };
 
     const json = (await res.json()) as { errors?: unknown; response?: unknown };
-    const errs =
-      json.errors &&
-      (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors as object).length);
+    const errs = json.errors && (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors as object).length);
     if (errs) {
       const txt = JSON.stringify(json.errors);
       if (/for the day|daily/i.test(txt))
-        return {
-          ...m,
-          error: "DNEVNI_LIMIT: potrošen je dnevni limit API-Footballa — obnova u ponoć UTC.",
-          data: null,
-        };
-      if (/rate ?limit|too many|requests/i.test(txt))
-        return { ...m, error: "RATE_LIMIT", data: null };
+        return { ...m, error: "DNEVNI_LIMIT: potrošen je dnevni limit API-Footballa — obnova u ponoć UTC.", data: null };
+      if (/rate ?limit|too many|requests/i.test(txt)) return { ...m, error: "RATE_LIMIT", data: null };
       if (/suspend|token|key/i.test(txt)) return { ...m, error: `ACCOUNT: ${txt}`, data: null };
       return { ...m, error: txt, data: null };
     }
     return { ...m, error: null, data: json.response };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "nepoznato";
-    return {
-      status: 0,
-      remainingDay: -1,
-      dayLimit: -1,
-      remainingMinute: -1,
-      error: `Mrežna greška: ${msg}`,
-      data: null,
-    };
+    return { status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1, error: `Mrežna greška: ${msg}`, data: null };
   }
 }
 
@@ -134,26 +108,12 @@ export async function guardGet(
 ): Promise<GuardResult> {
   const apiKey = (opts.apiKey ?? "").trim();
   if (!apiKey)
-    return {
-      error: "Nedostaje API ključ (unese ga u Postavkama).",
-      data: null,
-      status: 0,
-      remainingDay: -1,
-      dayLimit: -1,
-      remainingMinute: -1,
-    };
+    return { error: "Nedostaje API ključ (unese ga u Postavkama).", data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
 
   const ttl = opts.ttlMs ?? defaultTtl(path);
   const hit = cache.get(path);
   if (hit && Date.now() - hit.t <= ttl) {
-    return {
-      error: null,
-      data: hit.v,
-      status: 200,
-      remainingDay: -1,
-      dayLimit: -1,
-      remainingMinute: -1,
-    };
+    return { error: null, data: hit.v, status: 200, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
   }
   const running = inflight.get(path);
   if (running) return running;
@@ -161,23 +121,8 @@ export async function guardGet(
   const scope = scopeKey("football", apiKey);
   const blok = breakerCheck(scope);
   if (blok) {
-    if (hit)
-      return {
-        error: null,
-        data: hit.v,
-        status: 200,
-        remainingDay: -1,
-        dayLimit: -1,
-        remainingMinute: -1,
-      };
-    return {
-      error: blok.startsWith("RATE_LIMIT") ? "RATE_LIMIT" : blok,
-      data: null,
-      status: 0,
-      remainingDay: -1,
-      dayLimit: -1,
-      remainingMinute: -1,
-    };
+    if (hit) return { error: null, data: hit.v, status: 200, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
+    return { error: blok.startsWith("RATE_LIMIT") ? "RATE_LIMIT" : blok, data: null, status: 0, remainingDay: -1, dayLimit: -1, remainingMinute: -1 };
   }
 
   const p = (async (): Promise<GuardResult> => {

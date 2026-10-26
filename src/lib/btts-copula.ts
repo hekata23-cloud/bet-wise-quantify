@@ -29,10 +29,7 @@ function pois(k: number, lam: number): number {
 
 /** Bivarijantni Poisson grid: X = X1+X3, Y = X2+X3, λ3 = ρ√(λHλA). */
 export function bivarPoissonGrid(lamH: number, lamA: number, rhoBp = 0.08): number[][] {
-  const lam3 = Math.min(
-    Math.max(rhoBp * Math.sqrt(Math.max(lamH, 0) * Math.max(lamA, 0)), 0),
-    Math.min(lamH, lamA) * 0.9,
-  );
+  const lam3 = Math.min(Math.max(rhoBp * Math.sqrt(Math.max(lamH, 0) * Math.max(lamA, 0)), 0), Math.min(lamH, lamA) * 0.9);
   const lam1 = Math.max(lamH - lam3, 0);
   const lam2 = Math.max(lamA - lam3, 0);
   const g: number[][] = [];
@@ -75,16 +72,9 @@ export function frankC(u: number, v: number, theta: number): number {
 export function frankJointGrid(lamH: number, lamA: number, theta: number): number[][] {
   const u: number[] = []; // u(x) = P(X ≤ x)
   const v: number[] = [];
-  let cu = 0,
-    cv = 0;
-  for (let x = 0; x <= MAXK; x++) {
-    cu += pois(x, lamH);
-    u[x] = Math.min(cu, 1);
-  }
-  for (let y = 0; y <= MAXK; y++) {
-    cv += pois(y, lamA);
-    v[y] = Math.min(cv, 1);
-  }
+  let cu = 0, cv = 0;
+  for (let x = 0; x <= MAXK; x++) { cu += pois(x, lamH); u[x] = Math.min(cu, 1); }
+  for (let y = 0; y <= MAXK; y++) { cv += pois(y, lamA); v[y] = Math.min(cv, 1); }
   const g: number[][] = [];
   for (let x = 0; x <= MAXK; x++) {
     g[x] = [];
@@ -114,14 +104,12 @@ function frankKorelacija(lamH: number, lamA: number, theta: number): number {
 
 /** Nađi θ tako da korelacija golova = cilj (0.08). Bisekcija po θ ∈ (−5, 8). */
 export function frankThetaZaKorelaciju(cilj = 0.08, lamH = 1.5, lamA = 1.3): number {
-  let lo = -5,
-    hi = 8;
+  let lo = -5, hi = 8;
   const f = (t: number) => frankKorelacija(lamH, lamA, t) - cilj;
   // korelacija je rastuća u θ za Frank
   for (let i = 0; i < 50; i++) {
     const mid = (lo + hi) / 2;
-    if (f(mid) < 0) lo = mid;
-    else hi = mid;
+    if (f(mid) < 0) lo = mid; else hi = mid;
   }
   return (lo + hi) / 2;
 }
@@ -155,3 +143,4 @@ export function bttsIzKopule(
     theta,
   };
 }
+

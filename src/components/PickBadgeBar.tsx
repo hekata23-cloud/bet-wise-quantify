@@ -71,3 +71,4 @@ export default function PickBadgeBar({ kandidati, className = "" }: Props) {
     </div>
   );
 }
+

@@ -13,11 +13,27 @@ import {
   Percent,
 } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
+import {
+  getZtFixtures,
+  getZtMatch,
+  type ZtFixture,
+} from "@/lib/zlatni-tip.functions";
 import { analyze } from "@/lib/zlatni-engine";
-import { getApiKey, guarded, readState, resetGuard, zagrebDay } from "@/lib/zlatni-guard";
-import { computeQuantumHtFt, type MasterHtFtPrediction } from "@/lib/ht-ft-predikcija";
-import { evaluatePredictionIntegrity, footballContradiction } from "@/lib/prediction-integrity";
+import {
+  getApiKey,
+  guarded,
+  readState,
+  resetGuard,
+  zagrebDay,
+} from "@/lib/zlatni-guard";
+import {
+  computeQuantumHtFt,
+  type MasterHtFtPrediction,
+} from "@/lib/ht-ft-predikcija";
+import {
+  evaluatePredictionIntegrity,
+  footballContradiction,
+} from "@/lib/prediction-integrity";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/ht-ft-predikcija")({
@@ -37,7 +53,8 @@ export const Route = createFileRoute("/ht-ft-predikcija")({
       },
       {
         property: "og:description",
-        content: "Algoritamska sinteza 4 posebne metode za točnu i preciznu HT/FT prognozu.",
+        content:
+          "Algoritamska sinteza 4 posebne metode za točnu i preciznu HT/FT prognozu.",
       },
     ],
   }),
@@ -73,7 +90,9 @@ export function QuantumHtFtPage() {
   const guard = readState();
 
   const handleWait = (ms: number, reason: string) => {
-    setStatusMsg(`Zaštita API-ja: ${reason}. Kratko čekanje ${Math.ceil(ms / 1000)} s…`);
+    setStatusMsg(
+      `Zaštita API-ja: ${reason}. Kratko čekanje ${Math.ceil(ms / 1000)} s…`
+    );
   };
 
   const handleResetGuard = () => {
@@ -98,16 +117,16 @@ export function QuantumHtFtPage() {
         `zt.fixtures.${today}`,
         1,
         () => getZtFixtures({ data: { date: today, apiKey } }),
-        handleWait,
+        handleWait
       );
 
       if (res && res.fixtures) {
         const playable = res.fixtures.filter((f) =>
-          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status),
+          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status)
         );
         setFixtures(playable);
         setStatusMsg(
-          `Učitano ${playable.length} utakmica. Odaberite utakmicu za egzaktnu HT/FT analizu.`,
+          `Učitano ${playable.length} utakmica. Odaberite utakmicu za egzaktnu HT/FT analizu.`
         );
       } else {
         setStatusMsg("Nema dostupnih utakmica za danas ili je došlo do zastoja.");
@@ -136,7 +155,7 @@ export function QuantumHtFtPage() {
         `zt.match.lite.${f.id}`,
         1,
         () => getZtMatch({ data: { id: f.id, apiKey, lite: true } }),
-        handleWait,
+        handleWait
       );
 
       if (res?.error) {
@@ -169,7 +188,8 @@ export function QuantumHtFtPage() {
     if (!prediction) return null;
     const sum = (codes: string[]) =>
       codes.reduce(
-        (total, code) => total + (prediction.allOutcomes.find((o) => o.code === code)?.prob ?? 0),
+        (total, code) =>
+          total + (prediction.allOutcomes.find((o) => o.code === code)?.prob ?? 0),
         0,
       );
     return {
@@ -207,7 +227,7 @@ export function QuantumHtFtPage() {
         fallbackModel: !o.bookieOdd,
         contradictory: footballContradiction({ selected: ftSelected(o.code), ...ftProbs }),
         market: `HT/FT ${o.code}`,
-      }),
+      })
     );
   }, [prediction, ftProbs]);
 
@@ -218,7 +238,7 @@ export function QuantumHtFtPage() {
       (f) =>
         f.home.toLowerCase().includes(q) ||
         f.away.toLowerCase().includes(q) ||
-        f.league.toLowerCase().includes(q),
+        f.league.toLowerCase().includes(q)
     );
   }, [fixtures, searchQuery]);
 
@@ -236,8 +256,7 @@ export function QuantumHtFtPage() {
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Egzaktan i točan tip poluvrijeme/kraj izračunat pomoću 4 posebne metode (Dixon-Coles,
-            Markovljevi lanci, Shannonova entropija i Bayesov model).
+            Egzaktan i točan tip poluvrijeme/kraj izračunat pomoću 4 posebne metode (Dixon-Coles, Markovljevi lanci, Shannonova entropija i Bayesov model).
           </p>
         </div>
 
@@ -415,9 +434,7 @@ export function QuantumHtFtPage() {
                         prediction.concreteTip.ev > 0 ? "text-emerald-400" : "text-muted-foreground"
                       }`}
                     >
-                      {prediction.concreteTip.ev > 0
-                        ? `+${prediction.concreteTip.ev}%`
-                        : `${prediction.concreteTip.ev}%`}
+                      {prediction.concreteTip.ev > 0 ? `+${prediction.concreteTip.ev}%` : `${prediction.concreteTip.ev}%`}
                     </span>
                   </div>
                 )}
@@ -438,9 +455,7 @@ export function QuantumHtFtPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="text-muted-foreground">
-                  Šansa: {prediction.safeHedge.probPercent}%
-                </span>
+                <span className="text-muted-foreground">Šansa: {prediction.safeHedge.probPercent}%</span>
                 <span className="font-mono font-bold text-blue-300">
                   Fer kvota: {prediction.safeHedge.fairOdd.toFixed(2)}
                 </span>
@@ -461,7 +476,9 @@ export function QuantumHtFtPage() {
                   className="rounded-2xl border border-border bg-card/60 p-4 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground">{m.name}</span>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {m.name}
+                    </span>
                     <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300">
                       Tip: {m.pickedCode}
                     </span>
@@ -497,9 +514,7 @@ export function QuantumHtFtPage() {
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-foreground">{o.code}</span>
-                      <span className="truncate max-w-[110px] text-[11px]">
-                        {o.label.split("(")[0]}
-                      </span>
+                      <span className="truncate max-w-[110px] text-[11px]">{o.label.split("(")[0]}</span>
                       <IntegrityPanel result={outcomeIntegrities[oIdx]} compact />
                     </div>
                     <div className="text-right font-mono">

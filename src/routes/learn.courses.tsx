@@ -71,12 +71,8 @@ function CoursesPage() {
 
               <div className="mt-5">
                 <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {cp.completedUnits} / {cp.totalUnits} units complete
-                  </span>
-                  <span className={cn("font-semibold", cp.percent > 0 && "text-primary")}>
-                    {cp.percent}%
-                  </span>
+                  <span>{cp.completedUnits} / {cp.totalUnits} units complete</span>
+                  <span className={cn("font-semibold", cp.percent > 0 && "text-primary")}>{cp.percent}%</span>
                 </div>
                 <ProgressLine value={cp.percent} />
               </div>

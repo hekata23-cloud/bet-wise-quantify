@@ -41,9 +41,9 @@ export function besselI(n: number, x: number): number {
 function lgamma(z: number): number {
   const g = 7;
   const c = [
-    0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
-    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6,
-    1.5056327351493116e-7,
+    0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+    771.32342877765313, -176.61502916214059, 12.507343278686905,
+    -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7,
   ];
   if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lgamma(1 - z);
   z -= 1;
@@ -58,7 +58,11 @@ export function skellamPmf(k: number, lam1: number, lam2: number): number {
   const kk = Math.abs(Math.round(k));
   if (lam1 <= 0 || lam2 <= 0) return k === 0 ? 1 : 0;
   const x = 2 * Math.sqrt(lam1 * lam2);
-  return Math.exp(-(lam1 + lam2)) * Math.pow(lam1 / lam2, k / 2) * besselI(kk, x);
+  return (
+    Math.exp(-(lam1 + lam2)) *
+    Math.pow(lam1 / lam2, k / 2) *
+    besselI(kk, x)
+  );
 }
 
 /* ── Skellam CDF: P(K ≤ k) — zbraja od −REP do k ──
@@ -77,9 +81,9 @@ export function skellamCdf(k: number, lam1: number, lam2: number): number {
    (moguć samo na cjelobrojnim linijama).
    Četvrtinske linije: pola uloga na linija−0.25, pola na linija+0.25. */
 export type SkellamAhIshod = {
-  win: number; // P(domaći pokriva)
-  push: number; // PUSH RISK % — povrat uloga
-  loss: number; // P(gost pokriva)
+  win: number;    // P(domaći pokriva)
+  push: number;   // PUSH RISK % — povrat uloga
+  loss: number;   // P(gost pokriva)
   ferWin: number; // fer kvota domaćeg (1 + loss/win, push-neutralizirana)
   ferLoss: number; // fer kvota gostujuće strane
 };
@@ -88,15 +92,10 @@ export function ahSkellam(lam1: number, lam2: number, linija: number): SkellamAh
   const lin = Math.round(linija * 4) / 4;
   const djelovi: Array<{ l: number; tezina: number }> =
     Math.abs((lin * 4) % 2) === 1
-      ? [
-          { l: lin - 0.25, tezina: 0.5 },
-          { l: lin + 0.25, tezina: 0.5 },
-        ]
-      : [{ l: lin, tezina: 1 }];
+      ? [ { l: lin - 0.25, tezina: 0.5 }, { l: lin + 0.25, tezina: 0.5 } ]
+      : [ { l: lin, tezina: 1 } ];
 
-  let win = 0,
-    push = 0,
-    loss = 0;
+  let win = 0, push = 0, loss = 0;
   for (const d of djelovi) {
     // win: P(K > −l) = 1 − P(K ≤ −l)
     const w = 1 - skellamCdf(-d.l, lam1, lam2);
@@ -127,8 +126,8 @@ export function skellamUkupnoOver(lam1: number, lam2: number, linija: number): S
   // P(T ≤ L) … P(T > L)
   let kum = 0;
   const gornja = jeCijela ? L : Math.floor(L);
-  for (let j = 0; j <= gornja && j < 200; j++) kum += (Math.exp(-lam) * Math.pow(lam, j)) / fakt(j);
-  const push = jeCijela ? (Math.exp(-lam) * Math.pow(lam, L)) / fakt(L) : 0;
+  for (let j = 0; j <= gornja && j < 200; j++) kum += Math.exp(-lam) * Math.pow(lam, j) / fakt(j);
+  const push = jeCijela ? Math.exp(-lam) * Math.pow(lam, L) / fakt(L) : 0;
   // kum = P(T <= L) VEĆ sadrži push (T = L je unutar kumulativa):
   // under = kum - push (strict ispod linije), over = 1 - kum → zbroj točno 1.
   const under = Math.max(0, kum - push);

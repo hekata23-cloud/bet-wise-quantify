@@ -60,15 +60,8 @@ export interface ScoreMatrix {
 }
 
 export function scoreMatrix(homeXG: number, awayXG: number, max = 6): ScoreMatrix {
-  let pHome = 0,
-    pDraw = 0,
-    pAway = 0,
-    pBTTS = 0,
-    totalProbability = 0;
-  let pOver05 = 0,
-    pOver15 = 0,
-    pOver25 = 0,
-    pOver35 = 0;
+  let pHome = 0, pDraw = 0, pAway = 0, pBTTS = 0, totalProbability = 0;
+  let pOver05 = 0, pOver15 = 0, pOver25 = 0, pOver35 = 0;
   const scores: Array<{ score: string; p: number }> = [];
   for (let h = 0; h <= max; h++) {
     for (let a = 0; a <= max; a++) {
@@ -231,12 +224,13 @@ export function analyzeOU(input: {
     poissonProbOver -= poisson(input.homeXG + input.awayXG, goals);
   const rawHist = (input.homeGoalsAvg ?? 0) + (input.awayGoalsAvg ?? 0);
   const hasHistory = Number.isFinite(rawHist) && rawHist > 0.5;
-  const historicalAvg = hasHistory ? rawHist : sm.expectedGoals > 0 ? sm.expectedGoals : 2.68;
-  const historicalProbOver =
-    historicalAvg > input.line
-      ? 0.5 + Math.min(0.4, (historicalAvg - input.line) * 0.15)
-      : 0.5 - Math.min(0.4, (input.line - historicalAvg) * 0.15);
-  const probOver = hasHistory ? 0.7 * poissonProbOver + 0.3 * historicalProbOver : poissonProbOver;
+  const historicalAvg = hasHistory ? rawHist : (sm.expectedGoals > 0 ? sm.expectedGoals : 2.68);
+  const historicalProbOver = historicalAvg > input.line
+    ? 0.5 + Math.min(0.4, (historicalAvg - input.line) * 0.15)
+    : 0.5 - Math.min(0.4, (input.line - historicalAvg) * 0.15);
+  const probOver = hasHistory
+    ? 0.7 * poissonProbOver + 0.3 * historicalProbOver
+    : poissonProbOver;
   const probUnder = 1 - probOver;
   const tip = probOver >= 0.5 ? `Over ${input.line}` : `Under ${input.line}`;
   const confidence = Math.round(Math.max(probOver, probUnder) * 100);
@@ -295,9 +289,7 @@ export function analyzeWDL(input: {
   let pD = 0.5 * sm.pDraw + 0.5 * mpX;
   let pA = 0.5 * sm.pAway + 0.5 * mp2 - srceAdj;
   const s = pH + pD + pA;
-  pH /= s;
-  pD /= s;
-  pA /= s;
+  pH /= s; pD /= s; pA /= s;
   const rnd = randomnessIndex(input.odd1, input.oddX, input.odd2);
   const arr: Array<{ k: "1" | "X" | "2"; p: number; odd: number }> = [
     { k: "1", p: pH, odd: input.odd1 },
@@ -360,9 +352,7 @@ export function analyzeHTFT(input: {
 
   // Distribucije za oba poluvremena
   const half = (lh: number, la: number) => {
-    let p1 = 0,
-      pX = 0,
-      p2 = 0;
+    let p1 = 0, pX = 0, p2 = 0;
     for (let h = 0; h <= 6; h++)
       for (let a = 0; a <= 6; a++) {
         const p = poisson(lh, h) * poisson(la, a);
@@ -405,10 +395,7 @@ export function analyzeHTFT(input: {
       `Očekivani xG u 1. poluvremenu: ${htH.toFixed(2)}:${htA.toFixed(2)} (udio ${(share * 100).toFixed(0)}%).`,
       `HT vjerojatnosti: 1=${(HT.p1 * 100).toFixed(1)}%, X=${(HT.pX * 100).toFixed(1)}%, 2=${(HT.p2 * 100).toFixed(1)}%.`,
       `FT vjerojatnosti: 1=${(FT.p1 * 100).toFixed(1)}%, X=${(FT.pX * 100).toFixed(1)}%, 2=${(FT.p2 * 100).toFixed(1)}%.`,
-      `Top 3 HT/FT: ${sorted
-        .slice(0, 3)
-        .map((x) => `${x.combo} (${(x.p * 100).toFixed(1)}%)`)
-        .join(", ")}.`,
+      `Top 3 HT/FT: ${sorted.slice(0, 3).map((x) => `${x.combo} (${(x.p * 100).toFixed(1)}%)`).join(", ")}.`,
       `Napomena: FT xG = ${ftH.toFixed(2)}:${ftA.toFixed(2)}.`,
     ],
   };
@@ -446,23 +433,9 @@ export function analyzeCorners(input: {
     `Očekivano kornera: ${total.toFixed(2)} (dom λ=${lamH.toFixed(2)}, gost λ=${lamA.toFixed(2)}).`,
     `Poisson Over ${input.line} = ${(pOver * 100).toFixed(1)}%.`,
   ];
-  if (input.overOdd)
-    reasons.push(
-      `Value Over @ ${input.overOdd.toFixed(2)}: edge ${((pOver * input.overOdd - 1) * 100).toFixed(1)}%.`,
-    );
-  if (input.underOdd)
-    reasons.push(
-      `Value Under @ ${input.underOdd.toFixed(2)}: edge ${((pUnder * input.underOdd - 1) * 100).toFixed(1)}%.`,
-    );
-  return {
-    line: input.line,
-    probOver: pOver,
-    probUnder: pUnder,
-    tip,
-    confidence: Math.round(Math.max(pOver, pUnder) * 100),
-    expected: total,
-    reasons,
-  };
+  if (input.overOdd) reasons.push(`Value Over @ ${input.overOdd.toFixed(2)}: edge ${((pOver * input.overOdd - 1) * 100).toFixed(1)}%.`);
+  if (input.underOdd) reasons.push(`Value Under @ ${input.underOdd.toFixed(2)}: edge ${((pUnder * input.underOdd - 1) * 100).toFixed(1)}%.`);
+  return { line: input.line, probOver: pOver, probUnder: pUnder, tip, confidence: Math.round(Math.max(pOver, pUnder) * 100), expected: total, reasons };
 }
 
 // ---------- Kartona analiza ----------
@@ -484,19 +457,8 @@ export function analyzeCards(input: {
     `Očekivano kartona: ${total.toFixed(2)}${input.refereeAvg ? ` (sudac dodaje ${(input.refereeAvg * 0.3).toFixed(2)})` : ""}.`,
     `Poisson Over ${input.line} = ${(pOver * 100).toFixed(1)}%.`,
   ];
-  if (input.overOdd)
-    reasons.push(
-      `Value Over @ ${input.overOdd.toFixed(2)}: edge ${((pOver * input.overOdd - 1) * 100).toFixed(1)}%.`,
-    );
-  return {
-    line: input.line,
-    probOver: pOver,
-    probUnder: pUnder,
-    tip,
-    confidence: Math.round(Math.max(pOver, pUnder) * 100),
-    expected: total,
-    reasons,
-  };
+  if (input.overOdd) reasons.push(`Value Over @ ${input.overOdd.toFixed(2)}: edge ${((pOver * input.overOdd - 1) * 100).toFixed(1)}%.`);
+  return { line: input.line, probOver: pOver, probUnder: pUnder, tip, confidence: Math.round(Math.max(pOver, pUnder) * 100), expected: total, reasons };
 }
 
 // ---------- Dixon-Coles korekcija za niske rezultate ----------
@@ -512,8 +474,7 @@ export function dixonColesTau(h: number, a: number, lh: number, la: number, rho 
 function samplePoisson(lambda: number): number {
   // Knuth algoritam
   const L = Math.exp(-lambda);
-  let k = 0,
-    p = 1;
+  let k = 0, p = 1;
   do {
     k++;
     p *= Math.random();
@@ -521,18 +482,10 @@ function samplePoisson(lambda: number): number {
   return k - 1;
 }
 
-export function monteCarlo(
-  homeXG: number,
-  awayXG: number,
-  n = 10000,
-): { pHome: number; pDraw: number; pAway: number; pBTTS: number; pOver25: number } {
+export function monteCarlo(homeXG: number, awayXG: number, n = 10000): { pHome: number; pDraw: number; pAway: number; pBTTS: number; pOver25: number } {
   // POPRAVAK: Bez simulacijskih iteracija nema procjene; vrati nule umjesto dijeljenja s nulom.
   if (!Number.isFinite(n) || n <= 0) return { pHome: 0, pDraw: 0, pAway: 0, pBTTS: 0, pOver25: 0 };
-  let h = 0,
-    d = 0,
-    a = 0,
-    btts = 0,
-    ov = 0;
+  let h = 0, d = 0, a = 0, btts = 0, ov = 0;
   for (let i = 0; i < n; i++) {
     const gh = samplePoisson(homeXG);
     const ga = samplePoisson(awayXG);

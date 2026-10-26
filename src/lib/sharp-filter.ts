@@ -16,12 +16,7 @@ export interface SharpFilterSettings {
 
 export const SHARP_PRESETS: Record<
   SharpPreset,
-  {
-    name: string;
-    icon: string;
-    desc: string;
-    settings: Omit<SharpFilterSettings, "enabled" | "preset">;
-  }
+  { name: string; icon: string; desc: string; settings: Omit<SharpFilterSettings, "enabled" | "preset"> }
 > = {
   syndicate: {
     name: "Balansirani Sindikat",
@@ -130,7 +125,7 @@ export function evaluateTip(
     bookmakerMargin?: number;
     drawProb?: number;
     customSettings?: SharpFilterSettings;
-  },
+  }
 ): SharpVerdict {
   const cfg = options?.customSettings ?? getSharpSettings();
   const fairOdds = p > 0 ? 1 / p : null;
@@ -157,9 +152,7 @@ export function evaluateTip(
 
   // 1. Provjera marže kladionice (Vig)
   if (margin > cfg.maxMargin) {
-    reasons.push(
-      `Previsoka marža kladionice (${margin.toFixed(1)}% > ${cfg.maxMargin}%) — nepovoljan tečaj`,
-    );
+    reasons.push(`Previsoka marža kladionice (${margin.toFixed(1)}% > ${cfg.maxMargin}%) — nepovoljan tečaj`);
     isTrap = true;
   }
 
@@ -186,17 +179,13 @@ export function evaluateTip(
   // 4. Provjera EV (Expected Value)
   const evPass = ev !== null ? ev >= cfg.minEV : p >= cfg.minProb;
   if (ev !== null && ev < cfg.minEV) {
-    reasons.push(
-      `Negativan ili prenizak EV (${ev > 0 ? "+" : ""}${ev.toFixed(1)}% < ${cfg.minEV > 0 ? "+" : ""}${cfg.minEV}%)`,
-    );
+    reasons.push(`Negativan ili prenizak EV (${ev > 0 ? "+" : ""}${ev.toFixed(1)}% < ${cfg.minEV > 0 ? "+" : ""}${cfg.minEV}%)`);
   }
 
   // 5. Provjera vjerojatnosti
   const probPass = p >= cfg.minProb;
   if (!probPass) {
-    reasons.push(
-      `Vjerojatnost ispod praga (${(p * 100).toFixed(1)}% < ${(cfg.minProb * 100).toFixed(0)}%)`,
-    );
+    reasons.push(`Vjerojatnost ispod praga (${(p * 100).toFixed(1)}% < ${(cfg.minProb * 100).toFixed(0)}%)`);
   }
 
   // Određivanje certifikata
@@ -315,3 +304,4 @@ export function useSharpFilter() {
       evaluateTip(p, odd, { ...opt, customSettings: settings }),
   };
 }
+

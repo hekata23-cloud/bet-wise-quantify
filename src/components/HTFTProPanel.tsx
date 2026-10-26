@@ -12,8 +12,8 @@ import { htftNogomet } from "@/lib/htft-motor";
    ═══════════════════════════════════════════════════════════════════ */
 
 type Props = {
-  lamH: number; // očekivani golovi domaćin (cijela utakmica)
-  lamA: number; // očekivani golovi gost (cijela utakmica)
+  lamH: number;   // očekivani golovi domaćin (cijela utakmica)
+  lamA: number;   // očekivani golovi gost (cijela utakmica)
   /** kvote knjižare za 9 HT/FT kodova ("1/1" ... "2/2") — za EV */
   kvote9?: Record<string, number> | null;
 };
@@ -55,8 +55,7 @@ export default function HTFTProPanel({ lamH, lamA, kvote9 }: Props) {
       {/* Golovi u 1. poluvremenu */}
       <div>
         <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">
-          Očekivano 1. poluvrijeme:{" "}
-          <span className="text-indigo-300 font-bold">{a.lamHT.toFixed(2)}</span> gola
+          Očekivano 1. poluvrijeme: <span className="text-indigo-300 font-bold">{a.lamHT.toFixed(2)}</span> gola
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {htRedovi.map((r) => (
@@ -78,9 +77,7 @@ export default function HTFTProPanel({ lamH, lamA, kvote9 }: Props) {
 
       {/* TOP 3 stanja s EV */}
       <div>
-        <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">
-          Top 3 prijelazna stanja
-        </p>
+        <p className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">Top 3 prijelazna stanja</p>
         <div className="grid gap-2 sm:grid-cols-3">
           {a.top3.map((t, i) => {
             const e = ev(t.kod, t.p);
@@ -91,15 +88,11 @@ export default function HTFTProPanel({ lamH, lamA, kvote9 }: Props) {
                   <span className="text-[10px] font-mono text-slate-400">#{i + 1}</span>
                   <span className="text-lg font-extrabold text-white">{t.kod}</span>
                 </div>
-                <p className="mt-1 text-center text-2xl font-black text-indigo-300">
-                  {(t.p * 100).toFixed(1)}%
-                </p>
+                <p className="mt-1 text-center text-2xl font-black text-indigo-300">{(t.p * 100).toFixed(1)}%</p>
                 <div className="mt-1 flex items-center justify-between text-[11px]">
                   <span className="text-slate-400">fer {t.ferOdd.toFixed(1)}</span>
                   {e !== null ? (
-                    <span
-                      className={dobar ? "font-bold text-emerald-400" : "font-bold text-rose-400"}
-                    >
+                    <span className={dobar ? "font-bold text-emerald-400" : "font-bold text-rose-400"}>
                       EV {(e * 100 >= 0 ? "+" : "") + (e * 100).toFixed(1)}%
                     </span>
                   ) : (
@@ -115,9 +108,7 @@ export default function HTFTProPanel({ lamH, lamA, kvote9 }: Props) {
       {/* Reverse Risk */}
       <div className={`rounded-xl border p-3 ${razinaBoja}`}>
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <span className="text-xs font-bold tracking-wide">
-            REVERSE RISK — preokreti (1/2 + 2/1)
-          </span>
+          <span className="text-xs font-bold tracking-wide">REVERSE RISK — preokreti (1/2 + 2/1)</span>
           <span className="text-sm font-black">{(a.preokreti * 100).toFixed(1)}%</span>
         </div>
         <div className="mt-1 flex gap-4 text-[11px] opacity-80">
@@ -129,3 +120,4 @@ export default function HTFTProPanel({ lamH, lamA, kvote9 }: Props) {
     </section>
   );
 }
+

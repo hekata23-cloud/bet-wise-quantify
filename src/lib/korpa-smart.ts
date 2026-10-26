@@ -38,14 +38,14 @@ export type KorpaGrupa = {
 export type KorpaSmartIzlaz = {
   n: number;
   kvota: number;
-  pNaive: number; // naivni produkt vjerojatnosti (pretpostavka nezavisnosti)
-  pKorigirana: number; // korelacijski korigirana vjerojatnost
+  pNaive: number;         // naivni produkt vjerojatnosti (pretpostavka nezavisnosti)
+  pKorigirana: number;    // korelacijski korigirana vjerojatnost
   edgeNaive: number;
   edgeKorigirana: number;
-  hazard: boolean; // > 3 noge
+  hazard: boolean;        // > 3 noge
   hazardPoruka: string;
   korelacijaUpozorenje: boolean;
-  nemoguceNoge: boolean; // postoji grupa s uzajamno isključivim nogama
+  nemoguceNoge: boolean;  // postoji grupa s uzajamno isključivim nogama
   /** NOVO v2: postoji korelacija između različitih utakmica iste lige */
   ligaKorelacija: boolean;
   ligaPoruka: string | null;
@@ -53,7 +53,7 @@ export type KorpaSmartIzlaz = {
   kellyPct: number;
   ulogPerc: number;
   ulogIznos: number;
-  rizikPerc: number; // 0..100 vizualni rizik varijance
+  rizikPerc: number;      // 0..100 vizualni rizik varijance
   isplativo: boolean;
 };
 
@@ -76,12 +76,9 @@ function linijaIzTipa(tip: string): { smjer: "over" | "under" | "drugo"; linija:
 
 /** Suprotni ishodi istog tržišta → uzajamno isključivi. */
 function suSuprotni(a: KorpaTip, b: KorpaTip): boolean {
-  const ta = norm(a.tip),
-    tb = norm(b.tip);
-  const la = linijaIzTipa(a.tip),
-    lb = linijaIzTipa(b.tip);
-  const isteLinije =
-    la.linija != null && lb.linija != null && Math.abs(la.linija - lb.linija) < 0.01;
+  const ta = norm(a.tip), tb = norm(b.tip);
+  const la = linijaIzTipa(a.tip), lb = linijaIzTipa(b.tip);
+  const isteLinije = la.linija != null && lb.linija != null && Math.abs(la.linija - lb.linija) < 0.01;
   const par: [RegExp, RegExp][] = [
     [/^1$|doma|home/, /^2$|gost|away/],
     [/over|o\d/, /under|u\d/],
@@ -90,8 +87,7 @@ function suSuprotni(a: KorpaTip, b: KorpaTip): boolean {
   for (const [re1, re2] of par) {
     if ((re1.test(ta) && re2.test(tb)) || (re2.test(ta) && re1.test(tb))) {
       // ali samo ako su na "komplementarnim" tržištima (istog tipa tržišta)
-      const ka = norm(a.trziste),
-        kb = norm(b.trziste);
+      const ka = norm(a.trziste), kb = norm(b.trziste);
       const istoTrziste =
         (ka.includes("1x2") && kb.includes("1x2")) ||
         (/(o\/u|over|total|gol)/.test(ka) && /(o\/u|over|total|gol)/.test(kb)) ||
@@ -105,8 +101,7 @@ function suSuprotni(a: KorpaTip, b: KorpaTip): boolean {
 
 /** Ugniježđena linija: viša linija je podskup niže (O3.5 ⊂ O2.5; U2.5 ⊂ U1.5). */
 function suUgnijezdeni(a: KorpaTip, b: KorpaTip): boolean {
-  const la = linijaIzTipa(a.tip),
-    lb = linijaIzTipa(b.tip);
+  const la = linijaIzTipa(a.tip), lb = linijaIzTipa(b.tip);
   if (la.smjer === "drugo" || lb.smjer === "drugo") return false;
   if (la.smjer !== lb.smjer || la.linija == null || lb.linija == null) return false;
   return Math.abs(la.linija - lb.linija) > 0.01;
@@ -114,8 +109,7 @@ function suUgnijezdeni(a: KorpaTip, b: KorpaTip): boolean {
 
 /** Zajednička vjerojatnost dvije noge iz iste utakmice. */
 export function zajednickaVjerojatnost(a: KorpaTip, b: KorpaTip, rho = 0.2): number {
-  const pa = clamp01(a.vjerojatnost),
-    pb = clamp01(b.vjerojatnost);
+  const pa = clamp01(a.vjerojatnost), pb = clamp01(b.vjerojatnost);
   if (suSuprotni(a, b)) {
     return Math.max(0, pa + pb - 1);
   }
@@ -147,35 +141,13 @@ export function izracunajKorpuSmart(
   const kellyFrac = Number.isFinite(kellyRaw) ? Math.min(1, Math.max(0.05, kellyRaw)) : 0.25;
   const maxUlogPerc = Number.isFinite(maxRaw) ? Math.min(10, Math.max(0.5, maxRaw)) : 3;
   const rho = Number.isFinite(rhoRaw) ? Math.min(0.5, Math.max(0, rhoRaw)) : 0.2;
-  const safeTips = tipovi.filter(
-    (t) =>
-      t &&
-      Number.isFinite(t.kvota) &&
-      t.kvota > 1 &&
-      Number.isFinite(t.vjerojatnost) &&
-      t.vjerojatnost >= 0 &&
-      t.vjerojatnost <= 1,
-  );
+  const safeTips = tipovi.filter((t) => t && Number.isFinite(t.kvota) && t.kvota > 1 && Number.isFinite(t.vjerojatnost) && t.vjerojatnost >= 0 && t.vjerojatnost <= 1);
 
   const prazno: KorpaSmartIzlaz = {
-    n: 0,
-    kvota: 1,
-    pNaive: 0,
-    pKorigirana: 0,
-    edgeNaive: 0,
-    edgeKorigirana: 0,
-    hazard: false,
-    hazardPoruka: "",
-    korelacijaUpozorenje: false,
-    nemoguceNoge: false,
-    ligaKorelacija: false,
-    ligaPoruka: null,
-    grupe: [],
-    kellyPct: 0,
-    ulogPerc: 0,
-    ulogIznos: 0,
-    rizikPerc: 0,
-    isplativo: false,
+    n: 0, kvota: 1, pNaive: 0, pKorigirana: 0, edgeNaive: 0, edgeKorigirana: 0,
+    hazard: false, hazardPoruka: "", korelacijaUpozorenje: false, nemoguceNoge: false,
+    ligaKorelacija: false, ligaPoruka: null,
+    grupe: [], kellyPct: 0, ulogPerc: 0, ulogIznos: 0, rizikPerc: 0, isplativo: false,
   };
   if (safeTips.length === 0) return prazno;
 

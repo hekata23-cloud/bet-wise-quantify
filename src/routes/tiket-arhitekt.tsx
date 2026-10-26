@@ -31,14 +31,10 @@ export const Route = createFileRoute("/tiket-arhitekt")({
       { title: "Tiket Arhitekt · Monte Carlo Value Finder · Andromeda AI" },
       {
         name: "description",
-        content:
-          "Automatski kvantitativni skener za sastavljanje dobitnih tiketa s matematičkom prednošću (EV > 0%) i eliminacijom rizika korelacije.",
+        content: "Automatski kvantitativni skener za sastavljanje dobitnih tiketa s matematičkom prednošću (EV > 0%) i eliminacijom rizika korelacije.",
       },
       { property: "og:title", content: "Tiket Arhitekt · Andromeda AI" },
-      {
-        property: "og:description",
-        content: "Kvantitativni skener i automatski sastavljač tiketa dana.",
-      },
+      { property: "og:description", content: "Kvantitativni skener i automatski sastavljač tiketa dana." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -104,21 +100,17 @@ export function TiketArhitektPage() {
         "fixtures",
         1,
         () => getZtFixtures({ data: { date: zagrebDay(), apiKey } }),
-        handleWait,
+        handleWait
       );
 
       if (res.error) {
-        setStatusMsg(
-          `Greška: ${res.error === "RATE_LIMIT" ? "API limit — kratka pauza 15 s." : res.error}`,
-        );
+        setStatusMsg(`Greška: ${res.error === "RATE_LIMIT" ? "API limit — kratka pauza 15 s." : res.error}`);
       } else {
         const playable = res.fixtures.filter((f) =>
-          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status),
+          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status)
         );
         setFixtures(playable);
-        setStatusMsg(
-          `Učitano ${playable.length} utakmica. Kliknite "Analiziraj" na utakmicama za detalje i listić.`,
-        );
+        setStatusMsg(`Učitano ${playable.length} utakmica. Kliknite "Analiziraj" na utakmicama za detalje i listić.`);
       }
     } catch (e: any) {
       setStatusMsg(e?.message ?? "Neuspjelo učitavanje utakmica");
@@ -145,14 +137,14 @@ export function TiketArhitektPage() {
         `lite.${f.id}`,
         1,
         () => getZtMatch({ data: { id: f.id, apiKey, lite: true } }),
-        handleWait,
+        handleWait
       );
 
       if (res.error === "RATE_LIMIT" || res.error?.startsWith("ACCOUNT")) {
         setStatusMsg(
           res.error === "RATE_LIMIT"
             ? "API traži kratku pauzu (10 poziva/min). Pričekajte 15 s i kliknite ponovno."
-            : res.error,
+            : res.error
         );
         return;
       }
@@ -168,7 +160,7 @@ export function TiketArhitektPage() {
         `${f.home} vs ${f.away}`,
         f.league,
         timeFormatted,
-        analysis,
+        analysis
       );
 
       setSelectedMatch({
@@ -188,7 +180,7 @@ export function TiketArhitektPage() {
       });
 
       setStatusMsg(
-        `✅ Analizirano: ${f.home} — ${f.away} (${res.bookmaker ?? "Kladionica"}). Učitano ${Object.keys(res.markets).length} tržišta.`,
+        `✅ Analizirano: ${f.home} — ${f.away} (${res.bookmaker ?? "Kladionica"}). Učitano ${Object.keys(res.markets).length} tržišta.`
       );
     } catch (e: any) {
       setStatusMsg(e?.message ?? "Greška pri analizi utakmice");
@@ -211,7 +203,7 @@ export function TiketArhitektPage() {
       (f) =>
         f.home.toLowerCase().includes(q) ||
         f.away.toLowerCase().includes(q) ||
-        f.league.toLowerCase().includes(q),
+        f.league.toLowerCase().includes(q)
     );
   }, [fixtures, searchQuery]);
 
@@ -224,8 +216,7 @@ export function TiketArhitektPage() {
             <Ticket className="h-6 w-6 text-primary" /> Tiket Arhitekt & Value Finder
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Matematički skener za sastavljanje tiketa s očekivanim prinosom i eliminacijom
-            koreliranog rizika.
+            Matematički skener za sastavljanje tiketa s očekivanim prinosom i eliminacijom koreliranog rizika.
           </p>
         </div>
 
@@ -260,9 +251,7 @@ export function TiketArhitektPage() {
       {statusMsg && (
         <div className="rounded-xl border border-primary/20 bg-primary/10 p-3.5 text-sm text-foreground flex items-center justify-between">
           <span>{statusMsg}</span>
-          <span className="text-xs text-muted-foreground">
-            Preostalo kredita: {guard.dayRemaining >= 0 ? guard.dayRemaining : "—"}
-          </span>
+          <span className="text-xs text-muted-foreground">Preostalo kredita: {guard.dayRemaining >= 0 ? guard.dayRemaining : "—"}</span>
         </div>
       )}
 
@@ -271,15 +260,12 @@ export function TiketArhitektPage() {
         <div className="rounded-2xl border border-primary/40 bg-card p-5 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-3">
             <div>
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Detaljna analiza utakmice
-              </span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary">Detaljna analiza utakmice</span>
               <h2 className="text-xl font-bold">
                 {selectedMatch.fixture.home} — {selectedMatch.fixture.away}
               </h2>
               <p className="text-xs text-muted-foreground">
-                {selectedMatch.fixture.league} · {formatMatchTime(selectedMatch.fixture.time)} ·
-                Kladionica: {selectedMatch.bookmaker ?? "Standard"}
+                {selectedMatch.fixture.league} · {formatMatchTime(selectedMatch.fixture.time)} · Kladionica: {selectedMatch.bookmaker ?? "Standard"}
               </p>
             </div>
             <div className="text-right">
@@ -294,9 +280,7 @@ export function TiketArhitektPage() {
             {selectedMatch.analysis.golden && (
               <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold text-primary uppercase">
-                    🎯 Glavni tip utakmice
-                  </div>
+                  <div className="text-[11px] font-semibold text-primary uppercase">🎯 Glavni tip utakmice</div>
                   <IntegrityPanel
                     compact
                     result={evaluatePredictionIntegrity({
@@ -308,12 +292,9 @@ export function TiketArhitektPage() {
                     })}
                   />
                 </div>
-                <div className="font-bold text-sm">
-                  {selectedMatch.analysis.golden.outcome.label}
-                </div>
+                <div className="font-bold text-sm">{selectedMatch.analysis.golden.outcome.label}</div>
                 <div className="text-xs text-muted-foreground">
-                  Kvota: @{selectedMatch.analysis.golden.outcome.odd?.toFixed(2)} · Šansa:{" "}
-                  {(selectedMatch.analysis.golden.outcome.p * 100).toFixed(0)}%
+                  Kvota: @{selectedMatch.analysis.golden.outcome.odd?.toFixed(2)} · Šansa: {(selectedMatch.analysis.golden.outcome.p * 100).toFixed(0)}%
                 </div>
               </div>
             )}
@@ -321,9 +302,7 @@ export function TiketArhitektPage() {
             {selectedMatch.analysis.safe && (
               <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-[11px] font-semibold text-emerald-400 uppercase">
-                    🛡️ Najsigurnija linija
-                  </div>
+                  <div className="text-[11px] font-semibold text-emerald-400 uppercase">🛡️ Najsigurnija linija</div>
                   <IntegrityPanel
                     compact
                     result={evaluatePredictionIntegrity({
@@ -337,44 +316,29 @@ export function TiketArhitektPage() {
                 </div>
                 <div className="font-bold text-sm">{selectedMatch.analysis.safe.outcome.label}</div>
                 <div className="text-xs text-muted-foreground">
-                  Kvota: @{selectedMatch.analysis.safe.outcome.odd?.toFixed(2)} · Šansa:{" "}
-                  {(selectedMatch.analysis.safe.outcome.p * 100).toFixed(0)}%
+                  Kvota: @{selectedMatch.analysis.safe.outcome.odd?.toFixed(2)} · Šansa: {(selectedMatch.analysis.safe.outcome.p * 100).toFixed(0)}%
                 </div>
               </div>
             )}
 
             <div className="rounded-xl bg-muted/40 p-3 space-y-1">
-              <div className="text-[11px] font-semibold text-muted-foreground uppercase">
-                ⚽ Najvjerojatniji rezultat
-              </div>
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase">⚽ Najvjerojatniji rezultat</div>
               <div className="font-bold text-sm">
-                {selectedMatch.analysis.topScores
-                  .slice(0, 2)
-                  .map((s) => `${s.score} (${(s.p * 100).toFixed(0)}%)`)
-                  .join(" ili ")}
+                {selectedMatch.analysis.topScores.slice(0, 2).map((s) => `${s.score} (${(s.p * 100).toFixed(0)}%)`).join(" ili ")}
               </div>
-              <div className="text-xs text-muted-foreground">
-                Ukupno golova: {(selectedMatch.analysis.lh + selectedMatch.analysis.la).toFixed(2)}
-              </div>
+              <div className="text-xs text-muted-foreground">Ukupno golova: {(selectedMatch.analysis.lh + selectedMatch.analysis.la).toFixed(2)}</div>
             </div>
           </div>
 
           {/* Brzi pregled svih tržišta za tu utakmicu */}
           <div className="space-y-2 pt-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Tržišta i fer kvote bez marže
-            </h4>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tržišta i fer kvote bez marže</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {selectedMatch.analysis.markets.slice(0, 6).map((mk) => (
-                <div
-                  key={mk.name}
-                  className="rounded-lg bg-muted/30 p-2.5 text-xs space-y-1.5 border border-border/30"
-                >
+                <div key={mk.name} className="rounded-lg bg-muted/30 p-2.5 text-xs space-y-1.5 border border-border/30">
                   <div className="font-semibold text-foreground flex justify-between">
                     <span>{mk.name}</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">
-                      {mk.source}
-                    </span>
+                    <span className="text-[10px] text-muted-foreground font-normal">{mk.source}</span>
                   </div>
                   <div className="space-y-1">
                     {mk.outcomes.map((o) => {
@@ -384,22 +348,14 @@ export function TiketArhitektPage() {
                         <div
                           key={o.label}
                           className={`flex items-center justify-between rounded px-1.5 py-0.5 ${
-                            isBest
-                              ? "bg-primary/15 text-primary font-medium"
-                              : "text-muted-foreground"
+                            isBest ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground"
                           }`}
                         >
                           <span>{o.label}</span>
                           <span className="font-mono text-[11px]">
                             {(o.p * 100).toFixed(0)}% · fer {(1 / o.p).toFixed(2)}
                             {o.odd ? ` · @${o.odd.toFixed(2)}` : ""}
-                            {ev > 0 ? (
-                              <span className="text-emerald-400 font-bold ml-1">
-                                +{ev.toFixed(0)}%
-                              </span>
-                            ) : (
-                              ""
-                            )}
+                            {ev > 0 ? <span className="text-emerald-400 font-bold ml-1">+{ev.toFixed(0)}%</span> : ""}
                           </span>
                         </div>
                       );
@@ -436,8 +392,7 @@ export function TiketArhitektPage() {
                           : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      EV {t.expectedValuePercent >= 0 ? "+" : ""}
-                      {t.expectedValuePercent}%
+                      EV {t.expectedValuePercent >= 0 ? "+" : ""}{t.expectedValuePercent}%
                     </span>
                   </div>
 
@@ -450,48 +405,31 @@ export function TiketArhitektPage() {
                         odds: b.bookmakerOdd,
                         dataQuality: 0.9,
                         market: b.market,
-                      }),
+                      })
                     );
                     const hasSkip = legIntegrity.some((ig) => ig.status === "PRESKOČI");
                     return (
                       <>
                         {hasSkip && (
                           <p className="rounded-lg bg-destructive/10 border border-destructive/30 p-2 text-[11px] font-semibold text-destructive">
-                            ⚠️ Barem jedna nožica ovog listića ne prolazi Integrity Gate (PRESKOČI)
-                            — razmotri uklanjanje te nožice.
+                            ⚠️ Barem jedna nožica ovog listića ne prolazi Integrity Gate (PRESKOČI) — razmotri uklanjanje te nožice.
                           </p>
                         )}
                         <div className="space-y-2 pt-2 border-t border-border/40">
                           {t.bets.map((b, bi) => (
-                            <div
-                              key={bi}
-                              className="rounded-lg bg-muted/40 p-2.5 text-xs space-y-1"
-                            >
+                            <div key={bi} className="rounded-lg bg-muted/40 p-2.5 text-xs space-y-1">
                               <div className="flex items-center justify-between gap-2">
-                                <div className="font-semibold text-foreground truncate">
-                                  {b.match}
-                                </div>
+                                <div className="font-semibold text-foreground truncate">{b.match}</div>
                                 <IntegrityPanel result={legIntegrity[bi]} compact />
                               </div>
                               <div className="flex items-center justify-between text-muted-foreground">
-                                <span className="text-primary font-medium">
-                                  {b.market}: {b.selection}
-                                </span>
-                                <span className="font-mono text-foreground font-semibold">
-                                  @{b.bookmakerOdd.toFixed(2)}
-                                </span>
+                                <span className="text-primary font-medium">{b.market}: {b.selection}</span>
+                                <span className="font-mono text-foreground font-semibold">@{b.bookmakerOdd.toFixed(2)}</span>
                               </div>
                               <div className="text-[11px] text-muted-foreground flex justify-between">
                                 <span>Šansa: {(b.probability * 100).toFixed(0)}%</span>
-                                <span
-                                  className={
-                                    b.evPercent > 0
-                                      ? "text-emerald-400 font-medium"
-                                      : "text-muted-foreground"
-                                  }
-                                >
-                                  Edge: {b.evPercent > 0 ? "+" : ""}
-                                  {b.evPercent}%
+                                <span className={b.evPercent > 0 ? "text-emerald-400 font-medium" : "text-muted-foreground"}>
+                                  Edge: {b.evPercent > 0 ? "+" : ""}{b.evPercent}%
                                 </span>
                               </div>
                             </div>
@@ -506,15 +444,11 @@ export function TiketArhitektPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="bg-muted/30 rounded-lg p-2 text-center">
                       <div className="text-muted-foreground text-[10px]">Ukupna kvota</div>
-                      <div className="text-base font-bold text-primary font-mono">
-                        {t.combinedOdd.toFixed(2)}
-                      </div>
+                      <div className="text-base font-bold text-primary font-mono">{t.combinedOdd.toFixed(2)}</div>
                     </div>
                     <div className="bg-muted/30 rounded-lg p-2 text-center">
                       <div className="text-muted-foreground text-[10px]">Preporučeni ulog</div>
-                      <div className="text-base font-bold text-foreground font-mono">
-                        {t.recommendedStakePercent}%
-                      </div>
+                      <div className="text-base font-bold text-foreground font-mono">{t.recommendedStakePercent}%</div>
                     </div>
                   </div>
 
@@ -544,8 +478,7 @@ export function TiketArhitektPage() {
         <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-400" /> Analizirane Oklade za Tiket (
-              {analyzedEdges.length})
+              <TrendingUp className="h-4 w-4 text-emerald-400" /> Analizirane Oklade za Tiket ({analyzedEdges.length})
             </h3>
             <span className="text-xs text-muted-foreground">Sortirano po matematičkom prinosu</span>
           </div>
@@ -569,28 +502,17 @@ export function TiketArhitektPage() {
                   <tr key={i} className="hover:bg-muted/30">
                     <td className="py-2.5 px-3 font-medium">
                       <div>{e.match}</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {e.league} · {e.time}
-                      </div>
+                      <div className="text-[10px] text-muted-foreground">{e.league} · {e.time}</div>
                     </td>
                     <td className="py-2.5 px-3 text-muted-foreground">{e.market}</td>
                     <td className="py-2.5 px-3 font-semibold text-primary">{e.selection}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums">
-                      {(e.probability * 100).toFixed(1)}%
-                    </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
-                      {e.fairOdd.toFixed(2)}
-                    </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums font-bold text-foreground">
-                      @{e.bookmakerOdd.toFixed(2)}
-                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums">{(e.probability * 100).toFixed(1)}%</td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{e.fairOdd.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 text-right tabular-nums font-bold text-foreground">@{e.bookmakerOdd.toFixed(2)}</td>
                     <td className="py-2.5 px-3 text-right tabular-nums font-bold text-emerald-400">
-                      {e.evPercent > 0 ? "+" : ""}
-                      {e.evPercent}%
+                      {e.evPercent > 0 ? "+" : ""}{e.evPercent}%
                     </td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
-                      {e.recommendedKellyPercent}%
-                    </td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{e.recommendedKellyPercent}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -606,8 +528,7 @@ export function TiketArhitektPage() {
             <div>
               <h3 className="font-semibold text-base">Današnje Utakmice — Odaberite za analizu</h3>
               <p className="text-xs text-muted-foreground">
-                Kliknite "Analiziraj" na željenoj utakmici. Model odmah izračunava fer kvote i
-                automatski slaže listiće.
+                Kliknite "Analiziraj" na željenoj utakmici. Model odmah izračunava fer kvote i automatski slaže listiće.
               </p>
             </div>
 
@@ -673,3 +594,5 @@ export function TiketArhitektPage() {
     </div>
   );
 }
+
+

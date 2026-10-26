@@ -1,43 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
-  pinnacleCompare,
-  oddsMovement,
-  xgLambdas,
-  marketsFromLambdas,
-  loadPicks,
-  savePicks,
-  calibrationStats,
-  calibrate,
-  type TrackedPick,
+  pinnacleCompare, oddsMovement, xgLambdas, marketsFromLambdas,
+  loadPicks, savePicks, calibrationStats, calibrate, type TrackedPick,
 } from "@/lib/pro-sloj";
 import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
-import {
-  getApiKey,
-  guarded,
-  pruneCache,
-  readState,
-  resetGuard,
-  zagrebDay,
-  RESERVE,
-} from "@/lib/zlatni-guard";
+import { getApiKey, guarded, pruneCache, readState, resetGuard, zagrebDay, RESERVE } from "@/lib/zlatni-guard";
 import { SettingsModal } from "@/components/SettingsModal";
 import { geminiChat } from "@/lib/gemini";
 import { openrouterChat } from "@/lib/openrouter";
 import { groqChat } from "@/lib/groq";
 import { hasKey } from "@/lib/storage";
-import {
-  Target,
-  Bot,
-  Zap,
-  Calculator,
-  Sparkles,
-  Send,
-  ShieldCheck,
-  RefreshCw,
-  HelpCircle,
-} from "lucide-react";
+import { Target, Bot, Zap, Calculator, Sparkles, Send, ShieldCheck, RefreshCw, HelpCircle } from "lucide-react";
 import { evaluatePredictionIntegrity } from "@/lib/prediction-integrity";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
 
@@ -45,16 +20,9 @@ export const Route = createFileRoute("/pro")({
   head: () => ({
     meta: [
       { title: "Pro Sharp Hub · Andromeda AI" },
-      {
-        name: "description",
-        content:
-          "Automatski skener vrijednosti, Sharp Oracle AI analitičar i profesionalni kladioničarski alati.",
-      },
+      { name: "description", content: "Automatski skener vrijednosti, Sharp Oracle AI analitičar i profesionalni kladioničarski alati." },
       { property: "og:title", content: "Pro Sharp Hub · Andromeda AI" },
-      {
-        property: "og:description",
-        content: "Pinnacle de-vig, steam kvota, xG model i pametni Sharp AI bot.",
-      },
+      { property: "og:description", content: "Pinnacle de-vig, steam kvota, xG model i pametni Sharp AI bot." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -65,12 +33,7 @@ export const Route = createFileRoute("/pro")({
 const n = (s: string) => parseFloat(s.replace(",", "."));
 const pct = (p: number) => `${(p * 100).toFixed(1)}%`;
 const LBL = ["1", "X", "2"];
-const time = (t: string) =>
-  new Date(t).toLocaleTimeString("hr-HR", {
-    timeZone: "Europe/Zagreb",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+const time = (t: string) => new Date(t).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" });
 
 export function ProSharpHubPage() {
   const [tab, setTab] = useState<"skener" | "oracle" | "rucno">("skener");
@@ -101,9 +64,7 @@ export function ProSharpHubPage() {
   const [open, setOpen] = useState(["", "", ""]);
   const [now, setNow] = useState(["", "", ""]);
   const [xg, setXg] = useState({ hf: "1.6", ha: "1.1", af: "1.2", aa: "1.4", lg: "1.35" });
-  const [picks, setPicks] = useState<TrackedPick[]>(() =>
-    typeof window === "undefined" ? [] : loadPicks(),
-  );
+  const [picks, setPicks] = useState<TrackedPick[]>(() => (typeof window === "undefined" ? [] : loadPicks()));
   const [label, setLabel] = useState("");
   const [prob, setProb] = useState("");
 
@@ -112,7 +73,7 @@ export function ProSharpHubPage() {
     setCredits(
       s.dayRemaining >= 0
         ? `Preostalo: ${s.dayRemaining}${s.dayLimit > 0 ? "/" + s.dayLimit : ""} · potrošeno: ${s.used} · rezerva ${RESERVE}`
-        : `Potrošeno danas: ${s.used}`,
+        : `Potrošeno danas: ${s.used}`
     );
   };
 
@@ -138,12 +99,10 @@ export function ProSharpHubPage() {
         1,
         () => getZtFixtures({ data: { date: zagrebDay(), apiKey } }),
         (ms, why) => setMsg(`${why} — čekam ${Math.ceil(ms / 1000)} s…`),
-        force,
+        force
       );
       if (r.error) {
-        setMsg(
-          `Greška: ${r.error === "RATE_LIMIT" ? "API limit — zaštita je uključila hlađenje." : r.error}`,
-        );
+        setMsg(`Greška: ${r.error === "RATE_LIMIT" ? "API limit — zaštita je uključila hlađenje." : r.error}`);
         return;
       }
       setFixtures(r.fixtures);
@@ -171,23 +130,15 @@ export function ProSharpHubPage() {
         `lite.${f.id}`,
         1,
         () => getZtMatch({ data: { id: f.id, apiKey, lite: true } }),
-        (ms, why) => setMsg(`🛡️ ${why} — čekam ${Math.ceil(ms / 1000)} s…`),
+        (ms, why) => setMsg(`🛡️ ${why} — čekam ${Math.ceil(ms / 1000)} s…`)
       );
       if (r.error === "RATE_LIMIT" || r.error?.startsWith("ACCOUNT")) {
-        setMsg(
-          r.error === "RATE_LIMIT"
-            ? "🛡️ API traži kratku pauzu (10 poziva/min). Pričekaj 15 s i klikni ponovno."
-            : `🛡️ ${r.error}`,
-        );
+        setMsg(r.error === "RATE_LIMIT" ? "🛡️ API traži kratku pauzu (10 poziva/min). Pričekaj 15 s i klikni ponovno." : `🛡️ ${r.error}`);
         return;
       }
       const a = analyze(r.markets, r.home, r.away);
       setRes(a);
-      setMsg(
-        r.bookmaker
-          ? `✅ ${Object.keys(r.markets).length} tržišta (${r.bookmaker}) učitano i modelirano — 1 kredit.`
-          : "⚠️ Kvote još nisu objavljene za ovu utakmicu.",
-      );
+      setMsg(r.bookmaker ? `✅ ${Object.keys(r.markets).length} tržišta (${r.bookmaker}) učitano i modelirano — 1 kredit.` : "⚠️ Kvote još nisu objavljene za ovu utakmicu.");
     } catch (e: any) {
       setMsg(`🛡️ ${e.message}`);
     } finally {
@@ -240,17 +191,13 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
           { role: "user", content: prompt },
         ]);
       } else {
-        reply =
-          "⚠️ Nije unesen nijedan AI ključ (Google Gemini, Groq ili OpenRouter). Klikni gumb '⚙️ Postavke & Ključevi' na vrhu i unesi besplatni ključ.";
+        reply = "⚠️ Nije unesen nijedan AI ključ (Google Gemini, Groq ili OpenRouter). Klikni gumb '⚙️ Postavke & Ključevi' na vrhu i unesi besplatni ključ.";
       }
       setOracleMsgs((prev) => [...prev, { role: "oracle", text: reply }]);
     } catch (e: any) {
       setOracleMsgs((prev) => [
         ...prev,
-        {
-          role: "oracle",
-          text: `Greška pri komunikaciji s AI modelom: ${e?.message ?? "nepoznata greška"}`,
-        },
+        { role: "oracle", text: `Greška pri komunikaciji s AI modelom: ${e?.message ?? "nepoznata greška"}` },
       ]);
     } finally {
       setOracleBusy(false);
@@ -313,7 +260,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
   }));
 
   const shown = fixtures.filter((f) =>
-    `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase()),
+    `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase())
   );
 
   return (
@@ -324,13 +271,10 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
           <div className="flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold tracking-tight">Pro Sharp Hub</h1>
-            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-              Pro v2.0
-            </span>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">Pro v2.0</span>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Automatski skener vrijednosti, profesionalni AI bot bez dosadnih pitanja i napredni
-            oštri alati.
+            Automatski skener vrijednosti, profesionalni AI bot bez dosadnih pitanja i napredni oštri alati.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -367,9 +311,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
         <button
           onClick={() => setTab("skener")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
-            tab === "skener"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+            tab === "skener" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Zap className="h-4 w-4 text-amber-500" /> Automatski Sharp Skener
@@ -377,9 +319,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
         <button
           onClick={() => setTab("oracle")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
-            tab === "oracle"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+            tab === "oracle" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Bot className="h-4 w-4 text-primary" /> Sharp Oracle AI Bot
@@ -387,9 +327,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
         <button
           onClick={() => setTab("rucno")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
-            tab === "rucno"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+            tab === "rucno" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
           <Calculator className="h-4 w-4 text-emerald-500" /> Ručni Alati & Edukacija
@@ -404,8 +342,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
               <div>
                 <h2 className="text-lg font-bold">Automatski Sharp Skener Utakmica</h2>
                 <p className="text-xs text-muted-foreground">
-                  Jednim klikom učitaj utakmice dana. Klikom na utakmicu automatski se povlače
-                  stvarne bet365 kvote i Dixon-Coles model.
+                  Jednim klikom učitaj utakmice dana. Klikom na utakmicu automatski se povlače stvarne bet365 kvote i Dixon-Coles model.
                 </p>
               </div>
               <button
@@ -437,9 +374,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       }`}
                     >
                       <span>
-                        <b className="text-foreground">
-                          {f.home} — {f.away}
-                        </b>
+                        <b className="text-foreground">{f.home} — {f.away}</b>
                         <span className="block text-muted-foreground">{f.league}</span>
                       </span>
                       <span className="font-mono text-primary font-semibold">
@@ -457,12 +392,8 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
             <div className="rounded-2xl border-2 border-primary/80 bg-card p-5 space-y-4 shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">
-                    Sharp Analiza
-                  </span>
-                  <h3 className="text-xl font-black text-foreground">
-                    {sel.home} — {sel.away}
-                  </h3>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">Sharp Analiza</span>
+                  <h3 className="text-xl font-black text-foreground">{sel.home} — {sel.away}</h3>
                   <p className="text-xs text-muted-foreground">{sel.league}</p>
                 </div>
                 <button
@@ -476,20 +407,12 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
               {/* Istaknuti Value i Glavni Tip */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-1">
-                  <span className="text-[11px] font-bold uppercase text-primary">
-                    🎯 Glavni Sharp Tip
-                  </span>
+                  <span className="text-[11px] font-bold uppercase text-primary">🎯 Glavni Sharp Tip</span>
                   {res.golden ? (
                     <>
-                      <div className="text-lg font-black text-foreground">
-                        {res.golden.market}: {res.golden.outcome.label}
-                      </div>
+                      <div className="text-lg font-black text-foreground">{res.golden.market}: {res.golden.outcome.label}</div>
                       <div className="text-xs text-muted-foreground">
-                        Kvota:{" "}
-                        <b className="text-foreground">
-                          {res.golden.outcome.odd?.toFixed(2) ?? "—"}
-                        </b>{" "}
-                        · Fer kvota: <b>{res.golden.outcome.fair.toFixed(2)}</b>
+                        Kvota: <b className="text-foreground">{res.golden.outcome.odd?.toFixed(2) ?? "—"}</b> · Fer kvota: <b>{res.golden.outcome.fair.toFixed(2)}</b>
                       </div>
                       <div className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5">
                         Vjerojatnost: {pct(res.golden.outcome.p)}
@@ -502,45 +425,30 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 </div>
 
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-1">
-                  <span className="text-[11px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
-                    💰 Najveća Vrijednost (Value Bet)
-                  </span>
+                  <span className="text-[11px] font-bold uppercase text-emerald-600 dark:text-emerald-400">💰 Najveća Vrijednost (Value Bet)</span>
                   {res.value ? (
                     <>
-                      <div className="text-lg font-black text-foreground">
-                        {res.value.market}: {res.value.outcome.label}
-                      </div>
+                      <div className="text-lg font-black text-foreground">{res.value.market}: {res.value.outcome.label}</div>
                       <div className="text-xs text-muted-foreground">
-                        Kvota:{" "}
-                        <b className="text-foreground">
-                          {res.value.outcome.odd?.toFixed(2) ?? "—"}
-                        </b>
+                        Kvota: <b className="text-foreground">{res.value.outcome.odd?.toFixed(2) ?? "—"}</b>
                       </div>
                       <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                        EV: +{((res.value.outcome.ev ?? 0) * 100).toFixed(1)}% matematičke
-                        prednosti!
+                        EV: +{((res.value.outcome.ev ?? 0) * 100).toFixed(1)}% matematičke prednosti!
                         <IntegrityPanel result={valueIntegrity} compact />
                       </div>
                     </>
                   ) : (
-                    <div className="text-xs text-muted-foreground">
-                      Kvote su trenutno u balansu.
-                    </div>
+                    <div className="text-xs text-muted-foreground">Kvote su trenutno u balansu.</div>
                   )}
                 </div>
 
                 <div className="rounded-xl border border-border bg-secondary/50 p-3 space-y-1">
-                  <span className="text-[11px] font-bold uppercase text-muted-foreground">
-                    🛡️ Najsigurnija Linija
-                  </span>
+                  <span className="text-[11px] font-bold uppercase text-muted-foreground">🛡️ Najsigurnija Linija</span>
                   {res.safe ? (
                     <>
-                      <div className="text-lg font-black text-foreground">
-                        {res.safe.market}: {res.safe.outcome.label}
-                      </div>
+                      <div className="text-lg font-black text-foreground">{res.safe.market}: {res.safe.outcome.label}</div>
                       <div className="text-xs text-muted-foreground">
-                        Kvota:{" "}
-                        <b className="text-foreground">{res.safe.outcome.odd?.toFixed(2) ?? "—"}</b>
+                        Kvota: <b className="text-foreground">{res.safe.outcome.odd?.toFixed(2) ?? "—"}</b>
                       </div>
                       <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
                         Sigurnost: {pct(res.safe.outcome.p)}
@@ -553,9 +461,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 </div>
               </div>
 
-              {goldenIntegrity && (
-                <IntegrityPanel result={goldenIntegrity} title="Integritet glavnog Sharp tipa" />
-              )}
+              {goldenIntegrity && <IntegrityPanel result={goldenIntegrity} title="Integritet glavnog Sharp tipa" />}
 
               {/* Očekivani golovi i točni rezultati */}
               <div className="grid gap-2 sm:grid-cols-2 rounded-xl bg-muted/40 p-3 text-xs">
@@ -568,10 +474,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 <div>
                   <span className="text-muted-foreground">Najvjerojatniji točni rezultati:</span>
                   <p className="text-sm font-bold text-foreground">
-                    {res.topScores
-                      .slice(0, 3)
-                      .map((s) => `${s.score} (${pct(s.p)})`)
-                      .join(" · ")}
+                    {res.topScores.slice(0, 3).map((s) => `${s.score} (${pct(s.p)})`).join(" · ")}
                   </p>
                 </div>
               </div>
@@ -589,20 +492,15 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
               <div>
                 <h2 className="font-bold text-base">Sharp Oracle — Analitički AI Mozak</h2>
                 <p className="text-xs text-muted-foreground">
-                  Fokusiran isključivo na matematičku vrijednost (Value), fer kvote i konkretne
-                  tipove. Nema dosadnih pitanja.
+                  Fokusiran isključivo na matematičku vrijednost (Value), fer kvote i konkretne tipove. Nema dosadnih pitanja.
                 </p>
               </div>
             </div>
             <button
-              onClick={() =>
-                setOracleMsgs([
-                  {
-                    role: "oracle",
-                    text: "Razgovor resetiran. Za koji par želiš brzu analizu i proračun fer kvota?",
-                  },
-                ])
-              }
+              onClick={() => setOracleMsgs([{
+                role: "oracle",
+                text: "Razgovor resetiran. Za koji par želiš brzu analizu i proračun fer kvota?",
+              }])}
               className="rounded-lg border border-input bg-secondary px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
             >
               Očisti chat
@@ -629,8 +527,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
             ))}
             {oracleBusy && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
-                <Sparkles className="h-3.5 w-3.5 animate-spin text-primary" /> Sharp Oracle računa
-                modele i fer kvote…
+                <Sparkles className="h-3.5 w-3.5 animate-spin text-primary" /> Sharp Oracle računa modele i fer kvote…
               </div>
             )}
           </div>
@@ -689,29 +586,20 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
               <HelpCircle className="h-5 w-5" /> Gdje besplatno pronaći Pinnacle kvote i padove?
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Za ručni unos kvota koristi besplatni servis <b>Oddsportal.com</b>. Tamo imaš pregled
-              svih svjetskih kladionica (Pinnacle, bet365, bwin) i strelice pada kvota. Upiši
-              Pinnacleove kvote kao "oštru liniju", a kvote tvoje lokalne kladionice (SuperSport,
-              PSK, Favbet) kao "meku liniju".
+              Za ručni unos kvota koristi besplatni servis <b>Oddsportal.com</b>. Tamo imaš pregled svih svjetskih kladionica (Pinnacle, bet365, bwin) i strelice pada kvota. Upiši Pinnacleove kvote kao "oštru liniju", a kvote tvoje lokalne kladionice (SuperSport, PSK, Favbet) kao "meku liniju".
             </p>
           </div>
 
           {/* 1. Pinnacle Usporedba */}
           <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
             <div className="space-y-1">
-              <h3 className="font-bold text-base">
-                1. Usporedba s Pinnacleom (Traženje vrijednosti - Value Bet)
-              </h3>
+              <h3 className="font-bold text-base">1. Usporedba s Pinnacleom (Traženje vrijednosti - Value Bet)</h3>
               <p className="text-xs text-muted-foreground">
-                Pinnacle ima najmanju maržu na svijetu. Uklanjanjem njihove provizije dobivamo 100%
-                poštenu "fer cijenu". Ako tvoja kladionica nudi veću kvotu, u prednosti si nad
-                kladionicom!
+                Pinnacle ima najmanju maržu na svijetu. Uklanjanjem njihove provizije dobivamo 100% poštenu "fer cijenu". Ako tvoja kladionica nudi veću kvotu, u prednosti si nad kladionicom!
               </p>
             </div>
             <div>
-              <span className="text-xs font-semibold text-muted-foreground block mb-1">
-                Pinnacle kvote (1, X, 2):
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground block mb-1">Pinnacle kvote (1, X, 2):</span>
               <div className="grid grid-cols-3 gap-2">
                 {pin.map((x, i) => (
                   <input
@@ -730,9 +618,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
               </div>
             </div>
             <div>
-              <span className="text-xs font-semibold text-muted-foreground block mb-1">
-                Tvoja lokalna kladionica (1, X, 2):
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground block mb-1">Tvoja lokalna kladionica (1, X, 2):</span>
               <div className="grid grid-cols-3 gap-2">
                 {soft.map((x, i) => (
                   <input
@@ -755,15 +641,11 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 {cmpWithIntegrity.map((r, i) => (
                   <div key={i} className="flex items-center justify-between gap-2">
                     <span>
-                      <b>Ishod {LBL[i]}:</b> fer vjerojatnost {pct(r.fairProb)} · poštena kvota{" "}
-                      {r.fairOdds.toFixed(2)}
+                      <b>Ishod {LBL[i]}:</b> fer vjerojatnost {pct(r.fairProb)} · poštena kvota {r.fairOdds.toFixed(2)}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <span
-                        className={r.value ? "text-emerald-500 font-bold" : "text-muted-foreground"}
-                      >
-                        {r.edgePct >= 0 ? "+" : ""}
-                        {r.edgePct.toFixed(1)}% {r.value ? "🔥 VALUE BET" : ""}
+                      <span className={r.value ? "text-emerald-500 font-bold" : "text-muted-foreground"}>
+                        {r.edgePct >= 0 ? "+" : ""}{r.edgePct.toFixed(1)}% {r.value ? "🔥 VALUE BET" : ""}
                       </span>
                       {r.value && <IntegrityPanel result={r.integrity} compact />}
                     </span>
@@ -778,14 +660,11 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
             <div className="space-y-1">
               <h3 className="font-bold text-base">2. Pad Kvota (Steam / Pametni Novac)</h3>
               <p className="text-xs text-muted-foreground">
-                Prati kretanje kvota od otvaranja ponude do danas. Pad veći od 5% obično označava
-                ulazak velikih novčanih sindikata na taj ishod.
+                Prati kretanje kvota od otvaranja ponude do danas. Pad veći od 5% obično označava ulazak velikih novčanih sindikata na taj ishod.
               </p>
             </div>
             <div>
-              <span className="text-xs font-semibold text-muted-foreground block mb-1">
-                Početne kvote pri otvaranju (1, X, 2):
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground block mb-1">Početne kvote pri otvaranju (1, X, 2):</span>
               <div className="grid grid-cols-3 gap-2">
                 {open.map((x, i) => (
                   <input
@@ -804,9 +683,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
               </div>
             </div>
             <div>
-              <span className="text-xs font-semibold text-muted-foreground block mb-1">
-                Trenutne kvote sada (1, X, 2):
-              </span>
+              <span className="text-xs font-semibold text-muted-foreground block mb-1">Trenutne kvote sada (1, X, 2):</span>
               <div className="grid grid-cols-3 gap-2">
                 {now.map((x, i) => (
                   <input
@@ -836,17 +713,12 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                         r.signal === "steam"
                           ? "text-emerald-500 font-bold"
                           : r.signal === "drift"
-                            ? "text-red-500 font-semibold"
-                            : "text-muted-foreground"
+                          ? "text-red-500 font-semibold"
+                          : "text-muted-foreground"
                       }
                     >
-                      {r.shiftPts >= 0 ? "+" : ""}
-                      {r.shiftPts.toFixed(1)} bod. ·{" "}
-                      {r.signal === "steam"
-                        ? "⚡ STEAM (Ulazak novca)"
-                        : r.signal === "drift"
-                          ? "🔻 DRIFT (Odljev novca)"
-                          : "Mirno"}
+                      {r.shiftPts >= 0 ? "+" : ""}{r.shiftPts.toFixed(1)} bod. ·{" "}
+                      {r.signal === "steam" ? "⚡ STEAM (Ulazak novca)" : r.signal === "drift" ? "🔻 DRIFT (Odljev novca)" : "Mirno"}
                     </span>
                   </div>
                 ))}
@@ -858,19 +730,16 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
           <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
             <h3 className="font-bold text-base">3. xG Model Jačine (Maher Poisson)</h3>
             <p className="text-xs text-muted-foreground">
-              Izračunaj očekivani broj golova obje momčadi na temelju prosječnog xG učinka i
-              prosjeka lige.
+              Izračunaj očekivani broj golova obje momčadi na temelju prosječnog xG učinka i prosjeka lige.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-              {(
-                [
-                  ["hf", "Domaćin xG za"],
-                  ["ha", "Domaćin xG protiv"],
-                  ["af", "Gost xG za"],
-                  ["aa", "Gost xG protiv"],
-                  ["lg", "Prosjek lige po momčadi"],
-                ] as const
-              ).map(([k, l]) => (
+              {([
+                ["hf", "Domaćin xG za"],
+                ["ha", "Domaćin xG protiv"],
+                ["af", "Gost xG za"],
+                ["aa", "Gost xG protiv"],
+                ["lg", "Prosjek lige po momčadi"],
+              ] as const).map(([k, l]) => (
                 <label key={k} className="space-y-1 block">
                   <span className="text-muted-foreground">{l}</span>
                   <input
@@ -884,15 +753,11 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
             </div>
             {mk && (
               <div className="rounded-xl bg-muted/40 p-3 text-xs space-y-1">
-                <div>
-                  λ domaćin: <b>{lh.toFixed(2)}</b> · λ gost: <b>{la.toFixed(2)}</b>
-                </div>
+                <div>λ domaćin: <b>{lh.toFixed(2)}</b> · λ gost: <b>{la.toFixed(2)}</b></div>
                 <div className="font-semibold text-foreground">
                   1: {pct(mk.home)} · X: {pct(mk.draw)} · 2: {pct(mk.away)}
                 </div>
-                <div>
-                  Over 2.5: <b>{pct(mk.over25)}</b> · Oba daju gol (GG): <b>{pct(mk.btts)}</b>
-                </div>
+                <div>Over 2.5: <b>{pct(mk.over25)}</b> · Oba daju gol (GG): <b>{pct(mk.btts)}</b></div>
               </div>
             )}
           </div>
@@ -901,8 +766,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
           <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
             <h3 className="font-bold text-base">4. Ocjena Kalibracije & Brier Score</h3>
             <p className="text-xs text-muted-foreground">
-              Unesi svoje ili AI tipove s postotkom sigurnosti i nakon utakmice označi je li prošao.
-              Sustav automatski računa tvoju točnost.
+              Unesi svoje ili AI tipove s postotkom sigurnosti i nakon utakmice označi je li prošao. Sustav automatski računa tvoju točnost.
             </p>
             <div className="flex gap-2">
               <input
@@ -922,10 +786,7 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 onClick={() => {
                   const p = n(prob) / 100;
                   if (!label || !(p > 0 && p < 1)) return;
-                  upd([
-                    { id: crypto.randomUUID(), label, prob: p, won: null, ts: Date.now() },
-                    ...picks,
-                  ]);
+                  upd([{ id: crypto.randomUUID(), label, prob: p, won: null, ts: Date.now() }, ...picks]);
                   setLabel("");
                   setProb("");
                 }}
@@ -938,9 +799,8 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
             <div className="text-xs text-muted-foreground">
               {st.n ? (
                 <>
-                  Ukupno ocijenjeno: <b>{st.n}</b> · Uspješnost: <b>{pct(st.hitRate!)}</b> ·
-                  Prosječno predviđeno: <b>{pct(st.avgProb!)}</b> · Brier skor:{" "}
-                  <b>{st.brier!.toFixed(3)}</b>
+                  Ukupno ocijenjeno: <b>{st.n}</b> · Uspješnost: <b>{pct(st.hitRate!)}</b> · Prosječno predviđeno:{" "}
+                  <b>{pct(st.avgProb!)}</b> · Brier skor: <b>{st.brier!.toFixed(3)}</b>
                 </>
               ) : (
                 "Nema ocijenjenih tipova. Dodaj tip gore i zabilježi ishod."
@@ -950,31 +810,20 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
             <div className="divide-y divide-border rounded-lg border border-border max-h-48 overflow-y-auto">
               {picks.map((p) => (
                 <div key={p.id} className="flex items-center justify-between p-2 text-xs">
-                  <span>
-                    {p.label} · <b className="text-primary">{pct(p.prob)}</b>
-                  </span>
+                  <span>{p.label} · <b className="text-primary">{pct(p.prob)}</b></span>
                   <div className="flex items-center gap-1">
                     {([true, false] as const).map((w) => (
                       <button
                         key={String(w)}
-                        onClick={() =>
-                          upd(picks.map((x) => (x.id === p.id ? { ...x, won: w } : x)))
-                        }
+                        onClick={() => upd(picks.map((x) => (x.id === p.id ? { ...x, won: w } : x)))}
                         className={`rounded px-2 py-0.5 border border-border text-[11px] ${
-                          p.won === w
-                            ? w
-                              ? "bg-emerald-600 text-white"
-                              : "bg-red-600 text-white"
-                            : "hover:bg-muted"
+                          p.won === w ? (w ? "bg-emerald-600 text-white" : "bg-red-600 text-white") : "hover:bg-muted"
                         }`}
                       >
                         {w ? "Prošao" : "Pao"}
                       </button>
                     ))}
-                    <button
-                      onClick={() => upd(picks.filter((x) => x.id !== p.id))}
-                      className="px-1.5 text-muted-foreground hover:text-foreground"
-                    >
+                    <button onClick={() => upd(picks.filter((x) => x.id !== p.id))} className="px-1.5 text-muted-foreground hover:text-foreground">
                       ✕
                     </button>
                   </div>
@@ -990,3 +839,4 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
     </div>
   );
 }
+

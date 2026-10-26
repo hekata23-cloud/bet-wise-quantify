@@ -171,7 +171,10 @@ export function computeStats(
 }
 
 /** Returns the badge definitions newly earned, in catalog order. */
-export function findNewAchievements(stats: AchievementStats, unlocked: string[]): AchievementDef[] {
+export function findNewAchievements(
+  stats: AchievementStats,
+  unlocked: string[],
+): AchievementDef[] {
   const owned = new Set(unlocked);
   return ACHIEVEMENTS.filter((a) => !owned.has(a.id) && a.check(stats));
 }
@@ -180,10 +183,7 @@ export function findNewAchievements(stats: AchievementStats, unlocked: string[])
 /* Skill & course analytics                                            */
 /* ------------------------------------------------------------------ */
 
-export function skillMastery(
-  progress: UserProgress,
-  languageCode: string,
-): Record<LessonKind, number> {
+export function skillMastery(progress: UserProgress, languageCode: string): Record<LessonKind, number> {
   const totals = Object.fromEntries(LESSON_KINDS.map((k) => [k, { sum: 0, n: 0 }])) as Record<
     LessonKind,
     { sum: number; n: number }
@@ -306,8 +306,7 @@ export function buildRecommendations(progress: UserProgress, limit = 4): Recomme
   const active = progress.activeCourses.filter((code) =>
     available.some((c) => c.languageCode === code),
   );
-  const focus =
-    active.length > 0 ? active : available.length > 0 ? [available[0].languageCode] : [];
+  const focus = active.length > 0 ? active : available.length > 0 ? [available[0].languageCode] : [];
   const out: Recommendation[] = [];
   const today = todayKey();
 
@@ -336,7 +335,9 @@ export function buildRecommendations(progress: UserProgress, limit = 4): Recomme
     }
 
     // 2. Otherwise the next unseen unit, lowest level first.
-    const nextUnit = course.levels.flatMap((l) => l.units).find((u) => !progress.units[u.topicId]);
+    const nextUnit = course.levels
+      .flatMap((l) => l.units)
+      .find((u) => !progress.units[u.topicId]);
     if (nextUnit && !cp.inProgressUnitIds.includes(nextUnit.topicId)) {
       out.push({
         id: `next-${nextUnit.topicId}`,

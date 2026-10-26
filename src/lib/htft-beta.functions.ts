@@ -21,17 +21,12 @@ function resolveKey(clientKey?: string | null): string | null {
 async function call(path: string, clientKey?: string | null) {
   const key = resolveKey(clientKey);
   if (!key) {
-    return {
-      error: "Nedostaje API ključ. Unesi ga u Postavkama (⚙️).",
-      data: null as unknown,
-      remaining: -1,
-    };
+    return { error: "Nedostaje API ključ. Unesi ga u Postavkama (⚙️).", data: null as unknown, remaining: -1 };
   }
   const r = await guardGet(path, { apiKey: key });
-  const error =
-    r.error === "RATE_LIMIT"
-      ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
-      : r.error;
+  const error = r.error === "RATE_LIMIT"
+    ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
+    : r.error;
   return { error, data: r.data, remaining: r.remainingDay };
 }
 
@@ -93,7 +88,7 @@ const MAPA: Record<string, string> = { home: "1", draw: "X", away: "2" };
 
 function parsirajHtFt(bookmakers: any[]) {
   const htft: Record<string, number> = {};
-  let ht1x2: { "1"?: number; X?: number; "2"?: number } | null = null;
+  let ht1x2: { "1"?: number; "X"?: number; "2"?: number } | null = null;
   let izvor: string | null = null;
 
   for (const bm of bookmakers ?? []) {
@@ -103,9 +98,7 @@ function parsirajHtFt(bookmakers: any[]) {
 
       if (/(half time\s*\/\s*full time|ht\/ft|half\/full)/.test(name)) {
         for (const v of vals) {
-          const m = String(v.value)
-            .trim()
-            .match(/^(home|draw|away)\s*\/\s*(home|draw|away)$/i);
+          const m = String(v.value).trim().match(/^(home|draw|away)\s*\/\s*(home|draw|away)$/i);
           const k = Number(v.odd);
           if (!m || !Number.isFinite(k) || k < 1.01) continue;
           const kod = `${MAPA[m[1]!.toLowerCase()]}/${MAPA[m[2]!.toLowerCase()]}`;
@@ -114,12 +107,8 @@ function parsirajHtFt(bookmakers: any[]) {
         }
       }
 
-      if (
-        !ht1x2 &&
-        /(1st half|first half|half time)/.test(name) &&
-        /winner|1x2|result/.test(name)
-      ) {
-        const tmp: { "1"?: number; X?: number; "2"?: number } = {};
+      if (!ht1x2 && /(1st half|first half|half time)/.test(name) && /winner|1x2|result/.test(name)) {
+        const tmp: { "1"?: number; "X"?: number; "2"?: number } = {};
         for (const v of vals) {
           const s = String(v.value).toLowerCase().trim();
           const k = Number(v.odd);
@@ -151,7 +140,7 @@ export type BetaBundle = {
   remaining: number;
   kvote: Record<string, number>;
   htft: Record<string, number>;
-  ht1x2: { "1"?: number; X?: number; "2"?: number } | null;
+  ht1x2: { "1"?: number; "X"?: number; "2"?: number } | null;
   htftIzvor: string | null;
   formaDom: FormaStat | null;
   formaGost: FormaStat | null;
@@ -165,14 +154,8 @@ export const getBetaBundle = createServerFn({ method: "POST" })
     const bookmakers: any[] = [];
     let error: string | null = null;
     for (let page = 1; page <= 3; page++) {
-      const r = await call(
-        `/odds?fixture=${data.id}&page=${page}&timezone=${encodeURIComponent(TZ)}`,
-        data.apiKey,
-      );
-      if (r.error) {
-        error = r.error;
-        break;
-      }
+      const r = await call(`/odds?fixture=${data.id}&page=${page}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
+      if (r.error) { error = r.error; break; }
       const resp = (r.data as any[]) ?? [];
       for (const item of resp) bookmakers.push(...(item?.bookmakers ?? []));
       if (resp.length === 0 || page >= 3) break;

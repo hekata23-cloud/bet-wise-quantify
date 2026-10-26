@@ -40,9 +40,7 @@ export function shannonEntropija(p: number[]): number {
 
 /** De-vigiranje 1X2: normaliziramo 1/kvota. Vraća null ako nema sve tri kvote. */
 export function devig1x2(
-  kv1?: number,
-  kvX?: number,
-  kv2?: number,
+  kv1?: number, kvX?: number, kv2?: number,
 ): { p1: number; pX: number; p2: number } | null {
   const raw = [kv1, kvX, kv2]
     .filter((k): k is number => k != null && Number.isFinite(k) && k > 1.01)
@@ -92,7 +90,7 @@ export function evaluirajAntiLoss(u: AntiLossUlaz): AntiLossVerdict {
     sukob = true;
     razlozi.push("Konflikt signala: grid-model i Skellam provjera se ne slažu.");
   }
-  if (u.mcVsModelRazlika != null && u.mcVsModelRazlika > 0.1) {
+  if (u.mcVsModelRazlika != null && u.mcVsModelRazlika > 0.10) {
     sukob = true;
     razlozi.push("Monte Carlo odstupa više od 10pp od analitičkog modela.");
   }
@@ -111,10 +109,7 @@ export function evaluirajAntiLoss(u: AntiLossUlaz): AntiLossVerdict {
       status: "SKIP",
       badge: "SKIP / HIGH VOLATILITY — PASS",
       badgeClass: "bg-red-500/15 text-red-300 border-red-500/40",
-      razlozi:
-        razlozi.length > 0
-          ? razlozi
-          : ["Konflikt signala — predikcija ne prolazi anti-loss filter."],
+      razlozi: razlozi.length > 0 ? razlozi : ["Konflikt signala — predikcija ne prolazi anti-loss filter."],
       entropija,
       edgePct,
     };
@@ -125,9 +120,7 @@ export function evaluirajAntiLoss(u: AntiLossUlaz): AntiLossVerdict {
       status: "GOLD",
       badge: "GOLD / VALUE PICK — edge ≥ 5%",
       badgeClass: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
-      razlozi,
-      entropija,
-      edgePct,
+      razlozi, entropija, edgePct,
     };
   }
 
@@ -136,9 +129,7 @@ export function evaluirajAntiLoss(u: AntiLossUlaz): AntiLossVerdict {
       status: "VALUE",
       badge: "VALUE — edge ≥ 2%",
       badgeClass: "bg-amber-500/15 text-amber-300 border-amber-500/40",
-      razlozi,
-      entropija,
-      edgePct,
+      razlozi, entropija, edgePct,
     };
   }
 
@@ -146,9 +137,7 @@ export function evaluirajAntiLoss(u: AntiLossUlaz): AntiLossVerdict {
     status: "STANDARD",
     badge: "STANDARD — bez istaknutog valuea",
     badgeClass: "bg-muted text-muted-foreground border-border",
-    razlozi,
-    entropija,
-    edgePct,
+    razlozi, entropija, edgePct,
   };
 }
 
@@ -217,3 +206,4 @@ export function kalibriranaVjerojatnost(p: number): number {
   pomak = Math.max(-0.08, Math.min(0.08, pomak));
   return Math.max(0.02, Math.min(0.98, p + pomak));
 }
+

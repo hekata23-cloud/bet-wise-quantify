@@ -33,9 +33,9 @@ const schemaDan = z.object({
 
 export type StatusUtakmice = {
   error: string | null;
-  status: string; // API short: "FT", "AET", "PEN", "AOT", "PST", "CANC", "ABD", "SUSP", "NS"…
-  zavrsena: boolean; // utakmica gotova (FT/AET/PEN/AOT)
-  dom: number | null; // konačni rezultat (uklj. produžetke ako je bilo)
+  status: string;        // API short: "FT", "AET", "PEN", "AOT", "PST", "CANC", "ABD", "SUSP", "NS"…
+  zavrsena: boolean;     // utakmica gotova (FT/AET/PEN/AOT)
+  dom: number | null;    // konačni rezultat (uklj. produžetke ako je bilo)
   gost: number | null;
   domReg: number | null; // regularno vrijeme (90' / 40-48' / 60')
   gostReg: number | null;
@@ -43,13 +43,7 @@ export type StatusUtakmice = {
   gostHT: number | null;
 };
 
-export type KandidatFiksatura = {
-  id: number;
-  dom: string;
-  gost: string;
-  status: string;
-  vrijeme?: string | null;
-};
+export type KandidatFiksatura = { id: number; dom: string; gost: string; status: string; vrijeme?: string | null };
 export type FiksatureDana = { error: string | null; fiksature: KandidatFiksatura[] };
 
 const ZAVRSENI_FOOTBALL = ["FT", "AET", "PEN"];
@@ -61,15 +55,8 @@ const fin = (x: unknown): number | null => {
 };
 
 const nista: StatusUtakmice = {
-  error: null,
-  status: "",
-  zavrsena: false,
-  dom: null,
-  gost: null,
-  domReg: null,
-  gostReg: null,
-  domHT: null,
-  gostHT: null,
+  error: null, status: "", zavrsena: false,
+  dom: null, gost: null, domReg: null, gostReg: null, domHT: null, gostHT: null,
 };
 
 const TIMOVI_KOSARKA: Array<[string, string]> = [
@@ -104,10 +91,7 @@ function hashDana(str: string): number {
   return h;
 }
 
-function generirajVirtualniRaspored(
-  sport: "kosarka" | "rukomet",
-  dan: string,
-): KandidatFiksatura[] {
+function generirajVirtualniRaspored(sport: "kosarka" | "rukomet", dan: string): KandidatFiksatura[] {
   const parovi = sport === "kosarka" ? TIMOVI_KOSARKA : TIMOVI_RUKOMET;
   const h = hashDana(`${sport}:${dan}`);
   const baseId = sport === "kosarka" ? 9100000 : 9200000;
@@ -125,7 +109,7 @@ function generirajVirtualniRaspored(
     const status = zavrsena ? "FT" : uzivo ? "2H" : "NS";
 
     return {
-      id: baseId + (h % 10000) * 10 + idx + 1,
+      id: baseId + ((h % 10000) * 10) + idx + 1,
       dom,
       gost,
       status,
@@ -138,14 +122,7 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
   .inputValidator((d) => schemaStatus.parse(d))
   .handler(async ({ data }): Promise<StatusUtakmice> => {
     // ključ s klijenta ili env fallback (podržava API_SPORTS_KEY i API_FOOTBALL_KEY)
-    const kljuc = (
-      data.apiKey ||
-      process.env["API_SPORTS_KEY"] ||
-      process.env["API_FOOTBALL_KEY"] ||
-      ""
-    )
-      .trim()
-      .replace(/^["']|["']$/g, "");
+    const kljuc = (data.apiKey || process.env["API_SPORTS_KEY"] || process.env["API_FOOTBALL_KEY"] || "").trim().replace(/^["']|["']$/g, "");
 
     // Ako je virtualna utakmica (generirana fiksatura), simuliraj deterministički rezultat
     if (data.fixtureId >= 9000000) {
@@ -156,15 +133,8 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
       const domHT = isKos ? Math.round(dom * 0.48) : Math.round(dom * 0.5);
       const gostHT = isKos ? Math.round(gost * 0.48) : Math.round(gost * 0.5);
       return {
-        error: null,
-        status: "FT",
-        zavrsena: true,
-        dom,
-        gost,
-        domReg: dom,
-        gostReg: gost,
-        domHT,
-        gostHT,
+        error: null, status: "FT", zavrsena: true,
+        dom, gost, domReg: dom, gostReg: gost, domHT, gostHT,
       };
     }
 
@@ -225,23 +195,13 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
       }
 
       return {
-        error: null,
-        status: short,
-        zavrsena: ZAVRSENI_SPORTOVI.includes(short),
-        dom,
-        gost,
-        domReg,
-        gostReg,
-        domHT,
-        gostHT,
+        error: null, status: short, zavrsena: ZAVRSENI_SPORTOVI.includes(short),
+        dom, gost, domReg, gostReg, domHT, gostHT,
       };
     }
 
     // nogomet — football kvota, api-guard
-    const r = await guardGet(`/fixtures?id=${data.fixtureId}`, {
-      apiKey: kljuc,
-      ttlMs: 10 * 60_000,
-    });
+    const r = await guardGet(`/fixtures?id=${data.fixtureId}`, { apiKey: kljuc, ttlMs: 10 * 60_000 });
     if (r.error) return { ...nista, error: r.error };
     const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
     const f = resp[0];
@@ -253,13 +213,9 @@ export const getStatusUtakmice = createServerFn({ method: "GET" })
     const dom90 = fin(f?.score?.fulltime?.home) ?? dom;
     const gost90 = fin(f?.score?.fulltime?.away) ?? gost;
     return {
-      error: null,
-      status: short,
-      zavrsena: ZAVRSENI_FOOTBALL.includes(short),
-      dom,
-      gost,
-      domReg: dom90,
-      gostReg: gost90,
+      error: null, status: short, zavrsena: ZAVRSENI_FOOTBALL.includes(short),
+      dom, gost,
+      domReg: dom90, gostReg: gost90,
       domHT: fin(f?.score?.halftime?.home),
       gostHT: fin(f?.score?.halftime?.away),
     };
@@ -269,14 +225,7 @@ export const getFiksatureDana = createServerFn({ method: "GET" })
   .inputValidator((d) => schemaDan.parse(d))
   .handler(async ({ data }): Promise<FiksatureDana> => {
     // ključ s klijenta ili env fallback (podržava API_SPORTS_KEY i API_FOOTBALL_KEY)
-    const kljuc = (
-      data.apiKey ||
-      process.env["API_SPORTS_KEY"] ||
-      process.env["API_FOOTBALL_KEY"] ||
-      ""
-    )
-      .trim()
-      .replace(/^["']|["']$/g, "");
+    const kljuc = (data.apiKey || process.env["API_SPORTS_KEY"] || process.env["API_FOOTBALL_KEY"] || "").trim().replace(/^["']|["']$/g, "");
 
     if (data.sport === "kosarka" || data.sport === "rukomet") {
       let apiFiksature: KandidatFiksatura[] = [];
@@ -291,16 +240,11 @@ export const getFiksatureDana = createServerFn({ method: "GET" })
             apiFiksature = (r.data as any[])
               .filter((g) => g?.id != null && g?.teams?.home?.name && g?.teams?.away?.name)
               .map((g) => {
-                const v =
-                  typeof g?.timestamp === "number" &&
-                  Number.isFinite(g.timestamp) &&
-                  g.timestamp > 0
-                    ? new Date(g.timestamp * 1000).toISOString()
-                    : typeof g?.date === "string" && g.date
-                      ? g.date.includes("T")
-                        ? g.date
-                        : `${g.date}T${String(g?.time ?? "18:00")}:00Z`
-                      : null;
+                const v = typeof g?.timestamp === "number" && Number.isFinite(g.timestamp) && g.timestamp > 0
+                  ? new Date(g.timestamp * 1000).toISOString()
+                  : typeof g?.date === "string" && g.date
+                    ? (g.date.includes("T") ? g.date : `${g.date}T${String(g?.time ?? "18:00")}:00Z`)
+                    : null;
                 return {
                   id: Number(g.id),
                   dom: String(g?.teams?.home?.name ?? ""),

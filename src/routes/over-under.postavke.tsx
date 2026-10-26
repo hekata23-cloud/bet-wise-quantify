@@ -11,11 +11,7 @@ export const Route = createFileRoute("/over-under/postavke")({
   head: () => ({
     meta: [
       { title: "Postavke — 2.5 Termometar" },
-      {
-        name: "description",
-        content:
-          "Unesi, testiraj i aktiviraj svoj API-Football ključ za 2.5 Termometar. Ključ ostaje spremljen samo na tvom uređaju.",
-      },
+      { name: "description", content: "Unesi, testiraj i aktiviraj svoj API-Football ključ za 2.5 Termometar. Ključ ostaje spremljen samo na tvom uređaju." },
       { property: "og:title", content: "Postavke — 2.5 Termometar" },
       { property: "og:description", content: "Unos, test i aktivacija API-Football ključa." },
       { property: "og:type", content: "website" },
@@ -105,10 +101,7 @@ function SettingsPage() {
     <main className="min-h-screen bg-surface px-4 py-6 font-sans text-ink sm:px-6">
       <div className="mx-auto w-full max-w-2xl space-y-5">
         <div className="flex items-center justify-between gap-3">
-          <Link
-            to="/over-under"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-ink"
-          >
+          <Link to="/over-under" className="inline-flex items-center gap-2 text-sm font-semibold text-muted hover:text-ink">
             <ArrowLeft className="size-4" /> Natrag na kalkulator
           </Link>
         </div>
@@ -119,9 +112,7 @@ function SettingsPage() {
           </span>
           <div>
             <h1 className="font-display text-3xl font-extrabold">POSTAVKE</h1>
-            <p className="text-sm text-ink/75">
-              Unesi svoj API-Football ključ, testiraj ga i aktiviraj.
-            </p>
+            <p className="text-sm text-ink/75">Unesi svoj API-Football ključ, testiraj ga i aktiviraj.</p>
           </div>
         </header>
 
@@ -131,9 +122,7 @@ function SettingsPage() {
           </h2>
 
           <label htmlFor="apikey" className="block">
-            <span className="mb-2 block text-sm font-semibold text-ink/85">
-              Ključ s dashboard.api-football.com
-            </span>
+            <span className="mb-2 block text-sm font-semibold text-ink/85">Ključ s dashboard.api-football.com</span>
             <input
               id="apikey"
               type="password"
@@ -150,19 +139,9 @@ function SettingsPage() {
           </label>
 
           <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              size="lg"
-              onClick={handleTest}
-              disabled={disabled}
-              className="shadow-button"
-            >
+            <Button type="button" size="lg" onClick={handleTest} disabled={disabled} className="shadow-button">
               {busy ? <Loader2 className="size-5 animate-spin" /> : <Check className="size-5" />}
-              {busy
-                ? "PROVJERAVAM…"
-                : cooldown > 0
-                  ? `PRIČEKAJ ${cooldown}s`
-                  : "TESTIRAJ, SPREMI I AKTIVIRAJ"}
+              {busy ? "PROVJERAVAM…" : cooldown > 0 ? `PRIČEKAJ ${cooldown}s` : "TESTIRAJ, SPREMI I AKTIVIRAJ"}
             </Button>
             {saved && (
               <Button type="button" size="lg" variant="outline" onClick={handleRemove}>
@@ -175,16 +154,10 @@ function SettingsPage() {
             <p
               role="status"
               className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm font-semibold ${
-                status.ok
-                  ? "border-win/50 bg-win/10 text-win"
-                  : "border-loss/50 bg-loss/10 text-loss"
+                status.ok ? "border-win/50 bg-win/10 text-win" : "border-loss/50 bg-loss/10 text-loss"
               }`}
             >
-              {status.ok ? (
-                <Check className="mt-0.5 size-4 shrink-0" />
-              ) : (
-                <X className="mt-0.5 size-4 shrink-0" />
-              )}
+              {status.ok ? <Check className="mt-0.5 size-4 shrink-0" /> : <X className="mt-0.5 size-4 shrink-0" />}
               <span>
                 {status.message}
                 {status.ok && status.plan ? ` Paket: ${status.plan}.` : ""}
@@ -205,9 +178,7 @@ function SettingsPage() {
         </section>
 
         <section className="panel space-y-2 text-sm leading-relaxed text-ink/75">
-          <h2 className="font-display text-base font-bold uppercase text-ink">
-            Zaštita od blokade računa
-          </h2>
+          <h2 className="font-display text-base font-bold uppercase text-ink">Zaštita od blokade računa</h2>
           <ul className="list-disc space-y-1 pl-5">
             <li>Provjera se šalje samo kad sam pritisneš tipku — nikad automatski.</li>
             <li>Između dvije provjere mora proći najmanje 20 sekundi.</li>

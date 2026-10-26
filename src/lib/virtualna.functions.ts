@@ -19,7 +19,7 @@ import { sportoviGet, type GuardResult } from "./sportovi-guard.server";
 
 const schema = z.object({
   sport: z.enum(["nogomet", "kosarka", "rukomet"]),
-  dan: z.string(), // "YYYY-MM-DD" (Zagreb)
+  dan: z.string(),      // "YYYY-MM-DD" (Zagreb)
   apiKey: z.string(),
 });
 
@@ -43,10 +43,7 @@ function prosjekKvota(vrijednosti: number[]): number | null {
 }
 
 /** Mapiraj knjižarevu "bets" listu u naše tržišta (tolerantno, po imenima). */
-function mapirajOpcije(
-  bets: Array<{ name?: string; values?: Array<{ value?: string; odd?: string | number }> }>,
-  nogomet: boolean,
-): KvoteOpcija[] {
+function mapirajOpcije(bets: Array<{ name?: string; values?: Array<{ value?: string; odd?: string | number }> }>, nogomet: boolean): KvoteOpcija[] {
   const izl: KvoteOpcija[] = [];
   const push = (trziste: string, tip: string, kvota: number | null) => {
     if (kvota != null) izl.push({ trziste, tip, kvota });
@@ -62,17 +59,7 @@ function mapirajOpcije(
       }
     };
     if (ime.includes("match winner") || ime === "winner") {
-      poValue(
-        (v) =>
-          /^(home|domaćin|dom)$/i.test(v)
-            ? "1"
-            : /^(away|gost)$/i.test(v)
-              ? "2"
-              : /^(draw|x)$/i.test(v)
-                ? "X"
-                : null,
-        nogomet ? "1X2" : "Moneyline",
-      );
+      poValue((v) => (/^(home|domaćin|dom)$/i.test(v) ? "1" : /^(away|gost)$/i.test(v) ? "2" : /^(draw|x)$/i.test(v) ? "X" : null), nogomet ? "1X2" : "Moneyline");
       // košarka/rukomet "Match Winner" bez remija → 1X2 X ne postoji; dopusti i kao Moneyline
       if (!nogomet && vals.length === 2) {
         for (const v of vals) {
@@ -89,17 +76,7 @@ function mapirajOpcije(
     } else if (ime.includes("both teams") || ime.includes("btts")) {
       poValue((v) => (/^(yes|da)$/i.test(v) ? "GG" : /^(no|ne)$/i.test(v) ? "NG" : null), "BTTS");
     } else if (ime.includes("double chance")) {
-      poValue(
-        (v) =>
-          /^home\/draw$/i.test(v)
-            ? "1X"
-            : /^draw\/away$/i.test(v)
-              ? "X2"
-              : /^home\/away$/i.test(v)
-                ? "12"
-                : null,
-        "Dvostruka šansa",
-      );
+      poValue((v) => (/^home\/draw$/i.test(v) ? "1X" : /^draw\/away$/i.test(v) ? "X2" : /^home\/away$/i.test(v) ? "12" : null), "Dvostruka šansa");
     } else if (ime.includes("draw no bet")) {
       poValue((v) => (/^(home)$/i.test(v) ? "DNB 1" : /^(away)$/i.test(v) ? "DNB 2" : null), "DNB");
     } else if (ime.includes("halftime/fulltime") || ime.includes("ht/ft")) {
@@ -129,12 +106,9 @@ function mapirajOpcije(
 }
 
 /** Izvuči bets listu iz API-Sports odgovora (isti oblik za football/basketball/handball odds). */
-function izvuciBets(
-  item: unknown,
-): Array<{ name?: string; values?: Array<{ value?: string; odd?: string | number }> }> {
+function izvuciBets(item: unknown): Array<{ name?: string; values?: Array<{ value?: string; odd?: string | number }> }> {
   const x = item as { bookmakers?: Array<{ bets?: unknown }> };
-  const izl: Array<{ name?: string; values?: Array<{ value?: string; odd?: string | number }> }> =
-    [];
+  const izl: Array<{ name?: string; values?: Array<{ value?: string; odd?: string | number }> }> = [];
   for (const bk of x?.bookmakers ?? []) {
     for (const bet of ((bk as { bets?: unknown[] | undefined })?.bets ?? []) as unknown[]) {
       izl.push(bet as { name?: string; values?: Array<{ value?: string; odd?: string | number }> });
@@ -156,10 +130,7 @@ export const getKvoteDana = createServerFn({ method: "GET" })
       // košarka / rukomet — vlastita API kvota (kad postoji); greška = tiho → model kvote
       let r: GuardResult;
       try {
-        r = await sportoviGet(data.sport, `/odds?date=${data.dan}`, {
-          apiKey: kljuc,
-          ttlMs: KEŠ_MS,
-        });
+        r = await sportoviGet(data.sport, `/odds?date=${data.dan}`, { apiKey: kljuc, ttlMs: KEŠ_MS });
       } catch {
         return nista;
       }

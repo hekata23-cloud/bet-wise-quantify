@@ -34,10 +34,7 @@ export type TrzisnaDinamikaRezultat = {
   upozorenja: string[];
 };
 
-export function analizirajTrzisnuDinamiku(
-  id: IndikatorId,
-  ulaz: RadarUlaz,
-): TrzisnaDinamikaRezultat {
+export function analizirajTrzisnuDinamiku(id: IndikatorId, ulaz: RadarUlaz): TrzisnaDinamikaRezultat {
   const { odds } = ulaz;
   const signali: string[] = [];
   const upozorenja: string[] = [];
@@ -149,3 +146,4 @@ export function analizirajTrzisnuDinamiku(
     upozorenja,
   };
 }
+

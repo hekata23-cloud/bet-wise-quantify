@@ -11,92 +11,63 @@
 export function fi(x: number): number {
   // Abramowitz & Stegun 7.1.26 erf
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
-  const d = 0.3989422804014327 * Math.exp((-x * x) / 2);
-  let p =
-    d *
-    t *
-    (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const d = 0.3989422804014327 * Math.exp(-x * x / 2);
+  let p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   return x >= 0 ? 1 - p : p;
 }
 
 export function fiInv(p: number): number {
   if (p <= 0) return -8;
   if (p >= 1) return 8;
-  const a = [
-    -3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.38357751867269e2,
-    -3.066479806614716e1, 2.506628277459239,
-  ];
-  const b = [
-    -5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1,
-    -1.328068155288572e1,
-  ];
-  const c = [
-    -7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734,
-    4.374664141464968, 2.938163982698783,
-  ];
-  const d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996, 3.754408661907416];
+  const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+  const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
   const pl = 0.02425;
   let q: number, r: number;
   if (p < pl) {
     q = Math.sqrt(-2 * Math.log(p));
-    return (
-      (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
-      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
-    );
+    return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
   }
   if (p > 1 - pl) {
     q = Math.sqrt(-2 * Math.log(1 - p));
-    return (
-      -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
-      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
-    );
+    return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
   }
   q = p - 0.5;
   r = q * q;
-  return (
-    ((((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q) /
-    (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
-  );
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+    (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 }
 
 /* ── korelacija tržišta sa zajedničkim faktorom (gol okruženje meča) ──
    predznak: + znači da rastući gol intenzitet POVRAĆAVA vjerojatnost tipa */
 export const KORELACIJE_TRZISTA: Record<string, number> = {
-  o05: 0.35,
-  o15: 0.55,
-  o25: 0.65,
-  o35: 0.6,
-  o45: 0.5,
-  u05: -0.35,
-  u15: -0.55,
-  u25: -0.65,
-  u35: -0.6,
-  u45: -0.5,
-  bttsDa: 0.45,
-  bttsNe: -0.45,
-  "1": 0.2,
-  "2": 0.2,
-  X: -0.4,
-  htftPoz: 0.3,
+  o05: 0.35, o15: 0.55, o25: 0.65, o35: 0.60, o45: 0.50,
+  u05: -0.35, u15: -0.55, u25: -0.65, u35: -0.60, u45: -0.50,
+  bttsDa: 0.45, bttsNe: -0.45,
+  "1": 0.20, "2": 0.20, "X": -0.40,
+  htftPoz: 0.30,
 };
 
 export interface SgpStavka {
-  kljuc: string; // ključ tržišta (o25, bttsDa, "1", ...)
-  label: string; // prikaz ("O2.5")
-  p: number; // model vjerojatnost 0..1
-  kvota: number; // tržišna kvota
+  kljuc: string;   // ključ tržišta (o25, bttsDa, "1", ...)
+  label: string;   // prikaz ("O2.5")
+  p: number;       // model vjerojatnost 0..1
+  kvota: number;   // tržišna kvota
 }
 
 export interface SgpIzlaz {
   n: number;
-  kvota: number; // kombinirana (množenje kvota — to je točno i uz korelaciju)
-  pNaivno: number; // naivno ∏p — POGREŠNO za korelirane opcije
-  pCopula: number; // prava zajednička vjerojatnost (Gaussian copula)
+  kvota: number;         // kombinirana (množenje kvota — to je točno i uz korelaciju)
+  pNaivno: number;       // naivno ∏p — POGREŠNO za korelirane opcije
+  pCopula: number;       // prava zajednička vjerojatnost (Gaussian copula)
   korelacijaKorekcija: number; // (pCopula − pNaivno) u pp
-  edge: number; // kvota × pCopula − 1
+  edge: number;          // kvota × pCopula − 1
   edgeNaivno: number;
-  kelly: number; // puna Kelly na pCopula
-  kellyPct: number; // preporučeni ulog (¼ Kelly, cap 3% banke)
+  kelly: number;         // puna Kelly na pCopula
+  kellyPct: number;      // preporučeni ulog (¼ Kelly, cap 3% banke)
   upozorenja: string[];
   konflikt: boolean;
   isplativo: boolean;
@@ -115,7 +86,7 @@ function simpsonE(pairs: { z: number; rho: number }[]): number {
       prod *= fi((z - rho * F) / Math.sqrt(Math.max(1e-9, 1 - rho * rho)));
       if (prod < 1e-12) return 0;
     }
-    return (prod * Math.exp((-F * F) / 2)) / Math.sqrt(2 * Math.PI);
+    return prod * Math.exp(-F * F / 2) / Math.sqrt(2 * Math.PI);
   };
   let sum = f(SIM_A) + f(SIM_B);
   for (let i = 1; i < SIM_N; i++) {
@@ -143,17 +114,12 @@ function clamp01(x: number): number {
   return Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 }
 
+
 /* tržišta koja se MEĐUSOBNO ISKLJUČUJU — ne smiju u isti SGP */
 const KONFLIKT_PAROVI: [string, string][] = [
-  ["o05", "u05"],
-  ["o15", "u15"],
-  ["o25", "u25"],
-  ["o35", "u35"],
-  ["o45", "u45"],
+  ["o05", "u05"], ["o15", "u15"], ["o25", "u25"], ["o35", "u35"], ["o45", "u45"],
   ["bttsDa", "bttsNe"],
-  ["1", "2"],
-  ["1", "X"],
-  ["2", "X"],
+  ["1", "2"], ["1", "X"], ["2", "X"],
 ];
 
 function pronadjiKonflikte(kljucevi: string[]): [string, string][] {
@@ -163,18 +129,8 @@ function pronadjiKonflikte(kljucevi: string[]): [string, string][] {
 
 export function izracunajSgp(stavke: SgpStavka[]): SgpIzlaz {
   const prazno: SgpIzlaz = {
-    n: 0,
-    kvota: 1,
-    pNaivno: 0,
-    pCopula: 0,
-    korelacijaKorekcija: 0,
-    edge: 0,
-    edgeNaivno: 0,
-    kelly: 0,
-    kellyPct: 0,
-    upozorenja: [],
-    konflikt: false,
-    isplativo: false,
+    n: 0, kvota: 1, pNaivno: 0, pCopula: 0, korelacijaKorekcija: 0,
+    edge: 0, edgeNaivno: 0, kelly: 0, kellyPct: 0, upozorenja: [], konflikt: false, isplativo: false,
   };
   const valjane = stavke.filter((s) => s.p > 0 && s.p < 1 && s.kvota > 1);
   if (valjane.length === 0) return prazno;
@@ -206,10 +162,7 @@ export function izracunajSgp(stavke: SgpStavka[]): SgpIzlaz {
   const kellyPct = Math.min(2, kelly * 0.25 * 100);
 
   const upozorenja: string[] = [];
-  if (valjane.length > 3)
-    upozorenja.push(
-      "Više od 3 noge: varijanca naglo raste — dugačka serija ovakvih listića gotovo sigurno gubi novac.",
-    );
+  if (valjane.length > 3) upozorenja.push("Više od 3 noge: varijanca naglo raste — dugačka serija ovakvih listića gotovo sigurno gubi novac.");
   const kor = (pCopula - pNaivno) * 100;
   if (Math.abs(kor) >= 3) {
     upozorenja.push(

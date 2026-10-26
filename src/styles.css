@@ -90,7 +90,7 @@
   --ring: oklch(0.585 0.232 25.5);
   --chart-1: oklch(0.585 0.232 25.5);
   --chart-2: oklch(0.97 0.004 20);
-  --chart-3: oklch(0.7 0.2 35);
+  --chart-3: oklch(0.70 0.20 35);
   --chart-4: oklch(0.78 0.16 80);
   --chart-5: oklch(0.45 0.18 25);
   --sidebar: oklch(0.17 0.014 20);
@@ -103,9 +103,7 @@
   --sidebar-ring: oklch(0.585 0.232 25.5);
   --gradient-primary: linear-gradient(135deg, oklch(0.585 0.232 25.5), oklch(0.97 0.004 20));
   --gradient-accent: linear-gradient(135deg, oklch(0.97 0.004 20), oklch(0.585 0.232 25.5));
-  --gradient-hero:
-    radial-gradient(ellipse at top, oklch(0.42 0.19 25 / 0.35), transparent 62%),
-    radial-gradient(ellipse at bottom right, oklch(0.85 0.02 20 / 0.1), transparent 60%);
+  --gradient-hero: radial-gradient(ellipse at top, oklch(0.42 0.19 25 / 0.35), transparent 62%), radial-gradient(ellipse at bottom right, oklch(0.85 0.02 20 / 0.10), transparent 60%);
   --shadow-glow: 0 0 40px oklch(0.585 0.232 25.5 / 0.35);
   --shadow-card: 0 8px 32px oklch(0 0 0 / 0.45);
 }
@@ -136,7 +134,7 @@
   --ring: oklch(0.585 0.232 25.5);
   --chart-1: oklch(0.585 0.232 25.5);
   --chart-2: oklch(0.97 0.004 20);
-  --chart-3: oklch(0.7 0.2 35);
+  --chart-3: oklch(0.70 0.20 35);
   --chart-4: oklch(0.78 0.16 80);
   --chart-5: oklch(0.45 0.18 25);
   --sidebar: oklch(0.17 0.014 20);
@@ -149,9 +147,7 @@
   --sidebar-ring: oklch(0.585 0.232 25.5);
   --gradient-primary: linear-gradient(135deg, oklch(0.585 0.232 25.5), oklch(0.97 0.004 20));
   --gradient-accent: linear-gradient(135deg, oklch(0.97 0.004 20), oklch(0.585 0.232 25.5));
-  --gradient-hero:
-    radial-gradient(ellipse at top, oklch(0.42 0.19 25 / 0.35), transparent 62%),
-    radial-gradient(ellipse at bottom right, oklch(0.85 0.02 20 / 0.1), transparent 60%);
+  --gradient-hero: radial-gradient(ellipse at top, oklch(0.42 0.19 25 / 0.35), transparent 62%), radial-gradient(ellipse at bottom right, oklch(0.85 0.02 20 / 0.10), transparent 60%);
   --shadow-glow: 0 0 40px oklch(0.585 0.232 25.5 / 0.35);
   --shadow-card: 0 8px 32px oklch(0 0 0 / 0.45);
 }
@@ -167,15 +163,9 @@
   }
 }
 @keyframes sharps-flash {
-  0% {
-    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
-  }
-  30% {
-    box-shadow: 0 0 60px 8px rgba(251, 191, 36, 0.35);
-  }
-  100% {
-    box-shadow: 0 0 28px 2px rgba(251, 191, 36, 0.15);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+  30% { box-shadow: 0 0 60px 8px rgba(251, 191, 36, 0.35); }
+  100% { box-shadow: 0 0 28px 2px rgba(251, 191, 36, 0.15); }
 }
 .sharps-aura {
   animation: sharps-flash 1.4s ease-out forwards;
@@ -203,11 +193,11 @@
   --surface: oklch(0.13 0.035 260);
   --card: oklch(0.18 0.045 255);
   --field: oklch(0.22 0.055 255);
-  --line: oklch(0.5 0.16 245);
+  --line: oklch(0.50 0.16 245);
   --ink: oklch(0.97 0.012 245);
   --muted: oklch(0.71 0.035 250);
   --volt: oklch(0.82 0.17 156);
-  --win: oklch(0.86 0.2 154);
+  --win: oklch(0.86 0.20 154);
   --loss: oklch(0.68 0.23 20);
   --cyan: oklch(0.78 0.16 220);
   --mint: oklch(0.82 0.18 170);
@@ -235,18 +225,14 @@
   background: var(--surface);
   min-height: 100vh;
 }
-.ou-scope * {
-  border-color: var(--line);
-}
+.ou-scope * { border-color: var(--line); }
 @layer components {
   .ou-scope .panel {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: color-mix(in oklab, var(--card) 92%, transparent);
     padding: 1rem;
-    box-shadow:
-      inset 0 1px 0 color-mix(in oklab, var(--ink) 5%, transparent),
-      0 14px 32px color-mix(in oklab, var(--surface) 70%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--ink) 5%, transparent), 0 14px 32px color-mix(in oklab, var(--surface) 70%, transparent);
   }
 
   .ou-scope .section-label {
@@ -305,49 +291,18 @@
     text-align: center;
   }
 
-  .ou-scope .result-choice strong {
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-  }
-  .ou-scope .result-choice span {
-    font-size: 0.7rem;
-  }
-  .ou-scope .result-choice-active-over {
-    border-color: var(--win);
-    color: var(--win);
-    background: color-mix(in oklab, var(--win) 10%, transparent);
-  }
-  .ou-scope .result-choice-active-under {
-    border-color: var(--loss);
-    color: var(--loss);
-    background: color-mix(in oklab, var(--loss) 10%, transparent);
-  }
+  .ou-scope .result-choice strong { font-family: var(--font-display); font-size: 1.05rem; }
+  .ou-scope .result-choice span { font-size: 0.7rem; }
+  .ou-scope .result-choice-active-over { border-color: var(--win); color: var(--win); background: color-mix(in oklab, var(--win) 10%, transparent); }
+  .ou-scope .result-choice-active-under { border-color: var(--loss); color: var(--loss); background: color-mix(in oklab, var(--loss) 10%, transparent); }
 
-  .ou-scope .calculation-steps > div {
-    border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
-    padding: 0.9rem 0;
-  }
-  .ou-scope .calculation-steps > div:last-child {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
-  .ou-scope .calculation-steps h3 {
-    color: var(--cyan);
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-  .ou-scope .calculation-steps p {
-    margin-top: 0.55rem;
-    font-family: Georgia, serif;
-    font-size: 0.86rem;
-  }
-  .ou-scope .shadow-button {
-    box-shadow: 0 5px 18px color-mix(in oklab, var(--win) 25%, transparent);
-  }
+  .ou-scope .calculation-steps > div { border-bottom: 1px solid color-mix(in oklab, var(--line) 60%, transparent); padding: 0.9rem 0; }
+  .ou-scope .calculation-steps > div:last-child { border-bottom: 0; padding-bottom: 0; }
+  .ou-scope .calculation-steps h3 { color: var(--cyan); font-size: 0.8rem; font-weight: 700; }
+  .ou-scope .calculation-steps p { margin-top: 0.55rem; font-family: Georgia, serif; font-size: 0.86rem; }
+  .ou-scope .shadow-button { box-shadow: 0 5px 18px color-mix(in oklab, var(--win) 25%, transparent); }
 }
 
 @media (min-width: 640px) {
-  .ou-scope .panel {
-    padding: 1.25rem;
-  }
+  .ou-scope .panel { padding: 1.25rem; }
 }

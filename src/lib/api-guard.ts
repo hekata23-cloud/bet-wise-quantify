@@ -38,12 +38,7 @@ export function canCall(): string | null {
 
 export function recordCall(remaining?: number) {
   const g = readGuard();
-  const next: Guard = {
-    day: g.day,
-    count: g.count + 1,
-    last: Date.now(),
-    remaining: remaining ?? g.remaining,
-  };
+  const next: Guard = { day: g.day, count: g.count + 1, last: Date.now(), remaining: remaining ?? g.remaining };
   localStorage.setItem(GUARD_KEY, JSON.stringify(next));
 }
 
@@ -55,10 +50,7 @@ export function resetGuard() {
 
 export function getCache<T>(id: string, maxAgeMs: number): T | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(CACHE_PREFIX + id) ?? "null") as {
-      at: number;
-      v: T;
-    } | null;
+    const raw = JSON.parse(localStorage.getItem(CACHE_PREFIX + id) ?? "null") as { at: number; v: T } | null;
     if (raw && Date.now() - raw.at < maxAgeMs) return raw.v;
   } catch {
     /* ignore */
@@ -73,3 +65,4 @@ export function setCache(id: string, value: unknown) {
     /* pun spremnik */
   }
 }
+

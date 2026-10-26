@@ -31,10 +31,10 @@ export type SportSvih = "nogomet" | "kosarka" | "rukomet";
 /** Sigurne vrijednosti lige kad podatak fali (brojke za održavanje
  *  predikcije u zdravim granicama — NE jamče točnost, samo sprječavaju
  *  NaN i 0% kao posljedicu pokvarenih podataka). */
-export const LIGA_PROSJEK_GOLI = 2.65; // ukupni golovi po meču (nogomet)
-export const KUCNA_PREDNOST = 1.15; // multiplikator kuće (nogomet)
-export const KOSE_PROSJEK_TIMA = 4.9; // korneri po timu
-export const PROSJEK_POENI_KOSA = 82; // košarka po timu
+export const LIGA_PROSJEK_GOLI = 2.65;   // ukupni golovi po meču (nogomet)
+export const KUCNA_PREDNOST = 1.15;      // multiplikator kuće (nogomet)
+export const KOSE_PROSJEK_TIMA = 4.9;    // korneri po timu
+export const PROSJEK_POENI_KOSA = 82;    // košarka po timu
 export const PROSJEK_GOLOVI_RUKO = 28.5; // rukomet po timu
 
 /** Parsova li vrijednost u čisti broj (broj ili string, i zarez kao decimalka)? */
@@ -50,13 +50,7 @@ export function brojIzUlaza(v: unknown): number | null {
   }
   if (typeof v === "object") {
     // često: broj u obliku { value: "1.45" } ili { odd: "2.10" }
-    const o = v as {
-      value?: unknown;
-      odd?: unknown;
-      home?: unknown;
-      away?: unknown;
-      total?: unknown;
-    };
+    const o = v as { value?: unknown; odd?: unknown; home?: unknown; away?: unknown; total?: unknown };
     for (const k of ["value", "odd", "total", "home", "away"] as const) {
       const r = brojIzUlaza(o[k]);
       if (r != null) return r;
@@ -121,7 +115,7 @@ export function sigurneLambde(
   kucnaPrednost: number = KUCNA_PREDNOST,
 ): { lam: number; mu: number } {
   const nulaLiga = Math.max(0.2, (ligaPriorUkupno / 2) * kucnaPrednost);
-  const nulaGost = Math.max(0.2, ligaPriorUkupno / 2 / kucnaPrednost);
+  const nulaGost = Math.max(0.2, (ligaPriorUkupno / 2) / kucnaPrednost);
   const l = sigurnoLam(lam, nulaLiga);
   const m = sigurnoLam(mu, nulaGost);
   // zaštita od besmislenog para (npr. λ=0.02, μ=8): ukupno mora biti razumno
@@ -132,28 +126,18 @@ export function sigurneLambde(
 
 /** De-vig para uz sigurnosne provjere (kvota string ili broj, bilo koji oblik). */
 export function devigPar(o: unknown, u: unknown): { pA: number; pB: number } | null {
-  const a = kvota(o),
-    b = kvota(u);
+  const a = kvota(o), b = kvota(u);
   if (a == null || b == null) return null;
-  const ia = 1 / a,
-    ib = 1 / b;
+  const ia = 1 / a, ib = 1 / b;
   const s = ia + ib;
   return { pA: ia / s, pB: ib / s };
 }
 
 /** De-vig 1X2 uz sigurnosne provjere — null kad ijedna kvota fali. */
-export function devig1x2(
-  k1: unknown,
-  kX: unknown,
-  k2: unknown,
-): { p1: number; pX: number; p2: number } | null {
-  const a = kvota(k1),
-    b = kvota(kX),
-    c = kvota(k2);
+export function devig1x2(k1: unknown, kX: unknown, k2: unknown): { p1: number; pX: number; p2: number } | null {
+  const a = kvota(k1), b = kvota(kX), c = kvota(k2);
   if (a == null || b == null || c == null) return null;
-  const ia = 1 / a,
-    ib = 1 / b,
-    ic = 1 / c;
+  const ia = 1 / a, ib = 1 / b, ic = 1 / c;
   const s = ia + ib + ic;
   return { p1: ia / s, pX: ib / s, p2: ic / s };
 }
@@ -169,30 +153,30 @@ export type UniversalMatchContext = {
   gost: string;
   liga: string | null;
   // ── NOGOMET ──
-  homeXG: number; // xG domaćina (meč), 0 = nepoznato → fallback liga
+  homeXG: number;          // xG domaćina (meč), 0 = nepoznato → fallback liga
   awayXG: number;
-  homeForm: number; // prosjek postignutih po meču (forma)
+  homeForm: number;        // prosjek postignutih po meču (forma)
   awayForm: number;
-  homeFormN: number; // broj utakmica forme (uzorka)
+  homeFormN: number;       // broj utakmica forme (uzorka)
   awayFormN: number;
-  weatherDrag: number; // 0 = bez učinka … 1 = maksimalni drag
+  weatherDrag: number;     // 0 = bez učinka … 1 = maksimalni drag
   refCardsPerGame: number; // kartoni sudca po meču
-  refPensPerGame: number; // penali sudca po meču
+  refPensPerGame: number;  // penali sudca po meču
   motivationIndex: number; // 0..1 (0.5 = neutralno)
-  vjetarKmh: number; // brzina vjetra (km/h)
-  kisa: boolean; // jaka kiša
+  vjetarKmh: number;       // brzina vjetra (km/h)
+  kisa: boolean;           // jaka kiša
   // ── KOŠARKA ──
-  homePace: number; // posjed/90 u indexu (1 = liga)
+  homePace: number;        // posjed/90 u indexu (1 = liga)
   awayPace: number;
-  homeORtg: number; // efikasnost napada (index, 100 = liga)
+  homeORtg: number;        // efikasnost napada (index, 100 = liga)
   awayORtg: number;
-  homeDRtg: number; // efikasnost obrane (index, 100 = liga)
+  homeDRtg: number;        // efikasnost obrane (index, 100 = liga)
   awayDRtg: number;
-  b2bFatigue: number; // 0 = nema back-to-back … 1 = maksimum
+  b2bFatigue: number;      // 0 = nema back-to-back … 1 = maksimum
   // ── RUKOMET ──
-  homeOffenseEff: number; // efikasnost napada (index, 1 = liga)
+  homeOffenseEff: number;  // efikasnost napada (index, 1 = liga)
   awayOffenseEff: number;
-  homeGkSavePct: number; // % obrana golmana (0..1, 0 = nepoznato)
+  homeGkSavePct: number;   // % obrana golmana (0..1, 0 = nepoznato)
   awayGkSavePct: number;
   sevenVsSixFactor: number; // 0 = ne igraju 7v6 … 1 = redovito
   // ── OPĆE ──
@@ -205,50 +189,30 @@ export type KontekstUlaz = Partial<{
   domacin: unknown;
   gost: unknown;
   liga: unknown;
-  homeXG: unknown;
-  awayXG: unknown;
-  homeForm: unknown;
-  awayForm: unknown;
-  homeFormN: unknown;
-  awayFormN: unknown;
+  homeXG: unknown; awayXG: unknown;
+  homeForm: unknown; awayForm: unknown;
+  homeFormN: unknown; awayFormN: unknown;
   weatherDrag: unknown;
-  refCardsPerGame: unknown;
-  refPensPerGame: unknown;
+  refCardsPerGame: unknown; refPensPerGame: unknown;
   motivationIndex: unknown;
-  vjetarKmh: unknown;
-  kisa: unknown;
-  homePace: unknown;
-  awayPace: unknown;
-  homeORtg: unknown;
-  awayORtg: unknown;
-  homeDRtg: unknown;
-  awayDRtg: unknown;
+  vjetarKmh: unknown; kisa: unknown;
+  homePace: unknown; awayPace: unknown;
+  homeORtg: unknown; awayORtg: unknown; homeDRtg: unknown; awayDRtg: unknown;
   b2bFatigue: unknown;
-  homeOffenseEff: unknown;
-  awayOffenseEff: unknown;
-  homeGkSavePct: unknown;
-  awayGkSavePct: unknown;
+  homeOffenseEff: unknown; awayOffenseEff: unknown;
+  homeGkSavePct: unknown; awayGkSavePct: unknown;
   sevenVsSixFactor: unknown;
   brojKladionica: unknown;
   // tolerirani alternativni nazivi polja (API/ručni oblici):
-  homeGoals: unknown;
-  awayGoals: unknown;
-  goalsHome: unknown;
-  goalsAway: unknown;
-  xgHome: unknown;
-  xgAway: unknown;
-  formHome: unknown;
-  formAway: unknown;
-  windKmh: unknown;
-  rain: unknown;
-  refereeCards: unknown;
-  refereePens: unknown;
-  paceHome: unknown;
-  paceAway: unknown;
-  ortgHome: unknown;
-  ortgAway: unknown;
-  drtgHome: unknown;
-  drtgAway: unknown;
+  homeGoals: unknown; awayGoals: unknown;
+  goalsHome: unknown; goalsAway: unknown;
+  xgHome: unknown; xgAway: unknown;
+  formHome: unknown; formAway: unknown;
+  windKmh: unknown; rain: unknown;
+  refereeCards: unknown; refereePens: unknown;
+  paceHome: unknown; paceAway: unknown;
+  ortgHome: unknown; ortgAway: unknown;
+  drtgHome: unknown; drtgAway: unknown;
   b2b: unknown;
   sevenVsSix: unknown;
   kladionice: unknown;
@@ -269,23 +233,21 @@ export function normalizirajKontekst(ulaz: KontekstUlaz | null | undefined): Uni
     sportRaw.startsWith("ko") || sportRaw.startsWith("kos") || sportRaw.includes("basket")
       ? "kosarka"
       : sportRaw.startsWith("ruk") || sportRaw.includes("handball") || sportRaw.includes("hand")
-        ? "rukomet"
-        : "nogomet";
+      ? "rukomet"
+      : "nogomet";
 
   // xG: broj ili string; "homeXG" ili "xgHome"
   const xgH = brojIzUlaza(u.homeXG) ?? brojIzUlaza(u.xgHome) ?? 0;
   const xgA = brojIzUlaza(u.awayXG) ?? brojIzUlaza(u.xgAway) ?? 0;
 
   // forma: prosjek golova — ili prosječan zbroj home/awayGoals kad forma fali
-  const fH = brojIzUlaza(u.homeForm) ?? brojIzUlaza(u.formHome) ?? brojIzUlaza(u.homeGoals) ?? 0;
-  const fA = brojIzUlaza(u.awayForm) ?? brojIzUlaza(u.formAway) ?? brojIzUlaza(u.awayGoals) ?? 0;
+  const fH = brojIzUlaza(u.homeForm) ?? brojIzUlaza(u.formHome) ?? (brojIzUlaza(u.homeGoals) ?? 0);
+  const fA = brojIzUlaza(u.awayForm) ?? brojIzUlaza(u.formAway) ?? (brojIzUlaza(u.awayGoals) ?? 0);
 
   return {
     sport,
-    fixtureId:
-      typeof u.fixtureId === "number" && Number.isFinite(u.fixtureId) && u.fixtureId > 0
-        ? Math.round(u.fixtureId)
-        : null,
+    fixtureId: (typeof u.fixtureId === "number" && Number.isFinite(u.fixtureId) && u.fixtureId > 0
+      ? Math.round(u.fixtureId) : null),
     domacin: s(u.domacin, "Domaćin"),
     gost: s(u.gost, "Gost"),
     liga: s(u.liga) || null,
@@ -318,8 +280,6 @@ export function normalizirajKontekst(ulaz: KontekstUlaz | null | undefined): Uni
 }
 
 /** Sigurnosni kontekst za nogomet iz forme (fallback kad kartica nema ništa). */
-export function kontekstNogometDefault(
-  liga?: string | null,
-): Pick<UniversalMatchContext, "sport" | "liga"> {
+export function kontekstNogometDefault(liga?: string | null): Pick<UniversalMatchContext, "sport" | "liga"> {
   return { sport: "nogomet", liga: liga ?? null };
 }

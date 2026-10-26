@@ -46,8 +46,7 @@ export function detectAnomalies(k22: number, kOver: number, kGg: number): Anomal
     out.push({
       level: "SREDNJE",
       title: "Klizava 50/50 utakmica",
-      detail:
-        "Sve tri kvote su u neutralnoj zoni. Ishod je praktično novčić — ako igraš, biraj stranu s većom kvotom (bolja vrijednost) i manji ulog.",
+      detail: "Sve tri kvote su u neutralnoj zoni. Ishod je praktično novčić — ako igraš, biraj stranu s većom kvotom (bolja vrijednost) i manji ulog.",
       favours: "manji ulog, veća kvota",
     });
   }

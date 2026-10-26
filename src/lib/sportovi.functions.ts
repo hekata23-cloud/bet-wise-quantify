@@ -12,7 +12,11 @@ import {
   statusSportova,
   type Sport,
 } from "./sportovi-guard.server";
-import { analizirajSportUtakmicu, type SportUtakmica, type SportIzlaz } from "./sportovi-motor";
+import {
+  analizirajSportUtakmicu,
+  type SportUtakmica,
+  type SportIzlaz,
+} from "./sportovi-motor";
 
 export type { SportUtakmica, SportIzlaz };
 
@@ -35,8 +39,7 @@ function normalizirajKosarku(raw: any): SportUtakmica | null {
     if (!id) return null;
     const date = String(raw?.date ?? "");
     const time = String(raw?.time ?? "");
-    const timestamp =
-      Number(raw?.timestamp ?? 0) * 1000 || (date ? new Date(date).getTime() : Date.now());
+    const timestamp = Number(raw?.timestamp ?? 0) * 1000 || (date ? new Date(date).getTime() : Date.now());
 
     const league = raw?.league ?? {};
     const teams = raw?.teams ?? {};
@@ -64,18 +67,8 @@ function normalizirajKosarku(raw: any): SportUtakmica | null {
       rezultatDomacin: scores?.home?.total != null ? Number(scores.home.total) : null,
       rezultatGost: scores?.away?.total != null ? Number(scores.away.total) : null,
       detalji: {
-        cetvrtineDom: [
-          scores?.home?.quarter_1,
-          scores?.home?.quarter_2,
-          scores?.home?.quarter_3,
-          scores?.home?.quarter_4,
-        ],
-        cetvrtineGost: [
-          scores?.away?.quarter_1,
-          scores?.away?.quarter_2,
-          scores?.away?.quarter_3,
-          scores?.away?.quarter_4,
-        ],
+        cetvrtineDom: [scores?.home?.quarter_1, scores?.home?.quarter_2, scores?.home?.quarter_3, scores?.home?.quarter_4],
+        cetvrtineGost: [scores?.away?.quarter_1, scores?.away?.quarter_2, scores?.away?.quarter_3, scores?.away?.quarter_4],
         produzetakDom: scores?.home?.over_time != null ? Number(scores.home.over_time) : null,
         produzetakGost: scores?.away?.over_time != null ? Number(scores.away.over_time) : null,
       },
@@ -91,8 +84,7 @@ function normalizirajRukomet(raw: any): SportUtakmica | null {
     if (!id) return null;
     const date = String(raw?.date ?? "");
     const time = String(raw?.time ?? "");
-    const timestamp =
-      Number(raw?.timestamp ?? 0) * 1000 || (date ? new Date(date).getTime() : Date.now());
+    const timestamp = Number(raw?.timestamp ?? 0) * 1000 || (date ? new Date(date).getTime() : Date.now());
 
     const league = raw?.league ?? {};
     const teams = raw?.teams ?? {};
@@ -148,26 +140,16 @@ function kategorijaOU(naziv: string): "ukupno" | "domacin" | "gost" | null {
   if (s.includes("away") || s.includes("gost") || s.includes("team 2") || s.includes("team2")) {
     if (s.includes("over") || s.includes("under") || s.includes("total")) return "gost";
   }
-  if (
-    s.includes("over/under") ||
-    s.includes("total points") ||
-    s.includes("total goals") ||
-    s.includes("total") ||
-    s.includes("goals over")
-  ) {
+  if (s.includes("over/under") || s.includes("total points") || s.includes("total goals") || s.includes("total") || s.includes("goals over")) {
     return "ukupno";
   }
   return null;
 }
 
-function nadjiNajboljuLiniju(
-  values: any[],
-): { linija: number; over: number; under: number } | null {
+function nadjiNajboljuLiniju(values: any[]): { linija: number; over: number; under: number } | null {
   const po = new Map<number, { over?: number; under?: number }>();
   for (const v of values ?? []) {
-    const lab = String(v?.value ?? "")
-      .toLowerCase()
-      .trim();
+    const lab = String(v?.value ?? "").toLowerCase().trim();
     const odd = Number(v?.odd);
     if (!Number.isFinite(odd) || odd <= 1) continue;
     const hc = Number(v?.handicap);
@@ -193,10 +175,7 @@ function nadjiNajboljuLiniju(
 type TrzisteOU = { over: number[]; under: number[]; linije: number[] };
 const noviOU = (): TrzisteOU => ({ over: [], under: [], linije: [] });
 
-function kvoteIzOdds(
-  oddsResp: any[],
-  sport: Sport,
-): {
+function kvoteIzOdds(oddsResp: any[], sport: Sport): {
   kvote: Record<string, number>;
   linija: number | null;
   linijaDom: number | null;
@@ -216,9 +195,7 @@ function kvoteIzOdds(
   let knjiga = 0;
 
   // Bet365 ima apsolutnu prednost: ako ga ima, koriste se SAMO njegove kvote.
-  const sve: any[] = (oddsResp ?? []).flatMap((it: any) =>
-    Array.isArray(it?.bookmakers) ? it.bookmakers : [],
-  );
+  const sve: any[] = (oddsResp ?? []).flatMap((it: any) => (Array.isArray(it?.bookmakers) ? it.bookmakers : []));
   const b365 = sve.filter((b) => /bet ?365/i.test(String(b?.name ?? "")));
   const odabrane = b365.length ? b365 : sve;
   if (b365.length) {
@@ -232,23 +209,10 @@ function kvoteIzOdds(
     for (const bet of bets) {
       const name = String(bet?.name ?? "").toLowerCase();
       const vals = Array.isArray(bet?.values) ? bet.values : [];
-      if (
-        name.includes("quarter") ||
-        name.includes("half") ||
-        name.includes("period") ||
-        name.includes("poluvrijeme") ||
-        name.includes("četvrtina") ||
-        name.includes("handicap") ||
-        name.includes("azijski")
-      ) {
+      if (name.includes("quarter") || name.includes("half") || name.includes("period") || name.includes("poluvrijeme") || name.includes("četvrtina") || name.includes("handicap") || name.includes("azijski")) {
         continue;
       }
-      if (
-        name === "home/away" ||
-        name === "winner" ||
-        name === "match winner" ||
-        name === "pobjednik"
-      ) {
+      if (name === "home/away" || name === "winner" || name === "match winner" || name === "pobjednik") {
         for (const v of vals) {
           const val = String(v?.value ?? "").toLowerCase();
           const odd = Number(v?.odd);
@@ -258,12 +222,7 @@ function kvoteIzOdds(
         }
         continue;
       }
-      if (
-        name === "match winner 3-way" ||
-        name === "3way result" ||
-        name === "1x2" ||
-        name === "regular time result"
-      ) {
+      if (name === "match winner 3-way" || name === "3way result" || name === "1x2" || name === "regular time result") {
         for (const v of vals) {
           const val = String(v?.value ?? "").toLowerCase();
           const odd = Number(v?.odd);
@@ -335,10 +294,9 @@ export const dohvatiSportUtakmiceServer = createServerFn({ method: "POST" })
   .inputValidator((d: unknown): { sport: Sport; date: string; apiKey?: string } => {
     const obj = (d ?? {}) as any;
     const sport: Sport = obj.sport === "rukomet" ? "rukomet" : "kosarka";
-    const date =
-      typeof obj.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.date)
-        ? obj.date
-        : new Date().toISOString().slice(0, 10);
+    const date = typeof obj.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.date)
+      ? obj.date
+      : new Date().toISOString().slice(0, 10);
     return { sport, date, apiKey: typeof obj.apiKey === "string" ? obj.apiKey.trim() : undefined };
   })
   .handler(async ({ data }) => {
@@ -365,33 +323,23 @@ export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
     const obj = (d ?? {}) as any;
     if (!obj?.utakmica?.id) throw new Error("Nedostaje utakmica");
     const sport: Sport = obj.sport === "rukomet" ? "rukomet" : "kosarka";
-    return {
-      sport,
-      utakmica: obj.utakmica,
-      apiKey: typeof obj.apiKey === "string" ? obj.apiKey.trim() : undefined,
-    };
+    return { sport, utakmica: obj.utakmica, apiKey: typeof obj.apiKey === "string" ? obj.apiKey.trim() : undefined };
   })
   .handler(async ({ data }): Promise<{ ok: boolean; izlaz?: SportIzlaz; error?: string }> => {
     const { sport, utakmica, apiKey } = data;
     const oddsRes = await dohvatiOddsSport(sport, utakmica.id, apiKey);
-    const parsed = oddsRes.ok
-      ? kvoteIzOdds(oddsRes.data, sport)
-      : {
-          kvote: {},
-          linija: null,
-          linijaDom: null,
-          linijaGost: null,
-          knjiga: 0,
-          bookmaker: null,
-        };
+    const parsed = oddsRes.ok ? kvoteIzOdds(oddsRes.data, sport) : {
+      kvote: {},
+      linija: null,
+      linijaDom: null,
+      linijaGost: null,
+      knjiga: 0,
+      bookmaker: null,
+    };
 
     if (!oddsRes.ok) return { ok: false, error: oddsRes.error ?? "Dohvat kvota nije uspio." };
     if (!Object.keys(parsed.kvote).length)
-      return {
-        ok: false,
-        error:
-          "Bet365 i ostale kladionice još nisu objavile kvote za ovu utakmicu — tip bi bio nagađanje, pa ga ne prikazujem.",
-      };
+      return { ok: false, error: "Bet365 i ostale kladionice još nisu objavile kvote za ovu utakmicu — tip bi bio nagađanje, pa ga ne prikazujem." };
 
     let h2hGoloviDom: number[] = [];
     let h2hGoloviGost: number[] = [];
@@ -403,12 +351,8 @@ export const analizirajSportUtakmicuServer = createServerFn({ method: "POST" })
         if (h2hRes.ok && Array.isArray(h2hRes.data)) {
           for (const m of h2hRes.data.slice(0, 10)) {
             const domJePrvi = m?.teams?.home?.id === utakmica.domacinId;
-            const dScore = domJePrvi
-              ? (m?.scores?.home?.total ?? m?.scores?.home)
-              : (m?.scores?.away?.total ?? m?.scores?.away);
-            const gScore = domJePrvi
-              ? (m?.scores?.away?.total ?? m?.scores?.away)
-              : (m?.scores?.home?.total ?? m?.scores?.home);
+            const dScore = domJePrvi ? m?.scores?.home?.total ?? m?.scores?.home : m?.scores?.away?.total ?? m?.scores?.away;
+            const gScore = domJePrvi ? m?.scores?.away?.total ?? m?.scores?.away : m?.scores?.home?.total ?? m?.scores?.home;
             if (dScore != null && gScore != null) {
               h2hGoloviDom.push(Number(dScore));
               h2hGoloviGost.push(Number(gScore));
@@ -441,21 +385,15 @@ export const getSportBundle = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sport: Sport = data?.sport === "rukomet" ? "rukomet" : "kosarka";
     const id = Number(data?.id);
-    const oddsRes = await dohvatiOddsSport(
-      sport,
-      id,
-      typeof data?.apiKey === "string" ? data.apiKey.trim() : undefined,
-    );
-    const parsed = oddsRes.ok
-      ? kvoteIzOdds(oddsRes.data, sport)
-      : {
-          kvote: {},
-          linija: null,
-          linijaDom: null,
-          linijaGost: null,
-          knjiga: 0,
-          bookmaker: null,
-        };
+    const oddsRes = await dohvatiOddsSport(sport, id, typeof data?.apiKey === "string" ? data.apiKey.trim() : undefined);
+    const parsed = oddsRes.ok ? kvoteIzOdds(oddsRes.data, sport) : {
+      kvote: {},
+      linija: null,
+      linijaDom: null,
+      linijaGost: null,
+      knjiga: 0,
+      bookmaker: null,
+    };
     return {
       kvote: parsed.kvote,
       linija: parsed.linija,
@@ -469,9 +407,12 @@ export const getSportBundle = createServerFn({ method: "POST" })
     };
   });
 
-export const statusSportovaServer = createServerFn({ method: "GET" }).handler(async () => {
-  return statusSportova();
-});
+export const statusSportovaServer = createServerFn({ method: "GET" })
+  .handler(async () => {
+    return statusSportova();
+  });
+
+
 
 /** Testira API ključ na pravom endpointu za dani sport (košarka/rukomet). */
 export const testApiKeySport = createServerFn({ method: "POST" })
@@ -486,20 +427,16 @@ export const testApiKeySport = createServerFn({ method: "POST" })
     if (!apiKey) return { ok: false as const, error: "Nije unesen API ključ." };
 
     try {
-      const baza =
-        sport === "kosarka"
-          ? "https://v1.basketball.api-sports.io"
-          : "https://v1.handball.api-sports.io";
+      const baza = sport === "kosarka"
+        ? "https://v1.basketball.api-sports.io"
+        : "https://v1.handball.api-sports.io";
 
       const res = await fetch(`${baza}/status`, {
         headers: { "x-apisports-key": apiKey },
       });
 
       if (res.status === 401 || res.status === 403) {
-        return {
-          ok: false as const,
-          error: "API ključ nije važeći ili sport nije aktiviran na tvom računu.",
-        };
+        return { ok: false as const, error: "API ključ nije važeći ili sport nije aktiviran na tvom računu." };
       }
       if (!res.ok) {
         return { ok: false as const, error: `API greška ${res.status}` };
@@ -514,9 +451,9 @@ export const testApiKeySport = createServerFn({ method: "POST" })
         };
       };
 
-      const errs =
-        json.errors &&
-        (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length);
+      const errs = json.errors && (
+        Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length
+      );
       if (errs) {
         const errVals = Array.isArray(json.errors)
           ? json.errors.join(" ")

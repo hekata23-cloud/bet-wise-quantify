@@ -74,19 +74,11 @@ export type DvostranoTrziste = {
 
 export function provjeriDvostrano(a: number | null, b: number | null): DvostranoTrziste {
   if (!ispravnaKvota(a) || !ispravnaKvota(b))
-    return {
-      ok: false,
-      marza: NaN,
-      fairA: NaN,
-      fairB: NaN,
-      problem: "nedostaje jedna strana tržišta ili je kvota izvan raspona",
-    };
+    return { ok: false, marza: NaN, fairA: NaN, fairB: NaN, problem: "nedostaje jedna strana tržišta ili je kvota izvan raspona" };
   const m = marza([a, b]);
   const [fa, fb] = fairVjerojatnosti([a, b]);
-  if (m < -0.01)
-    return { ok: false, marza: m, fairA: fa!, fairB: fb!, problem: `negativna marža (${pct(m)})` };
-  if (m > 0.2)
-    return { ok: false, marza: m, fairA: fa!, fairB: fb!, problem: `ekstremna marža (${pct(m)})` };
+  if (m < -0.01) return { ok: false, marza: m, fairA: fa!, fairB: fb!, problem: `negativna marža (${pct(m)})` };
+  if (m > 0.2) return { ok: false, marza: m, fairA: fa!, fairB: fb!, problem: `ekstremna marža (${pct(m)})` };
   return { ok: true, marza: m, fairA: fa!, fairB: fb! };
 }
 
@@ -107,17 +99,10 @@ export function rezultatnoTrziste(odds: Record<string, string>): RezultatnoTrzis
     if (!ispravnaKvota(k, MAX_KVOTA_REZULTAT)) continue;
     rezultati.push({ h: Number(m[1]), a: Number(m[2]), k });
   }
-  return {
-    rezultati,
-    marza: rezultati.length ? marza(rezultati.map((r) => r.k)) : NaN,
-    pokrivenost: rezultati.length,
-  };
+  return { rezultati, marza: rezultati.length ? marza(rezultati.map((r) => r.k)) : NaN, pokrivenost: rezultati.length };
 }
 
-export function vjerojatnostIzRezultata(
-  t: RezultatnoTrziste,
-  uvjet: (h: number, a: number) => boolean,
-): number | null {
+export function vjerojatnostIzRezultata(t: RezultatnoTrziste, uvjet: (h: number, a: number) => boolean): number | null {
   if (t.pokrivenost < 12) return null;
   const fair = fairVjerojatnosti(t.rezultati.map((r) => r.k));
   return t.rezultati.reduce((s, r, i) => (uvjet(r.h, r.a) ? s + fair[i]! : s), 0);
@@ -125,23 +110,12 @@ export function vjerojatnostIzRezultata(
 
 // ---------- Potrebni podaci po indikatoru ----------
 
-export const POTREBNO: Record<
-  IndikatorId,
-  { kljucevi: string[]; dvostrano?: [string, string]; naziv: string }
-> = {
+export const POTREBNO: Record<IndikatorId, { kljucevi: string[]; dvostrano?: [string, string]; naziv: string }> = {
   "1": { naziv: "BTTS", kljucevi: ["2:2", "1:1", "1:0", "0:1"], dvostrano: ["bttsDa", "bttsNe"] },
   "2": { naziv: "Over 1.5", kljucevi: ["1:0", "0:0", "0:1"], dvostrano: ["o15", "u15"] },
-  "3": {
-    naziv: "Over 2.5",
-    kljucevi: ["0:0", "1:0", "0:1", "1:1", "2:0", "0:2", "2:2"],
-    dvostrano: ["o25", "u25"],
-  },
+  "3": { naziv: "Over 2.5", kljucevi: ["0:0", "1:0", "0:1", "1:1", "2:0", "0:2", "2:2"], dvostrano: ["o25", "u25"] },
   "4": { naziv: "Korneri", kljucevi: [] },
-  "5": {
-    naziv: "Under 3.5",
-    kljucevi: ["0:0", "1:0", "0:1", "1:1", "2:0", "0:2", "2:1", "1:2"],
-    dvostrano: ["u35", "o35"],
-  },
+  "5": { naziv: "Under 3.5", kljucevi: ["0:0", "1:0", "0:1", "1:1", "2:0", "0:2", "2:1", "1:2"], dvostrano: ["u35", "o35"] },
   "7": { naziv: "Kazneni udarac", kljucevi: ["0:0", "pen"] },
 };
 
@@ -178,8 +152,7 @@ export function analiziraj(id: IndikatorId, ulaz: RadarUlaz): RadarIzlaz {
   }
   if (id === "4") {
     const c = ulaz.corners;
-    if (!c || !Number.isFinite(c.line) || !ispravnaKvota(c.over) || !ispravnaKvota(c.under))
-      nedostaje.push("korneri linija/više/manje");
+    if (!c || !Number.isFinite(c.line) || !ispravnaKvota(c.over) || !ispravnaKvota(c.under)) nedostaje.push("korneri linija/više/manje");
   }
   if (nedostaje.length) {
     razlozi.push(`Nepotpune kvote: ${nedostaje.join(", ")}.`);
@@ -189,7 +162,7 @@ export function analiziraj(id: IndikatorId, ulaz: RadarUlaz): RadarIzlaz {
   if (p.kljucevi.some((k) => k.includes(":"))) {
     if (t.pokrivenost >= 12) {
       signali.push(`Marža točnog rezultata: ${pct(t.marza)} (${t.pokrivenost} rezultata).`);
-      if (t.marza > 0.5 && t.pokrivenost < 30) {
+      if (t.marza > 0.50 && t.pokrivenost < 30) {
         razlozi.push(`Neuobičajeno visoka marža točnog rezultata (${pct(t.marza)}).`);
         tezina = Math.max(tezina, 1);
       }
@@ -215,40 +188,30 @@ export function analiziraj(id: IndikatorId, ulaz: RadarUlaz): RadarIzlaz {
       if (izRez !== null) {
         const raz = d.fairA - izRez;
         signali.push(`Točan rezultat procjenjuje ${pct(izRez)} za tip.`);
-        if (Math.abs(raz) > 0.2) {
-          razlozi.push(
-            `Značajan sukob tržišta: dvostrano ${pct(d.fairA)} vs točan rezultat ${pct(izRez)} (razlika ${pct(Math.abs(raz))}).`,
-          );
+        if (Math.abs(raz) > 0.20) {
+          razlozi.push(`Značajan sukob tržišta: dvostrano ${pct(d.fairA)} vs točan rezultat ${pct(izRez)} (razlika ${pct(Math.abs(raz))}).`);
           tezina = Math.max(tezina, 1);
         }
       }
-      if (d.fairA < 0.4) {
+      if (d.fairA < 0.40) {
         razlozi.push(`Tržište tip ne vidi kao favorita (fair ${pct(d.fairA)}).`);
-        tezina = Math.max(tezina, d.fairA < 0.3 ? 2 : 1);
+        tezina = Math.max(tezina, d.fairA < 0.30 ? 2 : 1);
       }
     }
   }
 
-  if (
-    id === "4" &&
-    ulaz.corners &&
-    ispravnaKvota(ulaz.corners.over) &&
-    ispravnaKvota(ulaz.corners.under)
-  ) {
+  if (id === "4" && ulaz.corners && ispravnaKvota(ulaz.corners.over) && ispravnaKvota(ulaz.corners.under)) {
     const d = provjeriDvostrano(ulaz.corners.over, ulaz.corners.under);
     if (!d.ok) {
       razlozi.push(`Tržište kornera: ${d.problem}.`);
       tezina = 2;
     } else {
-      signali.push(
-        `Korneri: marža ${pct(d.marza)}, asimetrija ${pct(Math.abs(d.fairA - d.fairB))}.`,
-      );
+      signali.push(`Korneri: marža ${pct(d.marza)}, asimetrija ${pct(Math.abs(d.fairA - d.fairB))}.`);
     }
   }
 
   if (id === "7") {
-    const ne = broj(odds["pen"]),
-      da = broj(odds["penDa"]);
+    const ne = broj(odds["pen"]), da = broj(odds["penDa"]);
     if (ispravnaKvota(ne) && ispravnaKvota(da)) {
       const d = provjeriDvostrano(ne, da);
       if (!d.ok) {
@@ -260,8 +223,7 @@ export function analiziraj(id: IndikatorId, ulaz: RadarUlaz): RadarIzlaz {
     }
   }
 
-  const fa = broj(odds[`f${id}a`]),
-    fb = broj(odds[`f${id}b`]);
+  const fa = broj(odds[`f${id}a`]), fb = broj(odds[`f${id}b`]);
   const prag = FORMA_PRAG[id];
   if (prag && fa !== null && fb !== null) {
     if (!prag(fa, fb)) {
@@ -275,9 +237,7 @@ export function analiziraj(id: IndikatorId, ulaz: RadarUlaz): RadarIzlaz {
   // Konsenzus model (Dixon-Coles)
   const k = konsenzus(id, ulaz);
   if (k) {
-    signali.push(
-      `🧮 Konsenzus ${k.izvori.length} modela: ${pct(k.prosjek)} (${k.izvori.map((i) => `${i.naziv} ${pct(i.p)}`).join(" · ")}).`,
-    );
+    signali.push(`🧮 Konsenzus ${k.izvori.length} modela: ${pct(k.prosjek)} (${k.izvori.map((i) => `${i.naziv} ${pct(i.p)}`).join(" · ")}).`);
     if (k.izvori.length >= 2 && k.raspon > 0.25) {
       razlozi.push(`Izvori se razilaze (raspon ${pct(k.raspon)}) — procjena je nestabilna.`);
       tezina = Math.max(tezina, 1);
@@ -306,17 +266,11 @@ export function analiziraj(id: IndikatorId, ulaz: RadarUlaz): RadarIzlaz {
 
   const verdikt: Verdikt = tezina >= 2 ? "PRESKOČI" : tezina === 1 ? "GRANIČNO" : "PROLAZI";
   const pouzdanost: Pouzdanost =
-    nedostaje.length || tezina >= 2
-      ? "niska"
-      : tezina === 1 || (prag && (fa === null || fb === null))
-        ? "srednja"
-        : "visoka";
+    nedostaje.length || tezina >= 2 ? "niska" : tezina === 1 || (prag && (fa === null || fb === null)) ? "srednja" : "visoka";
   return { verdikt, pouzdanost, razlozi, signali, nedostaje };
 }
 
-export function pokrivenost(
-  ulaz: RadarUlaz,
-): { id: IndikatorId; naziv: string; nedostaje: string[] }[] {
+export function pokrivenost(ulaz: RadarUlaz): { id: IndikatorId; naziv: string; nedostaje: string[] }[] {
   return (Object.keys(POTREBNO) as IndikatorId[]).map((id) => ({
     id,
     naziv: POTREBNO[id].naziv,
@@ -377,20 +331,17 @@ export function detektorZamke(id: IndikatorId, ulaz: RadarUlaz): Zamka {
     razlozi.push(`Glavno tržište tipu daje samo ${pct(pTip)} — kvota je prividni mamac.`);
   }
 
-  if (pRez !== null && pRez < 0.4) {
+  if (pRez !== null && pRez < 0.40) {
     razlozi.push(`Tržište točnog rezultata tipu daje samo ${pct(pRez)}.`);
   }
 
   if (pTip !== null && pRez !== null && pRez - pTip > 0.18) {
-    razlozi.push(
-      `Točan rezultat je nerealno napuhan (${pct(pRez)} vs tržišnih ${pct(pTip)}) — moguća zamka platforme.`,
-    );
+    razlozi.push(`Točan rezultat je nerealno napuhan (${pct(pRez)} vs tržišnih ${pct(pTip)}) — moguća zamka platforme.`);
   }
 
-  const fa = broj(odds[`f${id}a`]),
-    fb = broj(odds[`f${id}b`]);
+  const fa = broj(odds[`f${id}a`]), fb = broj(odds[`f${id}b`]);
   const prag = FORMA_PRAG[id];
-  if (prag && fa !== null && fb !== null && !prag(fa, fb) && pTip !== null && pTip < 0.5) {
+  if (prag && fa !== null && fb !== null && !prag(fa, fb) && pTip !== null && pTip < 0.50) {
     razlozi.push(`I forma timova (${fa}/5, ${fb}/5) i kvote su protiv ovog tipa.`);
   }
 
@@ -425,11 +376,7 @@ export type ValueBetRezultat = {
   obrazlozenje: string;
 };
 
-export function izracunajValueBet(
-  id: IndikatorId,
-  ulaz: RadarUlaz,
-  zamka?: Zamka,
-): ValueBetRezultat {
+export function izracunajValueBet(id: IndikatorId, ulaz: RadarUlaz, zamka?: Zamka): ValueBetRezultat {
   const { odds } = ulaz;
   let fairGlavni: number | null = null;
   let kvotaGlavni: number | null = null;
@@ -446,27 +393,21 @@ export function izracunajValueBet(
     nazivSuprotni = "BTTS NE";
     kvotaGlavni = broj(odds["bttsDa"]);
     kvotaSuprotni = broj(odds["bttsNe"]);
-    fairGlavni =
-      k?.prosjek ??
-      (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
+    fairGlavni = k?.prosjek ?? (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
     if (fairGlavni !== null) fairSuprotni = 1 - fairGlavni;
   } else if (id === "2") {
     nazivGlavni = "Over 1.5 golova";
     nazivSuprotni = "Under 1.5 golova";
     kvotaGlavni = broj(odds["o15"]);
     kvotaSuprotni = broj(odds["u15"]);
-    fairGlavni =
-      k?.prosjek ??
-      (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
+    fairGlavni = k?.prosjek ?? (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
     if (fairGlavni !== null) fairSuprotni = 1 - fairGlavni;
   } else if (id === "3") {
     nazivGlavni = "Over 2.5 golova";
     nazivSuprotni = "Under 2.5 golova";
     kvotaGlavni = broj(odds["o25"]);
     kvotaSuprotni = broj(odds["u25"]);
-    fairGlavni =
-      k?.prosjek ??
-      (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
+    fairGlavni = k?.prosjek ?? (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
     if (fairGlavni !== null) fairSuprotni = 1 - fairGlavni;
   } else if (id === "4") {
     if (ulaz.corners && ispravnaKvota(ulaz.corners.over) && ispravnaKvota(ulaz.corners.under)) {
@@ -484,9 +425,7 @@ export function izracunajValueBet(
     nazivSuprotni = "Over 3.5 golova";
     kvotaGlavni = broj(odds["u35"]);
     kvotaSuprotni = broj(odds["o35"]);
-    fairGlavni =
-      k?.prosjek ??
-      (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
+    fairGlavni = k?.prosjek ?? (kvotaGlavni && kvotaSuprotni ? fairVjerojatnosti([kvotaGlavni, kvotaSuprotni])[0]! : null);
     if (fairGlavni !== null) fairSuprotni = 1 - fairGlavni;
   } else if (id === "7") {
     nazivGlavni = "Kazneni udarac: NE";
@@ -507,22 +446,12 @@ export function izracunajValueBet(
 
   let opGlavni: OpcijaValue | null = null;
   if (fairGlavni !== null && kvotaGlavni !== null && ispravnaKvota(kvotaGlavni)) {
-    opGlavni = {
-      naziv: nazivGlavni,
-      kvota: kvotaGlavni,
-      fairP: fairGlavni,
-      edge: fairGlavni * kvotaGlavni - 1,
-    };
+    opGlavni = { naziv: nazivGlavni, kvota: kvotaGlavni, fairP: fairGlavni, edge: fairGlavni * kvotaGlavni - 1 };
   }
 
   let opSuprotni: OpcijaValue | null = null;
   if (fairSuprotni !== null && kvotaSuprotni !== null && ispravnaKvota(kvotaSuprotni)) {
-    opSuprotni = {
-      naziv: nazivSuprotni,
-      kvota: kvotaSuprotni,
-      fairP: fairSuprotni,
-      edge: fairSuprotni * kvotaSuprotni - 1,
-    };
+    opSuprotni = { naziv: nazivSuprotni, kvota: kvotaSuprotni, fairP: fairSuprotni, edge: fairSuprotni * kvotaSuprotni - 1 };
   }
 
   const opcije = [opGlavni, opSuprotni].filter((o): o is OpcijaValue => o !== null);
@@ -556,13 +485,7 @@ export function izracunajValueBet(
 
 // ---------- Spajanje s postojećim pravilima ----------
 
-export type OsnovniRezultat = {
-  ok: boolean;
-  warn?: boolean;
-  title: string;
-  detail: string;
-  extra?: string | undefined;
-} | null;
+export type OsnovniRezultat = { ok: boolean; warn?: boolean; title: string; detail: string; extra?: string | undefined } | null;
 
 export function primijeniRadar(
   r: OsnovniRezultat,
@@ -573,7 +496,7 @@ export function primijeniRadar(
   if (!r || r.title === "Neispravan unos") return r;
 
   const osnovni: Verdikt = !r.ok ? "PRESKOČI" : r.warn ? "GRANIČNO" : "PROLAZI";
-  const red = { PROLAZI: 0, GRANIČNO: 1, PRESKOČI: 2 } as const;
+  const red = { PROLAZI: 0, "GRANIČNO": 1, "PRESKOČI": 2 } as const;
   let konacni = red[radar.verdikt] > red[osnovni] ? radar.verdikt : osnovni;
 
   const linije: string[] = [];
@@ -595,16 +518,12 @@ export function primijeniRadar(
     if (valueBet.glavni) {
       const e = valueBet.glavni.edge;
       const predznak = e > 0 ? "+" : "";
-      linije.push(
-        `• ${valueBet.glavni.naziv}: kvota ${valueBet.glavni.kvota.toFixed(2)} · fair ${pct(valueBet.glavni.fairP)} · Edge: ${predznak}${pct(e)} ${e >= 0.03 ? "💎 VALUE!" : ""}`,
-      );
+      linije.push(`• ${valueBet.glavni.naziv}: kvota ${valueBet.glavni.kvota.toFixed(2)} · fair ${pct(valueBet.glavni.fairP)} · Edge: ${predznak}${pct(e)} ${e >= 0.03 ? "💎 VALUE!" : ""}`);
     }
     if (valueBet.suprotni) {
       const e = valueBet.suprotni.edge;
       const predznak = e > 0 ? "+" : "";
-      linije.push(
-        `• ${valueBet.suprotni.naziv}: kvota ${valueBet.suprotni.kvota.toFixed(2)} · fair ${pct(valueBet.suprotni.fairP)} · Edge: ${predznak}${pct(e)} ${e >= 0.03 ? "💎 VALUE!" : ""}`,
-      );
+      linije.push(`• ${valueBet.suprotni.naziv}: kvota ${valueBet.suprotni.kvota.toFixed(2)} · fair ${pct(valueBet.suprotni.fairP)} · Edge: ${predznak}${pct(e)} ${e >= 0.03 ? "💎 VALUE!" : ""}`);
     }
     linije.push(`🎯 KONKRETAN PRIJEDLOG TIPA: ${valueBet.konkretanTip}`);
     linije.push(`ℹ️ ${valueBet.obrazlozenje}`);
@@ -624,10 +543,7 @@ export function primijeniRadar(
     return { ...r, title: t, extra };
   }
 
-  let title = r.title.replace(
-    /^(PROLAZI|GRANIČNO|NE PROLAZI)/,
-    konacni === "PRESKOČI" ? "NE PROLAZI" : konacni,
-  );
+  let title = r.title.replace(/^(PROLAZI|GRANIČNO|NE PROLAZI)/, konacni === "PRESKOČI" ? "NE PROLAZI" : konacni);
   if (zamkaPali) {
     title = `🚨 ZAMKA — ${zamka!.protuTip ? `igraj ${zamka!.protuTip}` : "preskoči"}`;
   } else if (valueBet?.imaValue && valueBet.najbolji) {
@@ -654,8 +570,7 @@ const doN = (l: number, n: number) => {
 };
 
 export function lambdaIzU25(pU25: number): number {
-  let lo = 0.1,
-    hi = 8;
+  let lo = 0.1, hi = 8;
   for (let i = 0; i < 50; i++) {
     const m = (lo + hi) / 2;
     if (doN(m, 2) > pU25) lo = m;
@@ -664,13 +579,7 @@ export function lambdaIzU25(pU25: number): number {
   return (lo + hi) / 2;
 }
 
-export function dixonColesTau(
-  x: number,
-  y: number,
-  lambda: number,
-  mu: number,
-  rho = -0.11,
-): number {
+export function dixonColesTau(x: number, y: number, lambda: number, mu: number, rho = -0.11): number {
   if (x === 0 && y === 0) return 1 - lambda * mu * rho;
   if (x === 0 && y === 1) return 1 + lambda * rho;
   if (x === 1 && y === 0) return 1 + mu * rho;
@@ -678,12 +587,7 @@ export function dixonColesTau(
   return 1;
 }
 
-export function dixonColesMatrica(
-  lambdaH: number,
-  muA: number,
-  rho = -0.11,
-  maxGolova = 8,
-): number[][] {
+export function dixonColesMatrica(lambdaH: number, muA: number, rho = -0.11, maxGolova = 8): number[][] {
   const grid: number[][] = [];
   let ukupno = 0;
   for (let h = 0; h <= maxGolova; h++) {
@@ -734,8 +638,7 @@ export function konsenzus(id: IndikatorId, ulaz: RadarUlaz): Konsenzus | null {
       const ea = t.rezultati.reduce((s, r, i) => s + r.a * f[i]!, 0);
       if (eh + ea > 0) udio = eh / (eh + ea);
     }
-    const lh = L * udio,
-      la = L * (1 - udio);
+    const lh = L * udio, la = L * (1 - udio);
     const matrica = dixonColesMatrica(lh, la, -0.11);
 
     let pp = 0;
@@ -768,17 +671,12 @@ export function konsenzus(id: IndikatorId, ulaz: RadarUlaz): Konsenzus | null {
     izvori.push({ naziv: `Dixon-Coles (xG ${lh.toFixed(2)}:${la.toFixed(2)})`, p: pp });
   }
 
-  const fa = broj(odds[`f${id}a`]),
-    fb = broj(odds[`f${id}b`]);
+  const fa = broj(odds[`f${id}a`]), fb = broj(odds[`f${id}b`]);
   if (fa !== null && fb !== null) izvori.push({ naziv: "forma", p: (fa + fb) / 10 });
 
   if (!izvori.length) return null;
   const ps = izvori.map((i) => i.p);
-  return {
-    prosjek: ps.reduce((a, b) => a + b, 0) / ps.length,
-    raspon: Math.max(...ps) - Math.min(...ps),
-    izvori,
-  };
+  return { prosjek: ps.reduce((a, b) => a + b, 0) / ps.length, raspon: Math.max(...ps) - Math.min(...ps), izvori };
 }
 
 export function pct(x: number): string {

@@ -22,17 +22,12 @@ function resolveKey(clientKey?: string | null): string | null {
 async function call(path: string, clientKey?: string | null) {
   const key = resolveKey(clientKey);
   if (!key) {
-    return {
-      error: "Nedostaje API ključ. Unesi ga u Postavkama (⚙️).",
-      data: null as unknown,
-      remaining: -1,
-    };
+    return { error: "Nedostaje API ključ. Unesi ga u Postavkama (⚙️).", data: null as unknown, remaining: -1 };
   }
   const r = await guardGet(path, { apiKey: key });
-  const error =
-    r.error === "RATE_LIMIT"
-      ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
-      : r.error;
+  const error = r.error === "RATE_LIMIT"
+    ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
+    : r.error;
   return { error, data: r.data, remaining: r.remainingDay };
 }
 
@@ -92,11 +87,7 @@ function mediana(xs: number[]): number | null {
 
 function parsirajKonsenzus(bookmakers: any[]) {
   const btts: Par[] = [];
-  const ou: Record<string, { o: number[]; u: number[] }> = {
-    "1.5": { o: [], u: [] },
-    "2.5": { o: [], u: [] },
-    "3.5": { o: [], u: [] },
-  };
+  const ou: Record<string, { o: number[]; u: number[] }> = { "1.5": { o: [], u: [] }, "2.5": { o: [], u: [] }, "3.5": { o: [], u: [] } };
   const m1x2: { home: number[]; draw: number[]; away: number[] } = { home: [], draw: [], away: [] };
 
   for (const bm of bookmakers ?? []) {
@@ -119,13 +110,10 @@ function parsirajKonsenzus(bookmakers: any[]) {
       } else if (id === 5 || name === "goals over/under") {
         const tmp: Record<string, { o?: number; u?: number }> = {};
         for (const v of vals) {
-          const m = String(v.value)
-            .trim()
-            .match(/^(over|under)\s*([0-9]+(?:\.[0-9]+)?)$/i);
+          const m = String(v.value).trim().match(/^(over|under)\s*([0-9]+(?:\.[0-9]+)?)$/i);
           const k = Number(v.odd);
           if (!m || !Number.isFinite(k) || k < 1.01) continue;
-          (tmp[parseFloat(m[2]!).toFixed(2)] ??= {})[m[1]!.toLowerCase() === "over" ? "o" : "u"] =
-            k;
+          (tmp[parseFloat(m[2]!).toFixed(2)] ??= {})[m[1]!.toLowerCase() === "over" ? "o" : "u"] = k;
         }
         for (const [l, x] of Object.entries(tmp)) {
           const kl = l in ou ? l : null;
@@ -158,17 +146,11 @@ function parsirajKonsenzus(bookmakers: any[]) {
     if (o) konz[`o${l.replace(".", "")}`] = o;
     if (u) konz[`u${l.replace(".", "")}`] = u;
   }
-  const h = mediana(m1x2.home),
-    x = mediana(m1x2.draw),
-    a = mediana(m1x2.away);
+  const h = mediana(m1x2.home), x = mediana(m1x2.draw), a = mediana(m1x2.away);
   if (h) konz["1"] = h;
   if (x) konz["X"] = x;
   if (a) konz["2"] = a;
-  return {
-    konsenzus: konz,
-    knjigaBtts: btts.length,
-    knjigaOu: Object.values(ou).filter((v) => v.o.length && v.u.length).length,
-  };
+  return { konsenzus: konz, knjigaBtts: btts.length, knjigaOu: Object.values(ou).filter((v) => v.o.length && v.u.length).length };
 }
 
 /* ---------- Forma jednog tima (zadnjih 6 — kroz guard, keširano 6 h) ---------- */
@@ -207,14 +189,8 @@ export const getGoalsBundle = createServerFn({ method: "POST" })
     const bookmakers: any[] = [];
     let error: string | null = null;
     for (let page = 1; page <= 1; page++) {
-      const r = await call(
-        `/odds?fixture=${data.id}&page=${page}&timezone=${encodeURIComponent(TZ)}`,
-        data.apiKey,
-      );
-      if (r.error) {
-        error = r.error;
-        break;
-      }
+      const r = await call(`/odds?fixture=${data.id}&page=${page}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
+      if (r.error) { error = r.error; break; }
       const resp = (r.data as any[]) ?? [];
       for (const item of resp) bookmakers.push(...(item?.bookmakers ?? []));
       if (resp.length === 0 || page >= 3) break;
