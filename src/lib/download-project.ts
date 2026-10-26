@@ -2,9 +2,7 @@
 // ZIP je pripremljen u public/andromeda-ai.zip pri buildu, a ovdje ga
 // dohvaćamo kao blob (direktan <a download> ne radi u Lovable pregledu).
 
-export async function downloadProjectZip(
-  fileName = "andromeda-ai.zip",
-): Promise<void> {
+export async function downloadProjectZip(fileName = "andromeda-ai.zip"): Promise<void> {
   try {
     const res = await fetch(`/${fileName}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

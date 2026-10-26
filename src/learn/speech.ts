@@ -8,7 +8,7 @@ interface SpeechRecognitionAlternative {
 
 interface SpeechRecognitionResultLike {
   0: SpeechRecognitionAlternative;
-   length: number;
+  length: number;
 }
 
 interface SpeechRecognitionEventLike {
@@ -92,7 +92,8 @@ export function cancelSpeech(): void {
  */
 export function listenOnce(lang: string, timeoutMs = 9000): Promise<string> {
   const Ctor = recognitionCtor();
-  if (!Ctor) return Promise.reject(new Error("Speech recognition is not supported in this browser."));
+  if (!Ctor)
+    return Promise.reject(new Error("Speech recognition is not supported in this browser."));
 
   return new Promise((resolve, reject) => {
     const recognition = new Ctor();
@@ -122,9 +123,12 @@ export function listenOnce(lang: string, timeoutMs = 9000): Promise<string> {
     recognition.onresult = (event) => {
       const result = event.results[event.results.length - 1];
       const transcript = result?.[0]?.transcript ?? "";
-      finish(() => (transcript ? resolve(transcript) : reject(new Error("Nothing was recognised."))));
+      finish(() =>
+        transcript ? resolve(transcript) : reject(new Error("Nothing was recognised.")),
+      );
     };
-    recognition.onerror = () => finish(() => reject(new Error("Microphone error — check permissions.")));
+    recognition.onerror = () =>
+      finish(() => reject(new Error("Microphone error — check permissions.")));
     recognition.onend = () => finish(() => reject(new Error("No speech detected.")));
 
     try {
@@ -143,11 +147,7 @@ const PUNCTUATION = /[.,!?;:。、！？…、·"'«»()[\]{}—–-]/g;
 
 /** Normalise a phrase for comparison, ignoring case, punctuation and spacing. */
 export function normalizeText(text: string, lang: string): string {
-  let out = text
-    .toLowerCase()
-    .replace(PUNCTUATION, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  let out = text.toLowerCase().replace(PUNCTUATION, " ").replace(/\s+/g, " ").trim();
   if (lang === "ja" || lang === "ko" || lang === "zh") out = out.replace(/\s+/g, "");
   return out;
 }

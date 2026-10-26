@@ -206,27 +206,97 @@ function KalkulatorPage() {
           </h2>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Domaći tim">
-              <input className={inputCls} value={s.home} onChange={(e) => update("home", e.target.value)} />
+              <input
+                className={inputCls}
+                value={s.home}
+                onChange={(e) => update("home", e.target.value)}
+              />
             </Field>
             <Field label="Gostujući tim">
-              <input className={inputCls} value={s.away} onChange={(e) => update("away", e.target.value)} />
+              <input
+                className={inputCls}
+                value={s.away}
+                onChange={(e) => update("away", e.target.value)}
+              />
             </Field>
-            <NumField label="xG domaćin" value={s.homeXG} step={0.05} onChange={(v) => update("homeXG", v)} />
-            <NumField label="xG gost" value={s.awayXG} step={0.05} onChange={(v) => update("awayXG", v)} />
-            <NumField label="Prosjek golova (dom)" value={s.homeGoalsAvg} step={0.05} onChange={(v) => update("homeGoalsAvg", v)} />
-            <NumField label="Prosjek golova (gost)" value={s.awayGoalsAvg} step={0.05} onChange={(v) => update("awayGoalsAvg", v)} />
+            <NumField
+              label="xG domaćin"
+              value={s.homeXG}
+              step={0.05}
+              onChange={(v) => update("homeXG", v)}
+            />
+            <NumField
+              label="xG gost"
+              value={s.awayXG}
+              step={0.05}
+              onChange={(v) => update("awayXG", v)}
+            />
+            <NumField
+              label="Prosjek golova (dom)"
+              value={s.homeGoalsAvg}
+              step={0.05}
+              onChange={(v) => update("homeGoalsAvg", v)}
+            />
+            <NumField
+              label="Prosjek golova (gost)"
+              value={s.awayGoalsAvg}
+              step={0.05}
+              onChange={(v) => update("awayGoalsAvg", v)}
+            />
           </div>
 
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground pt-2">
             Napredne stope (0–1)
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <NumField label="BTTS stopa dom" value={s.homeBTTSRate} step={0.05} min={0} max={1} onChange={(v) => update("homeBTTSRate", v)} />
-            <NumField label="BTTS stopa gost" value={s.awayBTTSRate} step={0.05} min={0} max={1} onChange={(v) => update("awayBTTSRate", v)} />
-            <NumField label="% postignut dom" value={s.homeScoredRate} step={0.05} min={0} max={1} onChange={(v) => update("homeScoredRate", v)} />
-            <NumField label="% postignut gost" value={s.awayScoredRate} step={0.05} min={0} max={1} onChange={(v) => update("awayScoredRate", v)} />
-            <NumField label="% primljen dom" value={s.homeConcededRate} step={0.05} min={0} max={1} onChange={(v) => update("homeConcededRate", v)} />
-            <NumField label="% primljen gost" value={s.awayConcededRate} step={0.05} min={0} max={1} onChange={(v) => update("awayConcededRate", v)} />
+            <NumField
+              label="BTTS stopa dom"
+              value={s.homeBTTSRate}
+              step={0.05}
+              min={0}
+              max={1}
+              onChange={(v) => update("homeBTTSRate", v)}
+            />
+            <NumField
+              label="BTTS stopa gost"
+              value={s.awayBTTSRate}
+              step={0.05}
+              min={0}
+              max={1}
+              onChange={(v) => update("awayBTTSRate", v)}
+            />
+            <NumField
+              label="% postignut dom"
+              value={s.homeScoredRate}
+              step={0.05}
+              min={0}
+              max={1}
+              onChange={(v) => update("homeScoredRate", v)}
+            />
+            <NumField
+              label="% postignut gost"
+              value={s.awayScoredRate}
+              step={0.05}
+              min={0}
+              max={1}
+              onChange={(v) => update("awayScoredRate", v)}
+            />
+            <NumField
+              label="% primljen dom"
+              value={s.homeConcededRate}
+              step={0.05}
+              min={0}
+              max={1}
+              onChange={(v) => update("homeConcededRate", v)}
+            />
+            <NumField
+              label="% primljen gost"
+              value={s.awayConcededRate}
+              step={0.05}
+              min={0}
+              max={1}
+              onChange={(v) => update("awayConcededRate", v)}
+            />
           </div>
 
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground pt-2">
@@ -236,45 +306,164 @@ function KalkulatorPage() {
             <NumField label="1" value={s.odd1} step={0.05} onChange={(v) => update("odd1", v)} />
             <NumField label="X" value={s.oddX} step={0.05} onChange={(v) => update("oddX", v)} />
             <NumField label="2" value={s.odd2} step={0.05} onChange={(v) => update("odd2", v)} />
-            <NumField label="BTTS DA" value={s.bttsYes} step={0.05} onChange={(v) => update("bttsYes", v)} />
-            <NumField label="BTTS NE" value={s.bttsNo} step={0.05} onChange={(v) => update("bttsNo", v)} />
-            <NumField label="OU linija" value={s.ouLine} step={0.5} onChange={(v) => update("ouLine", v)} />
-            <NumField label={`Over ${s.ouLine}`} value={s.over25} step={0.05} onChange={(v) => update("over25", v)} />
-            <NumField label={`Under ${s.ouLine}`} value={s.under25} step={0.05} onChange={(v) => update("under25", v)} />
+            <NumField
+              label="BTTS DA"
+              value={s.bttsYes}
+              step={0.05}
+              onChange={(v) => update("bttsYes", v)}
+            />
+            <NumField
+              label="BTTS NE"
+              value={s.bttsNo}
+              step={0.05}
+              onChange={(v) => update("bttsNo", v)}
+            />
+            <NumField
+              label="OU linija"
+              value={s.ouLine}
+              step={0.5}
+              onChange={(v) => update("ouLine", v)}
+            />
+            <NumField
+              label={`Over ${s.ouLine}`}
+              value={s.over25}
+              step={0.05}
+              onChange={(v) => update("over25", v)}
+            />
+            <NumField
+              label={`Under ${s.ouLine}`}
+              value={s.under25}
+              step={0.05}
+              onChange={(v) => update("under25", v)}
+            />
           </div>
 
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground pt-2">
             Srce indeks (0–10)
           </h2>
           <div className="grid grid-cols-3 gap-3">
-            <NumField label="Motivacija dom" value={s.motH} step={1} min={0} max={10} onChange={(v) => update("motH", v)} />
-            <NumField label="Motivacija gost" value={s.motA} step={1} min={0} max={10} onChange={(v) => update("motA", v)} />
-            <NumField label="Forma dom" value={s.formH} step={1} min={0} max={10} onChange={(v) => update("formH", v)} />
-            <NumField label="Forma gost" value={s.formA} step={1} min={0} max={10} onChange={(v) => update("formA", v)} />
-            <NumField label="Rivalstvo" value={s.rivalry} step={1} min={0} max={10} onChange={(v) => update("rivalry", v)} />
-            <NumField label="Publika (dom)" value={s.crowd} step={1} min={0} max={10} onChange={(v) => update("crowd", v)} />
+            <NumField
+              label="Motivacija dom"
+              value={s.motH}
+              step={1}
+              min={0}
+              max={10}
+              onChange={(v) => update("motH", v)}
+            />
+            <NumField
+              label="Motivacija gost"
+              value={s.motA}
+              step={1}
+              min={0}
+              max={10}
+              onChange={(v) => update("motA", v)}
+            />
+            <NumField
+              label="Forma dom"
+              value={s.formH}
+              step={1}
+              min={0}
+              max={10}
+              onChange={(v) => update("formH", v)}
+            />
+            <NumField
+              label="Forma gost"
+              value={s.formA}
+              step={1}
+              min={0}
+              max={10}
+              onChange={(v) => update("formA", v)}
+            />
+            <NumField
+              label="Rivalstvo"
+              value={s.rivalry}
+              step={1}
+              min={0}
+              max={10}
+              onChange={(v) => update("rivalry", v)}
+            />
+            <NumField
+              label="Publika (dom)"
+              value={s.crowd}
+              step={1}
+              min={0}
+              max={10}
+              onChange={(v) => update("crowd", v)}
+            />
           </div>
 
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground pt-2">
             Kornera (prosjek po utakmici)
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <NumField label="Dom postiže" value={s.cornersHome} step={0.1} onChange={(v) => update("cornersHome", v)} />
-            <NumField label="Gost postiže" value={s.cornersAway} step={0.1} onChange={(v) => update("cornersAway", v)} />
-            <NumField label="Dom prima" value={s.cornersConcededHome} step={0.1} onChange={(v) => update("cornersConcededHome", v)} />
-            <NumField label="Gost prima" value={s.cornersConcededAway} step={0.1} onChange={(v) => update("cornersConcededAway", v)} />
-            <NumField label="Kornera linija" value={s.cornersLine} step={0.5} onChange={(v) => update("cornersLine", v)} />
-            <NumField label="HT udio golova (0-1)" value={s.htShare} step={0.02} min={0.3} max={0.6} onChange={(v) => update("htShare", v)} />
+            <NumField
+              label="Dom postiže"
+              value={s.cornersHome}
+              step={0.1}
+              onChange={(v) => update("cornersHome", v)}
+            />
+            <NumField
+              label="Gost postiže"
+              value={s.cornersAway}
+              step={0.1}
+              onChange={(v) => update("cornersAway", v)}
+            />
+            <NumField
+              label="Dom prima"
+              value={s.cornersConcededHome}
+              step={0.1}
+              onChange={(v) => update("cornersConcededHome", v)}
+            />
+            <NumField
+              label="Gost prima"
+              value={s.cornersConcededAway}
+              step={0.1}
+              onChange={(v) => update("cornersConcededAway", v)}
+            />
+            <NumField
+              label="Kornera linija"
+              value={s.cornersLine}
+              step={0.5}
+              onChange={(v) => update("cornersLine", v)}
+            />
+            <NumField
+              label="HT udio golova (0-1)"
+              value={s.htShare}
+              step={0.02}
+              min={0.3}
+              max={0.6}
+              onChange={(v) => update("htShare", v)}
+            />
           </div>
 
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground pt-2">
             Kartona (prosjek)
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            <NumField label="Dom prima kart." value={s.cardsHome} step={0.1} onChange={(v) => update("cardsHome", v)} />
-            <NumField label="Gost prima kart." value={s.cardsAway} step={0.1} onChange={(v) => update("cardsAway", v)} />
-            <NumField label="Sudac prosjek kart." value={s.refereeCards} step={0.1} onChange={(v) => update("refereeCards", v)} />
-            <NumField label="Kartona linija" value={s.cardsLine} step={0.5} onChange={(v) => update("cardsLine", v)} />
+            <NumField
+              label="Dom prima kart."
+              value={s.cardsHome}
+              step={0.1}
+              onChange={(v) => update("cardsHome", v)}
+            />
+            <NumField
+              label="Gost prima kart."
+              value={s.cardsAway}
+              step={0.1}
+              onChange={(v) => update("cardsAway", v)}
+            />
+            <NumField
+              label="Sudac prosjek kart."
+              value={s.refereeCards}
+              step={0.1}
+              onChange={(v) => update("refereeCards", v)}
+            />
+            <NumField
+              label="Kartona linija"
+              value={s.cardsLine}
+              step={0.5}
+              onChange={(v) => update("cardsLine", v)}
+            />
           </div>
 
           <button
@@ -299,7 +488,9 @@ function KalkulatorPage() {
               <ResultCard
                 title="BTTS"
                 verdict={computed.btts.tip === "GG" ? "GG (Obostrano DA)" : "NG (Obostrano NE)"}
-                probability={computed.btts.tip === "GG" ? computed.btts.probYes : computed.btts.probNo}
+                probability={
+                  computed.btts.tip === "GG" ? computed.btts.probYes : computed.btts.probNo
+                }
                 confidence={computed.btts.confidence}
                 color={computed.btts.color}
                 reasons={computed.btts.reasons}
@@ -308,7 +499,9 @@ function KalkulatorPage() {
               <ResultCard
                 title={`Over/Under ${computed.ou.line}`}
                 verdict={computed.ou.tip}
-                probability={computed.ou.tip.startsWith("Over") ? computed.ou.probOver : computed.ou.probUnder}
+                probability={
+                  computed.ou.tip.startsWith("Over") ? computed.ou.probOver : computed.ou.probUnder
+                }
                 confidence={computed.ou.confidence}
                 color={computed.ou.tip.startsWith("Over") ? "success" : "destructive"}
                 reasons={computed.ou.reasons}
@@ -345,7 +538,11 @@ function KalkulatorPage() {
               <ResultCard
                 title={`Kornera Over/Under ${computed.corners.line}`}
                 verdict={computed.corners.tip}
-                probability={computed.corners.tip.startsWith("Over") ? computed.corners.probOver : computed.corners.probUnder}
+                probability={
+                  computed.corners.tip.startsWith("Over")
+                    ? computed.corners.probOver
+                    : computed.corners.probUnder
+                }
                 confidence={computed.corners.confidence}
                 color={computed.corners.tip.startsWith("Over") ? "success" : "destructive"}
                 reasons={computed.corners.reasons}
@@ -354,7 +551,11 @@ function KalkulatorPage() {
               <ResultCard
                 title={`Kartona Over/Under ${computed.cards.line}`}
                 verdict={computed.cards.tip}
-                probability={computed.cards.tip.startsWith("Over") ? computed.cards.probOver : computed.cards.probUnder}
+                probability={
+                  computed.cards.tip.startsWith("Over")
+                    ? computed.cards.probOver
+                    : computed.cards.probUnder
+                }
                 confidence={computed.cards.confidence}
                 color={computed.cards.tip.startsWith("Over") ? "success" : "destructive"}
                 reasons={computed.cards.reasons}
@@ -380,7 +581,9 @@ function KalkulatorPage() {
                   {computed.mat.topScores.map((sc) => (
                     <div key={sc.score} className="rounded-lg bg-secondary p-3 text-center">
                       <div className="text-lg font-bold">{sc.score}</div>
-                      <div className="text-xs text-muted-foreground">{(sc.p * 100).toFixed(1)}%</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(sc.p * 100).toFixed(1)}%
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -461,7 +664,9 @@ function ResultCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-wide text-muted-foreground">{title}</div>
-          <div className={`mt-1 text-2xl font-bold ${isGood ? "text-primary" : "text-destructive"}`}>
+          <div
+            className={`mt-1 text-2xl font-bold ${isGood ? "text-primary" : "text-destructive"}`}
+          >
             {verdict}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">

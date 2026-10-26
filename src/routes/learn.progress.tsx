@@ -1,22 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
-import {
-  BarChart3,
-  CheckCircle2,
-  Flame,
-  RotateCcw,
-  Sparkles,
-  Target,
-  Trophy,
-} from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { BarChart3, CheckCircle2, Flame, RotateCcw, Sparkles, Target, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AchievementBadge,
@@ -70,7 +55,8 @@ function CourseBreakdown({ courseId, cp }: { courseId: string; cp: CourseProgres
         <div className="flex-1">
           <div className="text-sm font-semibold text-foreground">{language?.name}</div>
           <div className="text-xs text-muted-foreground">
-            {cp.completedUnits}/{cp.totalUnits} units · {cp.completedLessons}/{cp.totalLessons} activities
+            {cp.completedUnits}/{cp.totalUnits} units · {cp.completedLessons}/{cp.totalLessons}{" "}
+            activities
           </div>
         </div>
         <span className="text-lg font-bold tabular-nums text-primary">{cp.percent}%</span>
@@ -116,13 +102,15 @@ function ProgressPage() {
       <section className="rounded-3xl border border-border/60 bg-card/50 p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Progress report</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              Progress report
+            </p>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
               Level {level.level} · {progress.xp.toLocaleString()} XP
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {earnedThisWeek.toLocaleString()} XP in the last 7 days ·{" "}
-              {stats.lessonsCompleted} activities completed overall
+              {earnedThisWeek.toLocaleString()} XP in the last 7 days · {stats.lessonsCompleted}{" "}
+              activities completed overall
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -184,7 +172,11 @@ function ProgressPage() {
                     <stop offset="95%" stopColor="oklch(0.585 0.232 25.5)" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.07)"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="label"
                   tick={{ fontSize: 10, fill: "rgba(255,255,255,0.5)" }}
@@ -223,10 +215,7 @@ function ProgressPage() {
             {series.map((point) => (
               <div key={point.day} className="flex flex-1 flex-col items-center gap-1">
                 <div
-                  className={cn(
-                    "w-full rounded-t bg-primary/70",
-                    point.xp === 0 && "bg-muted/40",
-                  )}
+                  className={cn("w-full rounded-t bg-primary/70", point.xp === 0 && "bg-muted/40")}
                   style={{ height: `${Math.max(4, (point.xp / maxDay) * 100)}%` }}
                   title={`${point.label}: ${point.xp} XP`}
                 />

@@ -27,9 +27,9 @@ export type RezultatUtakmice = {
   zavrsena: boolean;
   dom: number | null;
   gost: number | null;
-  domHT: number | null;   // poluvrijeme (nogomet) ili 1. pola (sportovi)
+  domHT: number | null; // poluvrijeme (nogomet) ili 1. pola (sportovi)
   gostHT: number | null;
-  domReg: number | null;  // regularni rezultat (bez produžetaka)
+  domReg: number | null; // regularni rezultat (bez produžetaka)
   gostReg: number | null;
 };
 
@@ -45,8 +45,14 @@ export const getRezultat = createServerFn({ method: "GET" })
   .inputValidator((d) => schema.parse(d))
   .handler(async ({ data }): Promise<RezultatUtakmice> => {
     const nista: RezultatUtakmice = {
-      error: null, zavrsena: false,
-      dom: null, gost: null, domHT: null, gostHT: null, domReg: null, gostReg: null,
+      error: null,
+      zavrsena: false,
+      dom: null,
+      gost: null,
+      domHT: null,
+      gostHT: null,
+      domReg: null,
+      gostReg: null,
     };
 
     if (data.sport === "kosarka" || data.sport === "rukomet") {
@@ -62,12 +68,8 @@ export const getRezultat = createServerFn({ method: "GET" })
       if (!ZAVRSENI_SPORTOVI.includes(short)) return nista;
 
       const kos = data.sport === "kosarka";
-      const dom = kos
-        ? fin(g?.scores?.home?.total)
-        : fin(g?.scores?.home);
-      const gost = kos
-        ? fin(g?.scores?.away?.total)
-        : fin(g?.scores?.away);
+      const dom = kos ? fin(g?.scores?.home?.total) : fin(g?.scores?.home);
+      const gost = kos ? fin(g?.scores?.away?.total) : fin(g?.scores?.away);
 
       // regularni rezultat
       let domReg: number | null = null;
@@ -121,7 +123,10 @@ export const getRezultat = createServerFn({ method: "GET" })
     }
 
     // nogomet — ista logika kao prije (football kvota, api-guard)
-    const r = await guardGet(`/fixtures?id=${data.fixtureId}`, { apiKey: data.apiKey, ttlMs: 10 * 60_000 });
+    const r = await guardGet(`/fixtures?id=${data.fixtureId}`, {
+      apiKey: data.apiKey,
+      ttlMs: 10 * 60_000,
+    });
     if (r.error) return { ...nista, error: r.error };
     const resp = Array.isArray(r.data) ? (r.data as any[]) : [];
     const f = resp[0];
@@ -139,8 +144,7 @@ export const getRezultat = createServerFn({ method: "GET" })
       gost,
       domHT,
       gostHT,
-      domReg: dom,   // nogomet: konačni rezultat je ujedno i regularni za 1X2 tipove
+      domReg: dom, // nogomet: konačni rezultat je ujedno i regularni za 1X2 tipove
       gostReg: gost,
     };
   });
-

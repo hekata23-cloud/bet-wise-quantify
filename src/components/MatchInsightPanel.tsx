@@ -21,13 +21,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, AlertTriangle, BookOpen, BrainCircuit, ChevronDown,
-  Dices, Info, LineChart, ShieldCheck, Target, TrendingDown, TrendingUp,
-  Ban, HelpCircle,
+  Activity,
+  AlertTriangle,
+  BookOpen,
+  BrainCircuit,
+  ChevronDown,
+  Dices,
+  Info,
+  LineChart,
+  ShieldCheck,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Ban,
+  HelpCircle,
 } from "lucide-react";
 import { sarpBrain, type SarpIzlaz } from "@/lib/sarp-brain";
 import {
-  clvZaTip, kretanjeKvota, spremiSnapshot, snapshoti,
+  clvZaTip,
+  kretanjeKvota,
+  spremiSnapshot,
+  snapshoti,
   type KretanjeKvote,
 } from "@/lib/odds-tracker";
 import { evaluirajAntiLoss, brierKalibracija } from "@/lib/anti-loss";
@@ -57,12 +71,22 @@ export type MatchInsightProps = {
   goals?: GoalsIzlaz | null;
 };
 
-function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
+function fmtPct(x: number) {
+  return `${(x * 100).toFixed(1)}%`;
+}
 
 const LABELI: Record<string, string> = {
-  "1": "1 · domaćin", "X": "X · neriješeno", "2": "2 · gost",
-  bttsDa: "GG — da", bttsNe: "NG — ne",
-  o15: "O1.5", u15: "U1.5", o25: "O2.5", u25: "U2.5", o35: "O3.5", u35: "U3.5",
+  "1": "1 · domaćin",
+  X: "X · neriješeno",
+  "2": "2 · gost",
+  bttsDa: "GG — da",
+  bttsNe: "NG — ne",
+  o15: "O1.5",
+  u15: "U1.5",
+  o25: "O2.5",
+  u25: "U2.5",
+  o35: "O3.5",
+  u35: "U3.5",
 };
 
 function ocjenaKlasa(o: string) {
@@ -117,7 +141,15 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         refPensPerGame: sudacUlaz?.penaliPoUtakmici ?? 0,
         brojKladionica: props.brojKladionica ?? 0,
       }),
-    [utakmica.id, utakmica.home, utakmica.away, utakmica.league, okolisUlaz, sudacUlaz, props.brojKladionica],
+    [
+      utakmica.id,
+      utakmica.home,
+      utakmica.away,
+      utakmica.league,
+      okolisUlaz,
+      sudacUlaz,
+      props.brojKladionica,
+    ],
   );
 
   const sarp: SarpIzlaz = useMemo(
@@ -133,7 +165,17 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         sudac: sudacUlaz,
         kontekst: universalKontekst,
       }),
-    [utakmica, kvote, props.brojKladionica, props.formaDom, props.formaGost, goals, okolisUlaz, sudacUlaz, universalKontekst],
+    [
+      utakmica,
+      kvote,
+      props.brojKladionica,
+      props.formaDom,
+      props.formaGost,
+      goals,
+      okolisUlaz,
+      sudacUlaz,
+      universalKontekst,
+    ],
   );
 
   // historija kvota: svaki novi dohvat = snapshot
@@ -223,9 +265,7 @@ export function MatchInsightPanel(props: MatchInsightProps) {
   );
 
   /* ── MODEL AGREEMENT (koliko od 3 kvantitativna modela se slažu) ── */
-  const slazu = 1
-    + (sarp.suglasnostSkellam >= 0.85 ? 1 : 0)
-    + (mcRaz <= 0.05 ? 1 : 0);
+  const slazu = 1 + (sarp.suglasnostSkellam >= 0.85 ? 1 : 0) + (mcRaz <= 0.05 ? 1 : 0);
 
   /* ── BRIER KALIBRACIJA ── */
   const kal = brierKalibracija();
@@ -238,9 +278,7 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <Ban className="h-5 w-5 shrink-0 text-red-400" />
           <div className="flex-1">
             <b>ANTI-LOSS FILTER: PREPORUKA JE PRESKOČITI OVU UTAKMICU</b>
-            <div className="text-xs text-red-200/80">
-              Razlog: {antiLoss.razlozi.join(" · ")}
-            </div>
+            <div className="text-xs text-red-200/80">Razlog: {antiLoss.razlozi.join(" · ")}</div>
           </div>
         </div>
       )}
@@ -263,7 +301,8 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <div className="flex-1">
             <b>ZLATNA PRILIKA (EDGE ≥ 5%)</b>
             <div className="text-xs text-emerald-200/80">
-              Model i tržište se slažu, a prednost nad kladionicom je visoka ({fmtPct(sarp.coreTip.edge)}).
+              Model i tržište se slažu, a prednost nad kladionicom je visoka (
+              {fmtPct(sarp.coreTip.edge)}).
             </div>
           </div>
         </div>
@@ -279,7 +318,9 @@ export function MatchInsightPanel(props: MatchInsightProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${ocjenaKlasa(sarp.ocjena)}`}>
+            <span
+              className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${ocjenaKlasa(sarp.ocjena)}`}
+            >
               Ocjena {sarp.ocjena} ({sarp.povjerenje}/100)
             </span>
           </div>
@@ -291,7 +332,8 @@ export function MatchInsightPanel(props: MatchInsightProps) {
             <span className="text-muted-foreground self-center">Kvote:</span>
             {Object.entries(sarp.matchInfo.kvote).map(([k, v]) => (
               <span key={k} className="rounded bg-muted px-2 py-0.5 font-mono">
-                <span className="text-muted-foreground">{LABELI[k] ?? k}:</span> <b>{v.toFixed(2)}</b>
+                <span className="text-muted-foreground">{LABELI[k] ?? k}:</span>{" "}
+                <b>{v.toFixed(2)}</b>
               </span>
             ))}
           </div>
@@ -312,9 +354,7 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <div className="flex items-center gap-2 text-sm font-semibold text-primary">
             <Target className="h-4 w-4" /> SARP Core Predikcija (Glavni tip)
           </div>
-          <span className="text-xs text-muted-foreground">
-            {slazu}/3 modela se slažu
-          </span>
+          <span className="text-xs text-muted-foreground">{slazu}/3 modela se slažu</span>
         </div>
 
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border/60 pb-3">
@@ -323,13 +363,20 @@ export function MatchInsightPanel(props: MatchInsightProps) {
             <div className="text-xs text-muted-foreground">
               Vjerojatnost modela: <b className="text-foreground">{fmtPct(sarp.coreTip.p)}</b>
               {sarp.coreTip.kvota && (
-                <> · Tržišna kvota: <b className="text-foreground">{sarp.coreTip.kvota.toFixed(2)}</b></>
+                <>
+                  {" "}
+                  · Tržišna kvota:{" "}
+                  <b className="text-foreground">{sarp.coreTip.kvota.toFixed(2)}</b>
+                </>
               )}
             </div>
           </div>
           <div className="text-right">
-            <div className={`text-lg font-bold ${sarp.coreTip.edge >= 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
-              {sarp.coreTip.edge >= 0 ? `+${fmtPct(sarp.coreTip.edge)}` : fmtPct(sarp.coreTip.edge)} EV
+            <div
+              className={`text-lg font-bold ${sarp.coreTip.edge >= 0 ? "text-emerald-400" : "text-muted-foreground"}`}
+            >
+              {sarp.coreTip.edge >= 0 ? `+${fmtPct(sarp.coreTip.edge)}` : fmtPct(sarp.coreTip.edge)}{" "}
+              EV
             </div>
             <div className="text-xs text-muted-foreground">
               ¼ Kelly ulog: <b className="text-foreground">{sarp.coreTip.kellyPct}%</b> banke
@@ -352,11 +399,23 @@ export function MatchInsightPanel(props: MatchInsightProps) {
 
         {otvoriZasto && (
           <div className="mt-3 rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground space-y-1.5 border border-border/50">
-            <div>• <b>Poisson & Skellam:</b> λ dom = {sarp.lambdaDom.toFixed(2)}, λ gost = {sarp.lambdaGost.toFixed(2)} (ukupno {sarp.lambdaUkupno.toFixed(2)}).</div>
-            <div>• <b>Konsenzus:</b> {sarp.brojIzvora} neovisnih izvora podataka sintetizirano u 1 projekciju.</div>
-            <div>• <b>Monte Carlo:</b> {(sarp.mc.n).toLocaleString("hr-HR")} simulacija potvrđuje stabilnost vjerojatnosti.</div>
+            <div>
+              • <b>Poisson & Skellam:</b> λ dom = {sarp.lambdaDom.toFixed(2)}, λ gost ={" "}
+              {sarp.lambdaGost.toFixed(2)} (ukupno {sarp.lambdaUkupno.toFixed(2)}).
+            </div>
+            <div>
+              • <b>Konsenzus:</b> {sarp.brojIzvora} neovisnih izvora podataka sintetizirano u 1
+              projekciju.
+            </div>
+            <div>
+              • <b>Monte Carlo:</b> {sarp.mc.n.toLocaleString("hr-HR")} simulacija potvrđuje
+              stabilnost vjerojatnosti.
+            </div>
             {lineupInfo?.utjecaj?.imaUtjecaj && (
-              <div>• <b>Lineup utjecaj:</b> detektirana promjena sastava pomiče distribuciju za {lineupInfo.utjecaj.procenat}%.</div>
+              <div>
+                • <b>Lineup utjecaj:</b> detektirana promjena sastava pomiče distribuciju za{" "}
+                {lineupInfo.utjecaj.procenat}%.
+              </div>
             )}
           </div>
         )}
@@ -399,7 +458,9 @@ export function MatchInsightPanel(props: MatchInsightProps) {
             <AlertTriangle className="h-4 w-4" /> Rizici i upozorenja modela
           </div>
           <ul className="space-y-1 text-xs text-amber-200/90">
-            {sarp.rizici.map((r, i) => <li key={i}>• {r}</li>)}
+            {sarp.rizici.map((r, i) => (
+              <li key={i}>• {r}</li>
+            ))}
           </ul>
         </section>
       )}
@@ -410,15 +471,25 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <div className="flex items-center gap-2 text-sm font-semibold">
             <BrainCircuit className="h-4 w-4 text-violet-400" /> Model Confidence
           </div>
-          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${ocjenaKlasa(sarp.ocjena)}`}>
+          <span
+            className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${ocjenaKlasa(sarp.ocjena)}`}
+          >
             {sarp.ocjena} · {sarp.povjerenje}/100
           </span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
-          <span>Izvora podataka: <b className="text-foreground">{sarp.brojIzvora}</b></span>
-          <span>λ ukupno: <b className="text-foreground tabular-nums">{sarp.lambdaUkupno.toFixed(2)}</b></span>
-          <span>Suglasnost Skellam: <b className="text-foreground">{fmtPct(sarp.suglasnostSkellam)}</b></span>
-          <span>MC vs model (O2.5): <b className="text-foreground">{fmtPct(sarp.mc.o25)}</b></span>
+          <span>
+            Izvora podataka: <b className="text-foreground">{sarp.brojIzvora}</b>
+          </span>
+          <span>
+            λ ukupno: <b className="text-foreground tabular-nums">{sarp.lambdaUkupno.toFixed(2)}</b>
+          </span>
+          <span>
+            Suglasnost Skellam: <b className="text-foreground">{fmtPct(sarp.suglasnostSkellam)}</b>
+          </span>
+          <span>
+            MC vs model (O2.5): <b className="text-foreground">{fmtPct(sarp.mc.o25)}</b>
+          </span>
         </div>
         {/* Brier kalibracija — pokazuje se kad ima dovoljno označenih tipova */}
         {kal.n >= 10 && kal.brier != null && kal.hitRate != null && kal.najavljeno != null && (
@@ -442,7 +513,9 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <BookOpen className="h-4 w-4 text-amber-400" /> Obrazloženje
         </div>
         <ul className="space-y-1.5 text-sm text-muted-foreground">
-          {sarp.obrazlozenje.map((r, i) => <li key={i}>• {r}</li>)}
+          {sarp.obrazlozenje.map((r, i) => (
+            <li key={i}>• {r}</li>
+          ))}
         </ul>
 
         {/* Detalji 7 faza (harmonika) */}
@@ -450,7 +523,9 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           onClick={() => setOtvoreneFaze((v) => !v)}
           className="mt-3 flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
         >
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${otvoreneFaze ? "rotate-180" : ""}`} />
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${otvoreneFaze ? "rotate-180" : ""}`}
+          />
           {otvoreneFaze ? "Sakrij SARP faza detalje" : "Prikaži detalje svih 7 SARP faza"}
         </button>
 
@@ -458,7 +533,9 @@ export function MatchInsightPanel(props: MatchInsightProps) {
           <div className="mt-3 space-y-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
             {sarp.faze.map((f) => (
               <div key={f.faza} className="rounded-lg bg-muted/30 p-2.5">
-                <div className="font-semibold text-foreground">Faza {f.faza}: {f.naziv}</div>
+                <div className="font-semibold text-foreground">
+                  Faza {f.faza}: {f.naziv}
+                </div>
                 <div>{f.sazetak}</div>
                 {f.detalji && <div className="text-[11px] opacity-75">{f.detalji}</div>}
               </div>
@@ -483,7 +560,8 @@ export function MatchInsightPanel(props: MatchInsightProps) {
 
           {kretanje.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              Još nema historije kvota za ovu utakmicu. Kako osvježavaš kvote, ovdje će se pratiti kretanje linija.
+              Još nema historije kvota za ovu utakmicu. Kako osvježavaš kvote, ovdje će se pratiti
+              kretanje linija.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -501,14 +579,28 @@ export function MatchInsightPanel(props: MatchInsightProps) {
                   {kretanje.map((k) => (
                     <tr key={k.kljuc} className="border-b border-border/30">
                       <td className="py-1.5 font-bold">{LABELI[k.kljuc] ?? k.kljuc}</td>
-                      <td className="py-1.5 text-right font-mono">{k.otvaranje?.toFixed(2) ?? "—"}</td>
-                      <td className="py-1.5 text-right font-mono font-bold text-foreground">{k.zadnja?.toFixed(2) ?? "—"}</td>
-                      <td className={`py-1.5 text-right font-mono font-bold ${
-                        k.deltaPct == null ? "text-muted-foreground" : k.deltaPct > 0 ? "text-emerald-400" : k.deltaPct < 0 ? "text-red-400" : "text-muted-foreground"
-                      }`}>
+                      <td className="py-1.5 text-right font-mono">
+                        {k.otvaranje?.toFixed(2) ?? "—"}
+                      </td>
+                      <td className="py-1.5 text-right font-mono font-bold text-foreground">
+                        {k.zadnja?.toFixed(2) ?? "—"}
+                      </td>
+                      <td
+                        className={`py-1.5 text-right font-mono font-bold ${
+                          k.deltaPct == null
+                            ? "text-muted-foreground"
+                            : k.deltaPct > 0
+                              ? "text-emerald-400"
+                              : k.deltaPct < 0
+                                ? "text-red-400"
+                                : "text-muted-foreground"
+                        }`}
+                      >
                         {k.deltaPct != null ? `${k.deltaPct > 0 ? "+" : ""}${k.deltaPct}` : "—"}
                       </td>
-                      <td className="px-2 py-1.5 text-[10px] text-muted-foreground">{k.tumanenje}</td>
+                      <td className="px-2 py-1.5 text-[10px] text-muted-foreground">
+                        {k.tumanenje}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -525,19 +617,29 @@ export function MatchInsightPanel(props: MatchInsightProps) {
         </div>
         {!clv.postoji ? (
           <p className="text-xs text-muted-foreground">
-            CLV se pokazuje kad postoje barem 2 snimka kvota — prva (tvoja) vs zadnja (proxy za zatvarajuću liniju) na tržištu tvog tipa ({LABELI[clv.kljuc] ?? clv.kljuc}).
+            CLV se pokazuje kad postoje barem 2 snimka kvota — prva (tvoja) vs zadnja (proxy za
+            zatvarajuću liniju) na tržištu tvog tipa ({LABELI[clv.kljuc] ?? clv.kljuc}).
           </p>
         ) : (
           <div className="flex items-center gap-3">
-            {clv.clvPct != null && clv.clvPct >= 0
-              ? <TrendingUp className="h-5 w-5 text-emerald-400" />
-              : <TrendingDown className="h-5 w-5 text-red-400" />}
+            {clv.clvPct != null && clv.clvPct >= 0 ? (
+              <TrendingUp className="h-5 w-5 text-emerald-400" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-red-400" />
+            )}
             <div className="text-sm">
-              <b className={clv.clvPct != null && clv.clvPct >= 0 ? "text-emerald-400" : "text-red-400"}>
-                CLV {clv.clvPct != null && clv.clvPct >= 0 ? "+" : ""}{clv.clvPct}%
+              <b
+                className={
+                  clv.clvPct != null && clv.clvPct >= 0 ? "text-emerald-400" : "text-red-400"
+                }
+              >
+                CLV {clv.clvPct != null && clv.clvPct >= 0 ? "+" : ""}
+                {clv.clvPct}%
               </b>
               <span className="text-muted-foreground">
-                {" "}— uzeo {clv.kvotaUzeta?.toFixed(2)} vs zatvaranje {clv.kvotaZatvaranja?.toFixed(2)} ({LABELI[clv.kljuc] ?? clv.kljuc}).
+                {" "}
+                — uzeo {clv.kvotaUzeta?.toFixed(2)} vs zatvaranje {clv.kvotaZatvaranja?.toFixed(2)}{" "}
+                ({LABELI[clv.kljuc] ?? clv.kljuc}).
                 {clv.clvPct != null && clv.clvPct >= 0
                   ? " Dobra linija: dugoročno to je glavno mjerilo dobrog uloga."
                   : " Lošija linija od tržišta — razmisli o čekanju zadnjih minuta prije uloga."}
@@ -550,7 +652,8 @@ export function MatchInsightPanel(props: MatchInsightProps) {
       {/* 9 · SIMULACIJE (MC) */}
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-          <Dices className="h-4 w-4 text-fuchsia-400" /> Simulacije (Monte Carlo · {sarp.mc.n.toLocaleString("hr-HR")}×)
+          <Dices className="h-4 w-4 text-fuchsia-400" /> Simulacije (Monte Carlo ·{" "}
+          {sarp.mc.n.toLocaleString("hr-HR")}×)
         </div>
         <div className="grid gap-1.5 sm:grid-cols-2">
           {sarp.mc.topRezultati.map((t) => {
@@ -559,7 +662,10 @@ export function MatchInsightPanel(props: MatchInsightProps) {
               <div key={t.rezultat} className="flex items-center gap-2">
                 <span className="w-10 text-sm font-bold tabular-nums">{t.rezultat}</span>
                 <div className="h-2 flex-1 overflow-hidden rounded bg-muted">
-                  <div className="h-full rounded bg-fuchsia-500/60" style={{ width: `${(t.p / max) * 100}%` }} />
+                  <div
+                    className="h-full rounded bg-fuchsia-500/60"
+                    style={{ width: `${(t.p / max) * 100}%` }}
+                  />
                 </div>
                 <span className="w-14 text-right text-[11px] text-muted-foreground tabular-nums">
                   {fmtPct(t.p)} ({t.broj}×)

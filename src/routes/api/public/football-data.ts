@@ -12,7 +12,8 @@ export const Route = createFileRoute("/api/public/football-data")({
         const url = new URL(request.url);
         const path = url.searchParams.get("path") ?? "";
         const token = request.headers.get("x-auth-token") ?? "";
-        if (!token) return new Response(JSON.stringify({ message: "Nedostaje ključ" }), { status: 401 });
+        if (!token)
+          return new Response(JSON.stringify({ message: "Nedostaje ključ" }), { status: 401 });
         if (!path.startsWith("/")) {
           return new Response(JSON.stringify({ message: "Neispravna putanja" }), { status: 400 });
         }
@@ -28,7 +29,9 @@ export const Route = createFileRoute("/api/public/football-data")({
           });
         } catch (e) {
           return new Response(
-            JSON.stringify({ message: `Proxy greška: ${e instanceof Error ? e.message : String(e)}` }),
+            JSON.stringify({
+              message: `Proxy greška: ${e instanceof Error ? e.message : String(e)}`,
+            }),
             { status: 502, headers: { "Content-Type": "application/json" } },
           );
         }

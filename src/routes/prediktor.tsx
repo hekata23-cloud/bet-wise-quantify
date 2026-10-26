@@ -48,7 +48,8 @@ export const Route = createFileRoute("/prediktor")({
       { title: "Prediktor — Točan Rezultat, HT/FT & Over/Under 3.5" },
       {
         name: "description",
-        content: "Nogometni analitički centar: Poisson 5x5 točan rezultat s Over/Under 3.5 kalibracijom, HT/FT preokreti i skener vrijednosti.",
+        content:
+          "Nogometni analitički centar: Poisson 5x5 točan rezultat s Over/Under 3.5 kalibracijom, HT/FT preokreti i skener vrijednosti.",
       },
     ],
   }),
@@ -56,7 +57,9 @@ export const Route = createFileRoute("/prediktor")({
   errorComponent: () => (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 p-6 text-center">
       <h2 className="text-xl font-bold">Stranica se nije mogla učitati</h2>
-      <p className="text-sm text-muted-foreground">Došlo je do pogreške prilikom renderiranja prediktora.</p>
+      <p className="text-sm text-muted-foreground">
+        Došlo je do pogreške prilikom renderiranja prediktora.
+      </p>
       <button
         onClick={() => window.location.reload()}
         className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
@@ -107,7 +110,9 @@ function Kartica({
   return (
     <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
+        <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h2>
         {right}
       </div>
       {children}
@@ -141,7 +146,9 @@ function PrediktorPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"correctscore" | "ou35" | "scanner" | "htdraw" | "btts" | "ou" | "htft">("correctscore");
+  const [activeTab, setActiveTab] = useState<
+    "correctscore" | "ou35" | "scanner" | "htdraw" | "btts" | "ou" | "htft"
+  >("correctscore");
 
   const [dutchOn, setDutchOn] = useState(false);
   const [stake, setStake] = useState("100");
@@ -149,7 +156,7 @@ function PrediktorPage() {
   const [dB, setDB] = useState<Outcome>("X/1");
 
   useEffect(() => {
-        try {
+    try {
       const k = localStorage.getItem("htft:keys");
       if (k) {
         setKeys(JSON.parse(k));
@@ -160,7 +167,6 @@ function PrediktorPage() {
     } catch {
       /* ignore */
     }
-
 
     // Učitaj zadnje unesene podatke iz memorije ako postoje
     const last = loadLastPredictorInputs();
@@ -180,7 +186,7 @@ function PrediktorPage() {
           league: `${f.league.country ? f.league.country + " · " : ""}${f.league.name}`,
           time: f.fixture.date,
           status: f.fixture.status.short || "NS",
-        }))
+        })),
       );
       setNotice(`Utakmice učitane iz memorije (${today}, Zagreb) — 0 potrošenih kredita.`);
     }
@@ -199,8 +205,10 @@ function PrediktorPage() {
 
   const [sharps, setSharps] = useState(false);
   const [ou15Res, setOu15Res] = useState<Ou15Result | null>(null);
-  const set = (k: keyof Omit<Inputs, "book" | "bookScores">) => (v: string) => setInp((s) => ({ ...s, [k]: v }));
-  const setBook = (o: Outcome) => (v: string) => setInp((s) => ({ ...s, book: { ...s.book, [o]: v } }));
+  const set = (k: keyof Omit<Inputs, "book" | "bookScores">) => (v: string) =>
+    setInp((s) => ({ ...s, [k]: v }));
+  const setBook = (o: Outcome) => (v: string) =>
+    setInp((s) => ({ ...s, book: { ...s.book, [o]: v } }));
   const setBookScore = (score: string) => (v: string) =>
     setInp((s) => ({ ...s, bookScores: { ...s.bookScores, [score]: v } }));
 
@@ -236,7 +244,6 @@ function PrediktorPage() {
     if (!("error" in cs)) setCsRes(cs);
   };
 
-
   const handleErr = (e: unknown) => {
     if (e instanceof LimitError) {
       setWarn(e.message);
@@ -260,7 +267,7 @@ function PrediktorPage() {
       setNotice(
         cached
           ? `Učitano iz memorije (${date}) — 0 kredita.`
-          : `Dohvaćeno ${list.length} utakmica za ${date} (Zagreb) uz točno 1 kredit!`
+          : `Dohvaćeno ${list.length} utakmica za ${date} (Zagreb) uz točno 1 kredit!`,
       );
     } catch (e) {
       handleErr(e);
@@ -279,7 +286,9 @@ function PrediktorPage() {
       if (!cached) setCooldown(COOLDOWN_SECONDS);
       setInp(inputs);
       runAll(inputs);
-      setNotice(`${f.home} vs ${f.away} — ${cached ? "iz memorije" : "tečajevi ažurirani (uključujući 3.5)"}`);
+      setNotice(
+        `${f.home} vs ${f.away} — ${cached ? "iz memorije" : "tečajevi ažurirani (uključujući 3.5)"}`,
+      );
     } catch (e) {
       handleErr(e);
     } finally {
@@ -307,7 +316,9 @@ function PrediktorPage() {
           const safeEmpty = emptyInputs();
           setInp(safeEmpty);
           runAll(safeEmpty);
-          setNotice("Kvote nisu osvježene. Zastarjele cijene i Value Edge privremeno su isključeni.");
+          setNotice(
+            "Kvote nisu osvježene. Zastarjele cijene i Value Edge privremeno su isključeni.",
+          );
           return;
         }
 
@@ -334,7 +345,14 @@ function PrediktorPage() {
   const dres = oA > 1 && oB > 1 && st > 0 && dA !== dB ? dutch(st, oA, oB) : null;
 
   const VALUE_THRESHOLD = 0.035;
-  const scanFindings: { title: string; outcome: string; fair: number; market: number; edge: number; desc: string }[] = [];
+  const scanFindings: {
+    title: string;
+    outcome: string;
+    fair: number;
+    market: number;
+    edge: number;
+    desc: string;
+  }[] = [];
   if (res) {
     res.rows
       .filter((r) => r.hasValue && r.value && r.market && r.value >= VALUE_THRESHOLD)
@@ -542,12 +560,23 @@ function PrediktorPage() {
   const resIntegrity: IntegrityResult | null = res
     ? (() => {
         const ftChar = res.concretePick.pick.split("/")[1];
-        const home = res.rows.filter((r) => r.outcome.endsWith("/1")).reduce((s, r) => s + r.prob, 0);
-        const draw = res.rows.filter((r) => r.outcome.endsWith("/X")).reduce((s, r) => s + r.prob, 0);
-        const away = res.rows.filter((r) => r.outcome.endsWith("/2")).reduce((s, r) => s + r.prob, 0);
-        const selected = ftChar === "1" ? "HOME" : ftChar === "X" ? "DRAW" : ftChar === "2" ? "AWAY" : null;
-        const contradictory = selected ? footballContradiction({ selected, home, draw, away }) : false;
-        const prob = res.rows.find((r) => r.outcome === res.concretePick.pick)?.prob ?? res.concretePick.confidenceScore / 100;
+        const home = res.rows
+          .filter((r) => r.outcome.endsWith("/1"))
+          .reduce((s, r) => s + r.prob, 0);
+        const draw = res.rows
+          .filter((r) => r.outcome.endsWith("/X"))
+          .reduce((s, r) => s + r.prob, 0);
+        const away = res.rows
+          .filter((r) => r.outcome.endsWith("/2"))
+          .reduce((s, r) => s + r.prob, 0);
+        const selected =
+          ftChar === "1" ? "HOME" : ftChar === "X" ? "DRAW" : ftChar === "2" ? "AWAY" : null;
+        const contradictory = selected
+          ? footballContradiction({ selected, home, draw, away })
+          : false;
+        const prob =
+          res.rows.find((r) => r.outcome === res.concretePick.pick)?.prob ??
+          res.concretePick.confidenceScore / 100;
         return evaluatePredictionIntegrity({
           probability: prob,
           odds: res.concretePick.marketOdds,
@@ -601,7 +630,11 @@ function PrediktorPage() {
             disabled={cooldown > 0 || loading}
             className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Učitavam..." : cooldown > 0 ? `Pričekajte (${cooldown}s)` : "Učitaj utakmice (1 kredit)"}
+            {loading
+              ? "Učitavam..."
+              : cooldown > 0
+                ? `Pričekajte (${cooldown}s)`
+                : "Učitaj utakmice (1 kredit)"}
           </button>
         </div>
       </header>
@@ -624,7 +657,9 @@ function PrediktorPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Football API Ključ (API-Sports / RapidAPI)</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Football API Ključ (API-Sports / RapidAPI)
+              </label>
               <input
                 type="password"
                 value={keys.football}
@@ -634,7 +669,9 @@ function PrediktorPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">The Odds API Ključ (Pinnacle O/U 2.5 i 3.5)</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                The Odds API Ključ (Pinnacle O/U 2.5 i 3.5)
+              </label>
               <input
                 type="password"
                 value={keys.odds}
@@ -688,7 +725,9 @@ function PrediktorPage() {
       {/* 1.5 Goals Predictor */}
       <section className="mb-6 rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">1.5 Goals Predictor</h2>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            1.5 Goals Predictor
+          </h2>
           {sharps && <SharpBadge />}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
@@ -696,13 +735,20 @@ function PrediktorPage() {
             <Polje label="Više 1.5 (kladionica)" value={inp.o15} onChange={set("o15")} />
             <Polje label="Manje 1.5 (kladionica)" value={inp.u15} onChange={set("u15")} />
             {(["0:0", "1:0", "0:1"] as const).map((sc) => (
-              <Polje key={sc} label={`Točan rezultat ${sc}`} value={inp.bookScores[sc] || ""} onChange={setBookScore(sc)} />
+              <Polje
+                key={sc}
+                label={`Točan rezultat ${sc}`}
+                value={inp.bookScores[sc] || ""}
+                onChange={setBookScore(sc)}
+              />
             ))}
           </div>
           <div className="flex flex-col justify-center rounded-xl border border-border bg-background/60 p-4 text-center">
             {ou15Res ? (
               <>
-                <div className={`text-2xl font-black sm:text-3xl ${ou15Res.isOver ? "text-emerald-400" : "text-red-400"}`}>
+                <div
+                  className={`text-2xl font-black sm:text-3xl ${ou15Res.isOver ? "text-emerald-400" : "text-red-400"}`}
+                >
                   {ou15Res.isOver ? "🔥 TIP: OVER 1.5 GOALS" : "🛑 TIP: UNDER 1.5 GOALS"}
                 </div>
                 <div className="mx-auto mt-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-bold text-primary">
@@ -710,17 +756,31 @@ function PrediktorPage() {
                 </div>
                 <div className="mt-2 font-mono text-[11px] text-muted-foreground">
                   Fer: Više {ou15Res.fairOver.toFixed(2)} · Manje {ou15Res.fairUnder.toFixed(2)}
-                  {ou15Res.isOver && ou15Res.valueOver !== null && ou15Res.valueOver > 0 && ` · 🟢 Value +${(ou15Res.valueOver * 100).toFixed(1)}%`}
-                  {!ou15Res.isOver && ou15Res.valueUnder !== null && ou15Res.valueUnder > 0 && ` · 🟢 Value +${(ou15Res.valueUnder * 100).toFixed(1)}%`}
+                  {ou15Res.isOver &&
+                    ou15Res.valueOver !== null &&
+                    ou15Res.valueOver > 0 &&
+                    ` · 🟢 Value +${(ou15Res.valueOver * 100).toFixed(1)}%`}
+                  {!ou15Res.isOver &&
+                    ou15Res.valueUnder !== null &&
+                    ou15Res.valueUnder > 0 &&
+                    ` · 🟢 Value +${(ou15Res.valueUnder * 100).toFixed(1)}%`}
                 </div>
                 <div className="mt-3 rounded-md border border-border bg-muted/40 p-2 text-left font-mono text-[10px] text-muted-foreground">
                   {ou15Res.breakdown}
-                  {ou15Res.lowOddsShift && <div>• Kvote niskih rezultata (0:0, 1:0, 0:1, 1:1) uključene u model</div>}
-                  {ou15Res.sharpsBuffer && <div>• Sharps derbi: pojačana korelacija niskih rezultata (izjednačena utakmica)</div>}
+                  {ou15Res.lowOddsShift && (
+                    <div>• Kvote niskih rezultata (0:0, 1:0, 0:1, 1:1) uključene u model</div>
+                  )}
+                  {ou15Res.sharpsBuffer && (
+                    <div>
+                      • Sharps derbi: pojačana korelacija niskih rezultata (izjednačena utakmica)
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
-              <p className="text-xs text-muted-foreground">Unesite tečajeve i kliknite Izračunaj.</p>
+              <p className="text-xs text-muted-foreground">
+                Unesite tečajeve i kliknite Izračunaj.
+              </p>
             )}
           </div>
         </div>
@@ -736,7 +796,11 @@ function PrediktorPage() {
           </div>
           {sharps && (
             <div className="mt-2">
-              <Polje label="FT 1 otvarajuća kvota (Sharps)" value={inp.ft1Open} onChange={set("ft1Open")} />
+              <Polje
+                label="FT 1 otvarajuća kvota (Sharps)"
+                value={inp.ft1Open}
+                onChange={set("ft1Open")}
+              />
             </div>
           )}
         </Kartica>
@@ -797,8 +861,12 @@ function PrediktorPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             {csRes && (
               <div className="rounded-xl border border-emerald-500/40 bg-card/90 p-4 text-center shadow">
-                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">1. Točan Rezultat</span>
-                <div className="mt-1 text-2xl font-black text-foreground">{csRes.bestScore.score}</div>
+                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                  1. Točan Rezultat
+                </span>
+                <div className="mt-1 text-2xl font-black text-foreground">
+                  {csRes.bestScore.score}
+                </div>
                 <div className="mt-1 text-xs font-bold text-emerald-400">
                   {(csRes.bestScore.prob * 100).toFixed(1)}% šanse
                 </div>
@@ -808,14 +876,20 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-emerald-500/20 py-0.5 text-[10px] font-bold text-emerald-400">
                   STRIKTNO REALNO
                 </div>
-                {csIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={csIntegrity} compact /></div>}
+                {csIntegrity && (
+                  <div className="mt-2 flex justify-center">
+                    <IntegrityPanel result={csIntegrity} compact />
+                  </div>
+                )}
                 {sharps && <SharpBadge />}
               </div>
             )}
 
             {ou35Res && (
               <div className="rounded-xl border border-border bg-card/90 p-4 text-center shadow">
-                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">2. Golovi (3.5)</span>
+                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                  2. Golovi (3.5)
+                </span>
                 <div className="mt-1 text-base font-black text-foreground">
                   {ou35Res.concretePick.pick.includes("VIŠE") ? (
                     <span className="text-emerald-400">VIŠE 3.5</span>
@@ -832,14 +906,20 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {ou35Res.concretePick.confidenceLevel}
                 </div>
-                {ou35Integrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={ou35Integrity} compact /></div>}
+                {ou35Integrity && (
+                  <div className="mt-2 flex justify-center">
+                    <IntegrityPanel result={ou35Integrity} compact />
+                  </div>
+                )}
                 {sharps && <SharpBadge />}
               </div>
             )}
 
             {htDrawRes && (
               <div className="rounded-xl border border-border bg-card/90 p-4 text-center shadow">
-                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">3. X na HT</span>
+                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                  3. X na HT
+                </span>
                 <div className="mt-1 text-base font-black text-foreground">
                   {htDrawRes.concretePick.pick.startsWith("DA") ? (
                     <span className="text-emerald-400">DA (X na HT)</span>
@@ -856,14 +936,20 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {htDrawRes.concretePick.confidenceLevel}
                 </div>
-                {htDrawIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={htDrawIntegrity} compact /></div>}
+                {htDrawIntegrity && (
+                  <div className="mt-2 flex justify-center">
+                    <IntegrityPanel result={htDrawIntegrity} compact />
+                  </div>
+                )}
                 {sharps && <SharpBadge />}
               </div>
             )}
 
             {bttsRes && (
               <div className="rounded-xl border border-border bg-card/90 p-4 text-center shadow">
-                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">4. BTTS</span>
+                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                  4. BTTS
+                </span>
                 <div className="mt-1 text-base font-black text-foreground">
                   {bttsRes.concretePick.pick.startsWith("DA") ? (
                     <span className="text-emerald-400">BTTS: DA</span>
@@ -880,14 +966,20 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {bttsRes.concretePick.confidenceLevel}
                 </div>
-                {bttsIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={bttsIntegrity} compact /></div>}
+                {bttsIntegrity && (
+                  <div className="mt-2 flex justify-center">
+                    <IntegrityPanel result={bttsIntegrity} compact />
+                  </div>
+                )}
                 {sharps && <SharpBadge />}
               </div>
             )}
 
             {ouRes && (
               <div className="rounded-xl border border-border bg-card/90 p-4 text-center shadow">
-                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">5. Golovi (2.5)</span>
+                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                  5. Golovi (2.5)
+                </span>
                 <div className="mt-1 text-base font-black text-foreground">
                   {ouRes.concretePick.pick.includes("VIŠE") ? (
                     <span className="text-emerald-400">VIŠE 2.5</span>
@@ -904,15 +996,23 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {ouRes.concretePick.confidenceLevel}
                 </div>
-                {ouIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={ouIntegrity} compact /></div>}
+                {ouIntegrity && (
+                  <div className="mt-2 flex justify-center">
+                    <IntegrityPanel result={ouIntegrity} compact />
+                  </div>
+                )}
                 {sharps && <SharpBadge />}
               </div>
             )}
 
             {res && (
               <div className="rounded-xl border border-border bg-card/90 p-4 text-center shadow">
-                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">6. HT/FT</span>
-                <div className="mt-1 text-2xl font-black text-foreground">{res.concretePick.pick}</div>
+                <span className="font-mono text-[10px] font-bold text-muted-foreground uppercase">
+                  6. HT/FT
+                </span>
+                <div className="mt-1 text-2xl font-black text-foreground">
+                  {res.concretePick.pick}
+                </div>
                 <div className="mt-1 text-xs font-bold text-emerald-400">
                   {res.concretePick.confidenceScore}% šanse
                 </div>
@@ -922,18 +1022,30 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {res.concretePick.confidenceLevel}
                 </div>
-                {resIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={resIntegrity} compact /></div>}
+                {resIntegrity && (
+                  <div className="mt-2 flex justify-center">
+                    <IntegrityPanel result={resIntegrity} compact />
+                  </div>
+                )}
                 {sharps && <SharpBadge />}
               </div>
             )}
           </div>
 
           <div className="mt-5 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-3">
-            {csIntegrity && <IntegrityPanel result={csIntegrity} title="Integritet: Točan rezultat" />}
-            {ou35Integrity && <IntegrityPanel result={ou35Integrity} title="Integritet: Golovi (3.5)" />}
-            {htDrawIntegrity && <IntegrityPanel result={htDrawIntegrity} title="Integritet: X na HT" />}
+            {csIntegrity && (
+              <IntegrityPanel result={csIntegrity} title="Integritet: Točan rezultat" />
+            )}
+            {ou35Integrity && (
+              <IntegrityPanel result={ou35Integrity} title="Integritet: Golovi (3.5)" />
+            )}
+            {htDrawIntegrity && (
+              <IntegrityPanel result={htDrawIntegrity} title="Integritet: X na HT" />
+            )}
             {bttsIntegrity && <IntegrityPanel result={bttsIntegrity} title="Integritet: BTTS" />}
-            {ouIntegrity && <IntegrityPanel result={ouIntegrity} title="Integritet: Golovi (2.5)" />}
+            {ouIntegrity && (
+              <IntegrityPanel result={ouIntegrity} title="Integritet: Golovi (2.5)" />
+            )}
             {resIntegrity && <IntegrityPanel result={resIntegrity} title="Integritet: HT/FT" />}
           </div>
         </section>
@@ -1101,7 +1213,10 @@ function PrediktorPage() {
                         <tr key={h}>
                           <th className="p-2 text-foreground font-bold">Dom: {h}</th>
                           {row.map((cell) => {
-                            const intensity = Math.min(1, Math.max(0.08, cell.prob / maxMatrixProb));
+                            const intensity = Math.min(
+                              1,
+                              Math.max(0.08, cell.prob / maxMatrixProb),
+                            );
                             return (
                               <td
                                 key={cell.score}
@@ -1134,7 +1249,8 @@ function PrediktorPage() {
                     Value Tablica Točnih Rezultata
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Unesite tečajeve kladionica za točne rezultate kako bi algoritam izračunao vrijednost (+EV).
+                    Unesite tečajeve kladionica za točne rezultate kako bi algoritam izračunao
+                    vrijednost (+EV).
                   </p>
                 </div>
 
@@ -1159,7 +1275,9 @@ function PrediktorPage() {
                             className={cell.hasValue ? "bg-emerald-500/10" : "hover:bg-muted/40"}
                           >
                             <td className="py-2.5 font-bold text-foreground">{score}</td>
-                            <td className="py-2.5 font-semibold">{(cell.prob * 100).toFixed(1)}%</td>
+                            <td className="py-2.5 font-semibold">
+                              {(cell.prob * 100).toFixed(1)}%
+                            </td>
                             <td className="py-2.5 text-muted-foreground">{cell.fair.toFixed(2)}</td>
                             <td className="py-2.5">
                               <input
@@ -1209,19 +1327,24 @@ function PrediktorPage() {
               Zbroj Golova (Više / Manje 3.5)
             </h2>
             <p className="text-xs text-muted-foreground">
-              Analiza tržišta 3.5 gola definira očekivanja golijade i direktno utječe na preokrete (1/2 i 2/1).
+              Analiza tržišta 3.5 gola definira očekivanja golijade i direktno utječe na preokrete
+              (1/2 i 2/1).
             </p>
           </div>
 
           {ou35Res ? (
             <div>
               <div className="grid gap-4 sm:grid-cols-2 mb-4">
-                <div className={`rounded-xl border p-5 text-center ${
-                  ou35Res.concretePick.pick.includes("VIŠE")
-                    ? "border-emerald-500/60 bg-emerald-500/10"
-                    : "border-border bg-muted/20"
-                }`}>
-                  <span className="text-xs font-bold uppercase text-muted-foreground">VIŠE OD 3.5 GOLA</span>
+                <div
+                  className={`rounded-xl border p-5 text-center ${
+                    ou35Res.concretePick.pick.includes("VIŠE")
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : "border-border bg-muted/20"
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase text-muted-foreground">
+                    VIŠE OD 3.5 GOLA
+                  </span>
                   <div className="mt-2 text-3xl font-extrabold text-foreground">
                     {(ou35Res.probOver * 100).toFixed(1)}%
                   </div>
@@ -1236,12 +1359,16 @@ function PrediktorPage() {
                   )}
                 </div>
 
-                <div className={`rounded-xl border p-5 text-center ${
-                  !ou35Res.concretePick.pick.includes("VIŠE")
-                    ? "border-sky-500/60 bg-sky-500/10"
-                    : "border-border bg-muted/20"
-                }`}>
-                  <span className="text-xs font-bold uppercase text-muted-foreground">MANJE OD 3.5 GOLA</span>
+                <div
+                  className={`rounded-xl border p-5 text-center ${
+                    !ou35Res.concretePick.pick.includes("VIŠE")
+                      ? "border-sky-500/60 bg-sky-500/10"
+                      : "border-border bg-muted/20"
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase text-muted-foreground">
+                    MANJE OD 3.5 GOLA
+                  </span>
                   <div className="mt-2 text-3xl font-extrabold text-foreground">
                     {(ou35Res.probUnder * 100).toFixed(1)}%
                   </div>
@@ -1263,7 +1390,9 @@ function PrediktorPage() {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Unesite tečajeve i pritisnite "Izračunaj".</p>
+            <p className="text-xs text-muted-foreground">
+              Unesite tečajeve i pritisnite "Izračunaj".
+            </p>
           )}
         </section>
       )}
@@ -1277,7 +1406,8 @@ function PrediktorPage() {
                 Automatski Value Bet Skener
               </h2>
               <p className="text-xs text-muted-foreground">
-                Prikazuje ISKLJUČIVO oklade za odabranu utakmicu gdje je utvrđena stvarna matematička prednost (+EV).
+                Prikazuje ISKLJUČIVO oklade za odabranu utakmicu gdje je utvrđena stvarna
+                matematička prednost (+EV).
               </p>
             </div>
             <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
@@ -1287,22 +1417,32 @@ function PrediktorPage() {
 
           {scanFindings.length === 0 ? (
             <div className="rounded-lg border border-border/60 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
-              ⚠️ <strong>Nema Value Betova za ovu utakmicu.</strong> Kladionice nemaju matematičku grešku u postavljenim tečajevima.
+              ⚠️ <strong>Nema Value Betova za ovu utakmicu.</strong> Kladionice nemaju matematičku
+              grešku u postavljenim tečajevima.
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {scanFindings.map((f, i) => (
-                <div key={i} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <div
+                  key={i}
+                  className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4"
+                >
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono uppercase text-muted-foreground">{f.title}</span>
+                    <span className="text-[11px] font-mono uppercase text-muted-foreground">
+                      {f.title}
+                    </span>
                     <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-400">
                       +{f.edge.toFixed(1)}% Vrijednost
                     </span>
                   </div>
                   <h3 className="mt-1 text-base font-bold text-foreground">{f.outcome}</h3>
                   <div className="mt-2 flex gap-4 text-xs font-mono">
-                    <span>Fer tečaj: <strong>{f.fair.toFixed(2)}</strong></span>
-                    <span>Kladionica: <strong>{f.market.toFixed(2)}</strong></span>
+                    <span>
+                      Fer tečaj: <strong>{f.fair.toFixed(2)}</strong>
+                    </span>
+                    <span>
+                      Kladionica: <strong>{f.market.toFixed(2)}</strong>
+                    </span>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">{f.desc}</p>
                 </div>
@@ -1324,11 +1464,13 @@ function PrediktorPage() {
           {htDrawRes ? (
             <div>
               <div className="grid gap-4 sm:grid-cols-2 mb-4">
-                <div className={`rounded-xl border p-5 text-center ${
-                  htDrawRes.concretePick.pick.startsWith("DA")
-                    ? "border-emerald-500/60 bg-emerald-500/10"
-                    : "border-border bg-muted/20"
-                }`}>
+                <div
+                  className={`rounded-xl border p-5 text-center ${
+                    htDrawRes.concretePick.pick.startsWith("DA")
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : "border-border bg-muted/20"
+                  }`}
+                >
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     X NA POLUVREMENU: DA
                   </span>
@@ -1346,11 +1488,13 @@ function PrediktorPage() {
                   )}
                 </div>
 
-                <div className={`rounded-xl border p-5 text-center ${
-                  !htDrawRes.concretePick.pick.startsWith("DA")
-                    ? "border-rose-500/60 bg-rose-500/10"
-                    : "border-border bg-muted/20"
-                }`}>
+                <div
+                  className={`rounded-xl border p-5 text-center ${
+                    !htDrawRes.concretePick.pick.startsWith("DA")
+                      ? "border-rose-500/60 bg-rose-500/10"
+                      : "border-border bg-muted/20"
+                  }`}
+                >
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     X NA POLUVREMENU: NE
                   </span>
@@ -1374,7 +1518,9 @@ function PrediktorPage() {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Unesite tečajeve i pritisnite "Izračunaj".</p>
+            <p className="text-xs text-muted-foreground">
+              Unesite tečajeve i pritisnite "Izračunaj".
+            </p>
           )}
         </section>
       )}
@@ -1383,20 +1529,22 @@ function PrediktorPage() {
       {activeTab === "btts" && (
         <section className="mb-8 rounded-xl border border-border bg-card p-5">
           <div className="mb-4 border-b border-border pb-3">
-            <h2 className="font-display text-lg font-bold text-foreground">
-              BTTS (Oba Daju Gol)
-            </h2>
+            <h2 className="font-display text-lg font-bold text-foreground">BTTS (Oba Daju Gol)</h2>
           </div>
 
           {bttsRes ? (
             <div>
               <div className="grid gap-4 sm:grid-cols-2 mb-4">
-                <div className={`rounded-xl border p-5 text-center ${
-                  bttsRes.concretePick.pick.startsWith("DA")
-                    ? "border-emerald-500/60 bg-emerald-500/10"
-                    : "border-border bg-muted/20"
-                }`}>
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">BTTS: DA</span>
+                <div
+                  className={`rounded-xl border p-5 text-center ${
+                    bttsRes.concretePick.pick.startsWith("DA")
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : "border-border bg-muted/20"
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                    BTTS: DA
+                  </span>
                   <div className="mt-2 text-4xl font-extrabold text-emerald-400">
                     {(bttsRes.probYes * 100).toFixed(1)}%
                   </div>
@@ -1405,12 +1553,16 @@ function PrediktorPage() {
                   </div>
                 </div>
 
-                <div className={`rounded-xl border p-5 text-center ${
-                  !bttsRes.concretePick.pick.startsWith("DA")
-                    ? "border-rose-500/60 bg-rose-500/10"
-                    : "border-border bg-muted/20"
-                }`}>
-                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400">BTTS: NE</span>
+                <div
+                  className={`rounded-xl border p-5 text-center ${
+                    !bttsRes.concretePick.pick.startsWith("DA")
+                      ? "border-rose-500/60 bg-rose-500/10"
+                      : "border-border bg-muted/20"
+                  }`}
+                >
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400">
+                    BTTS: NE
+                  </span>
                   <div className="mt-2 text-4xl font-extrabold text-rose-400">
                     {(bttsRes.probNo * 100).toFixed(1)}%
                   </div>
@@ -1426,7 +1578,9 @@ function PrediktorPage() {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Unesite tečajeve i pritisnite "Izračunaj".</p>
+            <p className="text-xs text-muted-foreground">
+              Unesite tečajeve i pritisnite "Izračunaj".
+            </p>
           )}
         </section>
       )}
@@ -1444,7 +1598,9 @@ function PrediktorPage() {
             <div>
               <div className="grid gap-4 sm:grid-cols-2 mb-4">
                 <div className="rounded-xl border border-border bg-muted/20 p-5 text-center">
-                  <span className="text-xs font-bold uppercase text-muted-foreground">VIŠE OD 2.5 GOLA</span>
+                  <span className="text-xs font-bold uppercase text-muted-foreground">
+                    VIŠE OD 2.5 GOLA
+                  </span>
                   <div className="mt-2 text-3xl font-extrabold text-foreground">
                     {(ouRes.probOver * 100).toFixed(1)}%
                   </div>
@@ -1454,7 +1610,9 @@ function PrediktorPage() {
                 </div>
 
                 <div className="rounded-xl border border-border bg-muted/20 p-5 text-center">
-                  <span className="text-xs font-bold uppercase text-muted-foreground">MANJE OD 2.5 GOLA</span>
+                  <span className="text-xs font-bold uppercase text-muted-foreground">
+                    MANJE OD 2.5 GOLA
+                  </span>
                   <div className="mt-2 text-3xl font-extrabold text-foreground">
                     {(ouRes.probUnder * 100).toFixed(1)}%
                   </div>
@@ -1470,7 +1628,9 @@ function PrediktorPage() {
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Unesite tečajeve i pritisnite "Izračunaj".</p>
+            <p className="text-xs text-muted-foreground">
+              Unesite tečajeve i pritisnite "Izračunaj".
+            </p>
           )}
         </section>
       )}
@@ -1517,7 +1677,9 @@ function PrediktorPage() {
                               🟢 Value (+{(r.value * 100).toFixed(1)}%)
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">{(r.value * 100).toFixed(1)}%</span>
+                            <span className="text-xs text-muted-foreground">
+                              {(r.value * 100).toFixed(1)}%
+                            </span>
                           )
                         ) : (
                           "—"
@@ -1565,7 +1727,9 @@ function PrediktorPage() {
                 className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm bg-card text-foreground"
               >
                 {OUTCOMES.map((o) => (
-                  <option key={o} value={o}>{o} (Tečaj: {inp.book[o] || "—"})</option>
+                  <option key={o} value={o}>
+                    {o} (Tečaj: {inp.book[o] || "—"})
+                  </option>
                 ))}
               </select>
             </div>
@@ -1577,15 +1741,22 @@ function PrediktorPage() {
                 className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm bg-card text-foreground"
               >
                 {OUTCOMES.map((o) => (
-                  <option key={o} value={o}>{o} (Tečaj: {inp.book[o] || "—"})</option>
+                  <option key={o} value={o}>
+                    {o} (Tečaj: {inp.book[o] || "—"})
+                  </option>
                 ))}
               </select>
             </div>
 
             {dres && (
               <div className="col-span-full mt-2 rounded-lg bg-muted/50 p-4 font-mono text-xs">
-                <p>Ulog na <strong>{dA}</strong>: {dres.sA.toFixed(2)} € | Ulog na <strong>{dB}</strong>: {dres.sB.toFixed(2)} €</p>
-                <p className="mt-1 text-emerald-400 font-bold">Zajamčeni profit: +{dres.profit.toFixed(2)} € ({dres.roi.toFixed(1)}% ROI)</p>
+                <p>
+                  Ulog na <strong>{dA}</strong>: {dres.sA.toFixed(2)} € | Ulog na{" "}
+                  <strong>{dB}</strong>: {dres.sB.toFixed(2)} €
+                </p>
+                <p className="mt-1 text-emerald-400 font-bold">
+                  Zajamčeni profit: +{dres.profit.toFixed(2)} € ({dres.roi.toFixed(1)}% ROI)
+                </p>
               </div>
             )}
           </div>
@@ -1594,4 +1765,3 @@ function PrediktorPage() {
     </div>
   );
 }
-

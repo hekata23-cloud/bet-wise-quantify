@@ -33,11 +33,16 @@ function dcKorekcija(h: number, a: number, lam: number, mu: number, rho: number)
 }
 
 export type MatricaRezultata = {
-  matrica: number[][];      // matrica[domaciGolovi][gostujućiGolovi] = vj.
+  matrica: number[][]; // matrica[domaciGolovi][gostujućiGolovi] = vj.
   maxGolova: number;
 };
 
-export function matricaRezultata(lam: number, mu: number, rho = -0.05, maxGolova = 10): MatricaRezultata {
+export function matricaRezultata(
+  lam: number,
+  mu: number,
+  rho = -0.05,
+  maxGolova = 10,
+): MatricaRezultata {
   const m: number[][] = [];
   let zbroj = 0;
   for (let h = 0; h <= maxGolova; h++) {
@@ -48,19 +53,25 @@ export function matricaRezultata(lam: number, mu: number, rho = -0.05, maxGolova
       zbroj += m[h][a];
     }
   }
-  for (let h = 0; h <= maxGolova; h++)
-    for (let a = 0; a <= maxGolova; a++) m[h][a] /= zbroj || 1;
+  for (let h = 0; h <= maxGolova; h++) for (let a = 0; a <= maxGolova; a++) m[h][a] /= zbroj || 1;
   return { matrica: m, maxGolova };
 }
 
 /* Iz matrice rezultata izvuči standardne tržišta: */
 export function izMatrice(m: MatricaRezultata) {
-  let p1 = 0, pX = 0, p2 = 0, bttsDa = 0, bttsNe = 0;
+  let p1 = 0,
+    pX = 0,
+    p2 = 0,
+    bttsDa = 0,
+    bttsNe = 0;
   for (let h = 0; h <= m.maxGolova; h++) {
     for (let a = 0; a <= m.maxGolova; a++) {
       const p = m.matrica[h][a];
-      if (h > a) p1 += p; else if (h === a) pX += p; else p2 += p;
-      if (h > 0 && a > 0) bttsDa += p; else bttsNe += p;
+      if (h > a) p1 += p;
+      else if (h === a) pX += p;
+      else p2 += p;
+      if (h > 0 && a > 0) bttsDa += p;
+      else bttsNe += p;
     }
   }
   return { p1, pX, p2, bttsDa, bttsNe };
@@ -70,8 +81,7 @@ export function izMatrice(m: MatricaRezultata) {
 export function prekoLinije(m: MatricaRezultata, linija: number): number {
   let preko = 0;
   for (let h = 0; h <= m.maxGolova; h++)
-    for (let a = 0; a <= m.maxGolova; a++)
-      if (h + a > linija) preko += m.matrica[h][a];
+    for (let a = 0; a <= m.maxGolova; a++) if (h + a > linija) preko += m.matrica[h][a];
   return preko;
 }
 
@@ -84,10 +94,13 @@ export function prekoLinije(m: MatricaRezultata, linija: number): number {
 export type Procjena = { p: number; tezina?: number };
 
 export function zdruzi(procjene: Procjena[]): number {
-  const ciste = procjene.filter((x) => typeof x.p === "number" && isFinite(x.p) && x.p > 0 && x.p < 1);
+  const ciste = procjene.filter(
+    (x) => typeof x.p === "number" && isFinite(x.p) && x.p > 0 && x.p < 1,
+  );
   if (ciste.length === 0) return NaN;
   if (ciste.length === 1) return ciste[0].p;
-  let logZ = 0, zbrojTezina = 0;
+  let logZ = 0,
+    zbrojTezina = 0;
   for (const x of ciste) {
     const w = x.tezina && x.tezina > 0 ? x.tezina : 1;
     logZ += w * Math.log(x.p);
@@ -104,7 +117,11 @@ export function zdruzi(procjene: Procjena[]): number {
    Profesionalno: m >= n uvijek — tržište je pametnije od modela.
    Kad nema kvote, baznaStopa je povijesna učestalost (npr. BTTS ~52%). */
 
-export function deMargina(k1: number, kX: number, k2: number): { p1: number; pX: number; p2: number } {
+export function deMargina(
+  k1: number,
+  kX: number,
+  k2: number,
+): { p1: number; pX: number; p2: number } {
   const inv = [1 / k1, 1 / kX, 1 / k2].map((x) => Math.max(0, x));
   const z = inv.reduce((a, b) => a + b, 0) || 1;
   return { p1: inv[0] / z, pX: inv[1] / z, p2: inv[2] / z };
@@ -112,12 +129,13 @@ export function deMargina(k1: number, kX: number, k2: number): { p1: number; pX:
 
 export function kalibriraj(
   pModel: number,
-  trziste: number,      // de-margina vj. ili bazna stopa
-  nModel = 1,           // koliko vjeruješ modelu (1 = malo, 3 = jako)
-  mTrziste = 3          // koliko vjeruješ tržištu (ostavi >= nModel)
+  trziste: number, // de-margina vj. ili bazna stopa
+  nModel = 1, // koliko vjeruješ modelu (1 = malo, 3 = jako)
+  mTrziste = 3, // koliko vjeruješ tržištu (ostavi >= nModel)
 ): number {
   if (!isFinite(pModel)) return trziste;
-  const n = Math.max(0, nModel), m = Math.max(0, mTrziste);
+  const n = Math.max(0, nModel),
+    m = Math.max(0, mTrziste);
   const p = (n * pModel + m * trziste) / (n + m || 1);
   return Math.min(0.99, Math.max(0.01, p));
 }
@@ -154,7 +172,10 @@ export function logLoss(p: number, ishod: boolean): number {
 
 /* Prosječna točnost na listi odlučenih tipova: */
 export function ocjenaModela(tipovi: { p: number; pogodak: boolean }[]): {
-  brier: number; logLoss: number; pogodci: number; n: number;
+  brier: number;
+  logLoss: number;
+  pogodci: number;
+  n: number;
 } {
   const cisti = tipovi.filter((t) => typeof t.p === "number" && isFinite(t.p));
   const n = cisti.length || 1;

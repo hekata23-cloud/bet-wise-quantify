@@ -25,7 +25,11 @@ function omotaj(ctx: CanvasRenderingContext2D, tekst: string, maxW: number): str
 }
 
 /** Nacrta tiket na canvas i vrati canvas (za testiranje ili daljnje korištenje). */
-export function nacrtajTiket(tipovi: KorpaTip[], bankroll: number, kellyFrac: number): HTMLCanvasElement {
+export function nacrtajTiket(
+  tipovi: KorpaTip[],
+  bankroll: number,
+  kellyFrac: number,
+): HTMLCanvasElement {
   const r = izracunajKorpuSmart(tipovi, { bankroll, kellyFrac });
 
   const W = 720;
@@ -55,7 +59,8 @@ export function nacrtajTiket(tipovi: KorpaTip[], bankroll: number, kellyFrac: nu
   ctx.fillStyle = "#9ca3af";
   ctx.fillText(
     new Date().toLocaleString("hr-HR") + " · frakcijski Kelly · korelacijski motor",
-    pad, 92,
+    pad,
+    92,
   );
 
   // noge
@@ -133,14 +138,21 @@ export function nacrtajTiket(tipovi: KorpaTip[], bankroll: number, kellyFrac: nu
 function canvasUFile(c: HTMLCanvasElement): Promise<File> {
   return new Promise((resolve, reject) => {
     c.toBlob((blob) => {
-      if (!blob) { reject(new Error("PNG nije generiran")); return; }
+      if (!blob) {
+        reject(new Error("PNG nije generiran"));
+        return;
+      }
       resolve(new File([blob], "andromeda-tiket.png", { type: "image/png" }));
     }, "image/png");
   });
 }
 
 /** Preuzmi PNG tiketa. */
-export async function preuzmiTiket(tipovi: KorpaTip[], bankroll: number, kellyFrac: number): Promise<void> {
+export async function preuzmiTiket(
+  tipovi: KorpaTip[],
+  bankroll: number,
+  kellyFrac: number,
+): Promise<void> {
   const c = nacrtajTiket(tipovi, bankroll, kellyFrac);
   const f = await canvasUFile(c);
   const url = URL.createObjectURL(f);
@@ -152,7 +164,11 @@ export async function preuzmiTiket(tipovi: KorpaTip[], bankroll: number, kellyFr
 }
 
 /** Podijeli (Web Share API) ili preuzmi ako dijeljenje nije podržano. */
-export async function podijeliTiket(tipovi: KorpaTip[], bankroll: number, kellyFrac: number): Promise<"podijeljeno" | "preuzeto"> {
+export async function podijeliTiket(
+  tipovi: KorpaTip[],
+  bankroll: number,
+  kellyFrac: number,
+): Promise<"podijeljeno" | "preuzeto"> {
   const c = nacrtajTiket(tipovi, bankroll, kellyFrac);
   const f = await canvasUFile(c);
   const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean };

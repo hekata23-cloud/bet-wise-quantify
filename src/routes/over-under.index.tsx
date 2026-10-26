@@ -248,7 +248,7 @@ function bttsTip(
   kGg: number,
   k22: number,
   kOver: number,
-  exact: Record<string, number> | null
+  exact: Record<string, number> | null,
 ): BttsVerdict {
   const pGg = Math.min(0.9, Math.max(0.1, 1 / (kGg * MARGIN)));
   const pOver = Math.min(0.88, Math.max(0.12, 1 / (kOver * MARGIN)));
@@ -299,8 +299,8 @@ function bttsTip(
       ggFlag === "NE"
         ? "Kvota iznad 1.98 — tržište ne vjeruje u golove oba tima"
         : ggFlag === "DA"
-        ? "Kvota ispod 1.83 — tržište daje prednost GG-u"
-        : "Kvota u sivoj zoni oko 50/50",
+          ? "Kvota ispod 1.83 — tržište daje prednost GG-u"
+          : "Kvota u sivoj zoni oko 50/50",
   });
 
   let poissonFlag: BttsFlag = "NEUTRALNO";
@@ -314,8 +314,8 @@ function bttsTip(
       poissonFlag === "NE"
         ? `Niska očekivana efikasnost (λ ≈ ${lambda.toFixed(2)})`
         : poissonFlag === "DA"
-        ? `Visoka očekivana efikasnost (λ ≈ ${lambda.toFixed(2)})`
-        : `Prosječna efikasnost (λ ≈ ${lambda.toFixed(2)})`,
+          ? `Visoka očekivana efikasnost (λ ≈ ${lambda.toFixed(2)})`
+          : `Prosječna efikasnost (λ ≈ ${lambda.toFixed(2)})`,
   });
 
   if (pExact !== null) {
@@ -330,8 +330,8 @@ function bttsTip(
         exactFlag === "NE"
           ? "Rezultati 0:0, 1:0 i 0:1 nose veći dio vjerojatnosti"
           : exactFlag === "DA"
-          ? "Rezultati u kojima oba zabijaju dominiraju ponudom"
-          : "Nema jasne prevage u točnim rezultatima",
+            ? "Rezultati u kojima oba zabijaju dominiraju ponudom"
+            : "Nema jasne prevage u točnim rezultatima",
     });
   }
 
@@ -346,8 +346,8 @@ function bttsTip(
       k22Flag === "DA"
         ? "Niska kvota na 2:2 (≤ 13.00) signalizira otvoren meč"
         : k22Flag === "NE"
-        ? "Visoka kvota na 2:2 (≥ 15.00) isključuje visok remi"
-        : "Umjerena kvota (13.01 – 14.99)",
+          ? "Visoka kvota na 2:2 (≥ 15.00) isključuje visok remi"
+          : "Umjerena kvota (13.01 – 14.99)",
   });
 
   let p: number;
@@ -424,7 +424,9 @@ function extraSignals(k22: number, exact: Record<string, number> | null): ExtraS
   const k10 = exact["1-0"] ?? exact["1:0"];
   const k00 = exact["0-0"] ?? exact["0:0"];
   const k01 = exact["0-1"] ?? exact["0:1"];
-  const highLowScores = [k10, k00, k01].filter((v): v is number => typeof v === "number" && v >= 10.0);
+  const highLowScores = [k10, k00, k01].filter(
+    (v): v is number => typeof v === "number" && v >= 10.0,
+  );
   const over15On = highLowScores.length >= 2;
   out.push({
     title: "Over 1.5 signal (1:0, 0:0, 0:1 ≥ 10.00)",
@@ -458,8 +460,12 @@ const DEFAULT_RESULT: Result = {
   pGg: 1 / 1.72,
   pGgOver: (1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO,
   pThree: (1 / 1.85 + ((1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO)) / 2,
-  pTwoRaw: 1 / MARGIN - (1 / 1.85 + ((1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO)) / 2,
-  pTwo: Math.max(0, 1 / MARGIN - (1 / 1.85 + ((1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO)) / 2),
+  pTwoRaw:
+    1 / MARGIN - (1 / 1.85 + ((1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO)) / 2,
+  pTwo: Math.max(
+    0,
+    1 / MARGIN - (1 / 1.85 + ((1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO)) / 2,
+  ),
   pUnder: 1 - (1 / 1.85 + ((1 / 1.72) * GG_OVER_IF_YES + (1 - 1 / 1.72) * GG_OVER_IF_NO)) / 2,
   isOver: true,
 };
@@ -546,7 +552,7 @@ function Index() {
     shown.k22,
     shown.kOver,
     shown.kGg,
-    activeLeague.goalMultiplier
+    activeLeague.goalMultiplier,
   );
 
   // Automatski Value Bet izračun za sva 4 tržišta
@@ -559,7 +565,7 @@ function Index() {
     shown.kGg,
     kNgEstimated,
     shown.pThree,
-    bttsCalc.p
+    bttsCalc.p,
   );
 
   const settled = history.filter((h) => h.status !== "pending");
@@ -582,7 +588,8 @@ function Index() {
                 <span className="text-ink">2.5</span> <span className="text-win">TERMOMETAR</span>
               </h1>
               <p className="mt-2 max-w-3xl text-sm font-semibold leading-relaxed text-ink/80 sm:text-lg">
-                Brzo i precizno izračunaj da li je više ili manje od 2.5 golova na osnovu 3 kvote: 2:2, Over 2.5 i GG.
+                Brzo i precizno izračunaj da li je više ili manje od 2.5 golova na osnovu 3 kvote:
+                2:2, Over 2.5 i GG.
               </p>
               <Link
                 to="/over-under/postavke"
@@ -598,7 +605,8 @@ function Index() {
               <h2 className="font-display text-lg font-bold">Šta radi app?</h2>
               <p className="text-sm leading-relaxed text-ink/75">
                 Usklađuje omjer kvota, računa vjerojatnoće i daje točan odgovor:{" "}
-                <strong className="text-win">2.5 VIŠE</strong> ili <strong className="text-mint">2.5 MANJE</strong>.
+                <strong className="text-win">2.5 VIŠE</strong> ili{" "}
+                <strong className="text-mint">2.5 MANJE</strong>.
               </p>
             </div>
           </Panel>
@@ -608,7 +616,9 @@ function Index() {
           {/* STUPAC 1: UNOS I GLAVNI REZULTAT */}
           <div className="space-y-4">
             <Panel>
-              <PanelTitle icon={<Download className="size-7 text-cyan" />}>Automatski unos kvota</PanelTitle>
+              <PanelTitle icon={<Download className="size-7 text-cyan" />}>
+                Automatski unos kvota
+              </PanelTitle>
               <MatchPicker
                 onLoaded={(o) => {
                   if (o.k22) setInput22(o.k22.toFixed(2));
@@ -631,7 +641,9 @@ function Index() {
             </Panel>
 
             <Panel>
-              <PanelTitle icon={<Calculator className="size-7 text-win" />}>Ručni unos kvota</PanelTitle>
+              <PanelTitle icon={<Calculator className="size-7 text-win" />}>
+                Ručni unos kvota
+              </PanelTitle>
               <form onSubmit={handleCalculate} className="mt-4 space-y-4">
                 <div>
                   <label htmlFor="k22" className="block text-sm font-bold text-ink">
@@ -701,10 +713,18 @@ function Index() {
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                  <Button type="submit" className="flex-1 bg-win text-surface hover:bg-win/90 font-bold py-3 text-base">
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-win text-surface hover:bg-win/90 font-bold py-3 text-base"
+                  >
                     Izračunaj ponovo
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleReset} className="border-line text-ink">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleReset}
+                    className="border-line text-ink"
+                  >
                     Reset
                   </Button>
                 </div>
@@ -723,23 +743,35 @@ function Index() {
               </div>
 
               <div className="mt-4 rounded-md border-2 border-cyan bg-cyan/10 p-4 text-center">
-                <span className="text-xs font-bold uppercase tracking-wider text-ink/70">Konačna ocjena modela</span>
-                <div className="font-display text-2xl font-black text-cyan mt-1">{confidence.grade}</div>
+                <span className="text-xs font-bold uppercase tracking-wider text-ink/70">
+                  Konačna ocjena modela
+                </span>
+                <div className="font-display text-2xl font-black text-cyan mt-1">
+                  {confidence.grade}
+                </div>
                 <div className="mt-3 flex items-center justify-around border-t border-cyan/30 pt-3">
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-ink/60">Glavni izbor</span>
-                    <strong className="block text-base font-extrabold text-win">{confidence.primaryMarket}</strong>
+                    <span className="text-[10px] uppercase font-bold text-ink/60">
+                      Glavni izbor
+                    </span>
+                    <strong className="block text-base font-extrabold text-win">
+                      {confidence.primaryMarket}
+                    </strong>
                   </div>
                   <div className="h-8 w-px bg-cyan/30" />
                   <div>
                     <span className="text-[10px] uppercase font-bold text-ink/60">Alternativa</span>
-                    <strong className="block text-base font-extrabold text-ink">{confidence.alternativeMarket}</strong>
+                    <strong className="block text-base font-extrabold text-ink">
+                      {confidence.alternativeMarket}
+                    </strong>
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 space-y-1.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-ink/60">Ključni faktori presude:</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-ink/60">
+                  Ključni faktori presude:
+                </span>
                 <ul className="space-y-1 text-xs text-ink/80">
                   {confidence.reasons.map((r, i) => (
                     <li key={i} className="flex items-start gap-2">
@@ -758,7 +790,9 @@ function Index() {
               </PanelTitle>
 
               <div className="mt-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-ink/60">Najvjerojatniji točni rezultati:</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-ink/60">
+                  Najvjerojatniji točni rezultati:
+                </span>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {confidence.poisson.topScores.map((s, idx) => (
                     <div
@@ -770,14 +804,18 @@ function Index() {
                       }`}
                     >
                       <span className="block font-display text-lg font-black">{s.score}</span>
-                      <span className="text-[11px] font-mono font-bold opacity-80">{s.prob.toFixed(1)}%</span>
+                      <span className="text-[11px] font-mono font-bold opacity-80">
+                        {s.prob.toFixed(1)}%
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="mt-4 border-t border-line pt-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-ink/60">Raspodjela broja golova:</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-ink/60">
+                  Raspodjela broja golova:
+                </span>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                   <div className="rounded border border-line bg-surface/30 p-2">
                     <span className="text-[10px] uppercase text-ink/60">0-1 gol</span>
@@ -806,7 +844,9 @@ function Index() {
               const b = bttsTip(shown.kGg, shown.k22, shown.kOver, verdict ? exact : null);
               return (
                 <Panel className={b.yes ? "border-win/70" : "border-loss/70"}>
-                  <PanelTitle icon={<Sparkles className={`size-7 ${b.yes ? "text-win" : "text-loss"}`} />}>
+                  <PanelTitle
+                    icon={<Sparkles className={`size-7 ${b.yes ? "text-win" : "text-loss"}`} />}
+                  >
                     BTTS tip (Oba daju gol)
                   </PanelTitle>
                   <div
@@ -853,8 +893,8 @@ function Index() {
                             ind.flag === "DA"
                               ? "bg-win/20 text-win border border-win/50"
                               : ind.flag === "NE"
-                              ? "bg-loss/20 text-loss border border-loss/50"
-                              : "bg-surface text-ink/60 border border-line"
+                                ? "bg-loss/20 text-loss border border-loss/50"
+                                : "bg-surface text-ink/60 border border-line"
                           }`}
                         >
                           {ind.flag}
@@ -868,7 +908,9 @@ function Index() {
 
             {/* SKENER ZLATNIH PAROVA */}
             <Panel className={zone.tone.split(" ")[0] ?? ""}>
-              <PanelTitle icon={<Sparkles className="size-7 text-gold" />}>Skener profila para</PanelTitle>
+              <PanelTitle icon={<Sparkles className="size-7 text-gold" />}>
+                Skener profila para
+              </PanelTitle>
               <div className={`mt-3 rounded-md border p-3 ${zone.tone}`}>
                 <div className="flex items-center justify-between">
                   <strong className="text-sm font-bold">{zone.title}</strong>
@@ -885,7 +927,9 @@ function Index() {
               const anomalies = detectAnomalies(shown.k22, shown.kOver, shown.kGg);
               return (
                 <Panel className={anomalies.length ? "border-gold/70" : ""}>
-                  <PanelTitle icon={<AlertTriangle className="size-7 text-gold" />}>Detektor klizavih parova</PanelTitle>
+                  <PanelTitle icon={<AlertTriangle className="size-7 text-gold" />}>
+                    Detektor klizavih parova
+                  </PanelTitle>
                   {anomalies.length === 0 ? (
                     <p className="mt-3 text-xs text-ink/75">
                       Kvote su međusobno usklađene — nema znakova da bi veća kvota bila bolji izbor.
@@ -893,7 +937,10 @@ function Index() {
                   ) : (
                     <ul className="mt-3 space-y-2">
                       {anomalies.map((a) => (
-                        <li key={a.title} className="rounded-md border border-gold/60 bg-gold/10 p-3 text-xs">
+                        <li
+                          key={a.title}
+                          className="rounded-md border border-gold/60 bg-gold/10 p-3 text-xs"
+                        >
                           <div className="flex items-center justify-between gap-2">
                             <strong className="text-sm text-gold">{a.title}</strong>
                             <span
@@ -924,13 +971,25 @@ function Index() {
               <h3 className="section-label mt-5">1. Izračun osnovnih vjerojatnoća iz kvota</h3>
               <div className="mt-4 grid grid-cols-3 gap-2 text-center font-math text-base sm:text-lg">
                 <span>
-                  P(2:2) = <span className="fraction"><i>1</i><i>k₂:₂</i></span>
+                  P(2:2) ={" "}
+                  <span className="fraction">
+                    <i>1</i>
+                    <i>k₂:₂</i>
+                  </span>
                 </span>
                 <span>
-                  P(O2.5) = <span className="fraction"><i>1</i><i>kO2.5</i></span>
+                  P(O2.5) ={" "}
+                  <span className="fraction">
+                    <i>1</i>
+                    <i>kO2.5</i>
+                  </span>
                 </span>
                 <span>
-                  P(GG) = <span className="fraction"><i>1</i><i>kGG</i></span>
+                  P(GG) ={" "}
+                  <span className="fraction">
+                    <i>1</i>
+                    <i>kGG</i>
+                  </span>
                 </span>
               </div>
 
@@ -956,15 +1015,22 @@ function Index() {
 
               <h3 className="section-label mt-5">6. Provjera konzistentnosti kvote 2:2</h3>
               <div className="mt-3 rounded-md border border-line bg-surface/50 p-3 text-sm">
-                Omjer = P(2:2) / P(O2.5). Ako je &gt; 0.30, kvota 2:2 je umjetno niska i ne prati ponudu.
+                Omjer = P(2:2) / P(O2.5). Ako je &gt; 0.30, kvota 2:2 je umjetno niska i ne prati
+                ponudu.
               </div>
             </Panel>
 
             {/* DNEVNIK ANALIZA (TRACKER) */}
             <Panel className="border-cyan/60">
               <div className="flex items-center justify-between">
-                <PanelTitle icon={<History className="size-7 text-cyan" />}>Dnevnik analiza (Tracker)</PanelTitle>
-                <Button size="sm" onClick={handleSaveAnalysis} className="gap-1 bg-cyan text-surface hover:bg-cyan/90 font-bold">
+                <PanelTitle icon={<History className="size-7 text-cyan" />}>
+                  Dnevnik analiza (Tracker)
+                </PanelTitle>
+                <Button
+                  size="sm"
+                  onClick={handleSaveAnalysis}
+                  className="gap-1 bg-cyan text-surface hover:bg-cyan/90 font-bold"
+                >
                   <BookmarkPlus className="size-4" /> Spremi analizu
                 </Button>
               </div>
@@ -985,15 +1051,27 @@ function Index() {
               </div>
 
               {history.length === 0 ? (
-                <p className="mt-4 text-center text-xs text-ink/60">Još nema spremljenih analiza. Klikni "Spremi analizu" da pratiš rezultate.</p>
+                <p className="mt-4 text-center text-xs text-ink/60">
+                  Još nema spremljenih analiza. Klikni "Spremi analizu" da pratiš rezultate.
+                </p>
               ) : (
                 <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
                   {history.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between rounded-md border border-line bg-surface/20 p-2 text-xs">
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between rounded-md border border-line bg-surface/20 p-2 text-xs"
+                    >
                       <div>
                         <div className="font-bold text-ink">{item.label}</div>
                         <div className="mt-0.5 text-[11px] text-ink/60">
-                          {item.date} · 2.5: <strong className={item.tipOver === "VIŠE" ? "text-win" : "text-loss"}>{item.tipOver}</strong> · BTTS: <strong className={item.tipBtts === "DA" ? "text-win" : "text-loss"}>{item.tipBtts}</strong>
+                          {item.date} · 2.5:{" "}
+                          <strong className={item.tipOver === "VIŠE" ? "text-win" : "text-loss"}>
+                            {item.tipOver}
+                          </strong>{" "}
+                          · BTTS:{" "}
+                          <strong className={item.tipBtts === "DA" ? "text-win" : "text-loss"}>
+                            {item.tipBtts}
+                          </strong>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -1029,15 +1107,35 @@ function Index() {
           {/* STUPAC 3: REZULTAT I ZAKLJUČAK */}
           <div className="space-y-4">
             <Panel className="border-win/70">
-              <PanelTitle icon={<Gauge className="size-7 text-win" />}>Rezultat — Brzi pregled</PanelTitle>
+              <PanelTitle icon={<Gauge className="size-7 text-win" />}>
+                Rezultat — Brzi pregled
+              </PanelTitle>
               <div className="mt-4 space-y-3 font-mono text-sm sm:text-base">
-                <ResultRow label="P(2:2)" val={pct(shown.p22)} raw={`1 / ${shown.k22.toFixed(2)}`} />
-                <ResultRow label="P(O2.5)" val={pct(shown.pOver)} raw={`1 / ${shown.kOver.toFixed(2)}`} />
+                <ResultRow
+                  label="P(2:2)"
+                  val={pct(shown.p22)}
+                  raw={`1 / ${shown.k22.toFixed(2)}`}
+                />
+                <ResultRow
+                  label="P(O2.5)"
+                  val={pct(shown.pOver)}
+                  raw={`1 / ${shown.kOver.toFixed(2)}`}
+                />
                 <ResultRow label="P(GG)" val={pct(shown.pGg)} raw={`1 / ${shown.kGg.toFixed(2)}`} />
                 <ResultRow label="P(GG→Over)" val={pct(shown.pGgOver)} raw="formula A" />
-                <ResultRow label="P(≥3 gola)" val={pct(shown.pThree)} raw="formula B" highlight={shown.isOver} />
+                <ResultRow
+                  label="P(≥3 gola)"
+                  val={pct(shown.pThree)}
+                  raw="formula B"
+                  highlight={shown.isOver}
+                />
                 <ResultRow label="P(točno 2)" val={pct(shown.pTwo)} raw="formula C" />
-                <ResultRow label="P(≤2 gola)" val={pct(shown.pUnder)} raw="formula D" highlight={!shown.isOver} />
+                <ResultRow
+                  label="P(≤2 gola)"
+                  val={pct(shown.pUnder)}
+                  raw="formula D"
+                  highlight={!shown.isOver}
+                />
               </div>
 
               <div className="mt-4 border-t border-line pt-3 text-xs text-ink/80">
@@ -1049,7 +1147,13 @@ function Index() {
             {/* AUTOMATSKI VALUE BET SKENER (SVA 4 TRŽIŠTA) */}
             <Panel className={valueScan.bestValue ? "border-win/70" : "border-line"}>
               <div className="flex items-center justify-between border-b border-line pb-3">
-                <PanelTitle icon={<TrendingUp className={`size-7 ${valueScan.bestValue ? "text-win" : "text-muted"}`} />}>
+                <PanelTitle
+                  icon={
+                    <TrendingUp
+                      className={`size-7 ${valueScan.bestValue ? "text-win" : "text-muted"}`}
+                    />
+                  }
+                >
                   Automatski Value Bet Skener
                 </PanelTitle>
                 <span className="rounded bg-surface px-2 py-0.5 text-xs font-bold text-ink/75 border border-line">
@@ -1082,15 +1186,20 @@ function Index() {
                 </div>
               ) : (
                 <div className="mt-4 rounded-md border border-line bg-surface/30 p-3 text-center">
-                  <p className="text-sm font-bold text-ink/70">Nema izražene matematičke prednosti</p>
-                  <p className="mt-1 text-xs text-ink/50">Kladionica je kvote postavila točno u skladu s rizikom.</p>
+                  <p className="text-sm font-bold text-ink/70">
+                    Nema izražene matematičke prednosti
+                  </p>
+                  <p className="mt-1 text-xs text-ink/50">
+                    Kladionica je kvote postavila točno u skladu s rizikom.
+                  </p>
                 </div>
               )}
 
               {valueScan.worstTrap && (
                 <div className="mt-3 flex items-center justify-between rounded-md border border-loss/50 bg-loss/10 p-2.5 text-xs text-loss">
                   <span>
-                    ⚠️ <strong>Tržišna zamka:</strong> {valueScan.worstTrap.market} @ {valueScan.worstTrap.bookieOdd.toFixed(2)}
+                    ⚠️ <strong>Tržišna zamka:</strong> {valueScan.worstTrap.market} @{" "}
+                    {valueScan.worstTrap.bookieOdd.toFixed(2)}
                   </span>
                   <span className="font-bold">EV {valueScan.worstTrap.ev}%</span>
                 </div>
@@ -1116,7 +1225,9 @@ function Index() {
                         <td className="p-2 font-sans font-semibold">{m.market}</td>
                         <td className="p-2">{m.bookieOdd.toFixed(2)}</td>
                         <td className="p-2">{m.modelProb}%</td>
-                        <td className={`p-2 text-right font-bold ${m.ev > 0 ? "text-win" : "text-ink/50"}`}>
+                        <td
+                          className={`p-2 text-right font-bold ${m.ev > 0 ? "text-win" : "text-ink/50"}`}
+                        >
                           {m.ev > 0 ? `+${m.ev}%` : `${m.ev}%`}
                         </td>
                       </tr>
@@ -1127,7 +1238,9 @@ function Index() {
             </Panel>
 
             <Panel className="border-gold/70">
-              <PanelTitle icon={<Radar className="size-7 text-gold" />}>Dodatni signali (iz tačnih rezultata)</PanelTitle>
+              <PanelTitle icon={<Radar className="size-7 text-gold" />}>
+                Dodatni signali (iz tačnih rezultata)
+              </PanelTitle>
               <ul className="mt-3 space-y-2 text-sm">
                 {extraSignals(shown.k22, verdict ? exact : null).map((s) => (
                   <li
@@ -1136,8 +1249,8 @@ function Index() {
                       s.on === true
                         ? "border-win/60 bg-win/8"
                         : s.on === false
-                        ? "border-line bg-surface/35"
-                        : "border-line/50 bg-surface/20 opacity-70"
+                          ? "border-line bg-surface/35"
+                          : "border-line/50 bg-surface/20 opacity-70"
                     }`}
                   >
                     <strong className={s.on === true ? "text-win" : "text-ink/85"}>
@@ -1148,11 +1261,15 @@ function Index() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-muted">Ovo su iskustvena pravila, ne dokaz. Glavni tip gore ostaje matematički model.</p>
+              <p className="mt-2 text-xs text-muted">
+                Ovo su iskustvena pravila, ne dokaz. Glavni tip gore ostaje matematički model.
+              </p>
             </Panel>
 
             <Panel className="border-violet/70">
-              <PanelTitle icon={<ShieldCheck className="size-7 text-violet" />}>Zaključak</PanelTitle>
+              <PanelTitle icon={<ShieldCheck className="size-7 text-violet" />}>
+                Zaključak
+              </PanelTitle>
               <div
                 className={`mt-4 rounded-md border-2 p-4 text-center ${
                   shown.isOver ? "border-win bg-win/8" : "border-loss bg-loss/8"
@@ -1173,7 +1290,8 @@ function Index() {
                   2.5 {shown.isOver ? "VIŠE" : "MANJE"}
                 </div>
                 <p className="mt-1 font-bold">
-                  ({pct(shown.isOver ? shown.pThree : shown.pUnder)} &gt; {pct(shown.isOver ? shown.pUnder : shown.pThree)})
+                  ({pct(shown.isOver ? shown.pThree : shown.pUnder)} &gt;{" "}
+                  {pct(shown.isOver ? shown.pUnder : shown.pThree)})
                 </p>
               </div>
             </Panel>
@@ -1195,10 +1313,13 @@ function Index() {
             <Crosshair className="size-8 shrink-0 text-win" />
             <p className="text-xs text-ink/75">
               <strong className="block text-ink">Tvoja app logika u jednoj rečenici:</strong>
-              Iz 3 kvote izračunaj P<sub>≥3</sub> i usporedi s P<sub>≤2</sub>: veća vrijednost određuje konkretan tip.
+              Iz 3 kvote izračunaj P<sub>≥3</sub> i usporedi s P<sub>≤2</sub>: veća vrijednost
+              određuje konkretan tip.
             </p>
           </div>
-          <p className="px-5 text-center font-display text-sm font-bold italic text-win">Precizno. Brzo. Pouzdano.</p>
+          <p className="px-5 text-center font-display text-sm font-bold italic text-win">
+            Precizno. Brzo. Pouzdano.
+          </p>
         </footer>
       </div>
     </main>
@@ -1264,4 +1385,3 @@ function ResultRow({
     </div>
   );
 }
-

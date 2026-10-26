@@ -66,7 +66,9 @@ function UzivoPage() {
         <div className="flex items-center gap-3">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-xl"
-            style={{ background: "linear-gradient(135deg, oklch(0.7 0.2 280), oklch(0.68 0.19 320))" }}
+            style={{
+              background: "linear-gradient(135deg, oklch(0.7 0.2 280), oklch(0.68 0.19 320))",
+            }}
           >
             <Radio className="h-5 w-5 text-primary-foreground" />
           </div>

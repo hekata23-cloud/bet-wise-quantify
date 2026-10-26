@@ -5,7 +5,12 @@
  * - Dvostrana tržišta uzima samo kad postoje OBJE strane kod iste kladionice.
  * - Vraća izvor (kladionicu) za svaku grupu kvota radi provjere.
  */
-import { MAX_KVOTA_REZULTAT, MAX_KVOTA_TRZISTE, POTREBNO, provjeriDvostrano } from "./radar-analitika";
+import {
+  MAX_KVOTA_REZULTAT,
+  MAX_KVOTA_TRZISTE,
+  POTREBNO,
+  provjeriDvostrano,
+} from "./radar-analitika";
 
 type Par = { a: number; b: number };
 type Parsirano = {
@@ -42,12 +47,15 @@ function parsirajKladionicu(bm: any): Parsirano {
       }
     } else if (id === 10 || name === "exact score" || name === "correct score") {
       for (const v of vals) {
-        const m = String(v.value).trim().match(/^(\d+)\s*[:-]\s*(\d+)$/);
+        const m = String(v.value)
+          .trim()
+          .match(/^(\d+)\s*[:-]\s*(\d+)$/);
         const k = Number(v.odd);
         if (m && ok(k, MAX_KVOTA_REZULTAT)) p.rezultati[`${Number(m[1])}:${Number(m[2])}`] = k;
       }
     } else if (id === 8 || name === "both teams score" || name === "both teams to score") {
-      let da = NaN, ne = NaN;
+      let da = NaN,
+        ne = NaN;
       for (const v of vals) {
         const s = String(v.value).toLowerCase().trim();
         if (s === "yes") da = Number(v.odd);
@@ -75,7 +83,9 @@ function parsirajKladionicu(bm: any): Parsirano {
 function skupiOU(vals: { value: unknown; odd: unknown }[], cilj: Record<string, Par>) {
   const tmp: Record<string, { o?: number; u?: number }> = {};
   for (const v of vals) {
-    const m = String(v.value).trim().match(/^(over|under)\s*([0-9]+(?:\.[0-9]+)?)$/i);
+    const m = String(v.value)
+      .trim()
+      .match(/^(over|under)\s*([0-9]+(?:\.[0-9]+)?)$/i);
     const k = Number(v.odd);
     if (!m || !ok(k)) continue;
     const l = linija(parseFloat(m[2]!));
@@ -87,7 +97,11 @@ function skupiOU(vals: { value: unknown; odd: unknown }[], cilj: Record<string, 
 }
 
 function bodovi(p: Parsirano): number {
-  const kljucevi = new Set(Object.values(POTREBNO).flatMap((x) => x.kljucevi).filter((k) => k.includes(":")));
+  const kljucevi = new Set(
+    Object.values(POTREBNO)
+      .flatMap((x) => x.kljucevi)
+      .filter((k) => k.includes(":")),
+  );
   let s = 0;
   kljucevi.forEach((k) => p.rezultati[k] && (s += 2));
   s += Math.min(Object.keys(p.rezultati).length, 25) * 0.2;
@@ -116,7 +130,14 @@ export function sastaviKvote(bookmakers: any[]): KvoteRezultat {
   const primarna = sve[0] ?? null;
 
   if (!primarna) {
-    return { odds, corners: null, bookmaker: null, izvori, upozorenja: ["API nema kvote ni jedne kladionice za ovu utakmicu."], brojKladionica: 0 };
+    return {
+      odds,
+      corners: null,
+      bookmaker: null,
+      izvori,
+      upozorenja: ["API nema kvote ni jedne kladionice za ovu utakmicu."],
+      brojKladionica: 0,
+    };
   }
 
   const redoslijed = sve;
@@ -131,11 +152,16 @@ export function sastaviKvote(bookmakers: any[]): KvoteRezultat {
   }
 
   // Točan rezultat: cijeli skup od jedne kladionice s najviše rezultata
-  const rez = [...sve].sort((a, b) => Object.keys(b.rezultati).length - Object.keys(a.rezultati).length)[0]!;
+  const rez = [...sve].sort(
+    (a, b) => Object.keys(b.rezultati).length - Object.keys(a.rezultati).length,
+  )[0]!;
   if (Object.keys(rez.rezultati).length) {
     for (const [k, v] of Object.entries(rez.rezultati)) odds[k] = String(v);
     izvori["Točan rezultat"] = rez.ime;
-    if (Object.keys(rez.rezultati).length < 12) upozorenja.push(`Točan rezultat ima samo ${Object.keys(rez.rezultati).length} ponuđenih rezultata.`);
+    if (Object.keys(rez.rezultati).length < 12)
+      upozorenja.push(
+        `Točan rezultat ima samo ${Object.keys(rez.rezultati).length} ponuđenih rezultata.`,
+      );
   } else upozorenja.push("Nema tržišta točnog rezultata — indikatori nisu u potpunosti pouzdani.");
 
   const btts = redoslijed.find((p) => p.btts);
@@ -145,7 +171,11 @@ export function sastaviKvote(bookmakers: any[]): KvoteRezultat {
     izvori["BTTS"] = btts.ime;
   } else upozorenja.push("Nema potpunog BTTS tržišta (DA i NE).");
 
-  for (const [l, key] of [["1.5", "15"], ["2.5", "25"], ["3.5", "35"]] as const) {
+  for (const [l, key] of [
+    ["1.5", "15"],
+    ["2.5", "25"],
+    ["3.5", "35"],
+  ] as const) {
     const s = redoslijed.find((p) => p.ou[l]);
     if (s) {
       odds[`o${key}`] = String(s.ou[l]!.a);
@@ -218,10 +248,18 @@ function cistiGol(v: unknown): number {
 }
 
 function goloviUtakmice(u: any): { dom: number; gost: number } {
-  const gh = cistiGol(u?.goals?.home) || cistiGol(u?.homeGoals) ||
-    cistiGol(u?.score?.fulltime?.home) || cistiGol(u?.score?.current?.home) || 0;
-  const ga = cistiGol(u?.goals?.away) || cistiGol(u?.awayGoals) ||
-    cistiGol(u?.score?.fulltime?.away) || cistiGol(u?.score?.current?.away) || 0;
+  const gh =
+    cistiGol(u?.goals?.home) ||
+    cistiGol(u?.homeGoals) ||
+    cistiGol(u?.score?.fulltime?.home) ||
+    cistiGol(u?.score?.current?.home) ||
+    0;
+  const ga =
+    cistiGol(u?.goals?.away) ||
+    cistiGol(u?.awayGoals) ||
+    cistiGol(u?.score?.fulltime?.away) ||
+    cistiGol(u?.score?.current?.away) ||
+    0;
   return { dom: gh, gost: ga };
 }
 
@@ -232,8 +270,13 @@ export function izracunajFormu(utakmice: any[]): FormaStat | null {
   });
   if (!zavrsene.length) return null;
 
-  let postignuti = 0, primljeni = 0;
-  let btts = 0, over15 = 0, over25 = 0, under35 = 0, penali = 0;
+  let postignuti = 0,
+    primljeni = 0;
+  let btts = 0,
+    over15 = 0,
+    over25 = 0,
+    under35 = 0,
+    penali = 0;
 
   for (const u of zavrsene) {
     // SAFE-MATH štit: string golovi ("2"), null i NaN postaju 0.
@@ -252,7 +295,11 @@ export function izracunajFormu(utakmice: any[]): FormaStat | null {
     const imaPenal = events.some((ev) => {
       const type = String(ev?.type || "").toLowerCase();
       const detail = String(ev?.detail || "").toLowerCase();
-      return detail.includes("penalty") || detail.includes("pen") || (type === "goal" && detail.includes("penalty"));
+      return (
+        detail.includes("penalty") ||
+        detail.includes("pen") ||
+        (type === "goal" && detail.includes("penalty"))
+      );
     });
     if (imaPenal) penali++;
   }

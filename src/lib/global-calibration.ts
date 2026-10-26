@@ -77,7 +77,8 @@ export function tezinaKalibracije(brojKladionica: number, brojParova: number): n
 export function poolPar(p: number, q: number | undefined, w: number, T = 1): number {
   const pT = tempPar(p, T);
   if (q == null || w <= 0) return pT;
-  if (!(pT > 0 && pT < 1) || !(q > 0 && q < 1)) return clamp(!(pT > 0 && pT < 1) ? (q != null && w > 0 ? q : p) : pT, 0.01, 0.99);
+  if (!(pT > 0 && pT < 1) || !(q > 0 && q < 1))
+    return clamp(!(pT > 0 && pT < 1) ? (q != null && w > 0 ? q : p) : pT, 0.01, 0.99);
   const a = (1 - w) * Math.log(pT) + w * Math.log(q);
   const b = (1 - w) * Math.log(1 - pT) + w * Math.log(1 - q);
   const mx = Math.max(a, b);
@@ -91,7 +92,9 @@ export function poolTrojku(p: number[], m: Array<number | undefined>, w: number,
   if (w <= 0 || m.some((x) => x == null)) return tempTrojku(p, T);
   if (p.some((x) => !(x > 0))) return p.slice();
   const pi = tempTrojku(p, T);
-  const loga = pi.map((v, i) => (1 - w) * Math.log(Math.max(v, 1e-9)) + w * Math.log(Math.max(m[i]!, 1e-9)));
+  const loga = pi.map(
+    (v, i) => (1 - w) * Math.log(Math.max(v, 1e-9)) + w * Math.log(Math.max(m[i]!, 1e-9)),
+  );
   const mx = Math.max(...loga);
   const e = loga.map((x) => Math.exp(x - mx));
   const z = e.reduce((s, x) => s + x, 0);
@@ -157,7 +160,8 @@ export function kalibrirajGoalsFinal(
   izl.u35 = 1 - o35c;
 
   /* 2) BTTS — pool sa stropom P(BTTS) ≤ P(Over 1.5) */
-  const mqBtts = market.bttsDa != null ? market.bttsDa : market.bttsNe != null ? 1 - market.bttsNe : undefined;
+  const mqBtts =
+    market.bttsDa != null ? market.bttsDa : market.bttsNe != null ? 1 - market.bttsNe : undefined;
   const da = clamp(poolPar(final.bttsDa ?? 0.5, mqBtts, w, empBTTS.T), 0.02, Math.min(0.98, o15c));
   izl.bttsDa = da;
   izl.bttsNe = 1 - da;
@@ -200,7 +204,8 @@ export function kalibrirajGoalsFinal(
   izl["g5+"] = g5p;
 
   /* 5) dijagnostika: pomak u postotnim bodovima */
-  let zbroj = 0, n = 0;
+  let zbroj = 0,
+    n = 0;
   for (const k of KAL_KLJUCEVI) {
     const p0 = prije[k];
     const p1 = izl[k];

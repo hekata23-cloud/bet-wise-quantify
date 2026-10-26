@@ -16,7 +16,9 @@ export function LeagueTierFilter() {
           onClick={() => postaviFilter(o.v)}
           aria-pressed={filter === o.v}
           className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-            filter === o.v ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
+            filter === o.v
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-muted-foreground hover:text-foreground"
           }`}
         >
           {o.l}
@@ -28,5 +30,9 @@ export function LeagueTierFilter() {
 
 export function LineupAlertBadge({ oznaka }: { oznaka: string | null }) {
   if (!oznaka) return null;
-  return <span className="inline-flex rounded-md bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive-foreground">{oznaka}</span>;
+  return (
+    <span className="inline-flex rounded-md bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive-foreground">
+      {oznaka}
+    </span>
+  );
 }

@@ -25,8 +25,8 @@ const OPENROUTER_MODELS = [
 const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash"];
 
 const GROQ_MODELS = [
-  "llama-3.3-70b-versatile",  // 1 000 zahtjeva/dan — najpametniji
-  "llama-3.1-8b-instant",     // 14 400 zahtjeva/dan — najizdašniji limit
+  "llama-3.3-70b-versatile", // 1 000 zahtjeva/dan — najpametniji
+  "llama-3.1-8b-instant", // 14 400 zahtjeva/dan — najizdašniji limit
   "openai/gpt-oss-20b",
   "openai/gpt-oss-120b",
 ];
@@ -81,7 +81,8 @@ function parsePrognoza(out: string): AiPrognoza | null {
     return null;
   };
   const vjerojatnost = num(x.vjerojatnost);
-  const ferKvota = num(x.ferKvota) ?? (vjerojatnost !== null && vjerojatnost > 0 ? 100 / vjerojatnost : null);
+  const ferKvota =
+    num(x.ferKvota) ?? (vjerojatnost !== null && vjerojatnost > 0 ? 100 / vjerojatnost : null);
   const ulogPostotak = num(x.ulogPostotak) ?? 0;
   if (typeof x.glavniTip !== "string" || vjerojatnost === null || ferKvota === null) return null;
   if (typeof x.obrazlozenje !== "string" || !Array.isArray(x.rizici)) return null;
@@ -204,7 +205,9 @@ async function groqJSON(sys: string, user: string): Promise<string> {
         try {
           const j = JSON.parse(t);
           if (j?.error?.message) m = String(j.error.message);
-        } catch { /* sirovo */ }
+        } catch {
+          /* sirovo */
+        }
         lastErr = `(${res.status}) ${m}`;
         // Ako model ne podržava JSON način, pokušaj bez njega.
         if (res.status === 400 && sJsonem) continue;
@@ -224,11 +227,14 @@ async function groqJSON(sys: string, user: string): Promise<string> {
 }
 
 // ─────────────────────── GLAVNI LANAC ───────────────────────
-export async function runAiPrognozaFallback(input: {
-  utakmica: string;
-  vrstaOklade: string;
-  kontekst: string;
-}, onProgress?: (m: string) => void): Promise<FallbackResult> {
+export async function runAiPrognozaFallback(
+  input: {
+    utakmica: string;
+    vrstaOklade: string;
+    kontekst: string;
+  },
+  onProgress?: (m: string) => void,
+): Promise<FallbackResult> {
   const sys = `${RULES}
 
 FORMAT ODGOVORA: vrati ISKLJUČIVO jedan JSON objekt, bez markdowna, bez obrazloženja van JSON-a, po ovoj shemi:
@@ -251,10 +257,14 @@ ${SCHEMA_TEXT}`;
       out = await withTimeout(groqJSON(sys, user), PROVIDER_TIMEOUT_MS);
     } else {
       out = await withTimeout(
-        openrouterChat(OPENROUTER_MODELS[0], [
-          { role: "system", content: sys },
-          { role: "user", content: user },
-        ], { maxTokens: 1400, temperature: 0.3 }),
+        openrouterChat(
+          OPENROUTER_MODELS[0],
+          [
+            { role: "system", content: sys },
+            { role: "user", content: user },
+          ],
+          { maxTokens: 1400, temperature: 0.3 },
+        ),
         PROVIDER_TIMEOUT_MS,
       );
     }
@@ -289,6 +299,8 @@ ${SCHEMA_TEXT}`;
       ? ` OpenRouter dnevni limit (${FREE_DAILY_LIMIT}) vjerojatno potrošen — reset u 02:00.`
       : "";
   const jedinstvene = [...new Set(errs)].slice(0, 4).join(" | ");
-  return { ok: false, error: `Rezervni mozak nije uspio (${lanac.join(" → ")}). ${jedinstvene}.${openrouterNapomena}` };
+  return {
+    ok: false,
+    error: `Rezervni mozak nije uspio (${lanac.join(" → ")}). ${jedinstvene}.${openrouterNapomena}`,
+  };
 }
-

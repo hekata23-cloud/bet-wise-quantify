@@ -40,18 +40,16 @@ export function parseTeams(text: string): [string, string] | null {
     .slice(-4)
     .join(" ")
     .trim();
-  const b = (m[2] ?? "")
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 4)
-    .join(" ")
-    .trim();
+  const b = (m[2] ?? "").split(" ").filter(Boolean).slice(0, 4).join(" ").trim();
   if (a.length < 2 || b.length < 2) return null;
   return [a, b];
 }
 
 async function findTeamId(name: string): Promise<TeamHit | null> {
-  const words = name.replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter(Boolean);
+  const words = name
+    .replace(/[^\p{L}\p{N} ]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   const tries = new Set<string>();
   for (let n = words.length; n >= 1; n--) tries.add(words.slice(0, n).join(" "));
   const longest = [...words].sort((x, y) => y.length - x.length)[0];
@@ -177,7 +175,10 @@ FORMA ${aw.team.name} (zadnjih ${awayFx.length}): ${formLine(awayFx, aw.team.id)
   → prosjek zabija ${sa.gf}, prima ${sa.ga} · GG ${sa.btts}% · Over 2.5 ${sa.over}%
 H2H (zadnjih ${h2h.length}): ${
       h2h
-        .map((f) => `${f.teams.home.name} ${f.goals.home ?? "-"}:${f.goals.away ?? "-"} ${f.teams.away.name}`)
+        .map(
+          (f) =>
+            `${f.teams.home.name} ${f.goals.home ?? "-"}:${f.goals.away ?? "-"} ${f.teams.away.name}`,
+        )
         .join(" | ") || "nema"
     }
 OZLJEDE/IZOSTANCI: ${injuries}

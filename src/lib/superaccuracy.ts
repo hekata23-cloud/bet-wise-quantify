@@ -249,7 +249,12 @@ export function isModeOn(p: SuperPrefs, id: ModeId): boolean {
  * Empirical Bayes shrinkage λ tima prema prosjeku lige.
  * w = n/(n+k) — s malo podataka (n) vjerujemo ligi, s puno vjerujemo timu.
  */
-export function hierarchicalLambda(lambda: number, leagueMean: number, n: number, k: number): number {
+export function hierarchicalLambda(
+  lambda: number,
+  leagueMean: number,
+  n: number,
+  k: number,
+): number {
   const w = n / (n + Math.max(0.5, k));
   return w * lambda + (1 - w) * leagueMean;
 }
@@ -340,8 +345,7 @@ export function negBinomPmf(lambda: number, k: number, x: number): number {
     for (let i = 1; i < g + 2; i++) a += c[i] / (z + i);
     return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(a);
   };
-  const logP =
-    lg(x + r) - lg(r) - lg(x + 1) + r * Math.log(pSucc) + x * Math.log(1 - pSucc);
+  const logP = lg(x + r) - lg(r) - lg(x + 1) + r * Math.log(pSucc) + x * Math.log(1 - pSucc);
   return Math.exp(logP);
 }
 
@@ -401,7 +405,13 @@ function outcomeOf(i: number, j: number): "1" | "X" | "2" {
  * Egzaktna HT/FT matrica: dvije neovisne Poissonove matrice (1. i 2. poluvrijeme)
  * konvoluirane u konačni rezultat. Nema aproksimacija tipa "htH × home × 1.18".
  */
-export function htftTable(lh: number, la: number, split: number, tau: number, rho: number): HtFtTable {
+export function htftTable(
+  lh: number,
+  la: number,
+  split: number,
+  tau: number,
+  rho: number,
+): HtFtTable {
   const s = Math.min(0.5, Math.max(0.35, split));
   const h1 = scoreMatrix(lh * s, la * s, tau * 1.2, rho, 6).m;
   const h2 = scoreMatrix(lh * (1 - s), la * (1 - s), tau, rho, 6).m;
@@ -437,7 +447,11 @@ export function htftTable(lh: number, la: number, split: number, tau: number, rh
 }
 
 /** HT golovi iz split λ (neovisno o FT matrici). */
-export function htGoals(lh: number, la: number, split: number): {
+export function htGoals(
+  lh: number,
+  la: number,
+  split: number,
+): {
   exp: number;
   over05: number;
   over15: number;
@@ -550,8 +564,7 @@ export function runSuperPipeline(inp: SuperPipelineInput, p: SuperPrefs): SuperP
   }
 
   if (p.modes.elo) {
-    const target =
-      inp.eloDiff !== null ? eloExpected(inp.eloDiff) : inp.homeShareFromOdds;
+    const target = inp.eloDiff !== null ? eloExpected(inp.eloDiff) : inp.homeShareFromOdds;
     if (target !== null && Number.isFinite(target)) {
       const share = 0.5 + (target - 0.5) * 0.7; // λ udio je blaži od P(pobjede)
       [lh, la] = rotateLambdas(lh, la, share, p.eloPull);
@@ -598,9 +611,13 @@ export function superPromptDirectives(p: SuperPrefs, market: Market): string {
   if (p.modes.elo)
     out.push("Provjeri omjer snaga Elo logikom (400 bodova ≈ 91% očekivanog rezultata).");
   if (p.modes.zip)
-    out.push("Uzmi u obzir zero-inflation: u defenzivnim ligama i derbijima 0:0 je češći nego po čistom Poissonu.");
+    out.push(
+      "Uzmi u obzir zero-inflation: u defenzivnim ligama i derbijima 0:0 je češći nego po čistom Poissonu.",
+    );
   if (p.modes.disp)
-    out.push("Golovi su overdisperzirani (var > mean) — ne budi previše samouvjeren u uski raspon.");
+    out.push(
+      "Golovi su overdisperzirani (var > mean) — ne budi previše samouvjeren u uski raspon.",
+    );
   if ((market === "htft" || market === "htx" || market === "htgoals") && p.modes.htft9)
     out.push(
       `Poluvrijeme modeliraj odvojeno: λ_HT = ${p.htSplit.toFixed(2)} × λ_FT, drugo poluvrijeme ostatak, pa konvoluiraj.`,
@@ -625,11 +642,19 @@ export function superPromptDirectives(p: SuperPrefs, market: Market): string {
 }
 
 /** Sažetak aktivnih modula za briefing bota. */
-export function superBriefing(o: SuperPipelineOutput, rep: CoherenceReport | null, p: SuperPrefs): string {
+export function superBriefing(
+  o: SuperPipelineOutput,
+  rep: CoherenceReport | null,
+  p: SuperPrefs,
+): string {
   const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
   const lines: string[] = [];
   lines.push(`═══ SUPER TOČNOST v7 — aktivni moduli ═══`);
-  lines.push(o.applied.length ? o.applied.map((a) => `· ${a}`).join("\n") : "· (osnovni Poisson/Dixon-Coles)");
+  lines.push(
+    o.applied.length
+      ? o.applied.map((a) => `· ${a}`).join("\n")
+      : "· (osnovni Poisson/Dixon-Coles)",
+  );
   if (p.modes.calib) lines.push(`· Platt kalibracija a=${p.plattA}, b=${p.plattB}`);
   if (o.htft) {
     const rows = Object.entries(o.htft.probs)
@@ -655,7 +680,14 @@ export function superBriefing(o: SuperPipelineOutput, rep: CoherenceReport | nul
     );
   }
   if (p.modes.mathPack) {
-    lines.push(mathPackBriefing({ lh: o.lambdaHome, la: o.lambdaAway, bttsRho: p.bttsRho, ouBeta: p.ouBeta }));
+    lines.push(
+      mathPackBriefing({
+        lh: o.lambdaHome,
+        la: o.lambdaAway,
+        bttsRho: p.bttsRho,
+        ouBeta: p.ouBeta,
+      }),
+    );
   }
   if (rep) {
     lines.push(

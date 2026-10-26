@@ -272,7 +272,8 @@ export const DE_TOPICS: Topic[] = [
         prompt: "Ich habe ___ Bruder.",
         options: ["einen", "ein", "eine", "einer"],
         answer: "einen",
-        explanation: "The direct object is masculine, so the article becomes 'einen' in the accusative.",
+        explanation:
+          "The direct object is masculine, so the article becomes 'einen' in the accusative.",
       },
     ],
     listening: {
@@ -465,7 +466,8 @@ export const DE_TOPICS: Topic[] = [
         prompt: "Wie komme ich ___ Bahnhof?",
         options: ["zum", "zur", "nach", "im"],
         answer: "zum",
-        explanation: "'zu' contracts with 'dem' to 'zum' before a masculine noun such as 'Bahnhof'.",
+        explanation:
+          "'zu' contracts with 'dem' to 'zum' before a masculine noun such as 'Bahnhof'.",
       },
       {
         id: "de-a2-travel-g3",

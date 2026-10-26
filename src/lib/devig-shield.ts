@@ -18,9 +18,9 @@
 export const VIG_PRAG = 0.07;
 
 export type DevigIzlaz = {
-  vig: number;            // ukupna marża (0.05 = 5%)
-  distorzija: boolean;    // vig > VIG_PRAG
-  fair: number[];         // de-vig vjerojatnosti (zbroj = 1)
+  vig: number; // ukupna marża (0.05 = 5%)
+  distorzija: boolean; // vig > VIG_PRAG
+  fair: number[]; // de-vig vjerojatnosti (zbroj = 1)
   metoda: "shin" | "power" | "multiplikativno";
 };
 
@@ -36,12 +36,14 @@ export function devigMultiplikativno(odds: number[]): number[] {
  *  k = 1 → multiplikativno; k > 1 → favoriti dobivaju više (Shin-približno). */
 export function devigPower(odds: number[]): number[] {
   const inv = odds.map((o) => (o > 1 ? 1 / o : 1e-9));
-  let lo = 0.01, hi = 4;
+  let lo = 0.01,
+    hi = 4;
   while (inv.reduce((acc, r) => acc + Math.pow(r, hi), 0) > 1 && hi < 256) hi *= 2;
   for (let i = 0; i < 80; i++) {
     const mid = (lo + hi) / 2;
     const zbroj = inv.map((x) => Math.pow(x, mid)).reduce((a, b) => a + b, 0);
-    if (zbroj > 1) lo = mid; else hi = mid;
+    if (zbroj > 1) lo = mid;
+    else hi = mid;
   }
   const k = (lo + hi) / 2;
   const p = inv.map((x) => Math.pow(x, k));
@@ -60,15 +62,17 @@ export function devigShin(odds: number[]): number[] {
     // p_i = ( sqrt(z² + 4(1−z)·π_i²/Σπ) − z ) / (2(1−z))
     const sPi = pi.reduce((a, b) => a + b, 0);
     return pi.map((p) => {
-      const b = 4 * (1 - z) * p * p / sPi;
+      const b = (4 * (1 - z) * p * p) / sPi;
       return (Math.sqrt(z * z + b) - z) / (2 * (1 - z));
     });
   };
-  let lo = 0.001, hi = 0.3;
+  let lo = 0.001,
+    hi = 0.3;
   for (let i = 0; i < 80; i++) {
     const z = (lo + hi) / 2;
     const s = shinP(z).reduce((a, b) => a + b, 0);
-    if (s > 1) hi = z; else lo = z;
+    if (s > 1) hi = z;
+    else lo = z;
   }
   const p = shinP((lo + hi) / 2);
   const s = p.reduce((a, b) => a + b, 0);
@@ -133,4 +137,3 @@ export function losaCijena(p: number, odds: number | null | undefined): CijenaUp
   }
   return { losa: false, razina: "nema", poruka: null, ev };
 }
-

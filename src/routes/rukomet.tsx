@@ -1,12 +1,39 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Activity, CheckCircle2, Edit3, Flame, RefreshCw, Search, Settings, ShieldAlert, Sparkles, Target, Trophy } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  Edit3,
+  Flame,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldAlert,
+  Sparkles,
+  Target,
+  Trophy,
+} from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import { getRukometGames, getRukometOdds, type RukometGame, type RukometMarkets } from "@/lib/rukomet.functions";
+import {
+  getRukometGames,
+  getRukometOdds,
+  type RukometGame,
+  type RukometMarkets,
+} from "@/lib/rukomet.functions";
 import { analyzeRukomet, type RukometAnalysis, type Tip } from "@/lib/rukomet-engine";
-import { rukometGuarded, readRukometState, resetRukometGuard, zagrebDay } from "@/lib/rukomet-guard";
+import {
+  rukometGuarded,
+  readRukometState,
+  resetRukometGuard,
+  zagrebDay,
+} from "@/lib/rukomet-guard";
 import { getApiKey } from "@/lib/zlatni-guard";
-import { evaluatePredictionIntegrity, noVigProbability, twoWayMarginPercent, type IntegrityResult } from "@/lib/prediction-integrity";
+import {
+  evaluatePredictionIntegrity,
+  noVigProbability,
+  twoWayMarginPercent,
+  type IntegrityResult,
+} from "@/lib/prediction-integrity";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
 import { SarpSportPanel } from "@/components/SarpSportPanel";
 
@@ -22,7 +49,8 @@ export const Route = createFileRoute("/rukomet")({
       { property: "og:title", content: "Rukomet Sharp · Andromeda AI" },
       {
         property: "og:description",
-        content: "Kvantitativni rukometni model s Bet365 kvotama: fer kvote, EV, točni tipovi i zbrojevi golova.",
+        content:
+          "Kvantitativni rukometni model s Bet365 kvotama: fer kvote, EV, točni tipovi i zbrojevi golova.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -107,7 +135,7 @@ function RukometPage() {
       const r = await rukometGuarded(
         `games.${date}`,
         () => getRukometGames({ data: { date, apiKey } }),
-        onWait
+        onWait,
       );
       if (r.error) {
         setMsg(r.error === "RATE_LIMIT" ? "Limit API-ja — pričekaj 15 s." : `Greška: ${r.error}`);
@@ -117,7 +145,9 @@ function RukometPage() {
         .filter((g) => !DONE.includes(g.status))
         .sort((a, b) => a.time.localeCompare(b.time));
       setGames(list);
-      setMsg(`Učitano ${list.length} rukometnih utakmica (${r.games.length} ukupno). Odaberi utakmicu za analizu.`);
+      setMsg(
+        `Učitano ${list.length} rukometnih utakmica (${r.games.length} ukupno). Odaberi utakmicu za analizu.`,
+      );
     } catch (e: any) {
       setMsg(e?.message ?? "Greška");
     } finally {
@@ -132,7 +162,7 @@ function RukometPage() {
     homeTeam: string,
     awayTeam: string,
     sourceMode?: "API" | "ALGORITAM" | "RUČNO",
-    isBet365Flag = false
+    isBet365Flag = false,
   ) => {
     const a = analyzeRukomet(markets, leagueName, homeTeam, awayTeam, sourceMode, isBet365Flag);
     setBook(bookName);
@@ -200,7 +230,7 @@ function RukometPage() {
       const r = await rukometGuarded(
         `odds.${g.id}`,
         () => getRukometOdds({ data: { id: g.id, apiKey } }),
-        onWait
+        onWait,
       );
       setBrojKlad(r.error ? 0 : (r.brojKladionica ?? 0));
 
@@ -219,7 +249,9 @@ function RukometPage() {
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? games.filter((g) => `${g.home} ${g.away} ${g.league}`.toLowerCase().includes(s)) : games;
+    return s
+      ? games.filter((g) => `${g.home} ${g.away} ${g.league}`.toLowerCase().includes(s))
+      : games;
   }, [games, q]);
 
   const st = typeof window !== "undefined" ? readRukometState() : null;
@@ -231,9 +263,13 @@ function RukometPage() {
         const same = group.filter((x) => x.odd);
         const opp = same.length === 2 ? same.find((x) => x.odd !== an.concrete.winner.odd) : null;
         const marketProbability =
-          an.concrete.winner.odd && opp?.odd ? noVigProbability(an.concrete.winner.odd, opp.odd) : null;
+          an.concrete.winner.odd && opp?.odd
+            ? noVigProbability(an.concrete.winner.odd, opp.odd)
+            : null;
         const marginPercent =
-          an.concrete.winner.odd && opp?.odd ? twoWayMarginPercent(an.concrete.winner.odd, opp.odd) : null;
+          an.concrete.winner.odd && opp?.odd
+            ? twoWayMarginPercent(an.concrete.winner.odd, opp.odd)
+            : null;
         return evaluatePredictionIntegrity({
           probability: an.concrete.winner.prob,
           odds: an.concrete.winner.odd,
@@ -249,11 +285,16 @@ function RukometPage() {
   const totalGoalsIntegrity: IntegrityResult | null = an
     ? (() => {
         const same = an.totals.filter((x) => x.market === `Zbroj ${an.concrete.totalGoals.line}`);
-        const opp = same.length === 2 ? same.find((x) => x.pick !== an.concrete.totalGoals.pick) : null;
+        const opp =
+          same.length === 2 ? same.find((x) => x.pick !== an.concrete.totalGoals.pick) : null;
         const marketProbability =
-          an.concrete.totalGoals.odd && opp?.odd ? noVigProbability(an.concrete.totalGoals.odd, opp.odd) : null;
+          an.concrete.totalGoals.odd && opp?.odd
+            ? noVigProbability(an.concrete.totalGoals.odd, opp.odd)
+            : null;
         const marginPercent =
-          an.concrete.totalGoals.odd && opp?.odd ? twoWayMarginPercent(an.concrete.totalGoals.odd, opp.odd) : null;
+          an.concrete.totalGoals.odd && opp?.odd
+            ? twoWayMarginPercent(an.concrete.totalGoals.odd, opp.odd)
+            : null;
         return evaluatePredictionIntegrity({
           probability: an.concrete.totalGoals.prob,
           odds: an.concrete.totalGoals.odd,
@@ -327,8 +368,8 @@ function RukometPage() {
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-4 w-4 text-primary" />
           <span>
-            Zaštita API-ja: <strong>{st?.blocked ? "Blokirano (cooldown)" : "Aktivna"}</strong> · Poziva danas:{" "}
-            <strong>{st?.used ?? 0}</strong> / 85
+            Zaštita API-ja: <strong>{st?.blocked ? "Blokirano (cooldown)" : "Aktivna"}</strong> ·
+            Poziva danas: <strong>{st?.used ?? 0}</strong> / 85
           </span>
         </div>
         {st?.blocked && (
@@ -344,7 +385,11 @@ function RukometPage() {
         )}
       </div>
 
-      {msg && <div className="rounded-md border bg-muted/50 p-2.5 text-xs text-muted-foreground">{msg}</div>}
+      {msg && (
+        <div className="rounded-md border bg-muted/50 p-2.5 text-xs text-muted-foreground">
+          {msg}
+        </div>
+      )}
 
       {/* Popis utakmica */}
       {games.length > 0 && (
@@ -400,7 +445,9 @@ function RukometPage() {
                 Prilagodi kvote za: {sel.home} — {sel.away}
               </h2>
             </div>
-            <span className="text-[11px] text-muted-foreground">Prilagodi prema svojoj kladionici</span>
+            <span className="text-[11px] text-muted-foreground">
+              Prilagodi prema svojoj kladionici
+            </span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 text-xs">
@@ -481,21 +528,29 @@ function RukometPage() {
         <div className="space-y-4 rounded-xl border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
             <div>
-              <div className="text-xs text-muted-foreground">{sel.league} · {time(sel.time)}</div>
+              <div className="text-xs text-muted-foreground">
+                {sel.league} · {time(sel.time)}
+              </div>
               <h2 className="text-lg font-bold">
                 {sel.home} — {sel.away}
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                isB365
-                  ? "bg-emerald-500/20 text-emerald-600 border border-emerald-500/30"
-                  : an.source === "API"
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "bg-muted text-muted-foreground border"
-              }`}>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  isB365
+                    ? "bg-emerald-500/20 text-emerald-600 border border-emerald-500/30"
+                    : an.source === "API"
+                      ? "bg-primary/15 text-primary border border-primary/30"
+                      : "bg-muted text-muted-foreground border"
+                }`}
+              >
                 <Sparkles className="h-3 w-3" />
-                {isB365 ? "Bet365 Kvote" : an.source === "API" ? `Izvor: ${book ?? "API"}` : "Kvantitativni Model"}
+                {isB365
+                  ? "Bet365 Kvote"
+                  : an.source === "API"
+                    ? `Izvor: ${book ?? "API"}`
+                    : "Kvantitativni Model"}
               </span>
               <button
                 onClick={() => setManualMode(!manualMode)}
@@ -506,7 +561,19 @@ function RukometPage() {
             </div>
           </div>
 
-          <SarpSportPanel sport="rukomet" utakmica={{ id: sel.id, home: sel.home, away: sel.away, league: sel.league, time: sel.time }} an={an} book={book} brojKladionica={brojKlad ?? undefined} />
+          <SarpSportPanel
+            sport="rukomet"
+            utakmica={{
+              id: sel.id,
+              home: sel.home,
+              away: sel.away,
+              league: sel.league,
+              time: sel.time,
+            }}
+            an={an}
+            book={book}
+            brojKladionica={brojKlad ?? undefined}
+          />
 
           {/* 🎯 KONKRETIZIRANI TIPOVI ZA OKLADU */}
           <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4 space-y-3">
@@ -624,16 +691,29 @@ function RukometPage() {
                 </div>
                 <div className="mt-1 text-base font-bold">{an.best.pick}</div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Tržište: <strong>{an.best.market}</strong> · Vjerojatnost: <strong>{pct(an.best.prob)}</strong> · Fer kvota:{" "}
+                  Tržište: <strong>{an.best.market}</strong> · Vjerojatnost:{" "}
+                  <strong>{pct(an.best.prob)}</strong> · Fer kvota:{" "}
                   <strong>{an.best.fair.toFixed(2)}</strong>
                   {an.best.odd && (
                     <>
-                      {" "}· Kvote: <strong>{an.best.odd.toFixed(2)}</strong> · EV:{" "}
+                      {" "}
+                      · Kvote: <strong>{an.best.odd.toFixed(2)}</strong> · EV:{" "}
                       <strong className="text-emerald-600">+{an.best.ev?.toFixed(1)}%</strong>
                     </>
                   )}
                 </div>
-                <IntegrityPanel result={tipIntegrity(an.best, [...an.x12, ...an.dc, ...an.ml, ...an.totals, ...an.homeTotals, ...an.awayTotals])} compact title="Value Tip" />
+                <IntegrityPanel
+                  result={tipIntegrity(an.best, [
+                    ...an.x12,
+                    ...an.dc,
+                    ...an.ml,
+                    ...an.totals,
+                    ...an.homeTotals,
+                    ...an.awayTotals,
+                  ])}
+                  compact
+                  title="Value Tip"
+                />
               </div>
             )}
             {an.safest && (
@@ -647,7 +727,18 @@ function RukometPage() {
                   <strong className="text-emerald-600">{pct(an.safest.prob)}</strong> · Fer kvota:{" "}
                   <strong>{an.safest.fair.toFixed(2)}</strong>
                 </div>
-                <IntegrityPanel result={tipIntegrity(an.safest, [...an.x12, ...an.dc, ...an.ml, ...an.totals, ...an.homeTotals, ...an.awayTotals])} compact title="Najsigurniji tip" />
+                <IntegrityPanel
+                  result={tipIntegrity(an.safest, [
+                    ...an.x12,
+                    ...an.dc,
+                    ...an.ml,
+                    ...an.totals,
+                    ...an.homeTotals,
+                    ...an.awayTotals,
+                  ])}
+                  compact
+                  title="Najsigurniji tip"
+                />
               </div>
             )}
           </div>
@@ -660,11 +751,15 @@ function RukometPage() {
             </div>
             <div>
               <div className="text-muted-foreground">Očekivano domaćin</div>
-              <div className="text-base font-bold font-mono text-primary">{an.muHome.toFixed(1)}</div>
+              <div className="text-base font-bold font-mono text-primary">
+                {an.muHome.toFixed(1)}
+              </div>
             </div>
             <div>
               <div className="text-muted-foreground">Očekivano gost</div>
-              <div className="text-base font-bold font-mono text-primary">{an.muAway.toFixed(1)}</div>
+              <div className="text-base font-bold font-mono text-primary">
+                {an.muAway.toFixed(1)}
+              </div>
             </div>
             <div>
               <div className="text-muted-foreground">Predviđena razlika</div>
@@ -747,7 +842,9 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
         <span className="text-muted-foreground">{pct(tip.prob)}</span>
         <span className="rounded bg-muted px-1.5 py-0.5">Fer {tip.fair.toFixed(2)}</span>
         {tip.odd && (
-          <span className={`rounded px-1.5 py-0.5 font-bold ${isValue ? "bg-emerald-500/15 text-emerald-600" : "bg-card"}`}>
+          <span
+            className={`rounded px-1.5 py-0.5 font-bold ${isValue ? "bg-emerald-500/15 text-emerald-600" : "bg-card"}`}
+          >
             @{tip.odd.toFixed(2)}
           </span>
         )}
@@ -755,4 +852,3 @@ function Row({ tip, label }: { tip: Tip; label?: string }) {
     </div>
   );
 }
-

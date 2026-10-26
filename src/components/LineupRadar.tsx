@@ -8,8 +8,12 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, RefreshCw, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { afGet, ApiFootballError } from "@/lib/api-football";
 import {
-  analizirajPostave, parsirajPostave, procijeniUtjecajPostava,
-  usporediPostaveTim, type PostavaTim, type UtjecajPostave,
+  analizirajPostave,
+  parsirajPostave,
+  procijeniUtjecajPostava,
+  usporediPostaveTim,
+  type PostavaTim,
+  type UtjecajPostave,
 } from "@/lib/lineup-engine";
 
 export interface LineupInfo {
@@ -27,17 +31,26 @@ interface LineupRadarProps {
 
 const HIST_KEY = (id: number) => `andromeda.lineup.hist.${id}`;
 
-interface HistZapis { dom: PostavaTim | null; gost: PostavaTim | null }
+interface HistZapis {
+  dom: PostavaTim | null;
+  gost: PostavaTim | null;
+}
 
 function citajHist(id: number): HistZapis | null {
   try {
     const raw = localStorage.getItem(HIST_KEY(id));
     return raw ? (JSON.parse(raw) as HistZapis) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function pisiHist(id: number, z: HistZapis) {
-  try { localStorage.setItem(HIST_KEY(id), JSON.stringify(z)); } catch { /* ignoriraj */ }
+  try {
+    localStorage.setItem(HIST_KEY(id), JSON.stringify(z));
+  } catch {
+    /* ignoriraj */
+  }
 }
 
 type Status = "ucitavam" | "potvrdjene" | "nepotvrdjene" | "greska";
@@ -86,7 +99,7 @@ export function LineupRadar({ fixtureId, dom, gost, onImpact }: LineupRadarProps
       setFormacija(
         postave[0]?.formacija && postave[1]?.formacija
           ? `${postave[0].formacija} vs ${postave[1].formacija}`
-          : postave[0]?.formacija ?? null,
+          : (postave[0]?.formacija ?? null),
       );
       const finalna = u.imaUtjecaj ? u : null;
       setUtjecaj(finalna);
@@ -127,7 +140,9 @@ export function LineupRadar({ fixtureId, dom, gost, onImpact }: LineupRadarProps
           <Users className="h-4 w-4 text-teal-400" /> Postave
           {badge}
           {formacija && (
-            <span className="rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{formacija}</span>
+            <span className="rounded bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+              {formacija}
+            </span>
           )}
         </div>
         <button
@@ -142,22 +157,25 @@ export function LineupRadar({ fixtureId, dom, gost, onImpact }: LineupRadarProps
       {utjecaj?.imaUtjecaj && (
         <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
           <div className="text-xs font-bold text-amber-300">
-            ⚠ LINEUP SHIFT DETECTED — vjerojatnost preračunata za {utjecaj.procenat > 0 ? "+" : ""}{utjecaj.procenat}%
+            ⚠ LINEUP SHIFT DETECTED — vjerojatnost preračunata za {utjecaj.procenat > 0 ? "+" : ""}
+            {utjecaj.procenat}%
           </div>
           <ul className="mt-1 space-y-0.5 text-[11px] text-amber-200/90">
-            {utjecaj.opisi.slice(0, 4).map((o, i) => <li key={i}>• {o}</li>)}
+            {utjecaj.opisi.slice(0, 4).map((o, i) => (
+              <li key={i}>• {o}</li>
+            ))}
           </ul>
           <div className="mt-1.5 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
             <span>λ domaćin ×{utjecaj.faktorDom.toFixed(2)}</span>
             <span>λ gost ×{utjecaj.faktorGost.toFixed(2)}</span>
-            <span>({dom} — {gost})</span>
+            <span>
+              ({dom} — {gost})
+            </span>
           </div>
         </div>
       )}
 
-      {status === "greska" && (
-        <p className="mt-1.5 text-[11px] text-muted-foreground">{poruka}</p>
-      )}
+      {status === "greska" && <p className="mt-1.5 text-[11px] text-muted-foreground">{poruka}</p>}
       {status === "nepotvrdjene" && !utjecaj?.imaUtjecaj && (
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           Službene postave obično izlaze ~45 min prije početka. Do tada model koristi puni sastav.

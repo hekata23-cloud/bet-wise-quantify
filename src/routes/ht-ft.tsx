@@ -1,34 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  Clock,
-  RefreshCw,
-  Search,
-  Settings,
-  ShieldAlert,
-  Zap,
-} from "lucide-react";
+import { AlertTriangle, Clock, RefreshCw, Search, Settings, ShieldAlert, Zap } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import {
-  getZtFixtures,
-  getZtMatch,
-  type ZtFixture,
-} from "@/lib/zlatni-tip.functions";
+import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
 import { computeHtFtAnalysis, type HtFtAnalysis } from "@/lib/ht-ft";
-import {
-  evaluatePredictionIntegrity,
-  footballContradiction,
-} from "@/lib/prediction-integrity";
+import { evaluatePredictionIntegrity, footballContradiction } from "@/lib/prediction-integrity";
 import { IntegrityPanel } from "@/components/IntegrityPanel";
 import { analyze } from "@/lib/zlatni-engine";
-import {
-  getApiKey,
-  guarded,
-  readState,
-  resetGuard,
-  zagrebDay,
-} from "@/lib/zlatni-guard";
+import { getApiKey, guarded, readState, resetGuard, zagrebDay } from "@/lib/zlatni-guard";
 
 export const Route = createFileRoute("/ht-ft")({
   head: () => ({
@@ -47,8 +26,7 @@ export const Route = createFileRoute("/ht-ft")({
       },
       {
         property: "og:description",
-        content:
-          "Kvantitativna analiza svih devet HT/FT ishoda bez kladioničarske marže.",
+        content: "Kvantitativna analiza svih devet HT/FT ishoda bez kladioničarske marže.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -71,10 +49,8 @@ function formatMatchTime(isoString: string) {
 
 export function HtFtPage() {
   const [fixtures, setFixtures] = useState<ZtFixture[]>([]);
-  const [selectedFixture, setSelectedFixture] =
-    useState<ZtFixture | null>(null);
-  const [analysisResult, setAnalysisResult] =
-    useState<HtFtAnalysis | null>(null);
+  const [selectedFixture, setSelectedFixture] = useState<ZtFixture | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<HtFtAnalysis | null>(null);
 
   const [loadingFixtures, setLoadingFixtures] = useState(false);
   const [analyzingId, setAnalyzingId] = useState<number | null>(null);
@@ -85,9 +61,7 @@ export function HtFtPage() {
   const guard = readState();
 
   const handleWait = (ms: number, reason: string) => {
-    setStatusMsg(
-      `Zaštita API-ja: ${reason}. Kratko čekanje ${Math.ceil(ms / 1000)} s…`,
-    );
+    setStatusMsg(`Zaštita API-ja: ${reason}. Kratko čekanje ${Math.ceil(ms / 1000)} s…`);
   };
 
   const handleResetGuard = () => {
@@ -143,9 +117,7 @@ export function HtFtPage() {
       setFixtures(playable);
 
       if (playable.length === 0) {
-        setStatusMsg(
-          "Za današnji dan nema dostupnih utakmica. Pokušajte ponovno kasnije.",
-        );
+        setStatusMsg("Za današnji dan nema dostupnih utakmica. Pokušajte ponovno kasnije.");
         return;
       }
 
@@ -153,8 +125,7 @@ export function HtFtPage() {
         `Učitano je ${playable.length} utakmica. Kliknite Analiziraj pokraj željene utakmice.`,
       );
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Nepoznata greška.";
+      const message = error instanceof Error ? error.message : "Nepoznata greška.";
       setStatusMsg(`Učitavanje nije uspjelo: ${message}`);
     } finally {
       setLoadingFixtures(false);
@@ -165,9 +136,7 @@ export function HtFtPage() {
     const apiKey = getApiKey();
 
     if (!apiKey) {
-      setStatusMsg(
-        "Nedostaje API-Football ključ. Unesite ga u Postavkama i spremite.",
-      );
+      setStatusMsg("Nedostaje API-Football ključ. Unesite ga u Postavkama i spremite.");
       setSettingsOpen(true);
       return;
     }
@@ -175,9 +144,7 @@ export function HtFtPage() {
     setAnalyzingId(fixture.id);
     setSelectedFixture(fixture);
     setAnalysisResult(null);
-    setStatusMsg(
-      `Analiziram HT/FT tržište: ${fixture.home} — ${fixture.away}…`,
-    );
+    setStatusMsg(`Analiziram HT/FT tržište: ${fixture.home} — ${fixture.away}…`);
 
     try {
       /*
@@ -220,11 +187,7 @@ export function HtFtPage() {
         return;
       }
 
-      const fullAnalysis = analyze(
-        markets,
-        result.home ?? null,
-        result.away ?? null,
-      );
+      const fullAnalysis = analyze(markets, result.home ?? null, result.away ?? null);
 
       const htFtAnalysis = computeHtFtAnalysis(
         fullAnalysis,
@@ -235,16 +198,11 @@ export function HtFtPage() {
 
       setAnalysisResult(htFtAnalysis);
 
-      const bookmaker = result.bookmaker
-        ? ` Izvor kvota: ${result.bookmaker}.`
-        : "";
+      const bookmaker = result.bookmaker ? ` Izvor kvota: ${result.bookmaker}.` : "";
 
-      setStatusMsg(
-        `HT/FT analiza je dovršena za ${fixture.home} — ${fixture.away}.${bookmaker}`,
-      );
+      setStatusMsg(`HT/FT analiza je dovršena za ${fixture.home} — ${fixture.away}.${bookmaker}`);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Nepoznata greška.";
+      const message = error instanceof Error ? error.message : "Nepoznata greška.";
 
       setStatusMsg(`Analiza nije uspjela: ${message}`);
     } finally {
@@ -257,8 +215,7 @@ export function HtFtPage() {
     if (!analysisResult) return null;
     const sum = (codes: string[]) =>
       codes.reduce(
-        (total, code) =>
-          total + (analysisResult.outcomes.find((o) => o.code === code)?.prob ?? 0),
+        (total, code) => total + (analysisResult.outcomes.find((o) => o.code === code)?.prob ?? 0),
         0,
       );
     return {
@@ -325,7 +282,7 @@ export function HtFtPage() {
         fallbackModel: !o.bookieOdd,
         contradictory: footballContradiction({ selected: ftSelected(o.code), ...ftProbs }),
         market: `HT/FT ${o.code}`,
-      })
+      }),
     );
   }, [analysisResult, ftProbs]);
 
@@ -356,9 +313,7 @@ export function HtFtPage() {
               </span>
 
               <div>
-                <h1 className="text-xl font-bold tracking-tight">
-                  HT/FT Sharp Matrix
-                </h1>
+                <h1 className="text-xl font-bold tracking-tight">HT/FT Sharp Matrix</h1>
                 <p className="text-xs text-muted-foreground">
                   Poluvrijeme / kraj · svih 9 ishoda · fer kvote bez marže
                 </p>
@@ -391,11 +346,7 @@ export function HtFtPage() {
               disabled={loadingFixtures}
               className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${
-                  loadingFixtures ? "animate-spin" : ""
-                }`}
-              />
+              <RefreshCw className={`h-3.5 w-3.5 ${loadingFixtures ? "animate-spin" : ""}`} />
               {loadingFixtures ? "Učitavam…" : "Učitaj utakmice dana"}
             </button>
           </div>
@@ -439,15 +390,11 @@ export function HtFtPage() {
                 <article
                   key={fixture.id}
                   className={`flex items-center justify-between gap-2 rounded-xl border p-2.5 ${
-                    isSelected
-                      ? "border-amber-500 bg-amber-500/10"
-                      : "border-border/60 bg-card/40"
+                    isSelected ? "border-amber-500 bg-amber-500/10" : "border-border/60 bg-card/40"
                   }`}
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[10px] text-muted-foreground">
-                      {fixture.league}
-                    </p>
+                    <p className="truncate text-[10px] text-muted-foreground">{fixture.league}</p>
                     <p className="truncate text-xs font-semibold text-foreground">
                       {fixture.home} — {fixture.away}
                     </p>
@@ -474,29 +421,22 @@ export function HtFtPage() {
       {analysisResult && (
         <section className="space-y-5">
           <div className="rounded-2xl border border-border/60 bg-card/70 p-5">
-            <p className="text-xs text-muted-foreground">
-              {analysisResult.league}
-            </p>
+            <p className="text-xs text-muted-foreground">{analysisResult.league}</p>
 
             <div className="mt-1 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
               <div>
-                <h2 className="text-xl font-bold tracking-tight">
-                  {analysisResult.match}
-                </h2>
+                <h2 className="text-xl font-bold tracking-tight">{analysisResult.match}</h2>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Početak: {analysisResult.time} · Ukupni xG:{" "}
                   {(analysisResult.lh + analysisResult.la).toFixed(2)} · Domaći{" "}
-                  {analysisResult.lh.toFixed(2)} / Gost{" "}
-                  {analysisResult.la.toFixed(2)}
+                  {analysisResult.lh.toFixed(2)} / Gost {analysisResult.la.toFixed(2)}
                 </p>
               </div>
 
               <div className="grid grid-cols-4 divide-x divide-border rounded-xl border border-border/50 bg-muted/20 text-center">
                 <div className="p-2">
                   <p className="text-[10px] text-muted-foreground">1 na 1H</p>
-                  <p className="text-sm font-bold">
-                    {analysisResult.ht1X2.home}%
-                  </p>
+                  <p className="text-sm font-bold">{analysisResult.ht1X2.home}%</p>
                   <p className="text-[10px] text-muted-foreground">
                     {analysisResult.ht1X2.fairHome}
                   </p>
@@ -504,9 +444,7 @@ export function HtFtPage() {
 
                 <div className="p-2">
                   <p className="text-[10px] text-muted-foreground">X na 1H</p>
-                  <p className="text-sm font-bold text-amber-500">
-                    {analysisResult.ht1X2.draw}%
-                  </p>
+                  <p className="text-sm font-bold text-amber-500">{analysisResult.ht1X2.draw}%</p>
                   <p className="text-[10px] text-muted-foreground">
                     {analysisResult.ht1X2.fairDraw}
                   </p>
@@ -514,9 +452,7 @@ export function HtFtPage() {
 
                 <div className="p-2">
                   <p className="text-[10px] text-muted-foreground">2 na 1H</p>
-                  <p className="text-sm font-bold">
-                    {analysisResult.ht1X2.away}%
-                  </p>
+                  <p className="text-sm font-bold">{analysisResult.ht1X2.away}%</p>
                   <p className="text-[10px] text-muted-foreground">
                     {analysisResult.ht1X2.fairAway}
                   </p>
@@ -524,9 +460,7 @@ export function HtFtPage() {
 
                 <div className="p-2">
                   <p className="text-[10px] text-muted-foreground">0:0 na HT</p>
-                  <p className="text-sm font-bold text-primary">
-                    {analysisResult.p00AtHalf}%
-                  </p>
+                  <p className="text-sm font-bold text-primary">{analysisResult.p00AtHalf}%</p>
                 </div>
               </div>
             </div>
@@ -537,9 +471,7 @@ export function HtFtPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">
                 Glavni HT/FT tip
               </p>
-              <p className="mt-2 text-3xl font-black">
-                {analysisResult.mainTip.pick}
-              </p>
+              <p className="mt-2 text-3xl font-black">{analysisResult.mainTip.pick}</p>
               <p className="mt-1 text-xs font-medium text-muted-foreground">
                 {analysisResult.mainTip.description}
               </p>
@@ -549,14 +481,10 @@ export function HtFtPage() {
               <IntegrityPanel result={mainTipIntegrity} title="Integritet: glavni HT/FT tip" />
               <div className="mt-4 flex justify-between border-t border-primary/20 pt-3 text-xs">
                 <span>
-                  Šansa:{" "}
-                  <strong>
-                    {(analysisResult.mainTip.prob * 100).toFixed(1)}%
-                  </strong>
+                  Šansa: <strong>{(analysisResult.mainTip.prob * 100).toFixed(1)}%</strong>
                 </span>
                 <span>
-                  Fer:{" "}
-                  <strong>{analysisResult.mainTip.fairOdd.toFixed(2)}</strong>
+                  Fer: <strong>{analysisResult.mainTip.fairOdd.toFixed(2)}</strong>
                 </span>
               </div>
             </article>
@@ -572,25 +500,22 @@ export function HtFtPage() {
                 {analysisResult.sharpValueTip?.description ?? "Nema value tipa"}
               </p>
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                {analysisResult.sharpValueTip?.reasoning ??
-                  "Nema dostupne kvote za usporedbu."}
+                {analysisResult.sharpValueTip?.reasoning ?? "Nema dostupne kvote za usporedbu."}
               </p>
-              {analysisResult.sharpValueTip && <IntegrityPanel result={sharpValueIntegrity} compact={false} title="Integritet: sharp value" />}
+              {analysisResult.sharpValueTip && (
+                <IntegrityPanel
+                  result={sharpValueIntegrity}
+                  compact={false}
+                  title="Integritet: sharp value"
+                />
+              )}
               <div className="mt-4 flex justify-between border-t border-emerald-500/20 pt-3 text-xs">
                 <span>
                   Šansa:{" "}
-                  <strong>
-                    {(
-                      (analysisResult.sharpValueTip?.prob ?? 0) * 100
-                    ).toFixed(1)}
-                    %
-                  </strong>
+                  <strong>{((analysisResult.sharpValueTip?.prob ?? 0) * 100).toFixed(1)}%</strong>
                 </span>
                 <span>
-                  Fer:{" "}
-                  <strong>
-                    {analysisResult.sharpValueTip?.fairOdd.toFixed(2) ?? "—"}
-                  </strong>
+                  Fer: <strong>{analysisResult.sharpValueTip?.fairOdd.toFixed(2) ?? "—"}</strong>
                 </span>
               </div>
             </article>
@@ -610,16 +535,10 @@ export function HtFtPage() {
               </p>
               <div className="mt-4 flex justify-between border-t border-sky-500/20 pt-3 text-xs">
                 <span>
-                  Šansa:{" "}
-                  <strong>
-                    {(analysisResult.safeHedgeTip.prob * 100).toFixed(1)}%
-                  </strong>
+                  Šansa: <strong>{(analysisResult.safeHedgeTip.prob * 100).toFixed(1)}%</strong>
                 </span>
                 <span>
-                  Fer:{" "}
-                  <strong>
-                    {analysisResult.safeHedgeTip.fairOdd.toFixed(2)}
-                  </strong>
+                  Fer: <strong>{analysisResult.safeHedgeTip.fairOdd.toFixed(2)}</strong>
                 </span>
               </div>
             </article>
@@ -633,32 +552,28 @@ export function HtFtPage() {
             >
               <div className="flex items-center gap-1.5">
                 <Zap className="h-4 w-4 text-amber-500" />
-                <p className="text-xs font-semibold uppercase tracking-wide">
-                  Radar preokreta
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wide">Radar preokreta</p>
               </div>
-              <p className="mt-2 text-3xl font-black">
-                {analysisResult.reversalRadar.pick}
-              </p>
+              <p className="mt-2 text-3xl font-black">{analysisResult.reversalRadar.pick}</p>
               <p className="mt-1 text-xs font-medium text-muted-foreground">
                 Ulog: {analysisResult.reversalRadar.recommendedStake}
               </p>
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 {analysisResult.reversalRadar.note}
               </p>
-              {analysisResult.reversalRadar.hasReversalSignal && <IntegrityPanel result={reversalIntegrity} compact={false} title="Integritet: radar preokreta" />}
+              {analysisResult.reversalRadar.hasReversalSignal && (
+                <IntegrityPanel
+                  result={reversalIntegrity}
+                  compact={false}
+                  title="Integritet: radar preokreta"
+                />
+              )}
               <div className="mt-4 flex justify-between border-t border-border/40 pt-3 text-xs">
                 <span>
-                  Šansa:{" "}
-                  <strong>
-                    {(analysisResult.reversalRadar.prob * 100).toFixed(1)}%
-                  </strong>
+                  Šansa: <strong>{(analysisResult.reversalRadar.prob * 100).toFixed(1)}%</strong>
                 </span>
                 <span>
-                  Fer:{" "}
-                  <strong>
-                    {analysisResult.reversalRadar.fairOdd.toFixed(2)}
-                  </strong>
+                  Fer: <strong>{analysisResult.reversalRadar.fairOdd.toFixed(2)}</strong>
                 </span>
               </div>
             </article>
@@ -687,9 +602,7 @@ export function HtFtPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-xl font-black">{outcome.code}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {outcome.categoryLabel}
-                        </p>
+                        <p className="text-[10px] text-muted-foreground">{outcome.categoryLabel}</p>
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -705,9 +618,7 @@ export function HtFtPage() {
 
                     <div className="mt-3">
                       <div className="mb-1 flex justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Vjerojatnost
-                        </span>
+                        <span className="text-muted-foreground">Vjerojatnost</span>
                         <strong>{outcome.probPercent}%</strong>
                       </div>
 
@@ -715,10 +626,7 @@ export function HtFtPage() {
                         <div
                           className="h-full rounded-full bg-primary"
                           style={{
-                            width: `${Math.min(
-                              100,
-                              outcome.probPercent * 2,
-                            )}%`,
+                            width: `${Math.min(100, outcome.probPercent * 2)}%`,
                           }}
                         />
                       </div>
@@ -726,20 +634,14 @@ export function HtFtPage() {
 
                     <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border/40 pt-2.5 text-xs">
                       <div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Fer kvota
-                        </p>
+                        <p className="text-[10px] text-muted-foreground">Fer kvota</p>
                         <strong>{outcome.fairOdd.toFixed(2)}</strong>
                       </div>
 
                       <div>
-                        <p className="text-[10px] text-muted-foreground">
-                          Kladionica
-                        </p>
+                        <p className="text-[10px] text-muted-foreground">Kladionica</p>
                         <strong className="text-primary">
-                          {outcome.bookieOdd
-                            ? outcome.bookieOdd.toFixed(2)
-                            : "—"}
+                          {outcome.bookieOdd ? outcome.bookieOdd.toFixed(2) : "—"}
                         </strong>
                       </div>
                     </div>
@@ -756,12 +658,9 @@ export function HtFtPage() {
         onClose={() => setSettingsOpen(false)}
         onSaved={() => {
           setSettingsOpen(false);
-          setStatusMsg(
-            "API-Football ključ je spremljen. Sada kliknite „Učitaj utakmice dana”.",
-          );
+          setStatusMsg("API-Football ključ je spremljen. Sada kliknite „Učitaj utakmice dana”.");
         }}
       />
     </div>
   );
 }
-

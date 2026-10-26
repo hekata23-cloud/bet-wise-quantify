@@ -128,11 +128,17 @@ const KONST = {
 function phi(x: number): number {
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
   const d = 0.3989422804014327 * Math.exp((-x * x) / 2);
-  const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const p =
+    d *
+    t *
+    (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   return x >= 0 ? 1 - p : p;
 }
 
-function devigProporcionalno(kvote: Record<string, number>, kljucevi: string[]): Record<string, number> {
+function devigProporcionalno(
+  kvote: Record<string, number>,
+  kljucevi: string[],
+): Record<string, number> {
   const prisutni = kljucevi.filter((k) => kvote[k] && kvote[k] > 1);
   if (prisutni.length < 2) return {};
   const inv = prisutni.map((k) => 1 / kvote[k]!);
@@ -174,11 +180,16 @@ export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
     const p1 = 1 / (1 + Math.exp(-c.k * diff));
     model["1"] = p1;
     model["2"] = 1 - p1;
-    const pX = phi(0.5 / ((c as any).sigmaRazlika as number)) - phi(-0.5 / ((c as any).sigmaRazlika as number));
+    const pX =
+      phi(0.5 / ((c as any).sigmaRazlika as number)) -
+      phi(-0.5 / ((c as any).sigmaRazlika as number));
     model["X"] = Math.max(0.04, Math.min(0.12, pX));
   } else {
-    const sdDiff = ((c as any).sigmaDiffDefault as number);
-    const pX = Math.max(0.07, Math.min(0.13, phi((0.5 - diff) / sdDiff) - phi((-0.5 - diff) / sdDiff)));
+    const sdDiff = (c as any).sigmaDiffDefault as number;
+    const pX = Math.max(
+      0.07,
+      Math.min(0.13, phi((0.5 - diff) / sdDiff) - phi((-0.5 - diff) / sdDiff)),
+    );
     const ostatak = 1 - pX;
     const p1Raw = 1 / (1 + Math.exp(-c.k * diff));
     model["1"] = ostatak * p1Raw;
@@ -247,17 +258,18 @@ export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
     }
   }
 
-  const tip = topKljuc && maxEdge >= 0.02
-    ? {
-        kljuc: topKljuc,
-        label: topKljuc === "1" ? "Domaćin" : topKljuc === "2" ? "Gost" : topKljuc,
-        p: final[topKljuc]!,
-        kvota: ulaz.kvote[topKljuc] ?? null,
-        edge: maxEdge,
-        ev: Math.round(maxEdge * 1000) / 10,
-        kellyPct: kelly[topKljuc] ?? 1,
-      }
-    : null;
+  const tip =
+    topKljuc && maxEdge >= 0.02
+      ? {
+          kljuc: topKljuc,
+          label: topKljuc === "1" ? "Domaćin" : topKljuc === "2" ? "Gost" : topKljuc,
+          p: final[topKljuc]!,
+          kvota: ulaz.kvote[topKljuc] ?? null,
+          edge: maxEdge,
+          ev: Math.round(maxEdge * 1000) / 10,
+          kellyPct: kelly[topKljuc] ?? 1,
+        }
+      : null;
 
   const tipovi: SportTipTrzista[] = [];
   const jedinica = ulaz.sport === "kosarka" ? "poena" : "golova";
@@ -295,8 +307,10 @@ export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
     if (bestK === "1") lbl = "Pobjeda domaćina";
     else if (bestK === "2") lbl = "Pobjeda gosta";
     else if (bestK === "X") lbl = "Neriješeno";
-    else if (bestK === "over" || bestK === "dom_over" || bestK === "gost_over") lbl = `Više od ${trLinija ?? ""}`;
-    else if (bestK === "under" || bestK === "dom_under" || bestK === "gost_under") lbl = `Manje od ${trLinija ?? ""}`;
+    else if (bestK === "over" || bestK === "dom_over" || bestK === "gost_over")
+      lbl = `Više od ${trLinija ?? ""}`;
+    else if (bestK === "under" || bestK === "dom_under" || bestK === "gost_under")
+      lbl = `Manje od ${trLinija ?? ""}`;
 
     tipovi.push({
       trziste,
@@ -313,13 +327,20 @@ export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
     });
   };
 
-  dodajTipTrzista("1x2", ulaz.sport === "kosarka" ? "Pobjednik (uklj. produžetke)" : "Konačni ishod 1 X 2", ulaz.sport === "rukomet" ? ["1", "X", "2"] : ["1", "2"], null);
+  dodajTipTrzista(
+    "1x2",
+    ulaz.sport === "kosarka" ? "Pobjednik (uklj. produžetke)" : "Konačni ishod 1 X 2",
+    ulaz.sport === "rukomet" ? ["1", "X", "2"] : ["1", "2"],
+    null,
+  );
   dodajTipTrzista("ukupno", `Ukupno ${jedinica}`, ["over", "under"], linija);
   dodajTipTrzista("dom", `Zbroj ${jedinica} domaćina`, ["dom_over", "dom_under"], ld);
   dodajTipTrzista("gost", `Zbroj ${jedinica} gosta`, ["gost_over", "gost_under"], lg);
 
   const uzorak = Math.min(dom?.odigrano ?? 0, gost?.odigrano ?? 0);
-  const povjerenje = Math.round(Math.max(0, Math.min(100, 25 + Math.min(40, uzorak * 4) + Math.min(25, knjiga * 5))));
+  const povjerenje = Math.round(
+    Math.max(0, Math.min(100, 25 + Math.min(40, uzorak * 4) + Math.min(25, knjiga * 5))),
+  );
   const ocjena = povjerenje >= 80 ? "A+" : povjerenje >= 65 ? "A" : povjerenje >= 50 ? "B+" : "B";
 
   return {

@@ -77,7 +77,12 @@ export const DEFAULT_LEAGUE_PROFILE: LeagueProfile = {
 
 export function matchLeague(leagueName: string): LeagueProfile {
   const s = leagueName.toLowerCase();
-  if (s.includes("netherland") || s.includes("nizozem") || s.includes("eredivisie") || s.includes("eerste")) {
+  if (
+    s.includes("netherland") ||
+    s.includes("nizozem") ||
+    s.includes("eredivisie") ||
+    s.includes("eerste")
+  ) {
     return LEAGUE_PROFILES["eredivisie"] ?? DEFAULT_LEAGUE_PROFILE;
   }
   if (s.includes("bundesliga") || s.includes("germany") || s.includes("njemač")) {
@@ -101,4 +106,3 @@ export function matchLeague(leagueName: string): LeagueProfile {
 
   return DEFAULT_LEAGUE_PROFILE;
 }
-

@@ -121,7 +121,7 @@ export function computeBttsOverAnalysis(
   analysis: Analysis,
   match: string,
   league: string,
-  time: string
+  time: string,
 ): BttsOverAnalysis {
   const lh = analysis.lh;
   const la = analysis.la;
@@ -141,8 +141,13 @@ export function computeBttsOverAnalysis(
   let pNgOver = 0;
 
   // Distribucija golova
-  let p0 = 0, p1 = 0, p2 = 0, p3 = 0, p4Plus = 0;
-  let homeClean = 0, awayClean = 0;
+  let p0 = 0,
+    p1 = 0,
+    p2 = 0,
+    p3 = 0,
+    p4Plus = 0;
+  let homeClean = 0,
+    awayClean = 0;
 
   // 1 & GG, 1 & NG, X & GG, 2 & GG, 2 & NG
   let p1AndGg = 0;
@@ -152,7 +157,11 @@ export function computeBttsOverAnalysis(
   let p2AndNg = 0;
 
   // Za azijske linije
-  let pTotal0 = 0, pTotal1 = 0, pTotal2 = 0, pTotal3 = 0, pTotal4 = 0;
+  let pTotal0 = 0,
+    pTotal1 = 0,
+    pTotal2 = 0,
+    pTotal3 = 0,
+    pTotal4 = 0;
 
   for (let i = 0; i <= 10; i++) {
     for (let j = 0; j <= 10; j++) {
@@ -247,7 +256,8 @@ export function computeBttsOverAnalysis(
       underProb: Number(pUnder20Win.toFixed(3)),
       fairOver: Number(fairOver20.toFixed(2)),
       fairUnder: Number(fairUnder20.toFixed(2)),
-      description: "Ako padnu točno 2 gola: puni povrat uloga (kvota 1.00). Nema pada na 1:1 ili 2:0!",
+      description:
+        "Ako padnu točno 2 gola: puni povrat uloga (kvota 1.00). Nema pada na 1:1 ili 2:0!",
       isRecommended: totalXg >= 2.1 && totalXg <= 2.8,
     },
     {
@@ -351,9 +361,10 @@ export function computeBttsOverAnalysis(
   const topCombo = sortedCombos[0];
 
   // POPRAVAK: koristite HT udio i pri nuli; zadana vrijednost samo za nevaljan unos.
-  const htShare = Number.isFinite(analysis.htShare) && analysis.htShare >= 0 && analysis.htShare <= 1
-    ? analysis.htShare
-    : 0.44;
+  const htShare =
+    Number.isFinite(analysis.htShare) && analysis.htShare >= 0 && analysis.htShare <= 1
+      ? analysis.htShare
+      : 0.44;
   const lambda1H = Number(((lh + la) * htShare).toFixed(2));
   const p1H0 = Math.exp(-lambda1H);
   const p1H1 = Math.exp(-lambda1H) * lambda1H;
@@ -370,11 +381,12 @@ export function computeBttsOverAnalysis(
     for (let secondHalfGoals = firstHalfGoals + 1; secondHalfGoals <= 20; secondHalfGoals++) {
       let factorial = 1;
       for (let goal = 2; goal <= secondHalfGoals; goal++) factorial *= goal;
-      secondHalfGreater += Math.exp(-lambda2H) * Math.pow(lambda2H, secondHalfGoals) / factorial;
+      secondHalfGreater += (Math.exp(-lambda2H) * Math.pow(lambda2H, secondHalfGoals)) / factorial;
     }
     let firstHalfFactorial = 1;
     for (let goal = 2; goal <= firstHalfGoals; goal++) firstHalfFactorial *= goal;
-    const firstHalfProbability = Math.exp(-lambda1H) * Math.pow(lambda1H, firstHalfGoals) / firstHalfFactorial;
+    const firstHalfProbability =
+      (Math.exp(-lambda1H) * Math.pow(lambda1H, firstHalfGoals)) / firstHalfFactorial;
     moreGoals2H += firstHalfProbability * secondHalfGreater;
   }
   const moreGoals2HProb = Number(moreGoals2H.toFixed(3));
@@ -402,18 +414,32 @@ export function computeBttsOverAnalysis(
     const n = mk.name.toLowerCase();
     if (n.includes("goals over/under") || n.includes("ukupno golova")) {
       for (const o of mk.outcomes) {
-        if (o.label.toLowerCase().includes("over 2.5") || o.label.toLowerCase().includes("više 2.5")) {
+        if (
+          o.label.toLowerCase().includes("over 2.5") ||
+          o.label.toLowerCase().includes("više 2.5")
+        ) {
           bOver = o.odd;
-        } else if (o.label.toLowerCase().includes("under 2.5") || o.label.toLowerCase().includes("manje 2.5")) {
+        } else if (
+          o.label.toLowerCase().includes("under 2.5") ||
+          o.label.toLowerCase().includes("manje 2.5")
+        ) {
           bUnder = o.odd;
         }
       }
     }
     if (n.includes("both teams to score") || n.includes("oba daju gol")) {
       for (const o of mk.outcomes) {
-        if (o.label.toLowerCase() === "yes" || o.label.toLowerCase() === "gg" || o.label.toLowerCase() === "da") {
+        if (
+          o.label.toLowerCase() === "yes" ||
+          o.label.toLowerCase() === "gg" ||
+          o.label.toLowerCase() === "da"
+        ) {
           bGg = o.odd;
-        } else if (o.label.toLowerCase() === "no" || o.label.toLowerCase() === "ng" || o.label.toLowerCase() === "ne") {
+        } else if (
+          o.label.toLowerCase() === "no" ||
+          o.label.toLowerCase() === "ng" ||
+          o.label.toLowerCase() === "ne"
+        ) {
           bNg = o.odd;
         }
       }
@@ -439,7 +465,9 @@ export function computeBttsOverAnalysis(
 
   // Glavni BTTS tip: usklađen s višom vjerojatnošću i očekivanom vrijednošću
   const isGgPick = pBttsYes >= pBttsNo;
-  const mainBttsPick = isGgPick ? ("Oba daju gol (GG)" as const) : ("Barem jedan NE daje (NG)" as const);
+  const mainBttsPick = isGgPick
+    ? ("Oba daju gol (GG)" as const)
+    : ("Barem jedan NE daje (NG)" as const);
   const mainBttsProb = isGgPick ? pBttsYes : pBttsNo;
   const mainBttsOdd = isGgPick ? bGg : bNg;
   const mainBttsEv = isGgPick ? bttsYesEv : bttsNoEv;
@@ -448,7 +476,7 @@ export function computeBttsOverAnalysis(
   let trapWarning: string | null = null;
   if (bOver && over25Ev !== undefined && over25Ev < -5.0 && pOver25 < 0.52) {
     trapWarning = `Kladionica nudi nisku kvotu na Više 2.5 (@${bOver.toFixed(2)}), no xG model pokazuje samo ${(pOver25 * 100).toFixed(0)}% šanse za 3+ gola. Fer kvota je ${fairOver25}. Preporučuje se zaštita na Manje 2.5 ili Azijski 2.0!`;
-  } else if (bGg && bttsYesEv !== undefined && bttsYesEv < -5.0 && pBttsYes < 0.50) {
+  } else if (bGg && bttsYesEv !== undefined && bttsYesEv < -5.0 && pBttsYes < 0.5) {
     trapWarning = `Popularna oklada na GG ima nepovoljnu maržu kladionice (kvota @${bGg.toFixed(2)} naspram fer ${fairBttsYes}). Vjerojatnost za čistu mrežu barem jednog tima je ${(pBttsNo * 100).toFixed(0)}%!`;
   }
 
@@ -457,14 +485,16 @@ export function computeBttsOverAnalysis(
   if (pGgOver >= 0.38) {
     sharpCombo = {
       title: "🔥 GG & Više 2.5 Gola",
-      description: "Oba tima imaju visok ofenzivni xG. Vjerojatnost otvorenog susreta s 3+ gola i pogocima obje ekipe.",
+      description:
+        "Oba tima imaju visok ofenzivni xG. Vjerojatnost otvorenog susreta s 3+ gola i pogocima obje ekipe.",
       combinedProb: pGgOver,
       fairOdd: Number((1 / pGgOver).toFixed(2)),
     };
   } else if (pNgUnder >= 0.38) {
     sharpCombo = {
       title: "🛡️ NG & Manje 2.5 Gola",
-      description: "Čvrsta utakmica s naglaskom na obranu. Visoka vjerojatnost rezultata 0:0, 1:0 ili 2:0.",
+      description:
+        "Čvrsta utakmica s naglaskom na obranu. Visoka vjerojatnost rezultata 0:0, 1:0 ili 2:0.",
       combinedProb: pNgUnder,
       fairOdd: Number((1 / pNgUnder).toFixed(2)),
     };
@@ -541,5 +571,3 @@ export function computeBttsOverAnalysis(
     trapWarning,
   };
 }
-
-

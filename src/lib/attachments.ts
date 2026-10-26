@@ -16,11 +16,58 @@ export interface ChatAttachment {
 }
 
 const TEXT_EXT = new Set([
-  "txt","md","markdown","json","jsonc","yaml","yml","toml","xml","csv","tsv",
-  "ts","tsx","js","jsx","mjs","cjs","css","scss","less","html","htm","svg",
-  "py","rb","go","rs","java","kt","kts","swift","php","c","h","cpp","hpp",
-  "cs","sh","bash","zsh","ps1","sql","env","conf","ini","log","gitignore",
-  "prettierrc","eslintrc","dockerfile","makefile","lock",
+  "txt",
+  "md",
+  "markdown",
+  "json",
+  "jsonc",
+  "yaml",
+  "yml",
+  "toml",
+  "xml",
+  "csv",
+  "tsv",
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "mjs",
+  "cjs",
+  "css",
+  "scss",
+  "less",
+  "html",
+  "htm",
+  "svg",
+  "py",
+  "rb",
+  "go",
+  "rs",
+  "java",
+  "kt",
+  "kts",
+  "swift",
+  "php",
+  "c",
+  "h",
+  "cpp",
+  "hpp",
+  "cs",
+  "sh",
+  "bash",
+  "zsh",
+  "ps1",
+  "sql",
+  "env",
+  "conf",
+  "ini",
+  "log",
+  "gitignore",
+  "prettierrc",
+  "eslintrc",
+  "dockerfile",
+  "makefile",
+  "lock",
 ]);
 
 function extOf(name: string): string {
@@ -44,7 +91,7 @@ function looksTextual(name: string, mime: string): boolean {
 function looksImage(mime: string, name: string): boolean {
   if (mime.startsWith("image/")) return true;
   const e = extOf(name);
-  return ["png","jpg","jpeg","webp","gif","bmp","heic","heif","avif","svg"].includes(e);
+  return ["png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "heif", "avif", "svg"].includes(e);
 }
 
 function fileToDataUrl(file: Blob): Promise<string> {
@@ -72,11 +119,7 @@ function randomId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-async function processSingle(
-  file: Blob,
-  name: string,
-  path: string,
-): Promise<ChatAttachment[]> {
+async function processSingle(file: Blob, name: string, path: string): Promise<ChatAttachment[]> {
   const mime = file.type || "";
   // ZIP -> raspakiraj rekurzivno
   if (
@@ -156,7 +199,9 @@ export function attachmentsContextText(atts: ChatAttachment[]): string {
   const images = atts.filter((a) => a.kind === "image");
   const bins = atts.filter((a) => a.kind === "binary");
   if (images.length) {
-    lines.push(`Slike (${images.length}): ${images.map((i) => i.path).join(", ")} — priložene su vizualno, opiši/analiziraj ih.`);
+    lines.push(
+      `Slike (${images.length}): ${images.map((i) => i.path).join(", ")} — priložene su vizualno, opiši/analiziraj ih.`,
+    );
   }
   if (bins.length) {
     lines.push(

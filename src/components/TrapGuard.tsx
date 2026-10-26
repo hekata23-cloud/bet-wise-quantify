@@ -35,8 +35,10 @@ export function TrapGuard() {
   return (
     <div className="fixed bottom-4 left-4 z-50 max-w-sm">
       {!open ? (
-        <button onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-full border border-destructive/50 bg-card px-4 py-2 text-sm font-semibold text-destructive shadow-lg">
+        <button
+          onClick={() => setOpen(true)}
+          className="flex items-center gap-2 rounded-full border border-destructive/50 bg-card px-4 py-2 text-sm font-semibold text-destructive shadow-lg"
+        >
           <ShieldAlert className="h-4 w-4" /> {traps.length} zamka
         </button>
       ) : (
@@ -45,12 +47,16 @@ export function TrapGuard() {
             <div className="flex items-center gap-2 font-semibold text-destructive">
               <ShieldAlert className="h-4 w-4" /> Detektor zamki
             </div>
-            <button onClick={() => setOpen(false)} aria-label="Zatvori"><X className="h-4 w-4" /></button>
+            <button onClick={() => setOpen(false)} aria-label="Zatvori">
+              <X className="h-4 w-4" />
+            </button>
           </div>
           <div className="max-h-80 space-y-2 overflow-auto">
             {traps.map((t, k) => (
               <div key={k} className="rounded-lg bg-secondary p-2 text-xs">
-                <div className="font-semibold">[{t.level}] {t.market}</div>
+                <div className="font-semibold">
+                  [{t.level}] {t.market}
+                </div>
                 <div className="text-muted-foreground">{t.message}</div>
                 <div className="mt-1 text-primary">💡 {t.recommendation}</div>
               </div>

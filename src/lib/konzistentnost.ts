@@ -62,24 +62,28 @@ export function provjeriKonzistentnost(tipovi: TipZaProvjeru[]): KonzistentnostI
   const htft22 = P(/ht\/ft|htft/i, /2\/2/);
   const htft11 = P(/ht\/ft|htft/i, /1\/1/);
 
-  if (u25 != null && u25 >= 0.60 && bttsDa != null && bttsDa >= 0.55) {
+  if (u25 != null && u25 >= 0.6 && bttsDa != null && bttsDa >= 0.55) {
     upozorenja.push(
       `KONTRADIKCIJA: Under 2.5 (${Math.round(u25 * 100)}%) uz BTTS YES (${Math.round(bttsDa * 100)}%) — BTTS gotovo uvijek znači 2+ gola.`,
     );
   }
-  if (u15 != null && u15 >= 0.50 && bttsDa != null && bttsDa >= 0.55) {
+  if (u15 != null && u15 >= 0.5 && bttsDa != null && bttsDa >= 0.55) {
     upozorenja.push(`KONTRADIKCIJA: Under 1.5 uz BTTS YES — oba tima daju gol znači 2+ golova.`);
   }
-  if (o25 != null && o25 >= 0.60 && u15 != null && u15 >= 0.50) {
-    upozorenja.push(`KONTRADIKCIJA: Over 2.5 (${Math.round(o25 * 100)}%) uz Under 1.5 (${Math.round(u15 * 100)}%) — nemoguće istovremeno.`);
+  if (o25 != null && o25 >= 0.6 && u15 != null && u15 >= 0.5) {
+    upozorenja.push(
+      `KONTRADIKCIJA: Over 2.5 (${Math.round(o25 * 100)}%) uz Under 1.5 (${Math.round(u15 * 100)}%) — nemoguće istovremeno.`,
+    );
   }
   if (o35 != null && o25 != null && o35 > o25 + 0.02) {
-    upozorenja.push(`NEKONZISTENTNE LINIJE: P(Over 3.5) > P(Over 2.5) — viša linija ne smije imati veću vjerojatnost.`);
+    upozorenja.push(
+      `NEKONZISTENTNE LINIJE: P(Over 3.5) > P(Over 2.5) — viša linija ne smije imati veću vjerojatnost.`,
+    );
   }
   if (o25 != null && o15 != null && o25 > o15 + 0.02) {
     upozorenja.push(`NEKONZISTENTNE LINIJE: P(Over 2.5) > P(Over 1.5).`);
   }
-  if (o25 != null && o25 >= 0.60 && bttsNe != null && bttsNe >= 0.60) {
+  if (o25 != null && o25 >= 0.6 && bttsNe != null && bttsNe >= 0.6) {
     upozorenja.push(
       `NAPETOST: BTTS NO (${Math.round(bttsNe * 100)}%) uz Over 2.5 (${Math.round(o25 * 100)}%) — bez golova jednog tima teško je prijeći 2.5.`,
     );
@@ -87,13 +91,15 @@ export function provjeriKonzistentnost(tipovi: TipZaProvjeru[]): KonzistentnostI
   if (p1 != null && p1 >= 0.55 && p2 != null && p2 >= 0.55) {
     const zajedno = p1 + p2 - 1;
     if (zajedno > 0.05) {
-      upozorenja.push(`KONTRADIKCIJA: Domaćin (${Math.round(p1 * 100)}%) i gost (${Math.round(p2 * 100)}%) — uzajamno isključivi.`);
+      upozorenja.push(
+        `KONTRADIKCIJA: Domaćin (${Math.round(p1 * 100)}%) i gost (${Math.round(p2 * 100)}%) — uzajamno isključivi.`,
+      );
     }
   }
-  if (p1 != null && p1 >= 0.55 && htft22 != null && htft22 >= 0.30) {
+  if (p1 != null && p1 >= 0.55 && htft22 != null && htft22 >= 0.3) {
     upozorenja.push(`KONTRADIKCIJA: Tip 1 uz HT/FT 2/2 — 2/2 znači pobjedu gosta.`);
   }
-  if (p2 != null && p2 >= 0.55 && htft11 != null && htft11 >= 0.30) {
+  if (p2 != null && p2 >= 0.55 && htft11 != null && htft11 >= 0.3) {
     upozorenja.push(`KONTRADIKCIJA: Tip 2 uz HT/FT 1/1 — 1/1 znači pobjedu domaćina.`);
   }
 
@@ -102,7 +108,8 @@ export function provjeriKonzistentnost(tipovi: TipZaProvjeru[]): KonzistentnostI
   // tolerantna na nazive ("Away Clean Sheet", "Clean Sheet — Domaćin",
   // "Domaćin bez primljenog gola"…).
   const csStrana = (trziste: string, tip: string): "dom" | "gost" | null => {
-    const jeCs = /clean\s*sheet|bez\s*primljen|ne\s*prima/.test(trziste) || /clean\s*sheet/.test(tip);
+    const jeCs =
+      /clean\s*sheet|bez\s*primljen|ne\s*prima/.test(trziste) || /clean\s*sheet/.test(tip);
     if (!jeCs) return null;
     if (/gost|away/.test(tip)) return "gost";
     if (/dom|home/.test(tip)) return "dom";
@@ -119,22 +126,22 @@ export function provjeriKonzistentnost(tipovi: TipZaProvjeru[]): KonzistentnostI
     if (strana === "gost") csGostDa = csGostDa == null ? t.p : Math.max(csGostDa, t.p);
     else csDomDa = csDomDa == null ? t.p : Math.max(csDomDa, t.p);
   }
-  if (htft11 != null && htft11 >= 0.25 && csGostDa != null && csGostDa >= 0.50) {
+  if (htft11 != null && htft11 >= 0.25 && csGostDa != null && csGostDa >= 0.5) {
     upozorenja.push(
       `KONTRADIKCIJA: HT/FT 1/1 (${Math.round(htft11 * 100)}%) uz Clean Sheet gost (${Math.round(csGostDa * 100)}%) — 1/1 znači da domaćin vodi na OBA poluvremena, pa gost ne može ostati bez primljenog gola.`,
     );
   }
-  if (htft22 != null && htft22 >= 0.25 && csDomDa != null && csDomDa >= 0.50) {
+  if (htft22 != null && htft22 >= 0.25 && csDomDa != null && csDomDa >= 0.5) {
     upozorenja.push(
       `KONTRADIKCIJA: HT/FT 2/2 (${Math.round(htft22 * 100)}%) uz Clean Sheet domaćin (${Math.round(csDomDa * 100)}%) — 2/2 znači da gost vodi na OBA poluvremena, pa domaćin ne može ostati bez primljenog gola.`,
     );
   }
-  if (p1 != null && p1 >= 0.55 && csGostDa != null && csGostDa >= 0.60) {
+  if (p1 != null && p1 >= 0.55 && csGostDa != null && csGostDa >= 0.6) {
     upozorenja.push(
       `NAPETOST: Tip 1 (${Math.round(p1 * 100)}%) uz Clean Sheet gost (${Math.round(csGostDa * 100)}%) — ako domaćin pobjeđuje, gost najčešće ipak prima gol; za razmatranje koristi "Win to nil".`,
     );
   }
-  if (p2 != null && p2 >= 0.55 && csDomDa != null && csDomDa >= 0.60) {
+  if (p2 != null && p2 >= 0.55 && csDomDa != null && csDomDa >= 0.6) {
     upozorenja.push(
       `NAPETOST: Tip 2 (${Math.round(p2 * 100)}%) uz Clean Sheet domaćin (${Math.round(csDomDa * 100)}%) — koristi "Win to nil" za ovu kombinaciju.`,
     );
@@ -146,8 +153,8 @@ export function provjeriKonzistentnost(tipovi: TipZaProvjeru[]): KonzistentnostI
 /* ───────────── Jedinstveni EV + frakcijski Kelly (0.25×) ───────────── */
 
 export type EvKelly = {
-  evPct: number;      // očekivana vrijednost u %
-  kellyPct: number;   // preporučeni ulog u % banke (frakcijski, capped)
+  evPct: number; // očekivana vrijednost u %
+  kellyPct: number; // preporučeni ulog u % banke (frakcijski, capped)
   isplativo: boolean;
 };
 
@@ -158,12 +165,7 @@ export type EvKelly = {
  * @param kellyFrac frakcija Kellyja (default 0.25 = četvrt Kelly)
  * @param capPerc  max ulog u % banke (default 3)
  */
-export function evKelly(
-  p: number,
-  kvota: number,
-  kellyFrac = 0.25,
-  capPerc = 3,
-): EvKelly {
+export function evKelly(p: number, kvota: number, kellyFrac = 0.25, capPerc = 3): EvKelly {
   const pp = clamp01(p);
   const k = Math.max(1.01, kvota);
   const evPct = (pp * k - 1) * 100;

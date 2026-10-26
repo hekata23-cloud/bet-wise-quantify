@@ -77,8 +77,7 @@ export const FR_TOPICS: Topic[] = [
     ],
     listening: {
       id: "fr-a1-greetings-l1",
-      transcript:
-        "Bonjour ! Je m'appelle Julie. Je suis française et j'habite à Lyon. Enchantée !",
+      transcript: "Bonjour ! Je m'appelle Julie. Je suis française et j'habite à Lyon. Enchantée !",
       translation: "A short self-introduction with a name, a nationality, a city and a greeting.",
       questions: [
         {

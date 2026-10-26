@@ -143,7 +143,9 @@ export function VocabularyTrainer({ topic, language, onFinish }: ActivityProps) 
         {item.reading && (
           <div className="mt-1 text-sm italic text-muted-foreground">{item.reading}</div>
         )}
-        <div className="mt-2 text-[11px] uppercase tracking-wider text-muted-foreground">{item.pos}</div>
+        <div className="mt-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+          {item.pos}
+        </div>
 
         {revealed ? (
           <div className="mt-6 space-y-3">
@@ -169,13 +171,24 @@ export function VocabularyTrainer({ topic, language, onFinish }: ActivityProps) 
 
       {revealed && (
         <div className="mt-5 grid grid-cols-3 gap-2">
-          <Button variant="outline" onClick={() => rate(30)} className="border-destructive/40 text-destructive">
+          <Button
+            variant="outline"
+            onClick={() => rate(30)}
+            className="border-destructive/40 text-destructive"
+          >
             <X className="mr-1.5 h-4 w-4" /> Missed it
           </Button>
-          <Button variant="outline" onClick={() => rate(70)} className="border-amber-400/40 text-amber-200">
+          <Button
+            variant="outline"
+            onClick={() => rate(70)}
+            className="border-amber-400/40 text-amber-200"
+          >
             Almost
           </Button>
-          <Button onClick={() => rate(100)} className="bg-emerald-600 text-white hover:bg-emerald-500">
+          <Button
+            onClick={() => rate(100)}
+            className="bg-emerald-600 text-white hover:bg-emerald-500"
+          >
             <Check className="mr-1.5 h-4 w-4" /> Knew it
           </Button>
         </div>
@@ -248,8 +261,13 @@ export function GrammarTrainer({ topic, language, onFinish }: ActivityProps) {
                 className={cn(
                   "rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all",
                   "border-border/60 bg-background/40 hover:border-primary/50 hover:bg-primary/5",
-                  answered && isAnswer && "border-emerald-500/60 bg-emerald-500/10 text-emerald-200",
-                  answered && chosen && !isAnswer && "border-destructive/60 bg-destructive/10 text-destructive",
+                  answered &&
+                    isAnswer &&
+                    "border-emerald-500/60 bg-emerald-500/10 text-emerald-200",
+                  answered &&
+                    chosen &&
+                    !isAnswer &&
+                    "border-destructive/60 bg-destructive/10 text-destructive",
                   answered && !isAnswer && !chosen && "opacity-50",
                 )}
               >
@@ -328,7 +346,11 @@ export function ListeningTrainer({ topic, language, onFinish }: ActivityProps) {
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <Button onClick={play} disabled={playing} size="lg">
-            {playing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Volume2 className="mr-2 h-4 w-4" />}
+            {playing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Volume2 className="mr-2 h-4 w-4" />
+            )}
             {plays === 0 ? "Play audio" : "Play again"}
           </Button>
           <div className="flex items-center gap-1 rounded-lg border border-border/60 p-1">
@@ -339,7 +361,9 @@ export function ListeningTrainer({ topic, language, onFinish }: ActivityProps) {
                 onClick={() => setRate(r)}
                 className={cn(
                   "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                  rate === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60",
+                  rate === r
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted/60",
                 )}
               >
                 {r === 1.1 ? "1.1×" : `${r}×`}
@@ -372,8 +396,13 @@ export function ListeningTrainer({ topic, language, onFinish }: ActivityProps) {
                       "rounded-lg border px-3 py-2 text-left text-sm transition-all",
                       "border-border/60 bg-background/40 hover:border-primary/50",
                       chosen && !submitted && "border-primary bg-primary/10",
-                      submitted && isAnswer && "border-emerald-500/60 bg-emerald-500/10 text-emerald-200",
-                      submitted && chosen && !isAnswer && "border-destructive/60 bg-destructive/10 text-destructive",
+                      submitted &&
+                        isAnswer &&
+                        "border-emerald-500/60 bg-emerald-500/10 text-emerald-200",
+                      submitted &&
+                        chosen &&
+                        !isAnswer &&
+                        "border-destructive/60 bg-destructive/10 text-destructive",
                     )}
                   >
                     {option}
@@ -387,7 +416,9 @@ export function ListeningTrainer({ topic, language, onFinish }: ActivityProps) {
 
       {submitted && (
         <div className="mt-5 rounded-2xl border border-border/60 bg-background/40 p-4">
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transcript</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Transcript
+          </div>
           <p className="mt-2 text-sm text-foreground">{task.transcript}</p>
           <p className="mt-1 text-xs text-muted-foreground">{task.translation}</p>
         </div>
@@ -463,7 +494,9 @@ export function ShadowingTrainer({ topic, language, onFinish }: ActivityProps) {
       <div className="rounded-3xl border border-border/60 bg-card/60 p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Listen, then repeat</div>
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Listen, then repeat
+            </div>
             <p className="mt-1 text-xl font-medium leading-relaxed text-foreground">{task.text}</p>
             <p className="mt-1 text-sm text-muted-foreground">{task.translation}</p>
           </div>
@@ -489,7 +522,10 @@ export function ShadowingTrainer({ topic, language, onFinish }: ActivityProps) {
                 </>
               )}
             </Button>
-            <Button variant="outline" onClick={() => speak(task.text, language.speechTag, { rate: 0.8 })}>
+            <Button
+              variant="outline"
+              onClick={() => speak(task.text, language.speechTag, { rate: 0.8 })}
+            >
               <Volume2 className="mr-2 h-4 w-4" /> Slow playback
             </Button>
           </>

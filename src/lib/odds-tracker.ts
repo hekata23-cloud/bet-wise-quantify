@@ -11,7 +11,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 export type KvotaSnapshot = {
-  t: number;              // ms — kad je snimljeno
+  t: number; // ms — kad je snimljeno
   kvote: Record<string, number>;
 };
 
@@ -36,7 +36,9 @@ function citaj(fixtureId: number): KvotaSnapshot[] {
 function pisi(fixtureId: number, s: KvotaSnapshot[]) {
   try {
     localStorage.setItem(KLJUC(fixtureId), JSON.stringify(s.slice(-MAX_SNIMAKA)));
-  } catch { /* pun localStorage — preskoči */ }
+  } catch {
+    /* pun localStorage — preskoči */
+  }
 }
 
 /** Zapamti trenutne kvote. Vraća broj snimaka. Duplikat unutar 10 min se ne pamti dvaput. */
@@ -64,14 +66,16 @@ export function snapshoti(fixtureId: number): KvotaSnapshot[] {
 export function brisiTracker(fixtureId: number): void {
   try {
     localStorage.removeItem(KLJUC(fixtureId));
-  } catch { /* ignoriraj */ }
+  } catch {
+    /* ignoriraj */
+  }
 }
 
 export type KretanjeKvote = {
   kljuc: string;
   prva: number | null;
   zadnja: number | null;
-  deltaPct: number | null;   // npr. +6.2 = kvota je porasla 6.2%
+  deltaPct: number | null; // npr. +6.2 = kvota je porasla 6.2%
   smjer: "gore" | "dolje" | "isto" | "nema";
   /** Za tvoju stranu: "za tebe" = tržište jače vjeruje u tvoj tip. */
   tumanenje: string;
@@ -93,14 +97,16 @@ export function kretanjeKvota(fixtureId: number, tvojaKljucana?: string): Kretan
     const a = prva[k];
     const b = zadnja[k];
     if (a == null && b == null) continue;
-    const delta = a != null && b != null && a > 0 ? Math.round(((b / a - 1) * 100) * 10) / 10 : null;
-    const smjer: KretanjeKvote["smjer"] = delta == null ? "nema" : delta > 0.5 ? "gore" : delta < -0.5 ? "dolje" : "isto";
+    const delta = a != null && b != null && a > 0 ? Math.round((b / a - 1) * 100 * 10) / 10 : null;
+    const smjer: KretanjeKvote["smjer"] =
+      delta == null ? "nema" : delta > 0.5 ? "gore" : delta < -0.5 ? "dolje" : "isto";
     let tumanenje = "";
     if (smjer === "isto") tumanenje = "Kvota se ne mijenja.";
     else if (k != null && k === tvojaKljucana) {
-      tumanenje = smjer === "dolje"
-        ? "Tržište ide U TVOJU KORIST — kvota pada, tržište sve više vjeruje u tvoj tip."
-        : "Kvota raste — tržište ide PROTIV tvog tipa (ali sada nudi višu kvotu / veću vrijednost).";
+      tumanenje =
+        smjer === "dolje"
+          ? "Tržište ide U TVOJU KORIST — kvota pada, tržište sve više vjeruje u tvoj tip."
+          : "Kvota raste — tržište ide PROTIV tvog tipa (ali sada nudi višu kvotu / veću vrijednost).";
     } else {
       tumanenje = smjer === "dolje" ? "Kvota pada." : "Kvota raste.";
     }
@@ -112,9 +118,9 @@ export function kretanjeKvota(fixtureId: number, tvojaKljucana?: string): Kretan
 export type ClvIzlaz = {
   postoji: boolean;
   kljuc: string;
-  kvotaUzeta: number | null;     // tvoja kvota u trenutku analize
-  kvotaZatvaranja: number | null;// zadnja snimljena kvota (proxy za zatvaranje)
-  clvPct: number | null;         // + = uzeo bolju kvotu nego zatvaranje
+  kvotaUzeta: number | null; // tvoja kvota u trenutku analize
+  kvotaZatvaranja: number | null; // zadnja snimljena kvota (proxy za zatvaranje)
+  clvPct: number | null; // + = uzeo bolju kvotu nego zatvaranje
   nSnimaka: number;
   prvoVrijeme: number | null;
   zadnjeVrijeme: number | null;
@@ -132,7 +138,7 @@ export function clvZaTip(fixtureId: number, kljuc: string): ClvIzlaz {
   const kvotaZatvaranja = zadnja?.kvote[kljuc] ?? null;
   let clvPct: number | null = null;
   if (kvotaUzeta != null && kvotaZatvaranja != null && kvotaZatvaranja > 0) {
-    clvPct = Math.round(((kvotaUzeta / kvotaZatvaranja - 1) * 100) * 10) / 10;
+    clvPct = Math.round((kvotaUzeta / kvotaZatvaranja - 1) * 100 * 10) / 10;
   }
   return {
     postoji: s.length >= 2 && clvPct != null,

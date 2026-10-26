@@ -3,7 +3,13 @@
 import { formatZagreb, isoDateZagreb } from "./zagreb-time";
 import { geminiChat } from "./gemini";
 import { groqChat, type GroqMessage } from "./groq";
-import { openrouterChat, orUsageToday, FREE_DAILY_LIMIT, type ORMessage, specialistDefault } from "./openrouter";
+import {
+  openrouterChat,
+  orUsageToday,
+  FREE_DAILY_LIMIT,
+  type ORMessage,
+  specialistDefault,
+} from "./openrouter";
 import { huggingfaceChat, HF_MODELS, type HFMessage } from "./huggingface";
 import { nvidiaChat, type NimMessage } from "./nvidia";
 import { loadOmni, runOmni, omniBriefing } from "./omni";
@@ -19,7 +25,12 @@ import { loadMastermind as loadMaster, mastermindActive, mastermindDirectives } 
 import { getFixturesByDate, getLiveFixtures, ApiFootballError } from "./api-football";
 import type { ChatAttachment } from "./attachments";
 import { attachmentsContextText } from "./attachments";
-import { ORION_PERSONA, runQuantAnalytics, formatOrionResponse, formatLunaResponse } from "./botovi";
+import {
+  ORION_PERSONA,
+  runQuantAnalytics,
+  formatOrionResponse,
+  formatLunaResponse,
+} from "./botovi";
 
 type GeminiPart = { text?: string; inline_data?: { mime_type: string; data: string } };
 type GeminiMessage = { role: string; parts: GeminiPart[] };
@@ -179,25 +190,28 @@ MORAŠ prepoznati i precizno analizirati SVA tržišta koja kladionice nude:
 - Ako korisnik pita za KONKRETAN tip, prvi red = TIP + %. Točka.
 `;
 
-const ORION_SYSTEM_PROMPT = SYSTEM_PROMPT
-  .replace(
+const ORION_SYSTEM_PROMPT =
+  SYSTEM_PROMPT.replace(
     "Ti si LUNA (alias: Callisto) — hrvatska AI asistentica aplikacije Andromeda AI: vrhunska savjetnica za sportske predikcije, iskusna full-stack developerica i majstorica SARP metode.",
     "Ti si ORION — hrvatski AI analitičar aplikacije Andromeda AI, specijaliziran za duboku statistiku, kretanje kvota, ozljede, taktiku i alternativne sportove.",
   )
-  .replace(
-    '- Zoveš se Luna. Odazivaš se i na "Callisto". Ženski rod u govoru o sebi ("mislim", "izračunala sam", "sigurna sam").',
-    '- Zoveš se Orion. Muški rod u govoru o sebi ("mislim", "izračunao sam", "siguran sam").',
-  )
-  .replace(
-    "- Topla si, prijateljska, duhovita, ali analitički britka.",
-    "- Izravan si, sažet i analitički britak; bez čavrljanja.",
-  ) + `\n\n${ORION_PERSONA}`;
+    .replace(
+      '- Zoveš se Luna. Odazivaš se i na "Callisto". Ženski rod u govoru o sebi ("mislim", "izračunala sam", "sigurna sam").',
+      '- Zoveš se Orion. Muški rod u govoru o sebi ("mislim", "izračunao sam", "siguran sam").',
+    )
+    .replace(
+      "- Topla si, prijateljska, duhovita, ali analitički britka.",
+      "- Izravan si, sažet i analitički britak; bez čavrljanja.",
+    ) + `\n\n${ORION_PERSONA}`;
 
 /** Ograniči trajanje pomoćnog motora da chat nikad ne visi bez odgovora. */
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const guard = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label} je predugo trajao (${ms / 1000} s) — preskačem.`)), ms);
+    timer = setTimeout(
+      () => reject(new Error(`${label} je predugo trajao (${ms / 1000} s) — preskačem.`)),
+      ms,
+    );
   });
   try {
     return await Promise.race([p, guard]);
@@ -372,7 +386,8 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
   const marketDirective =
     market === "opce"
       ? deepThinking + antiDirectives + quantDirective + tail
-      : deepThinking + `\n\nTRAŽENO TRŽIŠTE: ${MARKET_LABEL[market]}. Prva rečenica odgovora MORA biti konkretan tip za ovo tržište + sigurnost u %. Ne skreći na druga tržišta osim jedne alternative na kraju.\n\n${modul}${consensusBlock}${omniBlock}${antiDirectives}${quantDirective}${tail}`;
+      : deepThinking +
+        `\n\nTRAŽENO TRŽIŠTE: ${MARKET_LABEL[market]}. Prva rečenica odgovora MORA biti konkretan tip za ovo tržište + sigurnost u %. Ne skreći na druga tržišta osim jedne alternative na kraju.\n\n${modul}${consensusBlock}${omniBlock}${antiDirectives}${quantDirective}${tail}`;
   const sys =
     agentSystemPrompt +
     marketDirective +
@@ -396,8 +411,14 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
     !hasImages
   ) {
     try {
-      const council = await withTimeout(runCouncil(sys, history, userText), 120_000, "Vijeće AI-ja");
-      if (council && council.trim() && !/^prazan odgovor$/i.test(council.trim())) return council;
+      const council = await withTimeout(runCouncil(sys, history, userText), 15_000, "Vijeće AI-ja");
+      if (
+        council &&
+        council.trim() &&
+        council.trim().length >= 10 &&
+        !/^prazan odgovor$/i.test(council.trim())
+      )
+        return council;
     } catch (e) {
       console.warn("Vijeće AI-ja nije uspjelo, ide normalan mozak:", e);
     }
@@ -421,18 +442,30 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
     try {
       let candidate = "";
       if (b === "openrouter" && hasKey("openrouter")) {
-        candidate = await runOpenRouter(sys, history, userText, attachments, prefs, market);
+        candidate = await withTimeout(
+          runOpenRouter(sys, history, userText, attachments, prefs, market),
+          18_000,
+          "OpenRouter",
+        );
       } else if (b === "nvidia" && hasKey("nvidia")) {
-        candidate = await runNim(sys, history, userText, prefs);
+        candidate = await withTimeout(runNim(sys, history, userText, prefs), 18_000, "NVIDIA");
       } else if (b === "gemini" && hasKey("gemini")) {
-        candidate = await runGemini(sys, history, userText, attachments);
+        candidate = await withTimeout(
+          runGemini(sys, history, userText, attachments),
+          18_000,
+          "Gemini",
+        );
       } else if (b === "groq" && hasKey("groq")) {
-        candidate = await runGroq(sys, history, userText, attachments);
+        candidate = await withTimeout(runGroq(sys, history, userText, attachments), 18_000, "Groq");
       } else if (b === "huggingface" && hasKey("huggingface")) {
-        candidate = await runHF(sys, history, userText, attachments, prefs);
+        candidate = await withTimeout(
+          runHF(sys, history, userText, attachments, prefs),
+          18_000,
+          "HuggingFace",
+        );
       }
       const s = (candidate ?? "").trim();
-      if (s && !/^prazan odgovor$/i.test(s)) {
+      if (s && s.length >= 10 && !/^prazan odgovor$/i.test(s)) {
         return s;
       }
     } catch (e) {
@@ -443,10 +476,13 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
   }
 
   // Autonomni analitički odgovor (nikada ne vraća prazan odgovor niti mock podatke)
-  if (opts.agent === "orion") {
-    return formatOrionResponse(quant);
-  }
-  return formatLunaResponse(quant);
+  const finalFallback =
+    opts.agent === "orion" ? formatOrionResponse(quant) : formatLunaResponse(quant);
+  return finalFallback && finalFallback.trim()
+    ? finalFallback
+    : opts.agent === "orion"
+      ? formatOrionResponse(quant)
+      : formatLunaResponse(quant);
 }
 
 async function runOpenRouter(
@@ -464,13 +500,15 @@ async function runOpenRouter(
   for (const t of history) msgs.push({ role: t.role, content: t.content });
   const imgs = attachments.filter((a) => a.kind === "image" && a.dataUrl);
   if (imgs.length && model.includes("vl")) {
-    const parts: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [
-      { type: "text", text: userText || "(bez teksta)" },
-    ];
+    const parts: Array<
+      { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+    > = [{ type: "text", text: userText || "(bez teksta)" }];
     for (const a of imgs) parts.push({ type: "image_url", image_url: { url: a.dataUrl! } });
     msgs.push({ role: "user", content: JSON.stringify(parts) });
   } else {
-    const imgNote = imgs.length ? "\n\n(Napomena: korisnik je poslao slike; odabrani model nije vision — radi po tekstualnom opisu privitaka iz KONTEKST-a.)" : "";
+    const imgNote = imgs.length
+      ? "\n\n(Napomena: korisnik je poslao slike; odabrani model nije vision — radi po tekstualnom opisu privitaka iz KONTEKST-a.)"
+      : "";
     msgs.push({ role: "user", content: userText + imgNote });
   }
   return openrouterChat(model, msgs, { extraFallbacks: backups });
@@ -504,7 +542,8 @@ async function runGroq(
   attachments: ChatAttachment[],
 ): Promise<string> {
   const gr: GroqMessage[] = [{ role: "system", content: sys }];
-  for (const t of history) gr.push({ role: t.role === "user" ? "user" : "assistant", content: t.content });
+  for (const t of history)
+    gr.push({ role: t.role === "user" ? "user" : "assistant", content: t.content });
   const imgNote = attachments.filter((a) => a.kind === "image").length
     ? "\n\n(Napomena: korisnik je poslao slike, ali Groq nema vision. Radi po tekstualnom opisu.)"
     : "";
@@ -540,5 +579,3 @@ async function runNim(
   msgs.push({ role: "user", content: userText });
   return nvidiaChat(model, msgs, { maxTokens: 1600 });
 }
-
-

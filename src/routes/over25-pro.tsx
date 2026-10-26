@@ -10,17 +10,14 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  AlertTriangle,
-  Brain,
-  CheckCircle2,
-  Gauge,
-  RefreshCw,
-  Search,
-  Target,
-} from "lucide-react";
+import { AlertTriangle, Brain, CheckCircle2, Gauge, RefreshCw, Search, Target } from "lucide-react";
 import { SettingsModal } from "../components/SettingsModal";
-import { getGoalsBundle, getGoalsUtakmice, type GoalsBundle, type GoalsUtakmica } from "../lib/goals.functions";
+import {
+  getGoalsBundle,
+  getGoalsUtakmice,
+  type GoalsBundle,
+  type GoalsUtakmica,
+} from "../lib/goals.functions";
 import { goalsAnaliza, type GoalsIzlaz } from "../lib/goals-motor";
 import { getApiKey, zagrebDay } from "../lib/zlatni-guard";
 import { zapisiTip } from "../lib/dnevnik";
@@ -33,11 +30,19 @@ export const Route = createFileRoute("/over25-pro")({
   component: Over25ProPage,
 });
 
-function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
+function fmtPct(x: number) {
+  return `${(x * 100).toFixed(1)}%`;
+}
 function vremeno(iso: string) {
   try {
-    return new Date(iso).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" });
-  } catch { return iso; }
+    return new Date(iso).toLocaleTimeString("hr-HR", {
+      timeZone: "Europe/Zagreb",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 function edgeBoja(e: number) {
   if (e >= 0.05) return "text-emerald-400";
@@ -83,7 +88,8 @@ function Over25ProPage() {
     const ck = `o25p.fix.${dan}`;
     try {
       const kes = force ? null : localStorage.getItem(ck);
-      const r = kes ? (JSON.parse(kes) as { error: string | null; utakmice: GoalsUtakmica[] })
+      const r = kes
+        ? (JSON.parse(kes) as { error: string | null; utakmice: GoalsUtakmica[] })
         : await getGoalsUtakmice({ data: { date: dan, apiKey } });
       if (!force && !kes) localStorage.setItem(ck, JSON.stringify(r));
       if (r.error) {
@@ -91,9 +97,11 @@ function Over25ProPage() {
         setStatus(`Učitavanje nije uspjelo: ${r.error}`);
       } else {
         setUtakmice(r.utakmice);
-        setStatus(r.utakmice.length
-          ? `Učitano ${r.utakmice.length} utakmica. Klikni utakmicu za Over/Under analizu.`
-          : "Nema nadolazećih utakmica za taj dan.");
+        setStatus(
+          r.utakmice.length
+            ? `Učitano ${r.utakmice.length} utakmica. Klikni utakmicu za Over/Under analizu.`
+            : "Nema nadolazećih utakmica za taj dan.",
+        );
       }
     } catch {
       setStatus("Greška pri dohvatu utakmica.");
@@ -103,7 +111,11 @@ function Over25ProPage() {
 
   const analiziraj = async (u: GoalsUtakmica) => {
     const apiKey = getApiKey();
-    if (!apiKey) { setStatus("Nedostaje API ključ."); setSettings(true); return; }
+    if (!apiKey) {
+      setStatus("Nedostaje API ključ.");
+      setSettings(true);
+      return;
+    }
     setOdabrana(u);
     setAnaliziram(true);
     setBundle(null);
@@ -156,27 +168,37 @@ function Over25ProPage() {
             utakmica: `${u.home} — ${u.away}`,
             liga: u.league,
             fixtureId: u.id,
-            tip: kvTipO != null ? `${stranaO === "over" ? "OVER" : "UNDER"} 2.5 @ ${kvTipO.toFixed(2)}` : (stranaO === "over" ? "OVER 2.5" : "UNDER 2.5"),
+            tip:
+              kvTipO != null
+                ? `${stranaO === "over" ? "OVER" : "UNDER"} 2.5 @ ${kvTipO.toFixed(2)}`
+                : stranaO === "over"
+                  ? "OVER 2.5"
+                  : "UNDER 2.5",
             p: pTipO,
             kvota: kvTipO ?? null,
             provjera: { vrsta: "ou", strana: stranaO, linija: 2.5 },
           });
         }
         if (b.error)
-          setStatus(`⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`);
-        else
-          setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
+          setStatus(
+            `⚠️ ${b.error} — ispod je analiza s podacima koji postoje (motor radi i bez kvota).`,
+          );
+        else setStatus(`Gotovo — povjerenje ${a.povjerenje}/100 (${a.ocjena}).`);
       } catch {
         setStatus("Motor nije uspio izračunati analizu za ovu utakmicu — probaj Refresh pa opet.");
       }
     } catch {
-      setStatus("Dohvat podataka nije uspio ni drugim pokušajem — API je zaokupljen, probaj za minutu.");
+      setStatus(
+        "Dohvat podataka nije uspio ni drugim pokušajem — API je zaokupljen, probaj za minutu.",
+      );
     }
     setAnaliziram(false);
   };
 
-  const filtrirane = utakmice.filter((u) =>
-    !trazim || `${u.home} ${u.away} ${u.league} ${u.country}`.toLowerCase().includes(trazim.toLowerCase()),
+  const filtrirane = utakmice.filter(
+    (u) =>
+      !trazim ||
+      `${u.home} ${u.away} ${u.league} ${u.country}`.toLowerCase().includes(trazim.toLowerCase()),
   );
 
   const LINIJE = [
@@ -189,28 +211,56 @@ function Over25ProPage() {
 
   // ── KONKRETAN TIP: jedna strana 2.5 linije + kvota + EV + Kelly ulog + sigurnosna linija ──
   let tip: null | {
-    strana: "Više" | "Manje"; p: number; kv: number | null; edge: number | null; ulog: number;
-    sigLabel: string; sigP: number | null; sigKv: number | null;
-    altStrana: string; altP: number | null;
+    strana: "Više" | "Manje";
+    p: number;
+    kv: number | null;
+    edge: number | null;
+    ulog: number;
+    sigLabel: string;
+    sigP: number | null;
+    sigKv: number | null;
+    altStrana: string;
+    altP: number | null;
   } = null;
   if (analiza) {
-    const oP = analiza.final["o25"] ?? null, uP = analiza.final["u25"] ?? null;
-    const oK = bundle?.kvote["o25"] ?? null, uK = bundle?.kvote["u25"] ?? null;
+    const oP = analiza.final["o25"] ?? null,
+      uP = analiza.final["u25"] ?? null;
+    const oK = bundle?.kvote["o25"] ?? null,
+      uK = bundle?.kvote["u25"] ?? null;
     const kandidati = [
-      { strana: "Više" as const, key: "o25", p: oP, kv: oK, edge: oP != null && oK != null ? oP * oK - 1 : null,
-        sigLabel: "Više od 1.5", sigP: analiza.final["o15"] ?? null, sigKv: bundle?.kvote["o15"] ?? null },
-      { strana: "Manje" as const, key: "u25", p: uP, kv: uK, edge: uP != null && uK != null ? uP * uK - 1 : null,
-        sigLabel: "Manje od 3.5", sigP: analiza.final["u35"] ?? null, sigKv: bundle?.kvote["u35"] ?? null },
+      {
+        strana: "Više" as const,
+        key: "o25",
+        p: oP,
+        kv: oK,
+        edge: oP != null && oK != null ? oP * oK - 1 : null,
+        sigLabel: "Više od 1.5",
+        sigP: analiza.final["o15"] ?? null,
+        sigKv: bundle?.kvote["o15"] ?? null,
+      },
+      {
+        strana: "Manje" as const,
+        key: "u25",
+        p: uP,
+        kv: uK,
+        edge: uP != null && uK != null ? uP * uK - 1 : null,
+        sigLabel: "Manje od 3.5",
+        sigP: analiza.final["u35"] ?? null,
+        sigKv: bundle?.kvote["u35"] ?? null,
+      },
     ];
-    const isplativi = kandidati.filter((c) => c.edge != null && c.edge > 0).sort((a, b) => b.edge! - a.edge!);
+    const isplativi = kandidati
+      .filter((c) => c.edge != null && c.edge > 0)
+      .sort((a, b) => b.edge! - a.edge!);
     const poProb = kandidati.filter((c) => c.p != null).sort((a, b) => b.p! - a.p!);
     const c = isplativi[0] ?? poProb[0]!;
     const kelly = analiza.kelly[c.key];
-    const ulog = kelly != null
-      ? Math.min(3, Math.max(0, kelly * 100))
-      : c.kv != null && c.p != null && c.kv > 1
-        ? Math.max(0, Math.min(3, ((c.p * c.kv - 1) / (c.kv - 1)) * 25))
-        : 0;
+    const ulog =
+      kelly != null
+        ? Math.min(3, Math.max(0, kelly * 100))
+        : c.kv != null && c.p != null && c.kv > 1
+          ? Math.max(0, Math.min(3, ((c.p * c.kv - 1) / (c.kv - 1)) * 25))
+          : 0;
     tip = {
       strana: c.strana,
       p: c.p!,
@@ -221,7 +271,7 @@ function Over25ProPage() {
       sigP: c.sigP,
       sigKv: c.sigKv,
       altStrana: c.strana === "Više" ? "Manje" : "Više",
-      altP: (c.strana === "Više" ? uP : oP),
+      altP: c.strana === "Više" ? uP : oP,
     };
   }
 
@@ -233,7 +283,8 @@ function Over25ProPage() {
             <Gauge className="h-5 w-5 text-cyan-400" /> 2.5 Pro
           </h1>
           <p className="text-xs text-muted-foreground">
-            Over/Under golovi — matrica rezultata kalibrirana tržištem i formom, fer kvote, edge i Kelly.
+            Over/Under golovi — matrica rezultata kalibrirana tržištem i formom, fer kvote, edge i
+            Kelly.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -248,7 +299,11 @@ function Over25ProPage() {
             disabled={ucitam}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
-            {ucitam ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            {ucitam ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
             Učitaj
           </button>
         </div>
@@ -257,7 +312,12 @@ function Over25ProPage() {
       {status && (
         <div className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
           {status}
-          <button onClick={() => setSettings(true)} className="ml-2 underline hover:text-foreground">Postavke</button>
+          <button
+            onClick={() => setSettings(true)}
+            className="ml-2 underline hover:text-foreground"
+          >
+            Postavke
+          </button>
         </div>
       )}
 
@@ -282,7 +342,9 @@ function Over25ProPage() {
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {u.country} · {u.league} · {vremeno(u.time)}
             </div>
-            <div className="mt-1 text-sm font-semibold">{u.home} — {u.away}</div>
+            <div className="mt-1 text-sm font-semibold">
+              {u.home} — {u.away}
+            </div>
           </button>
         ))}
       </div>
@@ -290,17 +352,23 @@ function Over25ProPage() {
       {(analiziram || analiza) && odabrana && (
         <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-bold">{odabrana.home} — {odabrana.away}</h2>
+            <h2 className="text-lg font-bold">
+              {odabrana.home} — {odabrana.away}
+            </h2>
             {analiza && (
-              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${ocjenaBoja(analiza.ocjena)}`}>
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-bold ${ocjenaBoja(analiza.ocjena)}`}
+              >
                 Povjerenje {analiza.povjerenje}/100 · {analiza.ocjena}
               </span>
             )}
           </div>
 
-          {analiziram && <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <RefreshCw className="h-4 w-4 animate-spin" /> Analiziram kroz motor…
-          </div>}
+          {analiziram && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" /> Analiziram kroz motor…
+            </div>
+          )}
 
           {analiza && (
             <>
@@ -308,19 +376,25 @@ function Over25ProPage() {
               {tip && (
                 <div className="rounded-2xl border border-primary/50 bg-primary/5 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-xs font-bold uppercase tracking-wide text-primary">🎯 Konkretan tip</div>
+                    <div className="text-xs font-bold uppercase tracking-wide text-primary">
+                      🎯 Konkretan tip
+                    </div>
                     {tip.kv != null && tip.edge != null && tip.edge >= 0.02 ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                        <CheckCircle2 className="h-3 w-3" /> ISPLATIVO — ULOG {tip.ulog.toFixed(1)}% BANKE
+                        <CheckCircle2 className="h-3 w-3" /> ISPLATIVO — ULOG {tip.ulog.toFixed(1)}%
+                        BANKE
                       </span>
                     ) : (
                       <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                        {tip.kv == null ? "FER TIP — KVOTA JOS NIJE OBJAVLJENA" : "PRESKOČI — NEMA VRIJEDNOSTI"}
+                        {tip.kv == null
+                          ? "FER TIP — KVOTA JOS NIJE OBJAVLJENA"
+                          : "PRESKOČI — NEMA VRIJEDNOSTI"}
                       </span>
                     )}
                   </div>
                   <div className="mt-1 text-2xl font-black">
-                    {tip.strana} 2.5{tip.kv != null ? ` @ ${tip.kv.toFixed(2)}` : " (fer kvota dolje)"}
+                    {tip.strana} 2.5
+                    {tip.kv != null ? ` @ ${tip.kv.toFixed(2)}` : " (fer kvota dolje)"}
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
@@ -329,7 +403,9 @@ function Over25ProPage() {
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Fer kvota</div>
-                      <div className="font-mono font-bold">{tip.p > 0 ? (1 / tip.p).toFixed(2) : "—"}</div>
+                      <div className="font-mono font-bold">
+                        {tip.p > 0 ? (1 / tip.p).toFixed(2) : "—"}
+                      </div>
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Kvota API</div>
@@ -337,7 +413,9 @@ function Over25ProPage() {
                     </div>
                     <div className="rounded-lg bg-muted/40 p-2 text-center">
                       <div className="text-muted-foreground">Edge / EV</div>
-                      <div className={`font-mono font-bold ${tip.edge != null ? edgeBoja(tip.edge) : ""}`}>
+                      <div
+                        className={`font-mono font-bold ${tip.edge != null ? edgeBoja(tip.edge) : ""}`}
+                      >
                         {tip.edge != null ? `${(tip.edge * 100).toFixed(1)}%` : "—"}
                       </div>
                     </div>
@@ -350,11 +428,15 @@ function Over25ProPage() {
                   </div>
                   {tip.sigP != null && (
                     <div className="mt-2 text-xs text-muted-foreground">
-                      🛡️ Sigurnosna linija: <b className="text-foreground">{tip.sigLabel}</b> (model {fmtPct(tip.sigP)}{tip.sigKv != null ? ` @ ${tip.sigKv.toFixed(2)}` : ""}) — ako ti je glavni tip pretežak, tu ide manji ulog.
+                      🛡️ Sigurnosna linija: <b className="text-foreground">{tip.sigLabel}</b> (model{" "}
+                      {fmtPct(tip.sigP)}
+                      {tip.sigKv != null ? ` @ ${tip.sigKv.toFixed(2)}` : ""}) — ako ti je glavni
+                      tip pretežak, tu ide manji ulog.
                     </div>
                   )}
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Odabir: najveći edge među isplativim stranama 2.5 linije; ako nijedna nema edge, strana s većom vjerojatnošću.
+                    Odabir: najveći edge među isplativim stranama 2.5 linije; ako nijedna nema edge,
+                    strana s većom vjerojatnošću.
                   </div>
                 </div>
               )}
@@ -363,18 +445,31 @@ function Over25ProPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-xl border border-border bg-background/50 p-3 text-center">
                   <div className="text-[10px] uppercase text-muted-foreground">λ Domaćin</div>
-                  <div className="text-2xl font-black tabular-nums text-cyan-300">{analiza.lambdaDom.toFixed(2)}</div>
+                  <div className="text-2xl font-black tabular-nums text-cyan-300">
+                    {analiza.lambdaDom.toFixed(2)}
+                  </div>
                 </div>
                 <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 text-center">
-                  <div className="text-[10px] uppercase text-muted-foreground">Ukupno očekivano</div>
-                  <div className="text-3xl font-black tabular-nums text-primary">{analiza.lambdaUkupno.toFixed(2)}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground">
+                    Ukupno očekivano
+                  </div>
+                  <div className="text-3xl font-black tabular-nums text-primary">
+                    {analiza.lambdaUkupno.toFixed(2)}
+                  </div>
                   <div className="mt-1 text-[10px] text-muted-foreground">
-                    {lambdaUk != null && (lambdaUk > 3.1 ? "ofenzivan meč" : lambdaUk < 2.1 ? "defenzivan meč" : "uravnotežen")}
+                    {lambdaUk != null &&
+                      (lambdaUk > 3.1
+                        ? "ofenzivan meč"
+                        : lambdaUk < 2.1
+                          ? "defenzivan meč"
+                          : "uravnotežen")}
                   </div>
                 </div>
                 <div className="rounded-xl border border-border bg-background/50 p-3 text-center">
                   <div className="text-[10px] uppercase text-muted-foreground">μ Gost</div>
-                  <div className="text-2xl font-black tabular-nums text-cyan-300">{analiza.lambdaGost.toFixed(2)}</div>
+                  <div className="text-2xl font-black tabular-nums text-cyan-300">
+                    {analiza.lambdaGost.toFixed(2)}
+                  </div>
                 </div>
               </div>
 
@@ -400,22 +495,35 @@ function Over25ProPage() {
                         const e = p != null && kvota != null ? p * kvota - 1 : null;
                         const rec = e != null && e >= 0.02;
                         return (
-                          <tr key={k} className={`border-t border-border ${l.glavna ? "bg-primary/5" : ""}`}>
+                          <tr
+                            key={k}
+                            className={`border-t border-border ${l.glavna ? "bg-primary/5" : ""}`}
+                          >
                             <td className="px-3 py-2 font-medium">
                               {l.glavna && <Target className="mr-1 inline h-3 w-3 text-primary" />}
                               {strana === "o" ? "Over" : "Under"} {l.ime.split(" ")[1]}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono font-bold">{p != null ? fmtPct(p) : "—"}</td>
+                            <td className="px-3 py-2 text-right font-mono font-bold">
+                              {p != null ? fmtPct(p) : "—"}
+                            </td>
                             <td className="px-3 py-2 text-right font-mono text-muted-foreground">
                               {p != null ? (1 / p).toFixed(2) : "—"}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono">{kvota?.toFixed(2) ?? "—"}</td>
-                            <td className={`px-3 py-2 text-right font-mono font-bold ${e != null ? edgeBoja(e) : ""}`}>
+                            <td className="px-3 py-2 text-right font-mono">
+                              {kvota?.toFixed(2) ?? "—"}
+                            </td>
+                            <td
+                              className={`px-3 py-2 text-right font-mono font-bold ${e != null ? edgeBoja(e) : ""}`}
+                            >
                               {e != null ? `${(e * 100).toFixed(1)}%` : "—"}
-                              {rec && <CheckCircle2 className="ml-1 inline h-3 w-3 text-emerald-400" />}
+                              {rec && (
+                                <CheckCircle2 className="ml-1 inline h-3 w-3 text-emerald-400" />
+                              )}
                             </td>
                             <td className="px-3 py-2 text-right font-mono text-muted-foreground">
-                              {e != null && e > 0 && analiza.kelly[k] != null ? `${(analiza.kelly[k]! * 100).toFixed(1)}%` : "—"}
+                              {e != null && e > 0 && analiza.kelly[k] != null
+                                ? `${(analiza.kelly[k]! * 100).toFixed(1)}%`
+                                : "—"}
                             </td>
                           </tr>
                         );
@@ -435,8 +543,12 @@ function Over25ProPage() {
                     const p = analiza.final[k];
                     return (
                       <div key={k} className="rounded-lg bg-muted/40 p-2">
-                        <div className="text-muted-foreground">{k === "g5+" ? "5+" : k.slice(1)} golova</div>
-                        <div className="font-mono text-xs font-bold">{p != null ? fmtPct(p) : "—"}</div>
+                        <div className="text-muted-foreground">
+                          {k === "g5+" ? "5+" : k.slice(1)} golova
+                        </div>
+                        <div className="font-mono text-xs font-bold">
+                          {p != null ? fmtPct(p) : "—"}
+                        </div>
                       </div>
                     );
                   })}
@@ -446,19 +558,28 @@ function Over25ProPage() {
               {/* Faktori */}
               {analiza.faktori.length > 0 && (
                 <div className="rounded-xl border border-border bg-background/50 p-3">
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Što model gleda</div>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Što model gleda
+                  </div>
                   <ul className="list-inside list-disc text-xs text-muted-foreground">
-                    {analiza.faktori.map((f, i) => <li key={i}>{f}</li>)}
+                    {analiza.faktori.map((f, i) => (
+                      <li key={i}>{f}</li>
+                    ))}
                   </ul>
                 </div>
               )}
 
               {/* Top rezultati */}
               <div className="rounded-xl border border-border bg-background/50 p-3">
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Najvjerojatniji rezultati</div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Najvjerojatniji rezultati
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {analiza.topRezultati.map((t) => (
-                    <span key={t.rezultat} className="rounded-lg bg-muted/40 px-2 py-1 font-mono text-xs">
+                    <span
+                      key={t.rezultat}
+                      className="rounded-lg bg-muted/40 px-2 py-1 font-mono text-xs"
+                    >
                       {t.rezultat} · {fmtPct(t.p)}
                     </span>
                   ))}
@@ -472,7 +593,9 @@ function Over25ProPage() {
                     <AlertTriangle className="h-3 w-3" /> Upozorenja
                   </div>
                   <ul className="list-inside list-disc text-xs text-amber-200/90">
-                    {analiza.upozorenja.map((w, i) => <li key={i}>{w}</li>)}
+                    {analiza.upozorenja.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
                   </ul>
                 </div>
               )}

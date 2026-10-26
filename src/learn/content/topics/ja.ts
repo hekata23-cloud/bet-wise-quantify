@@ -289,7 +289,8 @@ export const JA_TOPICS: Topic[] = [
         prompt: "これは姉___本です。",
         options: ["の", "は", "が", "を"],
         answer: "の",
-        explanation: "The particle の links two nouns to show possession, so 姉の本 means my sister's book.",
+        explanation:
+          "The particle の links two nouns to show possession, so 姉の本 means my sister's book.",
       },
     ],
     listening: {
@@ -404,7 +405,8 @@ export const JA_TOPICS: Topic[] = [
     ],
     listening: {
       id: "ja-a2-food-l1",
-      transcript: "いらっしゃいませ。ご注文は決まりましたか。はい、カレーライスを一つお願いします。",
+      transcript:
+        "いらっしゃいませ。ご注文は決まりましたか。はい、カレーライスを一つお願いします。",
       translation: "A server takes the order and the customer asks for a dish.",
       questions: [
         {
@@ -502,7 +504,8 @@ export const JA_TOPICS: Topic[] = [
         prompt: "東京___行きます。",
         options: ["へ", "を", "で", "も"],
         answer: "へ",
-        explanation: "The particle へ marks the direction of movement, such as 東京へ (toward Tokyo).",
+        explanation:
+          "The particle へ marks the direction of movement, such as 東京へ (toward Tokyo).",
       },
       {
         id: "ja-a2-travel-g3",
@@ -600,7 +603,8 @@ export const JA_TOPICS: Topic[] = [
         prompt: "父は銀行で___。",
         options: ["働いています", "働きます", "働く", "働いて"],
         answer: "働いています",
-        explanation: "〜ています describes an ongoing state or habitual action, such as working at a bank.",
+        explanation:
+          "〜ています describes an ongoing state or habitual action, such as working at a bank.",
       },
       {
         id: "ja-b1-work-g2",

@@ -15,14 +15,17 @@ export function evaluateMatchConfidence(
   k22: number,
   kOver: number,
   kGg: number,
-  leagueMultiplier = 1.0
+  leagueMultiplier = 1.0,
 ): UltimateVerdict {
   const poisson = generatePoissonMatrix(kOver, kGg, k22);
   const anomalies = detectAnomalies(k22, kOver, kGg);
 
   // Korigirana vjerojatnost prema ligi
   const adjOverProb = Math.min(90, Math.max(10, poisson.lines.over25 * leagueMultiplier));
-  const adjBttsProb = Math.min(90, Math.max(10, poisson.bttsProb * (leagueMultiplier > 1 ? 1.05 : 0.96)));
+  const adjBttsProb = Math.min(
+    90,
+    Math.max(10, poisson.bttsProb * (leagueMultiplier > 1 ? 1.05 : 0.96)),
+  );
 
   let score = 50;
   const reasons: string[] = [];
@@ -53,7 +56,8 @@ export function evaluateMatchConfidence(
     primaryMarket = "2.5 MANJE";
     alt = isStrongBttsNo ? "BTTS NE (ili 0-2 gola)" : "Manje 3.5 zicer";
     reasons.push(`Vjerojatnost za 3+ gola je tek ${adjOverProb.toFixed(1)}%.`);
-    if (hasK22) reasons.push(`Kvota 2:2 (${k22.toFixed(2)}) odbacuje mogućnost remija s puno golova.`);
+    if (hasK22)
+      reasons.push(`Kvota 2:2 (${k22.toFixed(2)}) odbacuje mogućnost remija s puno golova.`);
   } else if (isStrongBttsYes && adjBttsProb > 50) {
     score += Math.min(22, (adjBttsProb - 50) * 0.7);
     primaryMarket = "BTTS DA";
@@ -99,4 +103,3 @@ export function evaluateMatchConfidence(
     anomalies,
   };
 }
-

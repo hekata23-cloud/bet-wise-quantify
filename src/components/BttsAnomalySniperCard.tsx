@@ -97,7 +97,7 @@ export function BttsAnomalySniperCard({
         try {
           localStorage.setItem(
             CACHE_KEY,
-            JSON.stringify({ timestamp: Date.now(), results: merged })
+            JSON.stringify({ timestamp: Date.now(), results: merged }),
           );
         } catch {
           // localStorage pun
@@ -110,7 +110,8 @@ export function BttsAnomalySniperCard({
   // Dodavanje oklade izravno u Korpu (Virtual Bet Slip)
   const handleAddToSlip = (
     item: SniperAnalysisResult,
-    cell: SniperAnalysisResult["oddsCells"]["over25"] | SniperAnalysisResult["oddsCells"]["bttsYes"]
+    cell:
+      SniperAnalysisResult["oddsCells"]["over25"] | SniperAnalysisResult["oddsCells"]["bttsYes"],
   ) => {
     const tipId = `nogomet|${item.match}|${cell.market}|${cell.tip}`;
     dodajUKorpu({
@@ -156,8 +157,14 @@ export function BttsAnomalySniperCard({
             ? "BTTS GG"
             : "Over 2.5",
         p: Math.max(item.probBttsYes, item.probOver25),
-        kvota: item.probBttsYes >= item.probOver25 ? item.oddsCells.bttsYes.odd : item.oddsCells.over25.odd,
-        edge: item.probBttsYes >= item.probOver25 ? item.oddsCells.bttsYes.edge : item.oddsCells.over25.edge,
+        kvota:
+          item.probBttsYes >= item.probOver25
+            ? item.oddsCells.bttsYes.odd
+            : item.oddsCells.over25.odd,
+        edge:
+          item.probBttsYes >= item.probOver25
+            ? item.oddsCells.bttsYes.edge
+            : item.oddsCells.over25.edge,
         kellyPct: 2.5,
         kljuc: "sniper",
       },
@@ -167,19 +174,17 @@ export function BttsAnomalySniperCard({
       },
       mc: {
         btts: item.probBttsYes,
-        o15: Math.min(0.95, item.probOver25 + 0.20),
+        o15: Math.min(0.95, item.probOver25 + 0.2),
         o25: item.probOver25,
         o35: Math.max(0.15, item.probOver25 - 0.22),
         p1: 0.45,
         pX: 0.25,
-        p2: 0.30,
+        p2: 0.3,
       },
       ocjena: item.goldenSniper ? "A+" : "A",
       povjerenje: item.anomalyScore,
       brojIzvora: 3,
-      rizici: [
-        item.tacticalClash.hasClash ? "Visoki tempo presinga" : "Standardna varijanca",
-      ],
+      rizici: [item.tacticalClash.hasClash ? "Visoki tempo presinga" : "Standardna varijanca"],
       sniperAnomaly: item,
     });
     toast.success(`Kontekst spremljen za Lunu i Oriona: "${item.match}"`);
@@ -192,7 +197,7 @@ export function BttsAnomalySniperCard({
     const lA = parseFloat(customXgAway.replace(",", ".")) || 1.2;
     const ppdaH = parseFloat(customPpdaHome.replace(",", ".")) || null;
     const ppdaA = parseFloat(customPpdaAway.replace(",", ".")) || null;
-    const o25 = parseFloat(customOddOver.replace(",", ".")) || 2.40;
+    const o25 = parseFloat(customOddOver.replace(",", ".")) || 2.4;
     const btts = parseFloat(customOddBtts.replace(",", ".")) || 2.25;
     const pens = parseFloat(customRefPens.replace(",", ".")) || null;
     const cards = parseFloat(customRefCards.replace(",", ".")) || null;
@@ -207,11 +212,14 @@ export function BttsAnomalySniperCard({
       lambdaAway: lA,
       ppdaHome: ppdaH,
       ppdaAway: ppdaA,
-      referee: pens != null || cards != null ? {
-        name: "Glavni sudac",
-        penaltiesPerGame: pens ?? undefined,
-        yellowCardsPerGame: cards ?? undefined,
-      } : null,
+      referee:
+        pens != null || cards != null
+          ? {
+              name: "Glavni sudac",
+              penaltiesPerGame: pens ?? undefined,
+              yellowCardsPerGame: cards ?? undefined,
+            }
+          : null,
       bookieOdds: {
         over25: o25,
         bttsYes: btts,
@@ -222,10 +230,7 @@ export function BttsAnomalySniperCard({
       const filtered = prev.filter((x) => x.match !== res.match);
       const next = [res, ...filtered];
       try {
-        localStorage.setItem(
-          CACHE_KEY,
-          JSON.stringify({ timestamp: Date.now(), results: next })
-        );
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), results: next }));
       } catch {
         // ignore
       }
@@ -260,7 +265,8 @@ export function BttsAnomalySniperCard({
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Izolacija anomalija šuma, PPDA taktički sudar i Frank kopula za prolaze na kvotama 2.20 – 2.60.
+              Izolacija anomalija šuma, PPDA taktički sudar i Frank kopula za prolaze na kvotama
+              2.20 – 2.60.
             </p>
           </div>
         </div>
@@ -306,7 +312,11 @@ export function BttsAnomalySniperCard({
           >
             <Sliders className="h-3 w-3" />
             Simulator kvota
-            {showQuickAdder ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showQuickAdder ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
+            )}
           </button>
         </div>
       </div>
@@ -362,7 +372,9 @@ export function BttsAnomalySniperCard({
               </div>
             </div>
             <div>
-              <label className="text-[11px] text-muted-foreground block mb-1">PPDA Dom / Gost</label>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                PPDA Dom / Gost
+              </label>
               <div className="flex gap-1">
                 <input
                   type="text"
@@ -399,7 +411,9 @@ export function BttsAnomalySniperCard({
               />
             </div>
             <div>
-              <label className="text-[11px] text-muted-foreground block mb-1">Sudac Penali / meč</label>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Sudac Penali / meč
+              </label>
               <input
                 type="text"
                 value={customRefPens}
@@ -409,7 +423,9 @@ export function BttsAnomalySniperCard({
               />
             </div>
             <div>
-              <label className="text-[11px] text-muted-foreground block mb-1">Sudac Žuti / meč</label>
+              <label className="text-[11px] text-muted-foreground block mb-1">
+                Sudac Žuti / meč
+              </label>
               <input
                 type="text"
                 value={customRefCards}
@@ -439,8 +455,8 @@ export function BttsAnomalySniperCard({
             Nema još analiziranih parova u Sniper registru.
           </p>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            Kliknite "Analiziraj" na bilo kojoj utakmici s liste ispod ili otvorite simulator kvota iznad.
-            Model automatski izolira lažne defenzivne serije i provjerava suca.
+            Kliknite "Analiziraj" na bilo kojoj utakmici s liste ispod ili otvorite simulator kvota
+            iznad. Model automatski izolira lažne defenzivne serije i provjerava suca.
           </p>
         </div>
       ) : (
@@ -504,14 +520,18 @@ export function BttsAnomalySniperCard({
                     <Zap className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="font-semibold text-foreground">Taktički sudar: </span>
-                      <span className="text-muted-foreground">{item.tacticalClash.description}</span>
+                      <span className="text-muted-foreground">
+                        {item.tacticalClash.description}
+                      </span>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <ShieldAlert className="h-3.5 w-3.5 text-blue-400 mt-0.5 shrink-0" />
                     <div>
                       <span className="font-semibold text-foreground">Sudac & Penali: </span>
-                      <span className="text-muted-foreground">{item.refereeImpact.description}</span>
+                      <span className="text-muted-foreground">
+                        {item.refereeImpact.description}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -530,7 +550,11 @@ export function BttsAnomalySniperCard({
                             : "bg-background/80 hover:bg-muted text-foreground border-border/60"
                       }`}
                     >
-                      {isO25InSlip ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                      {isO25InSlip ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
                       <span>Over 2.5:</span>
                       <span className="font-mono">{item.oddsCells.over25.odd.toFixed(2)}</span>
                       <span className="text-[10px] opacity-75">
@@ -551,7 +575,11 @@ export function BttsAnomalySniperCard({
                             : "bg-background/80 hover:bg-muted text-foreground border-border/60"
                       }`}
                     >
-                      {isBttsInSlip ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                      {isBttsInSlip ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
                       <span>BTTS GG:</span>
                       <span className="font-mono">{item.oddsCells.bttsYes.odd.toFixed(2)}</span>
                       <span className="text-[10px] opacity-75">

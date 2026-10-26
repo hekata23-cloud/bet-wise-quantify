@@ -14,7 +14,10 @@ export type RukometRate = {
 
 async function call(path: string, apiKey?: string) {
   const rate: RukometRate = { dayRemaining: -1, dayLimit: -1, minuteRemaining: -1, status: 0 };
-  const key = (apiKey?.trim() || process.env["API_FOOTBALL_KEY"]?.trim() || "").replace(/^["']|["']$/g, "");
+  const key = (apiKey?.trim() || process.env["API_FOOTBALL_KEY"]?.trim() || "").replace(
+    /^["']|["']$/g,
+    "",
+  );
   if (!key) return { error: "Nedostaje API ključ (Postavke).", data: null as any, rate };
 
   try {
@@ -28,10 +31,13 @@ async function call(path: string, apiKey?: string) {
     if (!res.ok) return { error: `API greška ${res.status}`, data: null, rate };
 
     const json = (await res.json()) as { errors?: any; response?: any };
-    const n = json.errors && (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length);
+    const n =
+      json.errors &&
+      (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length);
     if (n) {
       const txt = JSON.stringify(json.errors);
-      if (/rate ?limit|too many|requests/i.test(txt)) return { error: "RATE_LIMIT", data: null, rate };
+      if (/rate ?limit|too many|requests/i.test(txt))
+        return { error: "RATE_LIMIT", data: null, rate };
       if (/suspend|token|key/i.test(txt)) return { error: `ACCOUNT: ${txt}`, data: null, rate };
       return { error: txt, data: null, rate };
     }
@@ -53,10 +59,15 @@ export type RukometGame = {
 
 export const getRukometGames = createServerFn({ method: "POST" })
   .validator((d: { date: string; apiKey?: string }) =>
-    z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), apiKey: z.string().optional() }).parse(d)
+    z
+      .object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), apiKey: z.string().optional() })
+      .parse(d),
   )
   .handler(async ({ data }) => {
-    const r = await call(`/games?date=${data.date}&timezone=${encodeURIComponent(TZ)}`, data.apiKey);
+    const r = await call(
+      `/games?date=${data.date}&timezone=${encodeURIComponent(TZ)}`,
+      data.apiKey,
+    );
     const games: RukometGame[] = ((r.data as any[]) ?? []).map((g) => ({
       id: Number(g.id),
       time: String(g.date || g.time || ""),
@@ -80,7 +91,7 @@ export type RukometMarkets = Record<string, Record<string, number>>;
  */
 export const getRukometOdds = createServerFn({ method: "POST" })
   .validator((d: { id: number; apiKey?: string }) =>
-    z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d)
+    z.object({ id: z.number().int().positive(), apiKey: z.string().optional() }).parse(d),
   )
   .handler(async ({ data }) => {
     const r = await call(`/odds?game=${data.id}`, data.apiKey);
@@ -109,7 +120,12 @@ export const getRukometOdds = createServerFn({ method: "POST" })
     });
 
     const primaryBook = b365 ?? sorted[0];
-    const isBet365 = Boolean(b365 && (primaryBook === b365 || Number(primaryBook?.id) === 8 || /bet ?365/i.test(String(primaryBook?.name || ""))));
+    const isBet365 = Boolean(
+      b365 &&
+      (primaryBook === b365 ||
+        Number(primaryBook?.id) === 8 ||
+        /bet ?365/i.test(String(primaryBook?.name || ""))),
+    );
 
     const markets: RukometMarkets = {};
 
@@ -142,9 +158,12 @@ export const getRukometOdds = createServerFn({ method: "POST" })
       }
     }
 
-    const bookmakerName = isBet365 ? "Bet365" : (primaryBook?.name ? String(primaryBook.name) : null);
+    const bookmakerName = isBet365 ? "Bet365" : primaryBook?.name ? String(primaryBook.name) : null;
     const error =
-      r.error ?? (Object.keys(markets).length ? null : "Kladionice još nisu objavile kvote za ovu rukometnu utakmicu.");
+      r.error ??
+      (Object.keys(markets).length
+        ? null
+        : "Kladionice još nisu objavile kvote za ovu rukometnu utakmicu.");
 
     return {
       error,
@@ -155,4 +174,3 @@ export const getRukometOdds = createServerFn({ method: "POST" })
       brojKladionica: knjigeSKvotama,
     };
   });
-

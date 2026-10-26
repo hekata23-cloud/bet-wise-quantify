@@ -166,12 +166,22 @@ function Index() {
           </div>
 
           <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
-            Tvoj <span style={{ background: "var(--gradient-primary)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Andromeda AI</span> Centar za Predikcije
+            Tvoj{" "}
+            <span
+              style={{
+                background: "var(--gradient-primary)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Andromeda AI
+            </span>{" "}
+            Centar za Predikcije
           </h1>
 
           <p className="mt-3 text-muted-foreground text-base sm:text-lg">
-            Matematički modeli, Poissonova razdioba, praćenje pada kvota i Sharp filteri
-            za precizne i matematički isplative oklade.
+            Matematički modeli, Poissonova razdioba, praćenje pada kvota i Sharp filteri za precizne
+            i matematički isplative oklade.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -212,9 +222,12 @@ function Index() {
               <Zap className="h-4 w-4 text-amber-500" />
               Brzi Analizator Isplativosti
             </div>
-            <h2 className="text-xl md:text-2xl font-bold mt-1">Ekspresni Value Bet & Kelly Kalkulator</h2>
+            <h2 className="text-xl md:text-2xl font-bold mt-1">
+              Ekspresni Value Bet & Kelly Kalkulator
+            </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Unesi kvotu kladionice i procijenjenu vjerojatnost — odmah saznaj imaš li matematičku prednost (Edge).
+              Unesi kvotu kladionice i procijenjenu vjerojatnost — odmah saznaj imaš li matematičku
+              prednost (Edge).
             </p>
           </div>
           <Link
@@ -229,7 +242,10 @@ function Index() {
           {/* Polja za unos */}
           <div className="lg:col-span-5 grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label htmlFor={oddsInputId} className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <label
+                htmlFor={oddsInputId}
+                className="text-xs font-medium text-muted-foreground flex items-center gap-1"
+              >
                 <TrendingUp className="h-3.5 w-3.5 text-primary" /> Ponuđena Kvota
               </label>
               <input
@@ -245,7 +261,10 @@ function Index() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor={probInputId} className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <label
+                htmlFor={probInputId}
+                className="text-xs font-medium text-muted-foreground flex items-center gap-1"
+              >
                 <Percent className="h-3.5 w-3.5 text-primary" /> Vjerojatnost (%)
               </label>
               <input
@@ -264,7 +283,9 @@ function Index() {
           {/* Rezultati i indikatori */}
           <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="rounded-2xl border border-border/60 bg-background/60 p-3.5 text-center">
-              <div className="text-[11px] font-medium text-muted-foreground">Prava Kvota (Fair)</div>
+              <div className="text-[11px] font-medium text-muted-foreground">
+                Prava Kvota (Fair)
+              </div>
               <div className="text-xl font-bold tabular-nums mt-1">{fairOdds}</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">bez marže</div>
             </div>
@@ -350,7 +371,8 @@ function Index() {
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{c.desc}</p>
                 <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Otvori modul <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  Otvori modul{" "}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </div>
               </Link>
             );
@@ -361,7 +383,9 @@ function Index() {
       {/* SEKCIJA 2: AI Asistenti i Pregled */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight">AI Mozak & Provjera Uživo</h2>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">
+            AI Mozak & Provjera Uživo
+          </h2>
           <p className="text-sm text-muted-foreground">
             Interaktivni AI pomoćnici, ručni unos xG metrike i utakmice uživo.
           </p>
@@ -386,7 +410,8 @@ function Index() {
                 <h3 className="text-base font-semibold">{c.title}</h3>
                 <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{c.desc}</p>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs text-primary font-medium">
-                  Pokreni <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  Pokreni{" "}
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                 </div>
               </Link>
             );
@@ -411,4 +436,3 @@ function StatusChip({ label, ok }: { label: string; ok: boolean }) {
     </span>
   );
 }
-

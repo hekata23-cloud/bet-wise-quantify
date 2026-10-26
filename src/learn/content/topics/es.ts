@@ -559,7 +559,8 @@ export const ES_TOPICS: Topic[] = [
         prompt: "Si ___ más tiempo, haría el curso.",
         options: ["tuviera", "tengo", "tendré", "teniendo"],
         answer: "tuviera",
-        explanation: "The second conditional uses 'si' + imperfect subjunctive ('tuviera') with the conditional 'haría'.",
+        explanation:
+          "The second conditional uses 'si' + imperfect subjunctive ('tuviera') with the conditional 'haría'.",
       },
       {
         id: "es-b1-work-g2",
@@ -573,7 +574,8 @@ export const ES_TOPICS: Topic[] = [
         prompt: "Todavía no ___ entregado el informe.",
         options: ["he", "soy", "estoy", "tengo"],
         answer: "he",
-        explanation: "The present perfect is formed with 'haber' + past participle, here 'he entregado'.",
+        explanation:
+          "The present perfect is formed with 'haber' + past participle, here 'he entregado'.",
       },
     ],
     listening: {

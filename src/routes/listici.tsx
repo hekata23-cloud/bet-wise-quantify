@@ -15,17 +15,41 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  CheckCircle2, Copy, Layers, RefreshCw, Ticket, Trash2,
-  TrendingUp, XCircle, MinusCircle,
+  CheckCircle2,
+  Copy,
+  Layers,
+  RefreshCw,
+  Ticket,
+  Trash2,
+  TrendingUp,
+  XCircle,
+  MinusCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  ucitajListice, spremiListic, statistikaListica, statusTiketa, ukupnaKvotaTiketa,
-  isplataTiketa, evaluateLegOutcome, pogodiFiksaturu, azurirajListic,
-  postaviNoguIshod, brisiListic, noviDobitniTiketi, jeVoidStatus,
-  type Tiket, type TiketNoga, type Sport,
+  ucitajListice,
+  spremiListic,
+  statistikaListica,
+  statusTiketa,
+  ukupnaKvotaTiketa,
+  isplataTiketa,
+  evaluateLegOutcome,
+  pogodiFiksaturu,
+  azurirajListic,
+  postaviNoguIshod,
+  brisiListic,
+  noviDobitniTiketi,
+  jeVoidStatus,
+  type Tiket,
+  type TiketNoga,
+  type Sport,
 } from "@/lib/listici";
-import { getStatusUtakmice, getFiksatureDana, type KandidatFiksatura, type StatusUtakmice } from "@/lib/listici.functions";
+import {
+  getStatusUtakmice,
+  getFiksatureDana,
+  type KandidatFiksatura,
+  type StatusUtakmice,
+} from "@/lib/listici.functions";
 import { getApiKey } from "@/lib/zlatni-guard";
 import { EfektiSwitch, pokreniKonfete, svirajDobitak } from "@/components/DobitakEfekti";
 import { kreditirajVirtualniTiket } from "@/lib/virtualna";
@@ -111,13 +135,24 @@ function StatusBadge({ status }: { status: Tiket["noge"][number]["status"] | str
   }
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/20 px-3 py-0.5 text-[11px] font-black tracking-wide text-sky-300">
-      <RefreshCw className="h-3 w-3 animate-spin text-sky-400" style={{ animationDuration: "3s" }} />
+      <RefreshCw
+        className="h-3 w-3 animate-spin text-sky-400"
+        style={{ animationDuration: "3s" }}
+      />
       U TIJEKU
     </span>
   );
 }
 
-function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod: "dobitna" | "izgubljena" | "void" | "cekaj") => void }) {
+function LegRow({
+  t,
+  noga,
+  naNogu,
+}: {
+  t: Tiket;
+  noga: TiketNoga;
+  naNogu: (ishod: "dobitna" | "izgubljena" | "void" | "cekaj") => void;
+}) {
   const voidNoga = noga.status === "void";
   const isDobitna = noga.status === "dobitna";
   const isIzgubljena = noga.status === "izgubljena";
@@ -132,15 +167,15 @@ function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod
         : "border-border/40 bg-card/40 hover:border-border/70";
 
   return (
-    <li className={`flex flex-col gap-2 rounded-xl border p-3 text-xs transition-colors ${legTone}`}>
+    <li
+      className={`flex flex-col gap-2 rounded-xl border p-3 text-xs transition-colors ${legTone}`}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="shrink-0 rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-bold uppercase text-primary border border-primary/25">
             {noga.sport}
           </span>
-          <span className="truncate text-sm font-semibold text-foreground">
-            {noga.utakmica}
-          </span>
+          <span className="truncate text-sm font-semibold text-foreground">{noga.utakmica}</span>
         </div>
 
         {/* Jasna oznaka za svaki par: Zelena kvačica (POGOĐENO) ili Crveni iksić (PROMAŠENO) */}
@@ -165,7 +200,10 @@ function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod
           )}
           {isCekaj && (
             <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-300">
-              <RefreshCw className="h-3 w-3 animate-spin text-sky-400" style={{ animationDuration: "3s" }} />
+              <RefreshCw
+                className="h-3 w-3 animate-spin text-sky-400"
+                style={{ animationDuration: "3s" }}
+              />
               Čeka rezultat…
             </span>
           )}
@@ -180,7 +218,9 @@ function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod
           </span>
           {noga.liga && <span className="text-[11px] text-muted-foreground">({noga.liga})</span>}
           {noga.napomena && (
-            <span className={`text-[11px] font-medium ${isDobitna ? "text-emerald-300" : isIzgubljena ? "text-red-300" : "text-muted-foreground"}`}>
+            <span
+              className={`text-[11px] font-medium ${isDobitna ? "text-emerald-300" : isIzgubljena ? "text-red-300" : "text-muted-foreground"}`}
+            >
               · {noga.napomena}
             </span>
           )}
@@ -189,7 +229,9 @@ function LegRow({ t, noga, naNogu }: { t: Tiket; noga: TiketNoga; naNogu: (ishod
         <div className="flex items-center gap-3 ml-auto">
           <div className="flex items-center gap-1 font-mono">
             <span className="text-[10px] uppercase text-muted-foreground">Kvota:</span>
-            <span className={`text-sm font-extrabold ${voidNoga ? "line-through text-slate-500" : isDobitna ? "text-emerald-400" : isIzgubljena ? "text-red-400" : "text-foreground"}`}>
+            <span
+              className={`text-sm font-extrabold ${voidNoga ? "line-through text-slate-500" : isDobitna ? "text-emerald-400" : isIzgubljena ? "text-red-400" : "text-foreground"}`}
+            >
               {noga.kvota.toFixed(2)}
             </span>
             {voidNoga && <span className="text-xs font-bold text-slate-300 font-mono">→ 1.00</span>}
@@ -248,7 +290,9 @@ function ListiciPage() {
   const provjeraAktivna = useRef(false);
 
   const osvjezi = useCallback(() => setTiketi(ucitajListice()), []);
-  useEffect(() => { osvjezi(); }, [osvjezi]);
+  useEffect(() => {
+    osvjezi();
+  }, [osvjezi]);
 
   // Konfeta + zvuk na novodobitnim listićima pri otvaranju stranice
   useEffect(() => {
@@ -256,7 +300,10 @@ function ListiciPage() {
     prvoUcitano.current = true;
     const id = setTimeout(() => {
       const novi = noviDobitniTiketi(ucitajListice());
-      if (novi.length) { pokreniKonfete(); svirajDobitak(); }
+      if (novi.length) {
+        pokreniKonfete();
+        svirajDobitak();
+      }
     }, 700);
     return () => clearTimeout(id);
   }, []);
@@ -327,7 +374,12 @@ function ListiciPage() {
                 danKes.set(ck, kandidati);
               }
               const id = pogodiFiksaturu(n.utakmica, kandidati);
-              if (id != null) { fid = id; n.fixtureId = id; promijenjen = true; break; }
+              if (id != null) {
+                fid = id;
+                n.fixtureId = id;
+                promijenjen = true;
+                break;
+              }
             }
           }
           if (fid == null) continue;
@@ -346,7 +398,8 @@ function ListiciPage() {
           if (r.error || (!r.zavrsena && !jeVoidStatus(r.status))) continue;
           const ishod = evaluateLegOutcome(n.trziste, n.tip, r, n.sport);
           if (ishod === "nepoznato") continue;
-          n.status = ishod === "dobitna" ? "dobitna" : ishod === "izgubljena" ? "izgubljena" : "void";
+          n.status =
+            ishod === "dobitna" ? "dobitna" : ishod === "izgubljena" ? "izgubljena" : "void";
           poravnateNoge++;
           n.napomena = jeVoidStatus(r.status)
             ? `${r.status} — odgođeno/otkazano, kvota 1.00`
@@ -357,7 +410,9 @@ function ListiciPage() {
         }
         if (promijenjen) azurirajListic(t);
       }
-    } catch { /* mreža — javi ispod */ }
+    } catch {
+      /* mreža — javi ispod */
+    }
     kreditirajVirtualne();
     osvjezi();
     const novi = noviDobitniTiketi(ucitajListice());
@@ -366,7 +421,11 @@ function ListiciPage() {
       svirajDobitak();
       toast.success(`${novi.length} novi dobitan listić! 🎉`);
     }
-    try { sessionStorage.setItem(AUTO_KES, String(Date.now())); } catch { /* bez session storagea */ }
+    try {
+      sessionStorage.setItem(AUTO_KES, String(Date.now()));
+    } catch {
+      /* bez session storagea */
+    }
     if (accountStop && !apiKey) {
       setStatus("Unesi API-Sports ključ u Postavkama (⚙️) — provjera rezultata ga treba.");
       setSettings(true);
@@ -380,7 +439,9 @@ function ListiciPage() {
       );
     }
     if (poravnateNoge > 0) {
-      toast.success(`Provjera završena: poravnato ${poravnateNoge} nog${poravnateNoge === 1 ? "a" : "u"}.`);
+      toast.success(
+        `Provjera završena: poravnato ${poravnateNoge} nog${poravnateNoge === 1 ? "a" : "u"}.`,
+      );
     }
     setProveravam(false);
     provjeraAktivna.current = false;
@@ -426,7 +487,11 @@ function ListiciPage() {
     }
   }
 
-  function naNogu(tiketId: string, nogaId: string, ishod: "dobitna" | "izgubljena" | "void" | "cekaj") {
+  function naNogu(
+    tiketId: string,
+    nogaId: string,
+    ishod: "dobitna" | "izgubljena" | "void" | "cekaj",
+  ) {
     if (ishod === "cekaj") {
       const svi = ucitajListice();
       const t = svi.find((x) => x.id === tiketId);
@@ -438,7 +503,12 @@ function ListiciPage() {
       }
     } else {
       const ishodNoge = ishod === "void" ? "povrat" : ishod;
-      postaviNoguIshod(tiketId, nogaId, ishodNoge, ishod === "void" ? "Ručno void — kvota 1.00" : "Ručno ✓/✗");
+      postaviNoguIshod(
+        tiketId,
+        nogaId,
+        ishodNoge,
+        ishod === "void" ? "Ručno void — kvota 1.00" : "Ručno ✓/✗",
+      );
     }
     kreditirajVirtualne();
     osvjezi();
@@ -450,7 +520,10 @@ function ListiciPage() {
     <div className="mx-auto max-w-3xl space-y-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--gradient-primary)" }}>
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ background: "var(--gradient-primary)" }}
+          >
             <Ticket className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
@@ -469,12 +542,25 @@ function ListiciPage() {
           <TrendingUp className="h-4 w-4 text-emerald-400" /> Analitika virtualnog igrača
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatKarta label="Ukupan ROI" vrednost={`${stat.roi >= 0 ? "+" : ""}${stat.roi.toFixed(1)}%`} dobro={stat.roi >= 0} />
-          <StatKarta label="Win Rate" vrednost={`${stat.winRate.toFixed(1)}%`} pod={`${stat.dobitni}/${stat.odigrani} listića`} dobro={stat.winRate >= 50} />
+          <StatKarta
+            label="Ukupan ROI"
+            vrednost={`${stat.roi >= 0 ? "+" : ""}${stat.roi.toFixed(1)}%`}
+            dobro={stat.roi >= 0}
+          />
+          <StatKarta
+            label="Win Rate"
+            vrednost={`${stat.winRate.toFixed(1)}%`}
+            pod={`${stat.dobitni}/${stat.odigrani} listića`}
+            dobro={stat.winRate >= 50}
+          />
           <StatKarta
             label="Najjači sport"
             vrednost={stat.najjaciSport ?? "—"}
-            pod={stat.najjaciSport ? `${stat.najjaciSportProfit >= 0 ? "+" : ""}${nov(stat.najjaciSportProfit)}` : "bez podataka"}
+            pod={
+              stat.najjaciSport
+                ? `${stat.najjaciSportProfit >= 0 ? "+" : ""}${nov(stat.najjaciSportProfit)}`
+                : "bez podataka"
+            }
             dobro={stat.najjaciSportProfit > 0}
           />
           <StatKarta
@@ -490,7 +576,8 @@ function ListiciPage() {
           <span>Dobitak {nov(stat.ukupanDobitak)}</span>
           <span>·</span>
           <span className={stat.profit >= 0 ? "text-emerald-400" : "text-red-400"}>
-            Profit {stat.profit >= 0 ? "+" : ""}{nov(stat.profit)}
+            Profit {stat.profit >= 0 ? "+" : ""}
+            {nov(stat.profit)}
           </span>
           <button
             onClick={podijeliStatistiku}
@@ -514,7 +601,8 @@ function ListiciPage() {
           </button>
           {imaAktivnih && !provjeram && (
             <span className="text-xs text-muted-foreground">
-              Aktivni listići čekaju poravnanje — void noge (PST/CANC/ABD) automatski dobivaju kvotu 1.00.
+              Aktivni listići čekaju poravnanje — void noge (PST/CANC/ABD) automatski dobivaju kvotu
+              1.00.
             </span>
           )}
           {status && <span className="text-xs text-muted-foreground">{status}</span>}
@@ -544,7 +632,7 @@ function ListiciPage() {
                     liga: "Premier League",
                     trziste: "O/U 2.5",
                     tip: "Over 2.5",
-                    kvota: 1.80,
+                    kvota: 1.8,
                     vjerojatnost: 0.62,
                     status: "dobitna",
                     napomena: "Završeno 3:1 (Pogođeno ✓)",
@@ -583,7 +671,7 @@ function ListiciPage() {
                     liga: "Euroliga",
                     trziste: "Moneyline",
                     tip: "1",
-                    kvota: 1.90,
+                    kvota: 1.9,
                     vjerojatnost: 0.55,
                     status: "izgubljena",
                     napomena: "Završeno 78:82 (Promašeno ✗)",
@@ -605,8 +693,8 @@ function ListiciPage() {
       {/* LISTIĆI */}
       {tiketi.length === 0 ? (
         <div className="rounded-2xl border border-border/60 bg-card/40 px-4 py-10 text-center text-sm text-muted-foreground">
-          Još nema listića. Sastavi tiket u <b className="text-emerald-400">Korpi</b>, unesi ulog i klikni
-          "Odigraj" — listić se sprema ovdje i prati mu se isplata.
+          Još nema listića. Sastavi tiket u <b className="text-emerald-400">Korpi</b>, unesi ulog i
+          klikni "Odigraj" — listić se sprema ovdje i prati mu se isplata.
         </div>
       ) : (
         <div className="space-y-4">
@@ -629,11 +717,16 @@ function ListiciPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={st} />
                     <span className="text-xs text-muted-foreground">
-                      {new Date(t.datum).toLocaleDateString("hr-HR")} · {t.noge.length} {t.noge.length === 1 ? "par" : "para"}
+                      {new Date(t.datum).toLocaleDateString("hr-HR")} · {t.noge.length}{" "}
+                      {t.noge.length === 1 ? "par" : "para"}
                     </span>
                   </div>
                   <button
-                    onClick={() => { brisiListic(t.id); osvjezi(); toast.success("Listić obrisan"); }}
+                    onClick={() => {
+                      brisiListic(t.id);
+                      osvjezi();
+                      toast.success("Listić obrisan");
+                    }}
                     className="rounded p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-400"
                     title="Obriši listić"
                     aria-label="Obriši listić"
@@ -645,7 +738,12 @@ function ListiciPage() {
                 {/* Popis parova sa zelenim kvačicama i crvenim iksićima */}
                 <ul className="space-y-2 mt-3">
                   {t.noge.map((n) => (
-                    <LegRow key={n.id} t={t} noga={n} naNogu={(ishod) => naNogu(t.id, n.id, ishod)} />
+                    <LegRow
+                      key={n.id}
+                      t={t}
+                      noga={n}
+                      naNogu={(ishod) => naNogu(t.id, n.id, ishod)}
+                    />
                   ))}
                 </ul>
 
@@ -666,8 +764,12 @@ function ListiciPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-400/70">Ukupna Isplata</div>
-                      <div className="text-xl font-black font-mono text-emerald-300">{nov(isplata)} 🎉</div>
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-400/70">
+                        Ukupna Isplata
+                      </div>
+                      <div className="text-xl font-black font-mono text-emerald-300">
+                        {nov(isplata)} 🎉
+                      </div>
                     </div>
                   </div>
                 )}
@@ -688,7 +790,9 @@ function ListiciPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] uppercase font-bold tracking-wider text-red-400/70">Izgubljen ulog</div>
+                      <div className="text-[10px] uppercase font-bold tracking-wider text-red-400/70">
+                        Izgubljen ulog
+                      </div>
                       <div className="text-lg font-bold font-mono text-red-400">-{nov(t.ulog)}</div>
                     </div>
                   </div>
@@ -707,7 +811,10 @@ function ListiciPage() {
                 {st === "aktivno" && (
                   <div className="mt-3.5 flex items-center justify-between rounded-xl border border-sky-500/30 bg-sky-950/20 px-3.5 py-2 text-sky-300 text-xs">
                     <div className="flex items-center gap-2 font-medium">
-                      <RefreshCw className="h-4 w-4 animate-spin text-sky-400" style={{ animationDuration: "3s" }} />
+                      <RefreshCw
+                        className="h-4 w-4 animate-spin text-sky-400"
+                        style={{ animationDuration: "3s" }}
+                      />
                       <span>LISTIĆ U TIJEKU — Čeka se završetak utakmica</span>
                     </div>
                     <div>
@@ -721,17 +828,26 @@ function ListiciPage() {
                   <span className="text-muted-foreground">
                     Ukupna kvota: <b className="font-mono text-foreground">{kvota.toFixed(2)}</b>
                   </span>
-                  <span className="text-muted-foreground">Ulog: <b className="font-mono text-foreground">{nov(t.ulog)}</b></span>
+                  <span className="text-muted-foreground">
+                    Ulog: <b className="font-mono text-foreground">{nov(t.ulog)}</b>
+                  </span>
                   {st === "aktivno" ? (
                     <span className="text-muted-foreground ml-auto">
-                      Potencijalna isplata: <b className="font-mono text-emerald-400 font-bold">{nov(t.ulog * kvota)}</b>
+                      Potencijalna isplata:{" "}
+                      <b className="font-mono text-emerald-400 font-bold">{nov(t.ulog * kvota)}</b>
                     </span>
                   ) : isDobitan ? (
-                    <span className="font-bold text-emerald-300 ml-auto">Dobitak: {nov(isplata)} 🎉</span>
+                    <span className="font-bold text-emerald-300 ml-auto">
+                      Dobitak: {nov(isplata)} 🎉
+                    </span>
                   ) : st === "povrat" ? (
-                    <span className="font-semibold text-slate-300 ml-auto">Povrat: {nov(isplata)}</span>
+                    <span className="font-semibold text-slate-300 ml-auto">
+                      Povrat: {nov(isplata)}
+                    </span>
                   ) : (
-                    <span className="font-semibold text-red-400 ml-auto">Gubitak: {nov(t.ulog)}</span>
+                    <span className="font-semibold text-red-400 ml-auto">
+                      Gubitak: {nov(t.ulog)}
+                    </span>
                   )}
                 </div>
               </article>
@@ -741,9 +857,9 @@ function ListiciPage() {
       )}
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Layers className="h-3.5 w-3.5" /> Noge bez API identifikatora poravnaj ručno (✓/✗/⚪). Košarka:
-        1X2 i Spread na regularno vrijeme, Moneyline i Total uklj. produžetak. Rukomet: sve na 60 min.
-        Nogomet: sve na 90 min + nadoknada.
+        <Layers className="h-3.5 w-3.5" /> Noge bez API identifikatora poravnaj ručno (✓/✗/⚪).
+        Košarka: 1X2 i Spread na regularno vrijeme, Moneyline i Total uklj. produžetak. Rukomet: sve
+        na 60 min. Nogomet: sve na 90 min + nadoknada.
       </p>
 
       <SettingsModal open={settings} onClose={() => setSettings(false)} />
@@ -751,11 +867,25 @@ function ListiciPage() {
   );
 }
 
-function StatKarta({ label, vrednost, pod, dobro }: { label: string; vrednost: string; pod?: string; dobro?: boolean }) {
+function StatKarta({
+  label,
+  vrednost,
+  pod,
+  dobro,
+}: {
+  label: string;
+  vrednost: string;
+  pod?: string;
+  dobro?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-border/50 bg-background/40 p-3 text-center">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`text-lg font-bold ${dobro === true ? "text-emerald-400" : dobro === false ? "text-red-400" : "text-foreground"}`}>
+      <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={`text-lg font-bold ${dobro === true ? "text-emerald-400" : dobro === false ? "text-red-400" : "text-foreground"}`}
+      >
         {vrednost}
       </div>
       {pod && <div className="text-[10px] text-muted-foreground">{pod}</div>}

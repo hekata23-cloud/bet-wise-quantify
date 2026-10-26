@@ -9,7 +9,9 @@ describe("Dixon-Coles korekcija (accuracy)", () => {
     expect(dc.draw).toBeGreaterThan(ind.draw);
   });
   it("matrica je normalizirana na 1", () => {
-    const sum = scoreMatrix(1.5, 1.2).m.flat().reduce((a, b) => a + b, 0);
+    const sum = scoreMatrix(1.5, 1.2)
+      .m.flat()
+      .reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 9);
   });
 });

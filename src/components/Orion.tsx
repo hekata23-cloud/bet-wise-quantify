@@ -6,9 +6,19 @@ import { useEffect, useRef, useState } from "react";
 import { Send, ScanEye, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
-import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
+import {
+  ucitajKontekstMeca,
+  izgradiKontekstTekst,
+  ucitajKontekstTiketa,
+  izgradiTiketTekst,
+} from "@/lib/ai-context";
 import { loadJSON, saveJSON, hasKey } from "@/lib/storage";
-import { ORION_BRZI_UPITI, SPORT_PREDLOŠCI, formatOrionResponse, runQuantAnalytics } from "@/lib/botovi";
+import {
+  ORION_BRZI_UPITI,
+  SPORT_PREDLOŠCI,
+  formatOrionResponse,
+  runQuantAnalytics,
+} from "@/lib/botovi";
 
 const KEY = "andromeda.orion.history";
 
@@ -36,13 +46,23 @@ export function Orion() {
   useEffect(() => {
     const autoPitanje = () => {
       let q: string | null = null;
-      try { q = window.localStorage.getItem("pc.orion.pitanje"); } catch { q = null; }
+      try {
+        q = window.localStorage.getItem("pc.orion.pitanje");
+      } catch {
+        q = null;
+      }
       if (!q) return;
-      try { window.localStorage.removeItem("pc.orion.pitanje"); } catch { /* ignoriraj */ }
+      try {
+        window.localStorage.removeItem("pc.orion.pitanje");
+      } catch {
+        /* ignoriraj */
+      }
       setOpen(true);
       // Čitaj najnoviju funkciju slanja; efekt se registrira samo jednom i
       // njegova izvorna send funkcija inače bi zadržala zastarjele poruke.
-      setTimeout(() => { void sendRef.current(q!); }, 120);
+      setTimeout(() => {
+        void sendRef.current(q!);
+      }, 120);
     };
     autoPitanje();
     window.addEventListener("andromeda:orion-pitanje", autoPitanje);
@@ -51,7 +71,11 @@ export function Orion() {
 
   useEffect(() => {
     // Stari zapisi "Prazan odgovor" (iz pokvarene verzije) se ne učitavaju.
-    setMessages(loadJSON<ChatTurn[]>(KEY, []).filter((t) => t.content?.trim() && !/^prazan odgovor$/i.test(t.content.trim())));
+    setMessages(
+      loadJSON<ChatTurn[]>(KEY, []).filter(
+        (t) => t.content?.trim() && !/^prazan odgovor$/i.test(t.content.trim()),
+      ),
+    );
   }, []);
   useEffect(() => {
     saveJSON(KEY, messages.slice(-40));
@@ -66,8 +90,11 @@ export function Orion() {
     if (!poruka || sendingRef.current) return;
     // Orion radi hibridno: ako ima API ključ koristi AI + matematiku, a ako nema koristi lokalni kvantitativni engine
     const hasAnyKey =
-      hasKey("gemini") || hasKey("groq") || hasKey("openrouter") ||
-      hasKey("nvidia") || hasKey("huggingface");
+      hasKey("gemini") ||
+      hasKey("groq") ||
+      hasKey("openrouter") ||
+      hasKey("nvidia") ||
+      hasKey("huggingface");
     if (!hasAnyKey && messages.length === 0) {
       toast.info("Orion: Kvantitativni matematički engine aktivan (Dixon-Coles & Monte Carlo).");
     }
@@ -85,18 +112,24 @@ export function Orion() {
       const blok = kontekst ? `\n\n${izgradiKontekstTekst(kontekst)}` : "";
       const blokTiket = tiket ? `\n\n${izgradiTiketTekst(tiket)}` : "";
       const poslano = `${poruka}${blok}${blokTiket}`;
-      let odgovor = (await askAi(
-        poslano,
-        nova.slice(0, -1).filter((t) => t.content.trim()),
-        [],
-        { agent: "orion" },
-      )).trim();
+      let odgovor = (
+        await askAi(
+          poslano,
+          nova
+            .slice(0, -1)
+            .filter(
+              (t) => t.content && t.content.trim() && !/^prazan odgovor$/i.test(t.content.trim()),
+            ),
+          [],
+          { agent: "orion" },
+        )
+      ).trim();
       if (!odgovor || /^prazan odgovor$/i.test(odgovor)) {
-        odgovor = formatOrionResponse(runQuantAnalytics(poruka));
+        odgovor = formatOrionResponse(runQuantAnalytics(poruka, mecNaziv));
       }
       setMessages((m) => [...m, { role: "assistant", content: odgovor, ts: Date.now() }]);
     } catch {
-      const fallback = formatOrionResponse(runQuantAnalytics(poruka));
+      const fallback = formatOrionResponse(runQuantAnalytics(poruka, mecNaziv));
       setMessages((m) => [...m, { role: "assistant", content: fallback, ts: Date.now() }]);
     } finally {
       sendingRef.current = false;
@@ -139,12 +172,21 @@ export function Orion() {
             </div>
             <div className="flex gap-1">
               <button
-                onClick={() => { setMessages([]); saveJSON(KEY, []); }}
-                className="rounded-lg p-1.5 hover:bg-muted/60" title="Novi razgovor" aria-label="Novi razgovor"
+                onClick={() => {
+                  setMessages([]);
+                  saveJSON(KEY, []);
+                }}
+                className="rounded-lg p-1.5 hover:bg-muted/60"
+                title="Novi razgovor"
+                aria-label="Novi razgovor"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-muted/60" aria-label="Zatvori">
+              <button
+                onClick={() => setOpen(false)}
+                className="rounded-lg p-1.5 hover:bg-muted/60"
+                aria-label="Zatvori"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -155,7 +197,8 @@ export function Orion() {
             {messages.length === 0 && (
               <div className="space-y-2 pt-2">
                 <p className="px-1 text-xs text-muted-foreground">
-                  Orion daje prvo <span className="font-semibold text-sky-400">tip + sigurnost % + edge</span>, pa
+                  Orion daje prvo{" "}
+                  <span className="font-semibold text-sky-400">tip + sigurnost % + edge</span>, pa
                   Poisson/Dixon-Coles, Monte Carlo, Kelly i entropiju. Bez čavrljanja.
                 </p>
                 {[...ORION_BRZI_UPITI, SPORT_PREDLOŠCI.kosarka.template].map((p) => (
@@ -170,7 +213,10 @@ export function Orion() {
               </div>
             )}
             {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={i}
+                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 <div
                   className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-xs leading-relaxed ${
                     m.role === "user"

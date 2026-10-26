@@ -24,7 +24,8 @@ type State = {
   blockedReason: string | null;
 };
 
-export const zagrebDay = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Zagreb" });
+export const zagrebDay = () =>
+  new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Zagreb" });
 
 export function readState(): State {
   const fresh: State = {
@@ -43,7 +44,7 @@ export function readState(): State {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null") as State | null;
     if (!s) return fresh;
     if (s.day !== zagrebDay()) return { ...fresh };
-    
+
     // Ukloni stare zaostale blokade duže od 30 sekundi
     const now = Date.now();
     if (s.cooldownUntil > now + 30_000) {
@@ -72,7 +73,10 @@ export function check(cost: number): { reason: string; waitMs: number } | null {
     return { reason: `Račun zaštićen: ${s.blockedReason}`, waitMs: 0 };
   }
   if (s.dayRemaining >= 0 && s.dayRemaining - cost < RESERVE) {
-    return { reason: `Preostalo ${s.dayRemaining} kredita — čuvam rezervu od ${RESERVE} kredita.`, waitMs: 0 };
+    return {
+      reason: `Preostalo ${s.dayRemaining} kredita — čuvam rezervu od ${RESERVE} kredita.`,
+      waitMs: 0,
+    };
   }
   if (s.cooldownUntil > now) {
     const wait = Math.min(s.cooldownUntil - now, 15_000);
@@ -90,7 +94,11 @@ export function check(cost: number): { reason: string; waitMs: number } | null {
   return null;
 }
 
-export function record(cost: number, rate: { dayRemaining: number; dayLimit: number; minuteRemaining: number }, error: string | null) {
+export function record(
+  cost: number,
+  rate: { dayRemaining: number; dayLimit: number; minuteRemaining: number },
+  error: string | null,
+) {
   const s = readState();
   const now = Date.now();
   s.used += cost;
@@ -150,17 +158,29 @@ export async function guarded<T extends { error: string | null; rate: any }>(
     const r = await fn();
     record(cost, r.rate, r.error);
     if (!r.error || /bet365/.test(r.error)) {
-      try { localStorage.setItem(ck, JSON.stringify(r)); } catch { pruneCache(); }
+      try {
+        localStorage.setItem(ck, JSON.stringify(r));
+      } catch {
+        pruneCache();
+      }
     }
     return r;
   })();
   inflight.set(ck, job);
-  try { return await job; } finally { inflight.delete(ck); }
+  try {
+    return await job;
+  } finally {
+    inflight.delete(ck);
+  }
 }
 
 /** Obriši jedan dnevni cache zapis (npr. utakmica još nema kvote — pokušaj kasnije ponovno). */
 export function zaboraviCache(cacheId: string) {
-  try { localStorage.removeItem(CACHE + zagrebDay() + "." + cacheId); } catch { /* */ }
+  try {
+    localStorage.removeItem(CACHE + zagrebDay() + "." + cacheId);
+  } catch {
+    /* */
+  }
 }
 
 export function resetGuard() {
@@ -194,7 +214,8 @@ export function getApiKey(): string | undefined {
   if (b) {
     try {
       const j = JSON.parse(b);
-      if (typeof j?.key === "string" && j.key.trim()) return j.key.trim().replace(/^["']|["']$/g, "");
+      if (typeof j?.key === "string" && j.key.trim())
+        return j.key.trim().replace(/^["']|["']$/g, "");
     } catch {
       if (b.trim()) return b.trim().replace(/^["']|["']$/g, "");
     }
@@ -205,7 +226,8 @@ export function getApiKey(): string | undefined {
   if (h) {
     try {
       const j = JSON.parse(h);
-      if (typeof j?.football === "string" && j.football.trim()) return j.football.trim().replace(/^["']|["']$/g, "");
+      if (typeof j?.football === "string" && j.football.trim())
+        return j.football.trim().replace(/^["']|["']$/g, "");
     } catch {}
   }
 

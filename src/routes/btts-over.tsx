@@ -108,14 +108,16 @@ export function BttsOverPage() {
         "fixtures",
         1,
         () => getZtFixtures({ data: { date: zagrebDay(), apiKey } }),
-        handleWait
+        handleWait,
       );
 
       if (res.error) {
-        setStatusMsg(`Greška: ${res.error === "RATE_LIMIT" ? "API limit — kratka pauza 15 s." : res.error}`);
+        setStatusMsg(
+          `Greška: ${res.error === "RATE_LIMIT" ? "API limit — kratka pauza 15 s." : res.error}`,
+        );
       } else {
         const playable = res.fixtures.filter((f) =>
-          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status)
+          ["NS", "TBD", "1H", "HT", "2H"].includes(f.status),
         );
         setFixtures(playable);
         setStatusMsg(`Učitano ${playable.length} utakmica. Kliknite "Analiziraj" za proračun.`);
@@ -146,14 +148,14 @@ export function BttsOverPage() {
         `lite.${f.id}`,
         1,
         () => getZtMatch({ data: { id: f.id, apiKey, lite: true } }),
-        handleWait
+        handleWait,
       );
 
       if (res.error === "RATE_LIMIT" || res.error?.startsWith("ACCOUNT")) {
         setStatusMsg(
           res.error === "RATE_LIMIT"
             ? "API traži kratku pauzu (10 poziva/min). Pričekajte 15 s i kliknite ponovno."
-            : res.error
+            : res.error,
         );
         return;
       }
@@ -168,7 +170,7 @@ export function BttsOverPage() {
         engineAnalysis,
         `${f.home} — ${f.away}`,
         f.league,
-        timeFormatted
+        timeFormatted,
       );
 
       const [hName, aName] = bttsOverData.match.split(" — ");
@@ -202,7 +204,7 @@ export function BttsOverPage() {
     }
   };
 
-    // Brzi simulator bez trošenja API poziva
+  // Brzi simulator bez trošenja API poziva
   const handleSimulateCustom = () => {
     const parsedHXg = parseFloat(simXgHome.replace(",", "."));
     const parsedAXg = parseFloat(simXgAway.replace(",", "."));
@@ -216,13 +218,13 @@ export function BttsOverPage() {
         "Under 2.5": 1.95,
       },
       "Both Teams to Score": {
-        "Yes": 1.75,
-        "No": 2.05,
+        Yes: 1.75,
+        No: 2.05,
       },
       "Match Winner": {
-        "Home": 1.95,
-        "Draw": 3.40,
-        "Away": 3.80,
+        Home: 1.95,
+        Draw: 3.4,
+        Away: 3.8,
       },
     };
 
@@ -234,7 +236,7 @@ export function BttsOverPage() {
       engineAnalysis,
       `${simHome} — ${simAway}`,
       "Ručna xG Simulacija",
-      "Danas"
+      "Danas",
     );
 
     setAnalysisResult(res);
@@ -261,22 +263,22 @@ export function BttsOverPage() {
       (f) =>
         f.home.toLowerCase().includes(q) ||
         f.away.toLowerCase().includes(q) ||
-        f.league.toLowerCase().includes(q)
+        f.league.toLowerCase().includes(q),
     );
   }, [fixtures, searchQuery]);
 
   // Dnevni Radar liste
   const topOverRockets = useMemo(
     () => [...analyzedList].sort((a, b) => b.over25Prob - a.over25Prob).slice(0, 5),
-    [analyzedList]
+    [analyzedList],
   );
   const topUnderBunkers = useMemo(
     () => [...analyzedList].sort((a, b) => b.under25Prob - a.under25Prob).slice(0, 5),
-    [analyzedList]
+    [analyzedList],
   );
   const topBttsLocks = useMemo(
     () => [...analyzedList].sort((a, b) => b.bttsYesProb - a.bttsYesProb).slice(0, 5),
-    [analyzedList]
+    [analyzedList],
   );
 
   // Prediction Integrity Gate — glavni tip Više/Manje 2.5
@@ -344,7 +346,7 @@ export function BttsOverPage() {
           bttsYes: r.bttsYesProb,
         }),
         market: c.label,
-      })
+      }),
     );
   }, [analysisResult]);
 
@@ -397,7 +399,9 @@ export function BttsOverPage() {
       {statusMsg && (
         <div className="rounded-xl border border-primary/20 bg-primary/10 p-3.5 text-sm text-foreground flex items-center justify-between">
           <span>{statusMsg}</span>
-          <span className="text-xs text-muted-foreground">Preostalo kredita: {guard.dayRemaining >= 0 ? guard.dayRemaining : "—"}</span>
+          <span className="text-xs text-muted-foreground">
+            Preostalo kredita: {guard.dayRemaining >= 0 ? guard.dayRemaining : "—"}
+          </span>
         </div>
       )}
 
@@ -409,9 +413,13 @@ export function BttsOverPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sliders className="h-4 w-4 text-primary" />
-            <h3 className="font-semibold text-sm">Ekspresni xG Simulator Golova (Bez trošenja API-ja)</h3>
+            <h3 className="font-semibold text-sm">
+              Ekspresni xG Simulator Golova (Bez trošenja API-ja)
+            </h3>
           </div>
-          <span className="text-[11px] text-muted-foreground">Trenutni proračun za bilo koji par</span>
+          <span className="text-[11px] text-muted-foreground">
+            Trenutni proračun za bilo koji par
+          </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
@@ -493,17 +501,27 @@ export function BttsOverPage() {
               </div>
               <div className="flex items-center gap-4 text-right">
                 <div className="bg-muted/40 rounded-xl p-2 px-3">
-                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">xG Domaći</div>
-                  <div className="font-mono font-bold text-base text-foreground">{analysisResult.lh.toFixed(2)}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    xG Domaći
+                  </div>
+                  <div className="font-mono font-bold text-base text-foreground">
+                    {analysisResult.lh.toFixed(2)}
+                  </div>
                 </div>
                 <div className="text-lg font-bold text-muted-foreground">:</div>
                 <div className="bg-muted/40 rounded-xl p-2 px-3">
-                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">xG Gosti</div>
-                  <div className="font-mono font-bold text-base text-foreground">{analysisResult.la.toFixed(2)}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">
+                    xG Gosti
+                  </div>
+                  <div className="font-mono font-bold text-base text-foreground">
+                    {analysisResult.la.toFixed(2)}
+                  </div>
                 </div>
                 <div className="bg-primary/10 border border-primary/20 rounded-xl p-2 px-3">
                   <div className="text-[10px] text-primary uppercase font-bold">Ukupni xG</div>
-                  <div className="font-mono font-extrabold text-base text-primary">{analysisResult.totalXg}</div>
+                  <div className="font-mono font-extrabold text-base text-primary">
+                    {analysisResult.totalXg}
+                  </div>
                 </div>
               </div>
             </div>
@@ -531,17 +549,29 @@ export function BttsOverPage() {
                   >
                     <div className="flex justify-between text-xs">
                       <span className="font-semibold">Više 2.5</span>
-                      <span className="font-mono font-bold">{(analysisResult.over25Prob * 100).toFixed(0)}%</span>
+                      <span className="font-mono font-bold">
+                        {(analysisResult.over25Prob * 100).toFixed(0)}%
+                      </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      Fer kvota: <span className="font-mono text-foreground font-semibold">{analysisResult.fairOver25}</span>
+                      Fer kvota:{" "}
+                      <span className="font-mono text-foreground font-semibold">
+                        {analysisResult.fairOver25}
+                      </span>
                     </div>
                     {analysisResult.bookieOver25 && (
                       <div className="text-[11px] text-muted-foreground flex justify-between mt-0.5">
                         <span>Kladionica: @{analysisResult.bookieOver25.toFixed(2)}</span>
                         {analysisResult.over25Ev !== undefined && (
-                          <span className={analysisResult.over25Ev > 0 ? "text-emerald-400 font-bold" : "text-muted-foreground"}>
-                            {analysisResult.over25Ev > 0 ? "+" : ""}{analysisResult.over25Ev}%
+                          <span
+                            className={
+                              analysisResult.over25Ev > 0
+                                ? "text-emerald-400 font-bold"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {analysisResult.over25Ev > 0 ? "+" : ""}
+                            {analysisResult.over25Ev}%
                           </span>
                         )}
                       </div>
@@ -557,17 +587,29 @@ export function BttsOverPage() {
                   >
                     <div className="flex justify-between text-xs">
                       <span className="font-semibold">Manje 2.5</span>
-                      <span className="font-mono font-bold">{(analysisResult.under25Prob * 100).toFixed(0)}%</span>
+                      <span className="font-mono font-bold">
+                        {(analysisResult.under25Prob * 100).toFixed(0)}%
+                      </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      Fer kvota: <span className="font-mono text-foreground font-semibold">{analysisResult.fairUnder25}</span>
+                      Fer kvota:{" "}
+                      <span className="font-mono text-foreground font-semibold">
+                        {analysisResult.fairUnder25}
+                      </span>
                     </div>
                     {analysisResult.bookieUnder25 && (
                       <div className="text-[11px] text-muted-foreground flex justify-between mt-0.5">
                         <span>Kladionica: @{analysisResult.bookieUnder25.toFixed(2)}</span>
                         {analysisResult.under25Ev !== undefined && (
-                          <span className={analysisResult.under25Ev > 0 ? "text-emerald-400 font-bold" : "text-muted-foreground"}>
-                            {analysisResult.under25Ev > 0 ? "+" : ""}{analysisResult.under25Ev}%
+                          <span
+                            className={
+                              analysisResult.under25Ev > 0
+                                ? "text-emerald-400 font-bold"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {analysisResult.under25Ev > 0 ? "+" : ""}
+                            {analysisResult.under25Ev}%
                           </span>
                         )}
                       </div>
@@ -575,7 +617,9 @@ export function BttsOverPage() {
                   </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground italic">{analysisResult.mainOverUnderTip.reasoning}</p>
+                <p className="text-xs text-muted-foreground italic">
+                  {analysisResult.mainOverUnderTip.reasoning}
+                </p>
                 <IntegrityPanel result={mainOuIntegrity} title="Integritet: Više/Manje 2.5" />
               </div>
 
@@ -586,7 +630,8 @@ export function BttsOverPage() {
                     <Sparkles className="h-4 w-4 text-amber-400" /> Tržište: Oba Daju Gol (BTTS)
                   </h3>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400">
-                    Preporuka: {analysisResult.mainBttsTip.pick.includes("GG") ? "GG (Da)" : "NG (Ne)"}
+                    Preporuka:{" "}
+                    {analysisResult.mainBttsTip.pick.includes("GG") ? "GG (Da)" : "NG (Ne)"}
                   </span>
                 </div>
 
@@ -600,17 +645,29 @@ export function BttsOverPage() {
                   >
                     <div className="flex justify-between text-xs">
                       <span className="font-semibold">GG (Oba daju)</span>
-                      <span className="font-mono font-bold">{(analysisResult.bttsYesProb * 100).toFixed(0)}%</span>
+                      <span className="font-mono font-bold">
+                        {(analysisResult.bttsYesProb * 100).toFixed(0)}%
+                      </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      Fer kvota: <span className="font-mono text-foreground font-semibold">{analysisResult.fairBttsYes}</span>
+                      Fer kvota:{" "}
+                      <span className="font-mono text-foreground font-semibold">
+                        {analysisResult.fairBttsYes}
+                      </span>
                     </div>
                     {analysisResult.bookieBttsYes && (
                       <div className="text-[11px] text-muted-foreground flex justify-between mt-0.5">
                         <span>Kladionica: @{analysisResult.bookieBttsYes.toFixed(2)}</span>
                         {analysisResult.bttsYesEv !== undefined && (
-                          <span className={analysisResult.bttsYesEv > 0 ? "text-emerald-400 font-bold" : "text-muted-foreground"}>
-                            {analysisResult.bttsYesEv > 0 ? "+" : ""}{analysisResult.bttsYesEv}%
+                          <span
+                            className={
+                              analysisResult.bttsYesEv > 0
+                                ? "text-emerald-400 font-bold"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {analysisResult.bttsYesEv > 0 ? "+" : ""}
+                            {analysisResult.bttsYesEv}%
                           </span>
                         )}
                       </div>
@@ -626,17 +683,29 @@ export function BttsOverPage() {
                   >
                     <div className="flex justify-between text-xs">
                       <span className="font-semibold">NG (Barem 1 ne daje)</span>
-                      <span className="font-mono font-bold">{(analysisResult.bttsNoProb * 100).toFixed(0)}%</span>
+                      <span className="font-mono font-bold">
+                        {(analysisResult.bttsNoProb * 100).toFixed(0)}%
+                      </span>
                     </div>
                     <div className="text-[11px] text-muted-foreground mt-1">
-                      Fer kvota: <span className="font-mono text-foreground font-semibold">{analysisResult.fairBttsNo}</span>
+                      Fer kvota:{" "}
+                      <span className="font-mono text-foreground font-semibold">
+                        {analysisResult.fairBttsNo}
+                      </span>
                     </div>
                     {analysisResult.bookieBttsNo && (
                       <div className="text-[11px] text-muted-foreground flex justify-between mt-0.5">
                         <span>Kladionica: @{analysisResult.bookieBttsNo.toFixed(2)}</span>
                         {analysisResult.bttsNoEv !== undefined && (
-                          <span className={analysisResult.bttsNoEv > 0 ? "text-emerald-400 font-bold" : "text-muted-foreground"}>
-                            {analysisResult.bttsNoEv > 0 ? "+" : ""}{analysisResult.bttsNoEv}%
+                          <span
+                            className={
+                              analysisResult.bttsNoEv > 0
+                                ? "text-emerald-400 font-bold"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {analysisResult.bttsNoEv > 0 ? "+" : ""}
+                            {analysisResult.bttsNoEv}%
                           </span>
                         )}
                       </div>
@@ -644,7 +713,9 @@ export function BttsOverPage() {
                   </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground italic">{analysisResult.mainBttsTip.reasoning}</p>
+                <p className="text-xs text-muted-foreground italic">
+                  {analysisResult.mainBttsTip.reasoning}
+                </p>
                 <IntegrityPanel result={mainBttsIntegrity} title="Integritet: GG/NG" />
               </div>
             </div>
@@ -654,7 +725,8 @@ export function BttsOverPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-bold flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-emerald-400" /> 1. Azijske Linije Golova (Asian Totals)
+                    <Layers className="h-4 w-4 text-emerald-400" /> 1. Azijske Linije Golova (Asian
+                    Totals)
                   </h4>
                   <p className="text-xs text-muted-foreground">
                     Profesionalna zaštita uloga: Azijski 2.0 vraća novac ako padnu točno 2 gola.
@@ -678,7 +750,9 @@ export function BttsOverPage() {
                     {analysisResult.asianLines.map((al) => (
                       <tr
                         key={al.line}
-                        className={al.isRecommended ? "bg-emerald-500/10 font-semibold" : "hover:bg-muted/20"}
+                        className={
+                          al.isRecommended ? "bg-emerald-500/10 font-semibold" : "hover:bg-muted/20"
+                        }
                       >
                         <td className="p-3 font-bold flex items-center gap-1.5">
                           {al.line}
@@ -733,14 +807,20 @@ export function BttsOverPage() {
                       className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/40 hover:border-amber-500/40 transition-colors"
                     >
                       <div className="min-w-0 pr-2">
-                        <div className="font-semibold text-xs text-foreground truncate">{c.label}</div>
+                        <div className="font-semibold text-xs text-foreground truncate">
+                          {c.label}
+                        </div>
                         <div className="text-[10px] text-muted-foreground">{c.tag}</div>
                       </div>
                       <div className="text-right shrink-0 flex items-center gap-2">
                         <IntegrityPanel result={comboIntegrities[ci]} compact />
                         <div>
-                          <div className="text-xs font-mono font-bold text-amber-400">@ {c.fairOdd.toFixed(2)}</div>
-                          <div className="text-[10px] text-muted-foreground font-mono">{(c.prob * 100).toFixed(1)}% šanse</div>
+                          <div className="text-xs font-mono font-bold text-amber-400">
+                            @ {c.fairOdd.toFixed(2)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono">
+                            {(c.prob * 100).toFixed(1)}% šanse
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -756,42 +836,61 @@ export function BttsOverPage() {
                       <Clock className="h-4 w-4 text-primary" /> 3. Dinamika 1. Poluvremena (1H)
                     </h4>
                     <p className="text-[11px] text-muted-foreground">
-                      Očekivani golovi u prvih 45 min: <strong className="text-foreground">{analysisResult.firstHalf.lambda1H}</strong>
+                      Očekivani golovi u prvih 45 min:{" "}
+                      <strong className="text-foreground">
+                        {analysisResult.firstHalf.lambda1H}
+                      </strong>
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5 pt-1">
                   <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <div className="text-[11px] text-muted-foreground">1. poluvrijeme Više 0.5 (I1+)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      1. poluvrijeme Više 0.5 (I1+)
+                    </div>
                     <div className="text-lg font-bold font-mono text-primary mt-1">
                       {(analysisResult.firstHalf.over05Prob * 100).toFixed(0)}%
                     </div>
-                    <div className="text-[10px] text-muted-foreground">Fer kvota: @{analysisResult.firstHalf.fairOver05}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Fer kvota: @{analysisResult.firstHalf.fairOver05}
+                    </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <div className="text-[11px] text-muted-foreground">1. poluvrijeme Više 1.5 (I2+)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      1. poluvrijeme Više 1.5 (I2+)
+                    </div>
                     <div className="text-lg font-bold font-mono text-foreground mt-1">
                       {(analysisResult.firstHalf.over15Prob * 100).toFixed(0)}%
                     </div>
-                    <div className="text-[10px] text-muted-foreground">Fer kvota: @{analysisResult.firstHalf.fairOver15}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Fer kvota: @{analysisResult.firstHalf.fairOver15}
+                    </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <div className="text-[11px] text-muted-foreground">Točno 1 ili 2 gola u 1H (I1-2)</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Točno 1 ili 2 gola u 1H (I1-2)
+                    </div>
                     <div className="text-lg font-bold font-mono text-foreground mt-1">
                       {(analysisResult.firstHalf.oneToTwoGoalsProb * 100).toFixed(0)}%
                     </div>
-                    <div className="text-[10px] text-muted-foreground">Fer kvota: @{analysisResult.firstHalf.fairOneToTwo}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Fer kvota: @{analysisResult.firstHalf.fairOneToTwo}
+                    </div>
                   </div>
 
                   <div className="p-3 rounded-xl bg-muted/30 border border-border/40">
-                    <div className="text-[11px] text-muted-foreground">Više golova u 2. poluvremenu</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Više golova u 2. poluvremenu
+                    </div>
                     <div className="text-lg font-bold font-mono text-emerald-400 mt-1">
                       {(analysisResult.firstHalf.moreGoals2HProb * 100).toFixed(0)}%
                     </div>
-                    <div className="text-[10px] text-muted-foreground">Fer kvota: @{analysisResult.firstHalf.fairMoreGoals2H}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Fer kvota: @{analysisResult.firstHalf.fairMoreGoals2H}
+                    </div>
                   </div>
                 </div>
 
@@ -799,7 +898,10 @@ export function BttsOverPage() {
                   <ShieldCheck className="h-4 w-4 shrink-0" />
                   <span>
                     Šansa da 1. poluvrijeme završi 0:0 je samo{" "}
-                    <strong>{(analysisResult.firstHalf.firstHalfCleanSheetProb * 100).toFixed(0)}%</strong>.
+                    <strong>
+                      {(analysisResult.firstHalf.firstHalfCleanSheetProb * 100).toFixed(0)}%
+                    </strong>
+                    .
                   </span>
                 </div>
               </div>
@@ -812,27 +914,51 @@ export function BttsOverPage() {
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div className="rounded-xl bg-card border border-border/50 p-3 space-y-1">
-                  <div className="text-[11px] font-semibold text-primary">{analysisResult.quadrants.ggAndOver.label}</div>
-                  <div className="text-lg font-bold font-mono">{(analysisResult.quadrants.ggAndOver.prob * 100).toFixed(1)}%</div>
-                  <div className="text-[10px] text-muted-foreground">Fer kvota: {(1 / analysisResult.quadrants.ggAndOver.prob).toFixed(2)}</div>
+                  <div className="text-[11px] font-semibold text-primary">
+                    {analysisResult.quadrants.ggAndOver.label}
+                  </div>
+                  <div className="text-lg font-bold font-mono">
+                    {(analysisResult.quadrants.ggAndOver.prob * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Fer kvota: {(1 / analysisResult.quadrants.ggAndOver.prob).toFixed(2)}
+                  </div>
                 </div>
 
                 <div className="rounded-xl bg-card border border-border/50 p-3 space-y-1">
-                  <div className="text-[11px] font-semibold text-emerald-400">{analysisResult.quadrants.ngAndUnder.label}</div>
-                  <div className="text-lg font-bold font-mono">{(analysisResult.quadrants.ngAndUnder.prob * 100).toFixed(1)}%</div>
-                  <div className="text-[10px] text-muted-foreground">Fer kvota: {(1 / analysisResult.quadrants.ngAndUnder.prob).toFixed(2)}</div>
+                  <div className="text-[11px] font-semibold text-emerald-400">
+                    {analysisResult.quadrants.ngAndUnder.label}
+                  </div>
+                  <div className="text-lg font-bold font-mono">
+                    {(analysisResult.quadrants.ngAndUnder.prob * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Fer kvota: {(1 / analysisResult.quadrants.ngAndUnder.prob).toFixed(2)}
+                  </div>
                 </div>
 
                 <div className="rounded-xl bg-card border border-border/50 p-3 space-y-1">
-                  <div className="text-[11px] font-semibold text-amber-400">{analysisResult.quadrants.ggAndUnder.label}</div>
-                  <div className="text-lg font-bold font-mono">{(analysisResult.quadrants.ggAndUnder.prob * 100).toFixed(1)}%</div>
-                  <div className="text-[10px] text-muted-foreground">Fer kvota: {(1 / analysisResult.quadrants.ggAndUnder.prob).toFixed(2)}</div>
+                  <div className="text-[11px] font-semibold text-amber-400">
+                    {analysisResult.quadrants.ggAndUnder.label}
+                  </div>
+                  <div className="text-lg font-bold font-mono">
+                    {(analysisResult.quadrants.ggAndUnder.prob * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Fer kvota: {(1 / analysisResult.quadrants.ggAndUnder.prob).toFixed(2)}
+                  </div>
                 </div>
 
                 <div className="rounded-xl bg-card border border-border/50 p-3 space-y-1">
-                  <div className="text-[11px] font-semibold text-muted-foreground">{analysisResult.quadrants.ngAndOver.label}</div>
-                  <div className="text-lg font-bold font-mono">{(analysisResult.quadrants.ngAndOver.prob * 100).toFixed(1)}%</div>
-                  <div className="text-[10px] text-muted-foreground">Fer kvota: {(1 / analysisResult.quadrants.ngAndOver.prob).toFixed(2)}</div>
+                  <div className="text-[11px] font-semibold text-muted-foreground">
+                    {analysisResult.quadrants.ngAndOver.label}
+                  </div>
+                  <div className="text-lg font-bold font-mono">
+                    {(analysisResult.quadrants.ngAndOver.prob * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Fer kvota: {(1 / analysisResult.quadrants.ngAndOver.prob).toFixed(2)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -840,13 +966,21 @@ export function BttsOverPage() {
             {/* Sharp Combo preporuka */}
             <div className="rounded-2xl bg-primary/10 border border-primary/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-primary">Preporučeni Sharp Kombo</span>
-                <h4 className="font-bold text-base text-foreground mt-0.5">{analysisResult.sharpComboTip.title}</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">{analysisResult.sharpComboTip.description}</p>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary">
+                  Preporučeni Sharp Kombo
+                </span>
+                <h4 className="font-bold text-base text-foreground mt-0.5">
+                  {analysisResult.sharpComboTip.title}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {analysisResult.sharpComboTip.description}
+                </p>
               </div>
               <div className="text-right shrink-0">
                 <div className="text-xs text-muted-foreground">Fer koeficijent</div>
-                <div className="text-xl font-bold font-mono text-primary">@{analysisResult.sharpComboTip.fairOdd.toFixed(2)}</div>
+                <div className="text-xl font-bold font-mono text-primary">
+                  @{analysisResult.sharpComboTip.fairOdd.toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
@@ -858,7 +992,8 @@ export function BttsOverPage() {
         <section className="rounded-3xl border border-border/80 bg-card p-6 space-y-5 shadow-sm">
           <div>
             <h3 className="text-lg font-bold flex items-center gap-2">
-              <Flame className="h-5 w-5 text-amber-500" /> 4. Dnevni Radar Golova (Sortirana Top Lista)
+              <Flame className="h-5 w-5 text-amber-500" /> 4. Dnevni Radar Golova (Sortirana Top
+              Lista)
             </h3>
             <p className="text-xs text-muted-foreground">
               Automatski rangirane utakmice prema Poissonovoj vjerojatnosti iz vaših analiza.
@@ -873,9 +1008,14 @@ export function BttsOverPage() {
               </h4>
               <div className="space-y-1.5">
                 {topOverRockets.map((m) => (
-                  <div key={m.match} className="flex justify-between items-center text-xs p-2 rounded-lg bg-background/60">
+                  <div
+                    key={m.match}
+                    className="flex justify-between items-center text-xs p-2 rounded-lg bg-background/60"
+                  >
                     <span className="font-semibold truncate max-w-[140px]">{m.match}</span>
-                    <span className="font-mono font-bold text-primary">{(m.over25Prob * 100).toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-primary">
+                      {(m.over25Prob * 100).toFixed(0)}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -888,9 +1028,14 @@ export function BttsOverPage() {
               </h4>
               <div className="space-y-1.5">
                 {topUnderBunkers.map((m) => (
-                  <div key={m.match} className="flex justify-between items-center text-xs p-2 rounded-lg bg-background/60">
+                  <div
+                    key={m.match}
+                    className="flex justify-between items-center text-xs p-2 rounded-lg bg-background/60"
+                  >
                     <span className="font-semibold truncate max-w-[140px]">{m.match}</span>
-                    <span className="font-mono font-bold text-emerald-400">{(m.under25Prob * 100).toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-emerald-400">
+                      {(m.under25Prob * 100).toFixed(0)}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -903,9 +1048,14 @@ export function BttsOverPage() {
               </h4>
               <div className="space-y-1.5">
                 {topBttsLocks.map((m) => (
-                  <div key={m.match} className="flex justify-between items-center text-xs p-2 rounded-lg bg-background/60">
+                  <div
+                    key={m.match}
+                    className="flex justify-between items-center text-xs p-2 rounded-lg bg-background/60"
+                  >
                     <span className="font-semibold truncate max-w-[140px]">{m.match}</span>
-                    <span className="font-mono font-bold text-amber-400">{(m.bttsYesProb * 100).toFixed(0)}%</span>
+                    <span className="font-mono font-bold text-amber-400">
+                      {(m.bttsYesProb * 100).toFixed(0)}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -919,9 +1069,12 @@ export function BttsOverPage() {
         <div className="rounded-3xl border border-border/80 bg-card p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-base">Današnje Utakmice — Odaberite par za analizu</h3>
+              <h3 className="font-semibold text-base">
+                Današnje Utakmice — Odaberite par za analizu
+              </h3>
               <p className="text-xs text-muted-foreground">
-                Kliknite "Analiziraj" za trenutni proračun azijskih linija, oba daju gol i provjeru zamki.
+                Kliknite "Analiziraj" za trenutni proračun azijskih linija, oba daju gol i provjeru
+                zamki.
               </p>
             </div>
 
@@ -986,6 +1139,3 @@ export function BttsOverPage() {
     </div>
   );
 }
-
-
-

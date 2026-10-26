@@ -49,13 +49,7 @@ export const Route = createFileRoute("/learn/community")({
   component: CommunityPage,
 });
 
-function PostCard({
-  post,
-  currentUserId,
-}: {
-  post: CommunityPost;
-  currentUserId: string | null;
-}) {
+function PostCard({ post, currentUserId }: { post: CommunityPost; currentUserId: string | null }) {
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
 
@@ -86,7 +80,9 @@ function PostCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-foreground">{post.authorName}</span>
-            <span className="text-xs text-muted-foreground">{formatRelativeTime(post.createdAt)}</span>
+            <span className="text-xs text-muted-foreground">
+              {formatRelativeTime(post.createdAt)}
+            </span>
             {language && (
               <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">
                 {language.flag} {language.name}
@@ -152,7 +148,9 @@ function PostCard({
                   <span className="text-base leading-none">{reply.authorAvatar}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-foreground">{reply.authorName}</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {reply.authorName}
+                      </span>
                       <span className="text-[10px] text-muted-foreground">
                         {formatRelativeTime(reply.createdAt)}
                       </span>
@@ -271,7 +269,12 @@ function CommunityPage() {
                       </option>
                     ))}
                   </select>
-                  <Button size="sm" className="ml-auto" onClick={submitPost} disabled={body.trim().length < 3}>
+                  <Button
+                    size="sm"
+                    className="ml-auto"
+                    onClick={submitPost}
+                    disabled={body.trim().length < 3}
+                  >
                     <Send className="mr-1.5 h-3.5 w-3.5" /> Post
                   </Button>
                 </div>

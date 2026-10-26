@@ -6,12 +6,22 @@
 // ============================================================
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ShoppingCart, Trash2, X, Copy, Coins, AlertTriangle, Link2, Layers, Share2, Download, Play, MessageCircle } from "lucide-react";
-import { toast } from "sonner";
 import {
-  loadKorpa, ukloniIzKorpe, ocistiKorpu, varijancaTiketa,
-  type KorpaTip,
-} from "@/lib/korpa";
+  ShoppingCart,
+  Trash2,
+  X,
+  Copy,
+  Coins,
+  AlertTriangle,
+  Link2,
+  Layers,
+  Share2,
+  Download,
+  Play,
+  MessageCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { loadKorpa, ukloniIzKorpe, ocistiKorpu, varijancaTiketa, type KorpaTip } from "@/lib/korpa";
 import { izracunajKorpuSmart } from "@/lib/korpa-smart";
 import { loadJSON, saveJSON } from "@/lib/storage";
 import { podijeliTiket, preuzmiTiket } from "@/lib/tiket-slika";
@@ -48,7 +58,10 @@ export function Korpa() {
   useEffect(() => {
     const w = (e: Event) => {
       const poruka = (e as CustomEvent<{ poruka?: string }>).detail?.poruka;
-      toast.warning(poruka || "High Variance Warning: noga s manje od 55% vjerojatnosti je u korpi. Paraj je samo sa sigurnim nogama.");
+      toast.warning(
+        poruka ||
+          "High Variance Warning: noga s manje od 55% vjerojatnosti je u korpi. Paraj je samo sa sigurnim nogama.",
+      );
     };
     window.addEventListener("andromeda:korpa-upozorenje", w);
     return () => window.removeEventListener("andromeda:korpa-upozorenje", w);
@@ -79,8 +92,11 @@ export function Korpa() {
         upozorenje: vj.upozorenje,
       },
       noge: tipovi.map((t) => ({
-        utakmica: t.utakmica, trziste: t.trziste, tip: t.tip,
-        kvota: t.kvota, p: t.vjerojatnost,
+        utakmica: t.utakmica,
+        trziste: t.trziste,
+        tip: t.tip,
+        kvota: t.kvota,
+        p: t.vjerojatnost,
       })),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,9 +107,15 @@ export function Korpa() {
     if (tipovi.length === 0) return;
     const iznos = Number(ulog.replace(",", "."));
     const kandidat = iznos > 0 ? iznos : r.ulogIznos;
-    if (!(kandidat > 0)) { toast.error("Unesi ulog u € (npr. 5)."); return; }
+    if (!(kandidat > 0)) {
+      toast.error("Unesi ulog u € (npr. 5).");
+      return;
+    }
     const tiket = spremiListic(tipovi.map(nogaIzKorpe), kandidat);
-    if (!tiket) { toast.error("Listić nije spremljen — provjeri noge i ulog."); return; }
+    if (!tiket) {
+      toast.error("Listić nije spremljen — provjeri noge i ulog.");
+      return;
+    }
     ocistiKorpu();
     setUlog("");
     toast.success(`Listić spremljen — ulog ${kandidat.toFixed(2)} € · prati ga u "Moji listići"`);
@@ -109,7 +131,11 @@ export function Korpa() {
       `1) ukupnu vjerojatnost prolaza u % i koliko je realna uz maržu kvota, ` +
       `2) NOGU S NAJVEĆIM RIZIKOM (najniža sigurnost) i zašto je slaba, ` +
       `3) preporučeni ulog po frakcijskom Kellyju i jasno "igraj" ili "preskoči" odluku.`;
-    try { localStorage.setItem("pc.luna.pitanje", pitanje); } catch { /* ignoriraj */ }
+    try {
+      localStorage.setItem("pc.luna.pitanje", pitanje);
+    } catch {
+      /* ignoriraj */
+    }
     navigate({ to: "/chat" });
   }
 
@@ -133,7 +159,8 @@ export function Korpa() {
 
   function kopirajListic() {
     const linije = tipovi.map(
-      (t, i) => `${i + 1}. [${t.sport}] ${t.utakmica} — ${t.trziste}: ${t.tip} @ ${t.kvota.toFixed(2)} (model ${pct(t.vjerojatnost)})`,
+      (t, i) =>
+        `${i + 1}. [${t.sport}] ${t.utakmica} — ${t.trziste}: ${t.tip} @ ${t.kvota.toFixed(2)} (model ${pct(t.vjerojatnost)})`,
     );
     const tekst = [
       "ANDROMEDA AI — Tiket",
@@ -144,7 +171,9 @@ export function Korpa() {
       korekcija ? `Naivna vjerojatnost (bez korelacije): ${pct(r.pNaive)}` : "",
       `EV (korigirani): ${pct(r.edgeKorigirana)}`,
       `Preporučeni ulog (frakcijski Kelly): ${r.ulogPerc.toFixed(2)}% = ${r.ulogIznos.toFixed(2)} €`,
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
     navigator.clipboard?.writeText(tekst).then(
       () => toast.success("Tiket kopiran u međuspremnik"),
       () => toast.error("Kopiranje nije uspjelo"),
@@ -181,7 +210,11 @@ export function Korpa() {
                 </div>
               </div>
             </div>
-            <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-muted/60" aria-label="Zatvori">
+            <button
+              onClick={() => setOpen(false)}
+              className="rounded-lg p-1.5 hover:bg-muted/60"
+              aria-label="Zatvori"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -214,20 +247,25 @@ export function Korpa() {
           <div className="flex-1 overflow-y-auto px-3 py-2">
             {tipovi.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground">
-                Korpa je prazna. Na karticama klikni <span className="font-semibold text-emerald-400">+ Korpa</span> na
-                tipu koji želiš ig­rati.
+                Korpa je prazna. Na karticama klikni{" "}
+                <span className="font-semibold text-emerald-400">+ Korpa</span> na tipu koji želiš
+                ig­rati.
               </div>
             ) : (
               <ul className="space-y-1.5">
                 {tipovi.map((t) => (
-                  <li key={t.id} className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/40 px-2.5 py-2 text-xs">
+                  <li
+                    key={t.id}
+                    className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/40 px-2.5 py-2 text-xs"
+                  >
                     <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
                       {t.sport.slice(0, 3)}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{t.utakmica}</div>
                       <div className="truncate text-[10px] text-muted-foreground">
-                        {t.trziste}: <span className="font-semibold text-emerald-400">{t.tip}</span> · model {pct(t.vjerojatnost)}
+                        {t.trziste}: <span className="font-semibold text-emerald-400">{t.tip}</span>{" "}
+                        · model {pct(t.vjerojatnost)}
                         {t.vjerojatnost < 0.55 && (
                           <span className="ml-1 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-bold text-amber-300">
                             ⚠ &lt;55%
@@ -257,7 +295,9 @@ export function Korpa() {
                 <span className="font-mono font-bold">{r.kvota.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Vjerojatnost {korekcija ? "(korelacijski korigirana)" : "modela"}</span>
+                <span className="text-muted-foreground">
+                  Vjerojatnost {korekcija ? "(korelacijski korigirana)" : "modela"}
+                </span>
                 <span className="font-mono">{pct(r.pKorigirana)}</span>
               </div>
               {korekcija && (
@@ -268,8 +308,11 @@ export function Korpa() {
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">EV (korigirani)</span>
-                <span className={`font-mono font-bold ${r.edgeKorigirana >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {r.edgeKorigirana >= 0 ? "+" : ""}{pct(r.edgeKorigirana)}
+                <span
+                  className={`font-mono font-bold ${r.edgeKorigirana >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                >
+                  {r.edgeKorigirana >= 0 ? "+" : ""}
+                  {pct(r.edgeKorigirana)}
                 </span>
               </div>
 
@@ -286,8 +329,9 @@ export function Korpa() {
                 <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] text-amber-300">
                   <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
-                    Više nogu iz iste utakmice — ishodi su povezani, pa je kombinirana vjerojatnost izračunata
-                    korelacijskim motorom (uzajamno isključivi ishodi → 0). Kelly je automatski smanjen na pola.
+                    Više nogu iz iste utakmice — ishodi su povezani, pa je kombinirana vjerojatnost
+                    izračunata korelacijskim motorom (uzajamno isključivi ishodi → 0). Kelly je
+                    automatski smanjen na pola.
                   </span>
                 </div>
               )}
@@ -304,7 +348,10 @@ export function Korpa() {
               {r.nemoguceNoge && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>NEMOGUĆ TIKET: sadrži uzajamno isključive noge (npr. 1 i 2 s iste utakmice, Over i Under iste linije). Ukloni jednu od njih.</span>
+                  <span>
+                    NEMOGUĆ TIKET: sadrži uzajamno isključive noge (npr. 1 i 2 s iste utakmice, Over
+                    i Under iste linije). Ukloni jednu od njih.
+                  </span>
                 </div>
               )}
 
@@ -326,8 +373,14 @@ export function Korpa() {
                 <div>
                   <div className="mb-1 flex justify-between">
                     <span className="text-muted-foreground">Varijansa tiketa</span>
-                    <span className={`font-mono font-semibold ${vj.razina === "visoka" ? "text-red-400" : vj.razina === "balansirana" ? "text-amber-400" : "text-emerald-400"}`}>
-                      {vj.razina === "visoka" ? "HIGH VARIANCE" : vj.razina === "balansirana" ? "Balanced" : "Low Variance"}
+                    <span
+                      className={`font-mono font-semibold ${vj.razina === "visoka" ? "text-red-400" : vj.razina === "balansirana" ? "text-amber-400" : "text-emerald-400"}`}
+                    >
+                      {vj.razina === "visoka"
+                        ? "HIGH VARIANCE"
+                        : vj.razina === "balansirana"
+                          ? "Balanced"
+                          : "Low Variance"}
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -356,7 +409,8 @@ export function Korpa() {
 
               {/* VIRTUALNO ODIGRAVANJE — listić ide u "Moji listići" s isplatom i void zaštitom */}
               {(() => {
-                const iznosUloga = Number(ulog.replace(",", ".")) || (r.ulogIznos > 0 ? r.ulogIznos : 0);
+                const iznosUloga =
+                  Number(ulog.replace(",", ".")) || (r.ulogIznos > 0 ? r.ulogIznos : 0);
                 return (
                   <div className="flex items-end gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
                     <label className="min-w-0 flex-1 text-[11px] text-muted-foreground">
@@ -395,7 +449,11 @@ export function Korpa() {
               {!r.isplativo && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-300">
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  <span>{r.nemoguceNoge ? "Tiket ne može proći — ispravi noge." : "Nema vrijednosti (EV ≤ 0) — preporučam ne igrati ovaj tiket ili ga smanjiti."}</span>
+                  <span>
+                    {r.nemoguceNoge
+                      ? "Tiket ne može proći — ispravi noge."
+                      : "Nema vrijednosti (EV ≤ 0) — preporučam ne igrati ovaj tiket ili ga smanjiti."}
+                  </span>
                 </div>
               )}
               <div className="flex gap-2 pt-1">
@@ -422,7 +480,10 @@ export function Korpa() {
                   <Download className="h-3.5 w-3.5" />
                 </button>
                 <button
-                  onClick={() => { ocistiKorpu(); toast.success("Korpa očišćena"); }}
+                  onClick={() => {
+                    ocistiKorpu();
+                    toast.success("Korpa očišćena");
+                  }}
                   className="flex items-center justify-center gap-1.5 rounded-lg border border-border/60 px-3 py-2 text-xs hover:bg-red-500/10 hover:text-red-400"
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Očisti

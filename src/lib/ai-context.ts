@@ -6,7 +6,12 @@
 // Luna i Orion je automatski pročitaju i ubace u prompt.
 // Spremište: localStorage (ključ andromeda.ai.mec-kontekst).
 // ============================================================
-import { formatEdgeCaseSignals, formatEnterpriseSignals, type EnterpriseMatchSignals, type EdgeCaseMatchSignals } from "./enterprise-precision";
+import {
+  formatEdgeCaseSignals,
+  formatEnterpriseSignals,
+  type EnterpriseMatchSignals,
+  type EdgeCaseMatchSignals,
+} from "./enterprise-precision";
 import type { UniversalMatchContext } from "./safe-math";
 import { formatSniperAnomalyForAI, type SniperAnalysisResult } from "./anomaly-sniper";
 
@@ -14,26 +19,45 @@ import { formatSniperAnomalyForAI, type SniperAnalysisResult } from "./anomaly-s
  *  i rukometna taktika (7v6 / golman-umor) — izravno u prompt chatova. */
 export interface KvantKontekst {
   skellam?: {
-    p1: number; pX: number; p2: number;
+    p1: number;
+    pX: number;
+    p2: number;
     ah: { linija: string; win: number; push: number; loss: number; fer: number }[];
     pushRizikMax: number;
   };
-  hazard?: { beta: number; primijenjen: boolean; scenarij: string; lamDomEf: number; lamGostEf: number };
+  hazard?: {
+    beta: number;
+    primijenjen: boolean;
+    scenarij: string;
+    lamDomEf: number;
+    lamGostEf: number;
+  };
   ot?: { p: number; primijenjeno: boolean; pomakBodovi: number };
   ht?: { ekstraGolovi7v6: number; primijenjeno: boolean; gkUmorDom: boolean; gkUmorGost: boolean };
   /** v6 OKOLIS: weather drag (vjetar/kiša/teren) — pomak golova i kornera */
   okolis?: {
-    primijenjeno: boolean; pomakGolovi: number; pomakKornera: number;
-    razlozi: string[]; opis: string;
+    primijenjeno: boolean;
+    pomakGolovi: number;
+    pomakKornera: number;
+    razlozi: string[];
+    opis: string;
   };
   /** v6 SUDAC: profil suca + rizik crvenog kartona */
   sudac?: {
-    primijenjeno: boolean; strog: boolean; rizikCrvena: number; opis: string;
+    primijenjeno: boolean;
+    strog: boolean;
+    rizikCrvena: number;
+    opis: string;
   };
   /** v6 BLOWOUT (košarka): garbage-time korekcija totala kod velikih margina */
   blowout?: { primijenjeno: boolean; margina: number; pomakBodovi: number };
   /** v6 GARBAGE TIME (rukomet): tempo-dolaziš kod velike live razlike */
-  garbageTime?: { primijenjeno: boolean; margina: number | null; minut: number | null; ekstraGolovi: number };
+  garbageTime?: {
+    primijenjeno: boolean;
+    margina: number | null;
+    minut: number | null;
+    ekstraGolovi: number;
+  };
 }
 
 /* ── TIKET KONTEKST (v6) — Ticket Variance Score i korelacije u chat.
@@ -63,7 +87,9 @@ export function spremiKontekstTiketa(t: Omit<TiketKontekst, "spremljeno">): void
   try {
     localStorage.setItem(TIKET_KEY, JSON.stringify({ ...t, spremljeno: Date.now() }));
     window.dispatchEvent(new CustomEvent("andromeda:tiket-kontekst"));
-  } catch { /* puna memorija — ignoriraj */ }
+  } catch {
+    /* puna memorija — ignoriraj */
+  }
 }
 
 export function ucitajKontekstTiketa(): TiketKontekst | null {
@@ -80,7 +106,11 @@ export function ucitajKontekstTiketa(): TiketKontekst | null {
 }
 
 export function izbrisiKontekstTiketa(): void {
-  try { localStorage.removeItem(TIKET_KEY); } catch { /* ignoriraj */ }
+  try {
+    localStorage.removeItem(TIKET_KEY);
+  } catch {
+    /* ignoriraj */
+  }
   window.dispatchEvent(new CustomEvent("andromeda:tiket-kontekst"));
 }
 
@@ -90,20 +120,25 @@ export function izgradiTiketTekst(t: TiketKontekst): string {
   linije.push("── PODACI BET SLIP-a (Korpa) — kontekst tiketa ──");
   linije.push(
     `Tiket: ${t.brojNoga} noga · ukupna kvota ${t.kvota.toFixed(2)} · kombinirana vjerojatnost ${pct(t.vjerojatnost)} · ` +
-    `EV ${(t.edge * 100).toFixed(1)}%`,
+      `EV ${(t.edge * 100).toFixed(1)}%`,
   );
   linije.push(
     `TICKET VARIANCE SCORE: ${t.varijanca.razina.toUpperCase()} (Shannon entropija ${(t.varijanca.entropija * 100).toFixed(0)}%)` +
-    ` · noga s remi/push rizikom: ${t.varijanca.remiPushNoge}`,
+      ` · noga s remi/push rizikom: ${t.varijanca.remiPushNoge}`,
   );
   if (t.korelacijaUpozorenje)
-    linije.push("Korelacija: više noga iz iste utakmice — ishodi nisu nezavisni (korelacijski motor je korigira).");
+    linije.push(
+      "Korelacija: više noga iz iste utakmice — ishodi nisu nezavisni (korelacijski motor je korigira).",
+    );
   if (t.nemoguceNoge)
     linije.push("UPOZORENJE: tiket sadrži uzajamno isključive noge — ne može proći.");
   if (t.varijanca.upozorenje) linije.push(t.varijanca.upozorenje);
   if (t.noge?.length) {
     linije.push(
-      "Noge: " + t.noge.map((n) => `${n.tip} @${n.kvota.toFixed(2)} (${n.utakmica}, ${n.trziste})`).join(" | "),
+      "Noge: " +
+        t.noge
+          .map((n) => `${n.tip} @${n.kvota.toFixed(2)} (${n.utakmica}, ${n.trziste})`)
+          .join(" | "),
     );
   }
   linije.push("(Ove podatke koristi samo ako se korisnik pita o tiketu, korpi ili ulozi.)");
@@ -119,7 +154,14 @@ export interface MecKontekst {
   lambdaGost: number;
   lambdaUkupno: number;
   konsenzus: Record<string, number>;
-  coreTip: { label: string; p: number; kvota?: number; edge?: number; kellyPct: number; kljuc: string };
+  coreTip: {
+    label: string;
+    p: number;
+    kvota?: number;
+    edge?: number;
+    kellyPct: number;
+    kljuc: string;
+  };
   altTip?: { label: string; p: number; kvota?: number } | null;
   mc: { btts: number; o15: number; o25: number; o35: number; p1: number; pX: number; p2: number };
   ocjena: string;
@@ -161,7 +203,9 @@ export function spremiKontekstMeca(c: Omit<MecKontekst, "spremljeno">): void {
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...c, spremljeno: Date.now() }));
     window.dispatchEvent(new CustomEvent("andromeda:mec-kontekst"));
-  } catch { /* puna memorija — ignoriraj */ }
+  } catch {
+    /* puna memorija — ignoriraj */
+  }
 }
 
 export function ucitajKontekstMeca(): MecKontekst | null {
@@ -178,20 +222,32 @@ export function ucitajKontekstMeca(): MecKontekst | null {
 }
 
 export function izbrisiKontekstMeca(): void {
-  try { localStorage.removeItem(KEY); } catch { /* ignoriraj */ }
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* ignoriraj */
+  }
   window.dispatchEvent(new CustomEvent("andromeda:mec-kontekst"));
 }
 
 /** Pravilo formata: prva rečenica odgovora je uvijek tip + sigurnost. */
 export const FORMAT_PRAVILO =
-  "FORMAT ODGOVORA (obavezno): prva rečenica je uvijek \"**Tip:** <tip> · **Sigurnost:** <X>%\"" +
+  'FORMAT ODGOVORA (obavezno): prva rečenica je uvijek "**Tip:** <tip> · **Sigurnost:** <X>%"' +
   " (i kvota/edge ako postoje). Odmah zatim: matematičko obrazloženje (Poisson/Dixon-Coles, " +
-  "Monte Carlo, Kelly), glavni rizik, pa preporučeni ulog. BEZ uvodnih fraza tipa \"odlično pitanje\".";
+  'Monte Carlo, Kelly), glavni rizik, pa preporučeni ulog. BEZ uvodnih fraza tipa "odlično pitanje".';
 
 const LABELI: Record<string, string> = {
-  "1": "1", "X": "X", "2": "2",
-  bttsDa: "GG da", bttsNe: "GG ne",
-  o15: "O1.5", u15: "U1.5", o25: "O2.5", u25: "U2.5", o35: "O3.5", u35: "U3.5",
+  "1": "1",
+  X: "X",
+  "2": "2",
+  bttsDa: "GG da",
+  bttsNe: "GG ne",
+  o15: "O1.5",
+  u15: "U1.5",
+  o25: "O2.5",
+  u25: "U2.5",
+  o35: "O3.5",
+  u35: "U3.5",
 };
 
 function pct(x: number | undefined): string {
@@ -211,35 +267,45 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
 
   const linije: string[] = [];
   linije.push("── PODACI MATCH ENGINE-a (SARP/Titan) — automatski kontekst ──");
-  linije.push(`Utakmica: ${c.naslov}${c.liga ? ` (${c.liga}` + (c.vrijeme ? `, ${c.vrijeme}` : "") + ")" : ""}`);
+  linije.push(
+    `Utakmica: ${c.naslov}${c.liga ? ` (${c.liga}` + (c.vrijeme ? `, ${c.vrijeme}` : "") + ")" : ""}`,
+  );
   if (kvote) linije.push(`Tržišne kvote: ${kvote}`);
-  linije.push(`Model λ: domaćin ${c.lambdaDom.toFixed(2)} · gost ${c.lambdaGost.toFixed(2)} · ukupno ${c.lambdaUkupno.toFixed(2)}`);
+  linije.push(
+    `Model λ: domaćin ${c.lambdaDom.toFixed(2)} · gost ${c.lambdaGost.toFixed(2)} · ukupno ${c.lambdaUkupno.toFixed(2)}`,
+  );
   if (kons) linije.push(`Konsenzus modela: ${kons}`);
   linije.push(
     `GLAVNI TIP: ${c.coreTip.label}${c.coreTip.kvota ? ` @${c.coreTip.kvota.toFixed(2)}` : ""} — ` +
-    `sigurnost ${pct(c.coreTip.p)}` +
-    (c.coreTip.edge != null ? `, edge ${(c.coreTip.edge * 100).toFixed(1)}%` : "") +
-    `, ¼ Kelly ${c.coreTip.kellyPct.toFixed(1)}% banke`,
+      `sigurnost ${pct(c.coreTip.p)}` +
+      (c.coreTip.edge != null ? `, edge ${(c.coreTip.edge * 100).toFixed(1)}%` : "") +
+      `, ¼ Kelly ${c.coreTip.kellyPct.toFixed(1)}% banke`,
   );
   if (c.altTip) {
-    linije.push(`Alternativa (sigurnija): ${c.altTip.label}${c.altTip.kvota ? ` @${c.altTip.kvota.toFixed(2)}` : ""} — ${pct(c.altTip.p)}`);
+    linije.push(
+      `Alternativa (sigurnija): ${c.altTip.label}${c.altTip.kvota ? ` @${c.altTip.kvota.toFixed(2)}` : ""} — ${pct(c.altTip.p)}`,
+    );
   }
   linije.push(
     `Monte Carlo: 1=${pct(c.mc.p1)} X=${pct(c.mc.pX)} 2=${pct(c.mc.p2)} | BTTS=${pct(c.mc.btts)} | ` +
-    `O1.5=${pct(c.mc.o15)} O2.5=${pct(c.mc.o25)} O3.5=${pct(c.mc.o35)}`,
+      `O1.5=${pct(c.mc.o15)} O2.5=${pct(c.mc.o25)} O3.5=${pct(c.mc.o35)}`,
   );
-  linije.push(`Povjerenje modela: ${c.ocjena} (${c.povjerenje}/100) · izvora podataka: ${c.brojIzvora}`);
+  linije.push(
+    `Povjerenje modela: ${c.ocjena} (${c.povjerenje}/100) · izvora podataka: ${c.brojIzvora}`,
+  );
   if (c.postave) {
     linije.push(
       `Postave: ${c.postave.potvrdjene ? "POTVRĐENE" : "nepotvrđene"}` +
-      (c.postave.izasli.length ? ` — izasli: ${c.postave.izasli.join(", ")}` : "") +
-      (c.postave.procenatPomaka != null ? ` — preračunati λ pomak: ${c.postave.procenatPomaka > 0 ? "+" : ""}${c.postave.procenatPomaka}%` : ""),
+        (c.postave.izasli.length ? ` — izasli: ${c.postave.izasli.join(", ")}` : "") +
+        (c.postave.procenatPomaka != null
+          ? ` — preračunati λ pomak: ${c.postave.procenatPomaka > 0 ? "+" : ""}${c.postave.procenatPomaka}%`
+          : ""),
     );
   }
   if (c.live) {
     linije.push(
       `LIVE: ${c.live.minuta}' rezultat ${c.live.rezultat} — O2.5 ${pct(c.live.o25)}, BTTS ${pct(c.live.btts)}, ` +
-      `sljedeći gol: dom ${pct(c.live.sljedeciDom)} / gost ${pct(c.live.sljedeciGost)}`,
+        `sljedeći gol: dom ${pct(c.live.sljedeciDom)} / gost ${pct(c.live.sljedeciGost)}`,
     );
   }
   if (c.kvant) {
@@ -269,8 +335,13 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
     if (q.skellam) {
       linije.push(
         `KVANT Skellam (egzaktno): 1X2 bez marže ${pct(q.skellam.p1)}/${pct(q.skellam.pX)}/${pct(q.skellam.p2)} · azijski handicap: ` +
-        q.skellam.ah.map((a) => `AH ${a.linija} (dobitak ${pct(a.win)}${a.push > 0.001 ? `, PUSH RISK ${pct(a.push)}` : ""})`).join("; ") +
-        ` · maksimalni push rizik ${pct(q.skellam.pushRizikMax)}`,
+          q.skellam.ah
+            .map(
+              (a) =>
+                `AH ${a.linija} (dobitak ${pct(a.win)}${a.push > 0.001 ? `, PUSH RISK ${pct(a.push)}` : ""})`,
+            )
+            .join("; ") +
+          ` · maksimalni push rizik ${pct(q.skellam.pushRizikMax)}`,
       );
     }
     if (q.hazard?.primijenjen) {
@@ -288,8 +359,8 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
     if (q.ht?.primijenjeno) {
       linije.push(
         `KVANT rukomet: 7v6 prazna mreža +${q.ht.ekstraGolovi7v6.toFixed(1)} gola` +
-        (q.ht.gkUmorDom ? " · golman domaćina umoran (−4% obrana u 2H)" : "") +
-        (q.ht.gkUmorGost ? " · golman gosta umoran (−4% obrana u 2H)" : ""),
+          (q.ht.gkUmorDom ? " · golman domaćina umoran (−4% obrana u 2H)" : "") +
+          (q.ht.gkUmorGost ? " · golman gosta umoran (−4% obrana u 2H)" : ""),
       );
     }
   }
@@ -298,31 +369,51 @@ export function izgradiKontekstTekst(c: MecKontekst): string {
     const uLinije: string[] = [];
     if (u.sport === "nogomet") {
       if (u.homeXG > 0 || u.awayXG > 0)
-        uLinije.push(`xG: domaćin ${u.homeXG.toFixed(2)} · gost ${u.awayXG.toFixed(2)} (uloženo 20% težine u model)`);
+        uLinije.push(
+          `xG: domaćin ${u.homeXG.toFixed(2)} · gost ${u.awayXG.toFixed(2)} (uloženo 20% težine u model)`,
+        );
       if (u.homeFormN > 0 || u.awayFormN > 0)
-        uLinije.push(`forma: domaćin ${u.homeForm.toFixed(2)} gola u ${u.homeFormN} utakmica · gost ${u.awayForm.toFixed(2)} u ${u.awayFormN}`);
+        uLinije.push(
+          `forma: domaćin ${u.homeForm.toFixed(2)} gola u ${u.homeFormN} utakmica · gost ${u.awayForm.toFixed(2)} u ${u.awayFormN}`,
+        );
       if (u.vjetarKmh > 35 || u.kisa)
-        uLinije.push(`okoliš: vjetar ${u.vjetarKmh.toFixed(0)} km/h${u.kisa ? " · jaka kiša" : ""} → ukupna λ niža (weather drag)`);
+        uLinije.push(
+          `okoliš: vjetar ${u.vjetarKmh.toFixed(0)} km/h${u.kisa ? " · jaka kiša" : ""} → ukupna λ niža (weather drag)`,
+        );
       if (u.refCardsPerGame > 0)
-        uLinije.push(`sudac: kartona ${u.refCardsPerGame.toFixed(1)}/meč · penala ${u.refPensPerGame.toFixed(2)}/meč${u.refCardsPerGame > 5 || u.refPensPerGame > 0.4 ? " → STROG sudac" : ""}`);
+        uLinije.push(
+          `sudac: kartona ${u.refCardsPerGame.toFixed(1)}/meč · penala ${u.refPensPerGame.toFixed(2)}/meč${u.refCardsPerGame > 5 || u.refPensPerGame > 0.4 ? " → STROG sudac" : ""}`,
+        );
       if (Math.abs(u.motivationIndex - 0.5) > 1e-9)
         uLinije.push(`motivacija: index ${u.motivationIndex.toFixed(2)} (0.5 = neutralno)`);
     }
     if (u.sport === "kosarka") {
       if (Math.abs(u.homePace - 1) > 1e-9 || Math.abs(u.awayPace - 1) > 1e-9)
-        uLinije.push(`pace index: domaćin ${u.homePace.toFixed(2)} · gost ${u.awayPace.toFixed(2)} (1.00 = prosjek lige)`);
+        uLinije.push(
+          `pace index: domaćin ${u.homePace.toFixed(2)} · gost ${u.awayPace.toFixed(2)} (1.00 = prosjek lige)`,
+        );
       if (u.homeORtg !== 100 || u.awayORtg !== 100 || u.homeDRtg !== 100 || u.awayDRtg !== 100)
-        uLinije.push(`ratingi: ORtg ${u.homeORtg.toFixed(0)}/${u.awayORtg.toFixed(0)} · DRtg ${u.homeDRtg.toFixed(0)}/${u.awayDRtg.toFixed(0)} (100 = prosjek lige)`);
+        uLinije.push(
+          `ratingi: ORtg ${u.homeORtg.toFixed(0)}/${u.awayORtg.toFixed(0)} · DRtg ${u.homeDRtg.toFixed(0)}/${u.awayDRtg.toFixed(0)} (100 = prosjek lige)`,
+        );
       if (u.b2bFatigue > 0)
-        uLinije.push(`B2B umor: ${(u.b2bFatigue * 100).toFixed(0)}% → umanjena projekcija domaćina`);
+        uLinije.push(
+          `B2B umor: ${(u.b2bFatigue * 100).toFixed(0)}% → umanjena projekcija domaćina`,
+        );
     }
     if (u.sport === "rukomet") {
       if (Math.abs(u.homeOffenseEff - 1) > 1e-9 || Math.abs(u.awayOffenseEff - 1) > 1e-9)
-        uLinije.push(`efikasnost napada: domaćin ${u.homeOffenseEff.toFixed(2)} · gost ${u.awayOffenseEff.toFixed(2)} (1.00 = prosjek lige)`);
+        uLinije.push(
+          `efikasnost napada: domaćin ${u.homeOffenseEff.toFixed(2)} · gost ${u.awayOffenseEff.toFixed(2)} (1.00 = prosjek lige)`,
+        );
       if (u.homeGkSavePct > 0 || u.awayGkSavePct > 0)
-        uLinije.push(`golmani: obrane domaćin ${(u.homeGkSavePct * 100).toFixed(0)}% · gost ${(u.awayGkSavePct * 100).toFixed(0)}%`);
+        uLinije.push(
+          `golmani: obrane domaćin ${(u.homeGkSavePct * 100).toFixed(0)}% · gost ${(u.awayGkSavePct * 100).toFixed(0)}%`,
+        );
       if (u.sevenVsSixFactor > 0)
-        uLinije.push(`7v6 upotreba: ${(u.sevenVsSixFactor * 100).toFixed(0)}% situacija → dodatni golovi ukupno`);
+        uLinije.push(
+          `7v6 upotreba: ${(u.sevenVsSixFactor * 100).toFixed(0)}% situacija → dodatni golovi ukupno`,
+        );
     }
     if (uLinije.length) {
       linije.push("── UNIVERSAL MATCH CONTEXT (normalizirani podaci utakmice) ──");

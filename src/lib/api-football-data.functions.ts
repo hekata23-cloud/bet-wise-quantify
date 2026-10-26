@@ -38,8 +38,7 @@ async function call(path: string, key: string) {
     return { error: "Previše zahtjeva u minuti. Pričekaj 10 sekundi.", remaining };
   if (r.error && r.error.startsWith("ACCOUNT"))
     return { error: "API ključ nije važeći. Provjeri ga u Postavkama.", remaining };
-  if (r.error)
-    return { error: r.error, remaining };
+  if (r.error) return { error: r.error, remaining };
   return { data: r.data, remaining };
 }
 
@@ -60,13 +59,15 @@ export const getFixtures = createServerFn({ method: "POST" })
     try {
       // Jedan poziv dohvaća sve lige svijeta za navedeni datum
       const res = await call(`/fixtures?date=${data.date}&timezone=Europe/Zagreb`, data.key);
-      if ("error" in res) return { ok: false, message: res.error, fixtures: [], remaining: res.remaining };
+      if ("error" in res)
+        return { ok: false, message: res.error, fixtures: [], remaining: res.remaining };
 
-      const list = (res.data as Array<{
-        fixture: { id: number; date: string; status: { short: string } };
-        league: { name: string; country: string };
-        teams: { home: { name: string }; away: { name: string } };
-      }>) ?? [];
+      const list =
+        (res.data as Array<{
+          fixture: { id: number; date: string; status: { short: string } };
+          league: { name: string; country: string };
+          teams: { home: { name: string }; away: { name: string } };
+        }>) ?? [];
 
       // Filtriramo nadolazeće utakmice (NS = Not Started, TBD = To Be Defined)
       const fixtures = list
@@ -100,12 +101,14 @@ export const getFixtureOdds = createServerFn({ method: "POST" })
       const res = await call(`/odds?fixture=${data.fixture}`, data.key);
       if ("error" in res) return { ok: false, message: res.error, remaining: res.remaining };
 
-      const entry = (res.data as Array<{
-        bookmakers: Array<{
-          name: string;
-          bets: Array<{ name: string; values: Array<{ value: string; odd: string }> }>;
-        }>;
-      }>)?.[0];
+      const entry = (
+        res.data as Array<{
+          bookmakers: Array<{
+            name: string;
+            bets: Array<{ name: string; values: Array<{ value: string; odd: string }> }>;
+          }>;
+        }>
+      )?.[0];
 
       if (!entry || !entry.bookmakers?.length) {
         return {

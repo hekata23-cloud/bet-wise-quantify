@@ -42,7 +42,11 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
       setKey(saved);
       setStatus(
         saved
-          ? { ok: true, msg: "Ključ je spremljen — kartica koristi API-Football podatke.", aktiviran: true }
+          ? {
+              ok: true,
+              msg: "Ključ je spremljen — kartica koristi API-Football podatke.",
+              aktiviran: true,
+            }
           : null,
       );
     }
@@ -55,18 +59,28 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
   // AKTIVIRAJ: testira vezu pa sprema ključ samo ako je veza uspješna
   const aktiviraj = async () => {
     const k = key.trim();
-    if (!k) { potvrda({ ok: false, msg: "Prvo upiši API ključ." }); return; }
+    if (!k) {
+      potvrda({ ok: false, msg: "Prvo upiši API ključ." });
+      return;
+    }
     setTesting(true);
     potvrda({ ok: true, msg: "Aktiviram — provjeravam vezu…" });
     try {
       const res = await testApiKey({ data: { apiKey: k } });
       if (res.ok) {
         saveKey("apiFootball", k);
-        try { localStorage.setItem("kr-football-api-key", k); } catch { /* ignoriraj */ }
+        try {
+          localStorage.setItem("kr-football-api-key", k);
+        } catch {
+          /* ignoriraj */
+        }
         potvrda({
-          ok: true, aktiviran: true,
+          ok: true,
+          aktiviran: true,
           msg: `✅ Povezano — plan ${res.plan}${res.active ? " (aktivan)" : " (neaktivan)"}. Ključ je spremljen, kvote se učitavaju.`,
-          plan: res.plan, used: res.current, limit: res.limit,
+          plan: res.plan,
+          used: res.current,
+          limit: res.limit,
         });
         onAktivirano?.();
       } else {
@@ -82,7 +96,10 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
   // TESTIRAJ: provjeri upisani ključ bez spremanja
   const testiraj = async () => {
     const k = key.trim();
-    if (!k) { potvrda({ ok: false, msg: "Prvo upiši API ključ." }); return; }
+    if (!k) {
+      potvrda({ ok: false, msg: "Prvo upiši API ključ." });
+      return;
+    }
     setTesting(true);
     potvrda({ ok: true, msg: "Testiram vezu…" });
     try {
@@ -91,7 +108,9 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
         potvrda({
           ok: true,
           msg: `✅ Veza uspješna! Plan: ${res.plan} (${res.active ? "Aktivan" : "Neaktivan"})`,
-          plan: res.plan, used: res.current, limit: res.limit,
+          plan: res.plan,
+          used: res.current,
+          limit: res.limit,
         });
       } else {
         potvrda({ ok: false, msg: `❌ Greška: ${res.error}` });
@@ -105,7 +124,11 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
 
   const ukloni = () => {
     clearKey("apiFootball");
-    try { localStorage.removeItem("kr-football-api-key"); } catch { /* ignoriraj */ }
+    try {
+      localStorage.removeItem("kr-football-api-key");
+    } catch {
+      /* ignoriraj */
+    }
     setKey("");
     potvrda({ ok: true, msg: "Ključ uklonjen — kartica se vraća na virtualne kvote modela." });
     onAktivirano?.();
@@ -129,8 +152,8 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
 
       <div className="p-3 text-xs space-y-2.5">
         <p className="text-muted-foreground">
-          Upiši svoj besplatni ključ s <strong>api-football.com</strong>. Kada je aktiviran,
-          kartica prikazuje stvarne kladioničarske kvote umjesto virtualnog modela.
+          Upiši svoj besplatni ključ s <strong>api-football.com</strong>. Kada je aktiviran, kartica
+          prikazuje stvarne kladioničarske kvote umjesto virtualnog modela.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -200,7 +223,12 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
 
         <p className="text-[10px] text-muted-foreground/80">
           Besplatni račun daje 100 poziva/dan. Registracija:{" "}
-          <a href="https://dashboard.api-football.com" target="_blank" rel="noreferrer" className="text-primary underline">
+          <a
+            href="https://dashboard.api-football.com"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary underline"
+          >
             dashboard.api-football.com
           </a>{" "}
           (100 poziva/dan). Kvote postoje samo za buduće utakmice (obično sljedećih ~7 dana) —
@@ -210,4 +238,3 @@ export function ApiKljucPanel({ open, onClose, onAktivirano }: Props) {
     </div>
   );
 }
-

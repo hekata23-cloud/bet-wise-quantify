@@ -12,16 +12,16 @@ export type Razina = "A+" | "A" | "B" | "C";
 
 export type OuNiskiIzlaz = {
   lambdaUkupno: number;
-  o05: number;       // P(Over 0.5) cijela utakmica
-  o05Fer: number;    // fer kvota
+  o05: number; // P(Over 0.5) cijela utakmica
+  o05Fer: number; // fer kvota
   razina05: Razina;
-  o05HT: number;     // P(Over 0.5) 1. poluvrijeme
+  o05HT: number; // P(Over 0.5) 1. poluvrijeme
   o05HTFer: number;
   razina05HT: Razina;
-  o15: number;       // P(Over 1.5) cijela utakmica
+  o15: number; // P(Over 1.5) cijela utakmica
   o15Fer: number;
   razina15: Razina;
-  nulaNula: number;  // P(0:0)
+  nulaNula: number; // P(0:0)
 };
 
 const HT_DIO = 0.44; // ~44% golova pada u 1. poluvrijeme
@@ -61,9 +61,9 @@ export function ouNiskiIzAnalize(a: GoalsIzlaz): OuNiskiIzlaz {
 }
 
 export type OuTiket = {
-  edge: number;      // p·kvota − 1
-  kelly: number;     // puna Kelly frakcija
-  ulogPerc: number;  // preporučeni ulog % banke (¼ Kelly, cap 3%)
+  edge: number; // p·kvota − 1
+  kelly: number; // puna Kelly frakcija
+  ulogPerc: number; // preporučeni ulog % banke (¼ Kelly, cap 3%)
   isplativo: boolean;
 };
 
@@ -102,4 +102,3 @@ export function preciznostOcjena(x: {
   tocke.push("Dixon-Coles ρ");
   return { score, razina: razina(score / 100), tocke };
 }
-

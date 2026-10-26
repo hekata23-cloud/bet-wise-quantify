@@ -14,7 +14,11 @@ export const OVER25_BOOST = 0.074;
 export const NAPAD_PAD = 0.18;
 export const PROZOR_MIN = 45;
 
-export interface JezgraTima { golman?: number; stoperi: number[]; napadac?: number }
+export interface JezgraTima {
+  golman?: number;
+  stoperi: number[];
+  napadac?: number;
+}
 
 export interface LineupDeltaUlaz {
   startDom: IgracLin[];
@@ -46,24 +50,35 @@ export function uLineupProzoru(kickoff: string | number | Date, sad = Date.now()
 }
 
 export function lineupDelta(u: LineupDeltaUlaz): LineupDeltaIzlaz {
-  const ids = (xi: IgracLin[]) => new Set(xi.map((p) => p.id).filter((x): x is number => x != null));
-  const dom = ids(u.startDom), gost = ids(u.startGost);
+  const ids = (xi: IgracLin[]) =>
+    new Set(xi.map((p) => p.id).filter((x): x is number => x != null));
+  const dom = ids(u.startDom),
+    gost = ids(u.startGost);
   const razlozi: string[] = [];
   let obrana = false;
-  let lambdaDom = u.lambdaDom, lambdaGost = u.lambdaGost;
+  let lambdaDom = u.lambdaDom,
+    lambdaGost = u.lambdaGost;
 
   const provjeri = (set: Set<number>, j: JezgraTima, ime: string) => {
-    if (j.golman != null && !set.has(j.golman)) { obrana = true; razlozi.push(`${ime}: prvi golman nije u postavi`); }
-    if (j.stoperi.some((s) => !set.has(s))) { obrana = true; razlozi.push(`${ime}: ključni stoper nije u postavi`); }
+    if (j.golman != null && !set.has(j.golman)) {
+      obrana = true;
+      razlozi.push(`${ime}: prvi golman nije u postavi`);
+    }
+    if (j.stoperi.some((s) => !set.has(s))) {
+      obrana = true;
+      razlozi.push(`${ime}: ključni stoper nije u postavi`);
+    }
   };
   if (dom.size) provjeri(dom, u.jezgraDom, "Domaćin");
   if (gost.size) provjeri(gost, u.jezgraGost, "Gost");
 
   if (dom.size && u.jezgraDom.napadac != null && !dom.has(u.jezgraDom.napadac)) {
-    lambdaDom = Math.max(0.05, lambdaDom - NAPAD_PAD); razlozi.push("Domaćin: prvi napadač na klupi (λ −0.18)");
+    lambdaDom = Math.max(0.05, lambdaDom - NAPAD_PAD);
+    razlozi.push("Domaćin: prvi napadač na klupi (λ −0.18)");
   }
   if (gost.size && u.jezgraGost.napadac != null && !gost.has(u.jezgraGost.napadac)) {
-    lambdaGost = Math.max(0.05, lambdaGost - NAPAD_PAD); razlozi.push("Gost: prvi napadač na klupi (λ −0.18)");
+    lambdaGost = Math.max(0.05, lambdaGost - NAPAD_PAD);
+    razlozi.push("Gost: prvi napadač na klupi (λ −0.18)");
   }
 
   return {
@@ -85,18 +100,25 @@ export function zapamtiPostavu(teamId: number, xi: IgracLin[]) {
     const arr: IgracLin[][] = JSON.parse(localStorage.getItem(K(teamId)) ?? "[]");
     arr.push(xi.map(({ id, ime, poz }) => ({ id, ime, poz })));
     localStorage.setItem(K(teamId), JSON.stringify(arr.slice(-8)));
-  } catch { /* */ }
+  } catch {
+    /* */
+  }
 }
 
 export function jezgraIz(postave: IgracLin[][]): JezgraTima {
   const cnt = (poz: string) => {
     const m = new Map<number, number>();
-    for (const xi of postave) for (const p of xi) if (p.poz === poz && p.id != null) m.set(p.id, (m.get(p.id) ?? 0) + 1);
+    for (const xi of postave)
+      for (const p of xi) if (p.poz === poz && p.id != null) m.set(p.id, (m.get(p.id) ?? 0) + 1);
     return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
   };
   return { golman: cnt("G")[0], stoperi: cnt("D").slice(0, 2), napadac: cnt("F")[0] };
 }
 
 export function jezgraTima(teamId: number): JezgraTima {
-  try { return jezgraIz(JSON.parse(localStorage.getItem(K(teamId)) ?? "[]")); } catch { return { stoperi: [] }; }
+  try {
+    return jezgraIz(JSON.parse(localStorage.getItem(K(teamId)) ?? "[]"));
+  } catch {
+    return { stoperi: [] };
+  }
 }

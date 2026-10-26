@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, Headphones, Languages, Loader2, Mic, Sparkles, TrendingUp } from "lucide-react";
+import {
+  GraduationCap,
+  Headphones,
+  Languages,
+  Loader2,
+  Mic,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +20,10 @@ export const Route = createFileRoute("/learn/login")({
   head: () => ({
     meta: [
       { title: "Sign in — Lingua" },
-      { name: "description", content: "Create your Lingua account and start learning a language today." },
+      {
+        name: "description",
+        content: "Create your Lingua account and start learning a language today.",
+      },
     ],
   }),
   component: LoginPage,
@@ -21,10 +32,26 @@ export const Route = createFileRoute("/learn/login")({
 const AVATARS = ["🦊", "🐼", "🦉", "🐙", "🦁", "🐳", "🦄", "🐝", "🦖", "🐨"];
 
 const HIGHLIGHTS = [
-  { icon: Languages, title: "Six leveled courses", body: "English, Spanish, French, German, Japanese and Korean, mapped to CEFR A1–B1." },
-  { icon: Headphones, title: "Four skill modules", body: "Flashcards, grammar drills, listening comprehension and oral shadowing." },
-  { icon: TrendingUp, title: "Progress you can see", body: "XP, streaks, per-skill mastery and a recommendation engine for what to do next." },
-  { icon: Sparkles, title: "Achievements & community", body: "Unlock badges, climb the leaderboard and swap tips with other learners." },
+  {
+    icon: Languages,
+    title: "Six leveled courses",
+    body: "English, Spanish, French, German, Japanese and Korean, mapped to CEFR A1–B1.",
+  },
+  {
+    icon: Headphones,
+    title: "Four skill modules",
+    body: "Flashcards, grammar drills, listening comprehension and oral shadowing.",
+  },
+  {
+    icon: TrendingUp,
+    title: "Progress you can see",
+    body: "XP, streaks, per-skill mastery and a recommendation engine for what to do next.",
+  },
+  {
+    icon: Sparkles,
+    title: "Achievements & community",
+    body: "Unlock badges, climb the leaderboard and swap tips with other learners.",
+  },
 ];
 
 function LoginPage() {
@@ -47,9 +74,7 @@ function LoginPage() {
     setError(null);
     setBusy(true);
     const result =
-      mode === "register"
-        ? register({ name, email, password, avatar })
-        : login(email, password);
+      mode === "register" ? register({ name, email, password, avatar }) : login(email, password);
     setBusy(false);
     if (!result.ok) {
       setError(result.error ?? "Something went wrong.");
@@ -73,8 +98,8 @@ function LoginPage() {
             Learn a language the way your brain actually works.
           </h1>
           <p className="mt-3 max-w-lg text-sm text-muted-foreground">
-            Short, leveled units built around four deliberate modules — recall, grammar, listening and
-            shadowing — with a personal path that adapts to your weakest skill.
+            Short, leveled units built around four deliberate modules — recall, grammar, listening
+            and shadowing — with a personal path that adapts to your weakest skill.
           </p>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -115,7 +140,9 @@ function LoginPage() {
                 }}
                 className={cn(
                   "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60",
+                  mode === m
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted/60",
                 )}
               >
                 {m === "login" ? "Sign in" : "Create account"}
@@ -127,7 +154,12 @@ function LoginPage() {
             {mode === "register" && (
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex Morgan" />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Alex Morgan"
+                />
               </div>
             )}
 
@@ -164,7 +196,9 @@ function LoginPage() {
                       onClick={() => setAvatar(a)}
                       className={cn(
                         "flex h-9 w-9 items-center justify-center rounded-lg border text-lg transition-colors",
-                        avatar === a ? "border-primary bg-primary/15" : "border-border/60 hover:bg-muted/60",
+                        avatar === a
+                          ? "border-primary bg-primary/15"
+                          : "border-border/60 hover:bg-muted/60",
                       )}
                     >
                       {a}
@@ -205,8 +239,8 @@ function LoginPage() {
           </Button>
 
           <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-            Lingua runs entirely in your browser: accounts, progress and posts are stored locally in this
-            device. Nothing is uploaded.
+            Lingua runs entirely in your browser: accounts, progress and posts are stored locally in
+            this device. Nothing is uploaded.
           </p>
         </div>
       </div>

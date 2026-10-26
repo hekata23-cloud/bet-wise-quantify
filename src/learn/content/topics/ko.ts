@@ -282,7 +282,8 @@ export const KO_TOPICS: Topic[] = [
         prompt: "어머니는 서울에 ___.",
         options: ["사세요", "살아요", "사시어요", "사세요요"],
         answer: "사세요",
-        explanation: "When the subject is someone you respect, the verb takes the honorific ending -(으)세요.",
+        explanation:
+          "When the subject is someone you respect, the verb takes the honorific ending -(으)세요.",
       },
       {
         id: "ko-a1-family-g3",
@@ -385,7 +386,8 @@ export const KO_TOPICS: Topic[] = [
         prompt: "물 좀 ___.",
         options: ["주세요", "주어요", "줍니다요", "주고"],
         answer: "주세요",
-        explanation: "주세요 is the polite request form of 주다 ('to give'), meaning 'please give me'.",
+        explanation:
+          "주세요 is the polite request form of 주다 ('to give'), meaning 'please give me'.",
       },
       {
         id: "ko-a2-food-g2",
@@ -405,12 +407,18 @@ export const KO_TOPICS: Topic[] = [
     listening: {
       id: "ko-a2-food-l1",
       transcript: "어서 오세요. 뭘 드시겠어요? 저는 비빔밥이랑 물 주세요.",
-      translation: "A server welcomes the guest and asks for the order, and the guest orders bibimbap with water.",
+      translation:
+        "A server welcomes the guest and asks for the order, and the guest orders bibimbap with water.",
       questions: [
         {
           id: "ko-a2-food-l1-q1",
           question: "What does the customer order?",
-          options: ["Bibimbap and water", "Kimchi and rice", "Bulgogi and tea", "Noodles and juice"],
+          options: [
+            "Bibimbap and water",
+            "Kimchi and rice",
+            "Bulgogi and tea",
+            "Noodles and juice",
+          ],
           answer: "Bibimbap and water",
         },
         {
@@ -504,13 +512,15 @@ export const KO_TOPICS: Topic[] = [
         prompt: "저는 버스___ 회사에 가요.",
         options: ["로", "을", "에", "에서"],
         answer: "로",
-        explanation: "The particle -(으)로 marks the means or method, such as a means of transport.",
+        explanation:
+          "The particle -(으)로 marks the means or method, such as a means of transport.",
       },
     ],
     listening: {
       id: "ko-a2-travel-l1",
       transcript: "실례합니다, 공항에 어떻게 가요? 이 버스를 타고 시청역에서 내리세요.",
-      translation: "Someone asks how to reach the airport and is told which bus to take and where to get off.",
+      translation:
+        "Someone asks how to reach the airport and is told which bus to take and where to get off.",
       questions: [
         {
           id: "ko-a2-travel-l1-q1",
@@ -615,7 +625,8 @@ export const KO_TOPICS: Topic[] = [
     listening: {
       id: "ko-b1-work-l1",
       transcript: "저는 요즘 새 프로젝트를 준비하고 있어요. 마감이 다음 주라서 회의가 많아요.",
-      translation: "The speaker is preparing a new project and, because the deadline is next week, has many meetings.",
+      translation:
+        "The speaker is preparing a new project and, because the deadline is next week, has many meetings.",
       questions: [
         {
           id: "ko-b1-work-l1-q1",

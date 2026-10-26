@@ -116,8 +116,7 @@ function devig(odds: number[]): number[] {
   return s > 0 ? inv.map((x) => x / s) : [];
 }
 
-const find = (m: RukometMarkets, re: RegExp) =>
-  Object.entries(m).find(([k]) => re.test(k))?.[1];
+const find = (m: RukometMarkets, re: RegExp) => Object.entries(m).find(([k]) => re.test(k))?.[1];
 
 /** SAFE-MATH štit: NaN kvota → odd null (nikad NaN tip). */
 const tip = (market: string, pick: string, prob: number, odd: number | null): Tip => {
@@ -224,15 +223,14 @@ export function analyzeRukomet(
   homeTeam = "Domaćin",
   awayTeam = "Gost",
   sourceMode?: "API" | "ALGORITAM" | "RUČNO",
-  isBet365 = false
+  isBet365 = false,
 ): RukometAnalysis {
   const notes: string[] = [];
   const profile = getLeagueGoalProfile(league);
 
   // 1) UKUPNI ZBROJ GOLOVA (Over/Under)
   const ouMk =
-    find(m, /^(over\/under|total goals|goals over\/under|total)$/i) ??
-    find(m, /over\/under/i);
+    find(m, /^(over\/under|total goals|goals over\/under|total)$/i) ?? find(m, /over\/under/i);
 
   const lines: { line: number; o: number; u: number }[] = [];
   if (ouMk) {
@@ -262,7 +260,8 @@ export function analyzeRukomet(
     if (dv.length === 2) {
       const pOver = dv[0]!;
       muTotal = mainLineBook.line + sigmaTotal * invPhi(pOver);
-      if (isBet365) notes.push(`Kalibrirano prema Bet365 liniji zbroja: ${mainLineBook.line} golova.`);
+      if (isBet365)
+        notes.push(`Kalibrirano prema Bet365 liniji zbroja: ${mainLineBook.line} golova.`);
     } else notes.push("Nekonzistentne kvote na zbroj golova — korišten profil lige.");
   } else {
     notes.push(`Procijenjen tempo lige (${league}): ~${profile.mu} golova.`);
@@ -271,12 +270,8 @@ export function analyzeRukomet(
   if (!Number.isFinite(muTotal) || !(muTotal > 20) || !(muTotal < 90)) muTotal = profile.mu;
 
   // 2) 1X2 I POBJEDNIK
-  const three =
-    find(m, /^(1x2|match winner|3 ?way result|full ?time result)$/i) ??
-    find(m, /1x2/i);
-  const twoWay =
-    find(m, /^(home\/away|money ?line|winner)$/i) ??
-    find(m, /home\/away/i);
+  const three = find(m, /^(1x2|match winner|3 ?way result|full ?time result)$/i) ?? find(m, /1x2/i);
+  const twoWay = find(m, /^(home\/away|money ?line|winner)$/i) ?? find(m, /home\/away/i);
 
   const tH = three?.["Home"] ?? three?.["1"];
   const tX = three?.["Draw"] ?? three?.["X"];
@@ -303,7 +298,6 @@ export function analyzeRukomet(
     notes.push("Tržišne kvote nisu dostupne — izračunato kvantitativnim rukometnim modelom.");
   }
 
-
   const sigmaDiff = 6.8;
   let lo = -25,
     hi = 25;
@@ -317,10 +311,13 @@ export function analyzeRukomet(
   // Izračun vjerojatnosti 1X2
   const pDraw = Math.max(
     0.05,
-    Math.min(0.12, Phi((0.5 - muDiff) / sigmaDiff) - Phi((-0.5 - muDiff) / sigmaDiff))
+    Math.min(0.12, Phi((0.5 - muDiff) / sigmaDiff) - Phi((-0.5 - muDiff) / sigmaDiff)),
   );
   // POPRAVAK: ograniči domaćina prema remiju kako tri ishoda uvijek daju ukupno 1.
-  const pHome = Math.max(0.02, Math.min(0.96, 1 - pDraw - 0.02, 1 - Phi((0.5 - muDiff) / sigmaDiff)));
+  const pHome = Math.max(
+    0.02,
+    Math.min(0.96, 1 - pDraw - 0.02, 1 - Phi((0.5 - muDiff) / sigmaDiff)),
+  );
   const pAway = 1 - pHome - pDraw;
 
   const pHomeML = pHome + pDraw * 0.5;
@@ -410,8 +407,8 @@ export function analyzeRukomet(
       fair: 1 / pHome,
       odd: tH ?? mlH ?? null,
       ev: tH ? (pHome * tH - 1) * 100 : null,
-      confidence: pHome > 0.70 ? "VISOKA" : "SREDNJA",
-      reason: `Prednost domaćina +${muDiff.toFixed(1)} gola uz ${ (pHome * 100).toFixed(1) }% vjerojatnosti.`,
+      confidence: pHome > 0.7 ? "VISOKA" : "SREDNJA",
+      reason: `Prednost domaćina +${muDiff.toFixed(1)} gola uz ${(pHome * 100).toFixed(1)}% vjerojatnosti.`,
     };
   } else if (pAway >= 0.58) {
     winnerPick = {
@@ -421,8 +418,8 @@ export function analyzeRukomet(
       fair: 1 / pAway,
       odd: tA ?? mlA ?? null,
       ev: tA ? (pAway * tA - 1) * 100 : null,
-      confidence: pAway > 0.70 ? "VISOKA" : "SREDNJA",
-      reason: `Gost ima bolju formu i rejting za ${ Math.abs(muDiff).toFixed(1) } gola.`,
+      confidence: pAway > 0.7 ? "VISOKA" : "SREDNJA",
+      reason: `Gost ima bolju formu i rejting za ${Math.abs(muDiff).toFixed(1)} gola.`,
     };
   } else if (pHome >= pAway) {
     winnerPick = {
@@ -452,7 +449,7 @@ export function analyzeRukomet(
   const chosenTotalLine = mainLineBook ? mainLineBook.line : Math.round(muTotal * 2) / 2;
   const zTot = (chosenTotalLine - muTotal) / sigmaTotal;
   const pOverTot = 1 - Phi(zTot);
-  const isOverFav = pOverTot >= 0.50;
+  const isOverFav = pOverTot >= 0.5;
   const totalOddsVal = mainLineBook ? (isOverFav ? mainLineBook.o : mainLineBook.u) : null;
   const totalProbVal = isOverFav ? pOverTot : 1 - pOverTot;
 
@@ -465,7 +462,7 @@ export function analyzeRukomet(
     odd: totalOddsVal,
     ev: totalOddsVal ? (totalProbVal * totalOddsVal - 1) * 100 : null,
     projected: muTotal,
-    confidence: totalProbVal > 0.60 ? "VISOKA" : "SREDNJA",
+    confidence: totalProbVal > 0.6 ? "VISOKA" : "SREDNJA",
     reason: `Projiciran tempo utakmice: ${muTotal.toFixed(1)} golova (granica: ${chosenTotalLine}).`,
   };
 
@@ -499,20 +496,23 @@ export function analyzeRukomet(
   const best = withOdds.length ? [...withOdds].sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0))[0]! : null;
   const safest =
     withOdds.filter((t) => t.prob >= 0.65).sort((a, b) => (b.ev ?? 0) - (a.ev ?? 0))[0] ??
-    allTips.filter((t) => t.prob >= 0.70).sort((a, b) => b.prob - a.prob)[0] ??
+    allTips.filter((t) => t.prob >= 0.7).sort((a, b) => b.prob - a.prob)[0] ??
     null;
 
   // SAFE-MATH štit: ne-konačne/nerazumne kvote u concrete bloku → null
   const ocistiKv = (t: unknown) => {
     const x = t as { odd?: number | null; ev?: number | null } | undefined;
     if (x) {
-      x.odd = x.odd != null && Number.isFinite(x.odd) && x.odd > 1.001 && x.odd < 1000 ? x.odd : null;
+      x.odd =
+        x.odd != null && Number.isFinite(x.odd) && x.odd > 1.001 && x.odd < 1000 ? x.odd : null;
       x.ev = x.odd != null && x.ev != null && Number.isFinite(x.ev) ? x.ev : null;
     }
     return x;
   };
   ocistiKv(winnerPick);
-  ocistiKv(totalGoalsConcrete); ocistiKv(homeTotalConcrete); ocistiKv(awayTotalConcrete);
+  ocistiKv(totalGoalsConcrete);
+  ocistiKv(homeTotalConcrete);
+  ocistiKv(awayTotalConcrete);
 
   return {
     muDiff,
@@ -544,4 +544,3 @@ export function analyzeRukomet(
     isBet365,
   };
 }
-

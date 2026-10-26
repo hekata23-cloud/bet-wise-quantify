@@ -71,8 +71,8 @@ export interface SniperAnalysisResult {
   probBttsNo: number;
 
   // Analitički indikatori
-  anomalyScore: number;       // 0 - 100% indeks skrivenog potencijala golova
-  hazardRate: number;         // 0 - 100% vjerojatnost otvaranja utakmice nakon 1. gola
+  anomalyScore: number; // 0 - 100% indeks skrivenog potencijala golova
+  hazardRate: number; // 0 - 100% vjerojatnost otvaranja utakmice nakon 1. gola
   tacticalClash: {
     hasClash: boolean;
     label: string;
@@ -85,8 +85,8 @@ export interface SniperAnalysisResult {
     yellowCardsPerGame?: number;
     description: string;
   };
-  highOddsAlert: boolean;     // P(Over) ili P(BTTS) >= 56% na kvoti >= 2.10
-  goldenSniper: boolean;      // Edge >= +8.0% na kvoti >= 2.10
+  highOddsAlert: boolean; // P(Over) ili P(BTTS) >= 56% na kvoti >= 2.10
+  goldenSniper: boolean; // Edge >= +8.0% na kvoti >= 2.10
 
   // Selekcije za tiket
   oddsCells: {
@@ -125,7 +125,8 @@ export function computeSniperAnomaly(input: SniperMatchInput): SniperAnalysisRes
     tacticalDescription = `Obje momčadi igraju agresivan visoki presing (PPDA ${ppdaH.toFixed(1)} vs ${ppdaA.toFixed(1)}) → taktički sudar generira visoki xG (+22% λ) unatoč prošlim Under nizovima.`;
   } else if ((ppdaH != null && ppdaH < 9.0) || (ppdaA != null && ppdaA < 9.0)) {
     tacticalLabel = "Asimetrični presing";
-    tacticalDescription = "Jedna momčad forsira visoki presing protiv dubokog bloka, stvarajući tranzicijske pukotine.";
+    tacticalDescription =
+      "Jedna momčad forsira visoki presing protiv dubokog bloka, stvarajući tranzicijske pukotine.";
   }
 
   // B) Bivarijantna Frank Kopula s Dixon-Coles korekcijom
@@ -137,19 +138,21 @@ export function computeSniperAnomaly(input: SniperMatchInput): SniperAnalysisRes
   let pOver25 = metrike.o25;
 
   // C) Referee & Penalty Drag Multiplier
-  const refPens = input.referee?.penaltiesPerGame != null && Number.isFinite(input.referee.penaltiesPerGame)
-    ? input.referee.penaltiesPerGame
-    : null;
-  const refCards = input.referee?.yellowCardsPerGame != null && Number.isFinite(input.referee.yellowCardsPerGame)
-    ? input.referee.yellowCardsPerGame
-    : null;
+  const refPens =
+    input.referee?.penaltiesPerGame != null && Number.isFinite(input.referee.penaltiesPerGame)
+      ? input.referee.penaltiesPerGame
+      : null;
+  const refCards =
+    input.referee?.yellowCardsPerGame != null && Number.isFinite(input.referee.yellowCardsPerGame)
+      ? input.referee.yellowCardsPerGame
+      : null;
 
   const isStrictRef = (refPens != null && refPens > 0.35) || (refCards != null && refCards > 4.8);
   let refDesc = "Sudac u prosjeku lige.";
 
   if (isStrictRef) {
     pBttsYes = Math.min(0.96, pBttsYes + 0.055); // +5.5%
-    pOver25 = Math.min(0.96, pOver25 + 0.062);   // +6.2%
+    pOver25 = Math.min(0.96, pOver25 + 0.062); // +6.2%
     refDesc = `Strog sudac (${input.referee?.name ?? "Delegirani sudac"}): ${refPens != null ? `${refPens.toFixed(2)} penala` : ""}${refCards != null ? ` · ${refCards.toFixed(1)} kartona` : ""}/utakmici → +5.5% BTTS i +6.2% Over 2.5 poticaj.`;
   }
 
@@ -158,7 +161,7 @@ export function computeSniperAnomaly(input: SniperMatchInput): SniperAnalysisRes
 
   // Game-State Hazard Rate: vjerojatnost otvaranja utakmice nakon prvog gola
   let hazard = 0.45;
-  if (hasPpdaClash) hazard += 0.20;
+  if (hasPpdaClash) hazard += 0.2;
   if (isStrictRef) hazard += 0.08;
   if (Math.abs(lamH - lamA) < 0.3) hazard += 0.07; // izjednačeni rivali
   const hazardRate = clamp(hazard, 0.35, 0.88);
@@ -175,13 +178,13 @@ export function computeSniperAnomaly(input: SniperMatchInput): SniperAnalysisRes
   const edgeBttsNo = pBttsNo * kBttsNo - 1;
 
   // D) High-Odds Value Filter (P >= 56% na kvoti >= 2.10)
-  const highOddsOver = pOver25 >= 0.56 && kOver >= 2.10;
-  const highOddsBtts = pBttsYes >= 0.56 && kBttsYes >= 2.10;
+  const highOddsOver = pOver25 >= 0.56 && kOver >= 2.1;
+  const highOddsBtts = pBttsYes >= 0.56 && kBttsYes >= 2.1;
   const highOddsAlert = highOddsOver || highOddsBtts;
 
   // Golden Sniper: Edge >= +8.0% na kvoti >= 2.10
-  const goldenOver = kOver >= 2.10 && edgeOver >= 0.08;
-  const goldenBtts = kBttsYes >= 2.10 && edgeBttsYes >= 0.08;
+  const goldenOver = kOver >= 2.1 && edgeOver >= 0.08;
+  const goldenBtts = kBttsYes >= 2.1 && edgeBttsYes >= 0.08;
   const goldenSniper = goldenOver || goldenBtts;
 
   // Anomaly Score (0 - 100%)
@@ -235,13 +238,13 @@ export function computeSniperAnomaly(input: SniperMatchInput): SniperAnalysisRes
   const reasoningParts: string[] = [];
   if (goldenSniper) {
     reasoningParts.push(
-      `GOLDEN SNIPER DETEKTIRAN: Visoka kvota (${goldenOver ? `Over 2.5 @${kOver.toFixed(2)}` : `GG @${kBttsYes.toFixed(2)}`}) s Edgeom od +${((goldenOver ? edgeOver : edgeBttsYes) * 100).toFixed(1)}%.`
+      `GOLDEN SNIPER DETEKTIRAN: Visoka kvota (${goldenOver ? `Over 2.5 @${kOver.toFixed(2)}` : `GG @${kBttsYes.toFixed(2)}`}) s Edgeom od +${((goldenOver ? edgeOver : edgeBttsYes) * 100).toFixed(1)}%.`,
     );
   }
   if (hasPpdaClash) reasoningParts.push(tacticalDescription);
   if (isStrictRef) reasoningParts.push(refDesc);
   reasoningParts.push(
-    `Game-State Hazard Rate: ${(hazardRate * 100).toFixed(0)}% šanse za ubrzanje tempa nakon prvog gola.`
+    `Game-State Hazard Rate: ${(hazardRate * 100).toFixed(0)}% šanse za ubrzanje tempa nakon prvog gola.`,
   );
 
   return {
@@ -282,9 +285,13 @@ export function computeSniperAnomaly(input: SniperMatchInput): SniperAnalysisRes
 /** Formatirani blok za Luna & Orion sistemski kontekst */
 export function formatSniperAnomalyForAI(r: SniperAnalysisResult): string[] {
   const lines: string[] = [];
-  lines.push(`ANOMALY SCORE: ${r.anomalyScore}% · Hazard Rate: ${(r.hazardRate * 100).toFixed(0)}% (otvaranje igre nakon 1. gola)`);
+  lines.push(
+    `ANOMALY SCORE: ${r.anomalyScore}% · Hazard Rate: ${(r.hazardRate * 100).toFixed(0)}% (otvaranje igre nakon 1. gola)`,
+  );
   if (r.goldenSniper) {
-    lines.push("GOLDEN SNIPER ALERT: Pronađen je skriveni visoki value na kvotama iznad 2.10 s Edge-om >= +8.0%!");
+    lines.push(
+      "GOLDEN SNIPER ALERT: Pronađen je skriveni visoki value na kvotama iznad 2.10 s Edge-om >= +8.0%!",
+    );
   } else if (r.highOddsAlert) {
     lines.push("HIGH ODDS VALUE ALERT: Model ima >= 56% na visokoj tržišnoj kvoti (>= 2.10).");
   }
@@ -296,7 +303,7 @@ export function formatSniperAnomalyForAI(r: SniperAnalysisResult): string[] {
   }
   lines.push(
     `Model projekcije: Over 2.5 ${(r.probOver25 * 100).toFixed(1)}% (kvota ${r.oddsCells.over25.odd.toFixed(2)}, Edge ${r.oddsCells.over25.edge >= 0 ? "+" : ""}${(r.oddsCells.over25.edge * 100).toFixed(1)}%) | ` +
-    `BTTS GG ${(r.probBttsYes * 100).toFixed(1)}% (kvota ${r.oddsCells.bttsYes.odd.toFixed(2)}, Edge ${r.oddsCells.bttsYes.edge >= 0 ? "+" : ""}${(r.oddsCells.bttsYes.edge * 100).toFixed(1)}%)`
+      `BTTS GG ${(r.probBttsYes * 100).toFixed(1)}% (kvota ${r.oddsCells.bttsYes.odd.toFixed(2)}, Edge ${r.oddsCells.bttsYes.edge >= 0 ? "+" : ""}${(r.oddsCells.bttsYes.edge * 100).toFixed(1)}%)`,
   );
   return lines;
 }

@@ -8,7 +8,13 @@ import type { LessonKind } from "@/learn/types";
 import { cn } from "@/lib/utils";
 
 /** Renders children only after mount so localStorage-backed state never breaks SSR hydration. */
-export function ClientOnly({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
+export function ClientOnly({
+  children,
+  fallback = null,
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   return <>{mounted ? children : fallback}</>;
@@ -145,7 +151,12 @@ export function CourseLink({
 }
 
 /** 1 level per 500 XP; returns the level number and progress toward the next. */
-export function learnerLevel(xp: number): { level: number; into: number; needed: number; percent: number } {
+export function learnerLevel(xp: number): {
+  level: number;
+  into: number;
+  needed: number;
+  percent: number;
+} {
   const needed = 500;
   const level = Math.floor(xp / needed) + 1;
   const into = xp % needed;

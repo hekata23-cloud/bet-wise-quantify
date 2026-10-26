@@ -50,7 +50,15 @@ export interface MastermindPrefs {
 
 export const DEFAULT_MASTERMIND: MastermindPrefs = {
   enabled: false,
-  markets: { btts: true, ou25: true, "1x2": true, htft: true, htx: true, htgoals: true, opce: false },
+  markets: {
+    btts: true,
+    ou25: true,
+    "1x2": true,
+    htft: true,
+    htx: true,
+    htgoals: true,
+    opce: false,
+  },
   level: "strict",
   autoModels: true,
   autoEngines: true,
@@ -129,7 +137,12 @@ export function boostTitan(p: MastermindPrefs, t: TitanPrefs): TitanPrefs {
   const on = { ...t.on };
   for (const m of TITAN_MODULES) on[m.id] = true;
   const th = effectiveThresholds(p);
-  return { ...t, on, minSources: Math.max(t.minSources, 3), gradeA: Math.max(t.gradeA, th.minConfidence / 100) };
+  return {
+    ...t,
+    on,
+    minSources: Math.max(t.minSources, 3),
+    gradeA: Math.max(t.gradeA, th.minConfidence / 100),
+  };
 }
 
 export function boostAntiError(p: MastermindPrefs, a: AntiErrorPrefs): AntiErrorPrefs {
@@ -177,7 +190,9 @@ export function activateEverything(p: MastermindPrefs): void {
 
 /** Najbolji automatski modeli za traženo tržište. */
 export function autoModelsFor(market: Market, max: number): string[] {
-  return AUTO_SPECIALISTS.filter((s: { markets: Market[] }) => s.markets.includes(market) || s.markets.includes("opce"))
+  return AUTO_SPECIALISTS.filter(
+    (s: { markets: Market[] }) => s.markets.includes(market) || s.markets.includes("opce"),
+  )
     .slice(0, Math.max(1, max))
     .map((s: { id: string }) => s.id);
 }

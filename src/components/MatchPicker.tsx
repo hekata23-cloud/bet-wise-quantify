@@ -3,8 +3,21 @@ import { useServerFn } from "@tanstack/react-start";
 import { Calendar, Download, Filter, Loader2, RotateCcw, Search, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadKey } from "@/lib/api-football-storage";
-import { getFixtureOdds, getFixtures, type FixtureItem, type OddsResult } from "@/lib/api-football-data.functions";
-import { canCall, DAILY_LIMIT, getCache, readGuard, recordCall, resetGuard, setCache } from "@/lib/api-guard";
+import {
+  getFixtureOdds,
+  getFixtures,
+  type FixtureItem,
+  type OddsResult,
+} from "@/lib/api-football-data.functions";
+import {
+  canCall,
+  DAILY_LIMIT,
+  getCache,
+  readGuard,
+  recordCall,
+  resetGuard,
+  setCache,
+} from "@/lib/api-guard";
 import { getApiKey } from "@/lib/zlatni-guard";
 import { isoDateZagreb } from "@/lib/zagreb-time";
 
@@ -57,7 +70,9 @@ export function MatchPicker({ onLoaded }: Props) {
     const cached = getCache<FixtureItem[]>(cacheKey, 24 * 60 * 60 * 1000);
     if (cached) {
       setFixtures(cached);
-      setMsg(`Popis za ovaj dan je već u memoriji (${cached.length} utakmica) — 0 potrošenih kredita.`);
+      setMsg(
+        `Popis za ovaj dan je već u memoriji (${cached.length} utakmica) — 0 potrošenih kredita.`,
+      );
       return;
     }
 
@@ -74,7 +89,11 @@ export function MatchPicker({ onLoaded }: Props) {
       if (!res.ok) return setMsg(res.message ?? "Greška pri dohvatu.");
       setFixtures(res.fixtures);
       setCache(cacheKey, res.fixtures);
-      setMsg(res.fixtures.length ? `Učitano ${res.fixtures.length} utakmica iz svih liga svijeta! (1 kredit)` : "Nema zakazanih utakmica za taj dan.");
+      setMsg(
+        res.fixtures.length
+          ? `Učitano ${res.fixtures.length} utakmica iz svih liga svijeta! (1 kredit)`
+          : "Nema zakazanih utakmica za taj dan.",
+      );
     } catch {
       setMsg("Dohvat nije uspio. Provjeri vezu ili pričekaj trenutak.");
     } finally {
@@ -99,7 +118,9 @@ export function MatchPicker({ onLoaded }: Props) {
       });
 
       const note = o.k22Estimated ? " (2:2 procijenjen iz modela)" : "";
-      setMsg(`Kvote upisane: ${label} (${o.bookmaker ?? "Kladionica"})${fromCache ? " [memorija]" : ""}${note}.`);
+      setMsg(
+        `Kvote upisane: ${label} (${o.bookmaker ?? "Kladionica"})${fromCache ? " [memorija]" : ""}${note}.`,
+      );
     };
 
     const cacheKey = `odds.${f.id}`;
@@ -127,7 +148,9 @@ export function MatchPicker({ onLoaded }: Props) {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q
-      ? fixtures.filter((f) => `${f.home} ${f.away} ${f.league} ${f.country}`.toLowerCase().includes(q))
+      ? fixtures.filter((f) =>
+          `${f.home} ${f.away} ${f.league} ${f.country}`.toLowerCase().includes(q),
+        )
       : fixtures;
     return list.slice(0, 100);
   }, [fixtures, query]);
@@ -136,7 +159,9 @@ export function MatchPicker({ onLoaded }: Props) {
     <div className="space-y-4 rounded-xl border border-line bg-surface/30 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 pb-3">
         <div>
-          <h3 className="font-display text-base font-bold text-ink">API-Football · Birač utakmica dana</h3>
+          <h3 className="font-display text-base font-bold text-ink">
+            API-Football · Birač utakmica dana
+          </h3>
           <p className="text-xs text-muted">
             1 klik = sve utakmice dana u keš · klik na par = povlači stvarne kvote
           </p>
@@ -172,8 +197,14 @@ export function MatchPicker({ onLoaded }: Props) {
             className="h-11 w-full rounded-md border border-line bg-surface/65 pl-10 pr-2 text-ink outline-none focus:border-cyan"
           />
         </label>
-        <Button type="button" onClick={loadFixtures} disabled={busy || !date} className="h-11 shadow-button">
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Učitaj dan (1 kredit)
+        <Button
+          type="button"
+          onClick={loadFixtures}
+          disabled={busy || !date}
+          className="h-11 shadow-button"
+        >
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{" "}
+          Učitaj dan (1 kredit)
         </Button>
       </div>
 
@@ -190,8 +221,12 @@ export function MatchPicker({ onLoaded }: Props) {
           </div>
 
           <div className="flex items-center justify-between text-xs text-muted">
-            <span>Prikazano {shown.length} od ukupno {fixtures.length} utakmica</span>
-            <span className="flex items-center gap-1"><Filter className="size-3" /> Brzi odabir klikom</span>
+            <span>
+              Prikazano {shown.length} od ukupno {fixtures.length} utakmica
+            </span>
+            <span className="flex items-center gap-1">
+              <Filter className="size-3" /> Brzi odabir klikom
+            </span>
           </div>
 
           <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
@@ -204,14 +239,22 @@ export function MatchPicker({ onLoaded }: Props) {
                   className="w-full rounded-md border border-line/60 bg-surface/40 p-2.5 text-left text-sm transition hover:border-cyan hover:bg-surface/70 disabled:opacity-50"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-ink">{f.home} – {f.away}</span>
+                    <span className="font-bold text-ink">
+                      {f.home} – {f.away}
+                    </span>
                     <span className="font-mono text-xs text-cyan">
-                      {new Date(f.time).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" })}
+                      {new Date(f.time).toLocaleTimeString("hr-HR", {
+                        timeZone: "Europe/Zagreb",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">
                     <Trophy className="size-3 text-gold" />
-                    <span>{f.country}: {f.league}</span>
+                    <span>
+                      {f.country}: {f.league}
+                    </span>
                   </div>
                 </button>
               </li>
@@ -221,7 +264,10 @@ export function MatchPicker({ onLoaded }: Props) {
       )}
 
       {msg && (
-        <p role="status" className="rounded-md border border-line bg-surface/40 px-3 py-2 text-xs font-semibold text-ink/85">
+        <p
+          role="status"
+          className="rounded-md border border-line bg-surface/40 px-3 py-2 text-xs font-semibold text-ink/85"
+        >
           {msg}
         </p>
       )}

@@ -50,10 +50,7 @@ export function bttsCopula(lh: number, la: number, rho: number): BttsCopulaResul
   // POPRAVAK: neispravan ρ ne smije učiniti kopulu i BTTS vjerojatnosti NaN.
   const theta = 8 * safeRho; // rho→theta mapiranje
   // POPRAVAK: zajednička vjerojatnost mora poštovati Fréchetove granice kopule.
-  const p00 = Math.min(
-    Math.min(u, v),
-    Math.max(Math.max(0, u + v - 1), frankCopula(u, v, theta)),
-  );
+  const p00 = Math.min(Math.min(u, v), Math.max(Math.max(0, u + v - 1), frankCopula(u, v, theta)));
   // POPRAVAK: BTTS i neovisna BTTS moraju zadržati točne rubne vrijednosti 0 i 1.
   const gg = Math.min(1, Math.max(0, 1 - u - v + p00));
   const ggIndependent = Math.min(1, Math.max(0, 1 - u - v + u * v));
@@ -98,14 +95,11 @@ export function ouGameStateHazard(
   lateSkew = 0.18,
 ): OuHazardResult {
   // POPRAVAK: valjani nenegativni λ i ograničen nagib čuvaju zbroj vjerojatnosti.
-  const base = Math.max(0, Number.isFinite(lh) ? lh : 0) + Math.max(0, Number.isFinite(la) ? la : 0);
+  const base =
+    Math.max(0, Number.isFinite(lh) ? lh : 0) + Math.max(0, Number.isFinite(la) ? la : 0);
   const safeLateSkew = Number.isFinite(lateSkew) ? Math.max(-0.49, Math.min(0.49, lateSkew)) : 0.18;
   // Vremenski profil: udjeli po trećinama uz nagib prema kraju.
-  const w: [number, number, number] = [
-    (1 - safeLateSkew) / 3,
-    1 / 3,
-    (1 + 2 * safeLateSkew) / 3,
-  ];
+  const w: [number, number, number] = [(1 - safeLateSkew) / 3, 1 / 3, (1 + 2 * safeLateSkew) / 3];
   const wSum = w[0] + w[1] + w[2];
   const thirds: [number, number, number] = [
     (base * w[0]) / wSum,
@@ -143,7 +137,8 @@ export function ouGameStateHazard(
 /** Skellam: P(razlika golova = d) — za hendikepe i DNB. */
 export function skellam(lh: number, la: number, d: number): number {
   // POPRAVAK: odbacite nevaljane ulaze i uključite Poissonov rep za veće λ.
-  if (!Number.isFinite(lh) || !Number.isFinite(la) || lh < 0 || la < 0 || !Number.isInteger(d)) return 0;
+  if (!Number.isFinite(lh) || !Number.isFinite(la) || lh < 0 || la < 0 || !Number.isInteger(d))
+    return 0;
   const maxLambda = Math.max(lh, la);
   // POPRAVAK: pomak razlike d utječe na središte zbroja, ne samo na donju granicu.
   const maxK = Math.ceil(Math.max(la, lh - d, 0) + 10 * Math.sqrt(maxLambda + 1) + 10);
@@ -159,7 +154,17 @@ export function skellam(lh: number, la: number, d: number): number {
 /** Bivariate Poisson P(x,y) s kovarijancom λ3. */
 export function bivariatePoisson(lh: number, la: number, l3: number, x: number, y: number): number {
   // POPRAVAK: nevažeće ulazne vrijednosti ne smiju dati NaN ili neispravnu masu.
-  if (![lh, la, l3, x, y].every(Number.isFinite) || lh < 0 || la < 0 || l3 < 0 || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0) return 0;
+  if (
+    ![lh, la, l3, x, y].every(Number.isFinite) ||
+    lh < 0 ||
+    la < 0 ||
+    l3 < 0 ||
+    !Number.isInteger(x) ||
+    !Number.isInteger(y) ||
+    x < 0 ||
+    y < 0
+  )
+    return 0;
   // POPRAVAK: zajednička komponenta ne smije nadmašiti margine ni dodavati lažnu lambdu 0.01.
   const common = Math.max(0, Math.min(l3, lh, la));
   const l1 = Math.max(0, lh - common);
@@ -203,13 +208,15 @@ export function devigShin(odds: number[]): number[] {
   const book = raw.reduce((a, b) => a + b, 0);
   let z = 0;
   for (let i = 0; i < 100; i++) {
-    const p = raw.map((r) => (Math.sqrt(z * z + 4 * (1 - z) * (r * r) / book) - z) / (2 * (1 - z)));
+    const p = raw.map(
+      (r) => (Math.sqrt(z * z + (4 * (1 - z) * (r * r)) / book) - z) / (2 * (1 - z)),
+    );
     const s = p.reduce((a, b) => a + b, 0);
     if (Math.abs(s - 1) < 1e-9) break;
     z += (s - 1) * 0.5;
     z = Math.max(0, Math.min(0.35, z));
   }
-  const p = raw.map((r) => (Math.sqrt(z * z + 4 * (1 - z) * (r * r) / book) - z) / (2 * (1 - z)));
+  const p = raw.map((r) => (Math.sqrt(z * z + (4 * (1 - z) * (r * r)) / book) - z) / (2 * (1 - z)));
   const s = p.reduce((a, b) => a + b, 0);
   return p.map((x) => x / s);
 }
@@ -217,7 +224,8 @@ export function devigShin(odds: number[]): number[] {
 /** Kelly udio banke (frakcijski). */
 export function kelly(p: number, odds: number, fraction = 0.25): number {
   // POPRAVAK: kvota ≤ 1 ili neispravni ulazi ne daju Kellyjev ulog.
-  if (!Number.isFinite(p) || !Number.isFinite(odds) || !Number.isFinite(fraction) || odds <= 1) return 0;
+  if (!Number.isFinite(p) || !Number.isFinite(odds) || !Number.isFinite(fraction) || odds <= 1)
+    return 0;
   const probability = Math.min(1, Math.max(0, p));
   const b = odds - 1;
   const f = (probability * b - (1 - probability)) / b;
@@ -249,7 +257,12 @@ export function logLoss(p: number, outcome: 0 | 1): number {
 }
 
 /** Bayesovo osvježavanje: prior λ (Gamma) + novi podaci. */
-export function bayesLambda(priorMean: number, priorStrength: number, obsGoals: number, obsGames: number): number {
+export function bayesLambda(
+  priorMean: number,
+  priorStrength: number,
+  obsGoals: number,
+  obsGames: number,
+): number {
   return (priorMean * priorStrength + obsGoals) / (priorStrength + Math.max(0.5, obsGames));
 }
 
@@ -264,7 +277,12 @@ export function glickoShift(rating: number, rd: number, expected: number, actual
 }
 
 /** Utjecaj crvene karte na λ: kažnjeni tim ≈ −35%, protivnik ≈ +22% (skalirano preostalim vremenom). */
-export function redCardAdjust(lh: number, la: number, minute: number, onHome: boolean): [number, number] {
+export function redCardAdjust(
+  lh: number,
+  la: number,
+  minute: number,
+  onHome: boolean,
+): [number, number] {
   const remaining = Math.max(0, (90 - Math.min(90, minute)) / 90);
   const drop = 0.35 * remaining;
   const boost = 0.22 * remaining;
@@ -302,12 +320,16 @@ export function mathPackBriefing(inp: MathPackBriefingInput): string {
   const o = ouGameStateHazard(inp.lh, inp.la, inp.ouBeta);
   const h1 = skellam(inp.lh, inp.la, 1);
   const h0 = skellam(inp.lh, inp.la, 0);
-  let pDraw = 0, pHome = 0;
+  let pDraw = 0,
+    pHome = 0;
   // POPRAVAK: uključite repove razlike golova umjesto da velike pobjede domaćina pripišete gostu.
-  const maxDifference = Math.ceil(Math.max(inp.lh, inp.la) + 10 * Math.sqrt(Math.max(inp.lh, inp.la) + 1) + 10);
+  const maxDifference = Math.ceil(
+    Math.max(inp.lh, inp.la) + 10 * Math.sqrt(Math.max(inp.lh, inp.la) + 1) + 10,
+  );
   for (let d = -maxDifference; d <= maxDifference; d++) {
     const v = skellam(inp.lh, inp.la, d);
-    if (d === 0) pDraw += v; else if (d > 0) pHome += v;
+    if (d === 0) pDraw += v;
+    else if (d > 0) pHome += v;
   }
   const pAway = Math.max(0, 1 - pHome - pDraw);
   const ent = entropy([pHome, pDraw, pAway]);

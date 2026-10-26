@@ -54,7 +54,9 @@ export function LearnShell({ children }: { children: ReactNode }) {
               <GraduationCap className="h-5 w-5" />
             </span>
             <span className="leading-tight">
-              <span className="block text-sm font-semibold tracking-tight sm:text-base">Lingua</span>
+              <span className="block text-sm font-semibold tracking-tight sm:text-base">
+                Lingua
+              </span>
               <span className="hidden text-[10px] text-muted-foreground sm:block">
                 Immersive language learning
               </span>
@@ -103,7 +105,10 @@ export function LearnShell({ children }: { children: ReactNode }) {
                         <span>{percent}% to next</span>
                       </div>
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-background/70">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
                     </div>
                     <Link
@@ -140,7 +145,8 @@ export function LearnShell({ children }: { children: ReactNode }) {
         <nav className="border-t border-border/40 bg-card/30">
           <div className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-3 py-1.5">
             {NAV.map((item) => {
-              const active = item.to === "/learn" ? pathname === "/learn" : pathname.startsWith(item.to);
+              const active =
+                item.to === "/learn" ? pathname === "/learn" : pathname.startsWith(item.to);
               const Icon = item.icon;
               return (
                 <Link
@@ -165,7 +171,8 @@ export function LearnShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
 
       <footer className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
-        Lingua · Immersive language learning · English, Spanish, French, German, Japanese &amp; Korean
+        Lingua · Immersive language learning · English, Spanish, French, German, Japanese &amp;
+        Korean
       </footer>
     </div>
   );

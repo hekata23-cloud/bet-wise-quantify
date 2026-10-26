@@ -1,12 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-} from "recharts";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import {
   ArrowRight,
   BarChart3,
@@ -32,14 +25,22 @@ import {
 import { ACHIEVEMENTS } from "@/learn/content/achievements";
 import { KIND_LABELS } from "@/learn/content/curriculum";
 import { LANGUAGES } from "@/learn/content/languages";
-import { buildRecommendations, courseProgress, xpSeries, type Recommendation } from "@/learn/engine";
+import {
+  buildRecommendations,
+  courseProgress,
+  xpSeries,
+  type Recommendation,
+} from "@/learn/engine";
 import { startCourse, useCurrentUser, useLearnerStats } from "@/learn/store";
 
 export const Route = createFileRoute("/learn/")({
   head: () => ({
     meta: [
       { title: "Dashboard — Lingua" },
-      { name: "description", content: "Your daily language-learning dashboard, streak and recommendations." },
+      {
+        name: "description",
+        content: "Your daily language-learning dashboard, streak and recommendations.",
+      },
     ],
   }),
   component: DashboardPage,
@@ -164,10 +165,30 @@ function DashboardPage() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile icon={<Sparkles className="h-3.5 w-3.5" />} label="Total XP" value={progress.xp.toLocaleString()} hint={`Level ${level.level}`} />
-        <StatTile icon={<Flame className="h-3.5 w-3.5" />} label="Streak" value={`${progress.streakDays} days`} hint="Consecutive active days" />
-        <StatTile icon={<Target className="h-3.5 w-3.5" />} label="Units mastered" value={stats.unitsCompleted} hint={`${stats.levelsCompleted} CEFR levels finished`} />
-        <StatTile icon={<Trophy className="h-3.5 w-3.5" />} label="Achievements" value={`${unlocked.size}/${ACHIEVEMENTS.length}`} hint="Badges unlocked" />
+        <StatTile
+          icon={<Sparkles className="h-3.5 w-3.5" />}
+          label="Total XP"
+          value={progress.xp.toLocaleString()}
+          hint={`Level ${level.level}`}
+        />
+        <StatTile
+          icon={<Flame className="h-3.5 w-3.5" />}
+          label="Streak"
+          value={`${progress.streakDays} days`}
+          hint="Consecutive active days"
+        />
+        <StatTile
+          icon={<Target className="h-3.5 w-3.5" />}
+          label="Units mastered"
+          value={stats.unitsCompleted}
+          hint={`${stats.levelsCompleted} CEFR levels finished`}
+        />
+        <StatTile
+          icon={<Trophy className="h-3.5 w-3.5" />}
+          label="Achievements"
+          value={`${unlocked.size}/${ACHIEVEMENTS.length}`}
+          hint="Badges unlocked"
+        />
       </section>
 
       {activeCourses.length > 0 && (
@@ -183,9 +204,12 @@ function DashboardPage() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{language?.flag}</span>
                       <div className="flex-1">
-                        <div className="text-sm font-semibold text-foreground">{language?.name}</div>
+                        <div className="text-sm font-semibold text-foreground">
+                          {language?.name}
+                        </div>
                         <div className="text-xs text-muted-foreground">
-                          {cp.completedUnits}/{cp.totalUnits} units · {cp.completedLessons}/{cp.totalLessons} activities
+                          {cp.completedUnits}/{cp.totalUnits} units · {cp.completedLessons}/
+                          {cp.totalLessons} activities
                         </div>
                       </div>
                       <span className="text-sm font-semibold text-primary">{cp.percent}%</span>
@@ -216,8 +240,18 @@ function DashboardPage() {
                     <stop offset="95%" stopColor="oklch(0.585 0.232 25.5)" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.5)" }} interval={2} axisLine={false} tickLine={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.07)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10, fill: "rgba(255,255,255,0.5)" }}
+                  interval={2}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
                   contentStyle={{
                     background: "oklch(0.18 0.016 20)",
@@ -228,7 +262,13 @@ function DashboardPage() {
                   labelStyle={{ color: "rgba(255,255,255,0.6)" }}
                   formatter={(value: number) => [`${value} XP`, ""]}
                 />
-                <Area type="monotone" dataKey="xp" stroke="oklch(0.585 0.232 25.5)" strokeWidth={2} fill="url(#xpFill)" />
+                <Area
+                  type="monotone"
+                  dataKey="xp"
+                  stroke="oklch(0.585 0.232 25.5)"
+                  strokeWidth={2}
+                  fill="url(#xpFill)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -261,7 +301,10 @@ function DashboardPage() {
 
       {activeCourses.length === 0 && (
         <section>
-          <SectionTitle title="Pick a language" description="Start with any course — you can switch or add more later." />
+          <SectionTitle
+            title="Pick a language"
+            description="Start with any course — you can switch or add more later."
+          />
           <div className="grid gap-3 sm:grid-cols-3">
             {LANGUAGES.slice(0, 3).map((language) => (
               <button

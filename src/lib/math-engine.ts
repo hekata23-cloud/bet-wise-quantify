@@ -44,7 +44,8 @@ export function poissonKum(k: number, lam: number): number {
 /** Pronađi λ tako da je P(X ≤ k) = cilj (bisekcija) — za O/U linije. */
 export function lambdaIzKumulativne(k: number, cilj: number): number | null {
   if (!(cilj > 0.001 && cilj < 0.999) || !(k >= 0)) return null;
-  let lo = 0.05, hi = 8;
+  let lo = 0.05,
+    hi = 8;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     if (poissonKum(k, mid) > cilj) lo = mid;
@@ -76,29 +77,44 @@ export function izgradiGrid(lam: number, mu: number, rho = 0): number[][] {
   for (let i = 0; i <= MAX_GOL; i++) {
     g[i] = [];
     for (let j = 0; j <= MAX_GOL; j++) {
-      const v = Math.max(0, poissonPmf(i, L.lam) * poissonPmf(j, L.mu) * dcTezina(i, j, L.lam, L.mu, rr));
+      const v = Math.max(
+        0,
+        poissonPmf(i, L.lam) * poissonPmf(j, L.mu) * dcTezina(i, j, L.lam, L.mu, rr),
+      );
       g[i]![j] = v;
       z += v;
     }
   }
-  if (!(z > 0)) { // teoretski nedostižno uz štit, ali bez rizika
-    for (let i = 0; i <= MAX_GOL; i++) for (let j = 0; j <= MAX_GOL; j++) g[i]![j] = i === 0 && j === 0 ? 1 : 0;
+  if (!(z > 0)) {
+    // teoretski nedostižno uz štit, ali bez rizika
+    for (let i = 0; i <= MAX_GOL; i++)
+      for (let j = 0; j <= MAX_GOL; j++) g[i]![j] = i === 0 && j === 0 ? 1 : 0;
     return g;
   }
-  for (let i = 0; i <= MAX_GOL; i++)
-    for (let j = 0; j <= MAX_GOL; j++) g[i]![j] = g[i]![j]! / z;
+  for (let i = 0; i <= MAX_GOL; i++) for (let j = 0; j <= MAX_GOL; j++) g[i]![j] = g[i]![j]! / z;
   return g;
 }
 
 export type GridMetrike = {
-  p1: number; pX: number; p2: number;
-  btts: number; o15: number; o25: number; o35: number;
+  p1: number;
+  pX: number;
+  p2: number;
+  btts: number;
+  o15: number;
+  o25: number;
+  o35: number;
   distribucijaUkupno: number[]; // P(ukupno golova = k), k = 0..2*MAX_GOL
   topRezultati: { rezultat: string; p: number }[];
 };
 
 export function metrikeIzGrida(g: number[][]): GridMetrike {
-  let p1 = 0, pX = 0, p2 = 0, btts = 0, o15 = 0, o25 = 0, o35 = 0;
+  let p1 = 0,
+    pX = 0,
+    p2 = 0,
+    btts = 0,
+    o15 = 0,
+    o25 = 0,
+    o35 = 0;
   const distribucijaUkupno: number[] = new Array(2 * MAX_GOL + 1).fill(0);
   const top: { rezultat: string; p: number }[] = [];
   for (let i = 0; i <= MAX_GOL; i++) {
@@ -130,7 +146,7 @@ function besselI(n: number, x: number): number {
   let m = 0;
   while (m < 200) {
     s += term;
-    const next = term * ((x / 2) * (x / 2)) / ((m + 1) * (m + 1 + n));
+    const next = (term * ((x / 2) * (x / 2))) / ((m + 1) * (m + 1 + n));
     if (Math.abs(next) < 1e-16 || !Number.isFinite(next)) break;
     term = next;
     m++;
@@ -147,16 +163,14 @@ function faktorijel(n: number): number {
 export function skellamPmf(k: number, lam: number, mu: number): number {
   if (!(lam > 0) || !(mu > 0) || !Number.isFinite(lam) || !Number.isFinite(mu)) return 0;
   const ak = Math.abs(k);
-  return (
-    Math.exp(-(lam + mu)) *
-    Math.pow(lam / mu, k / 2) *
-    besselI(ak, 2 * Math.sqrt(lam * mu))
-  );
+  return Math.exp(-(lam + mu)) * Math.pow(lam / mu, k / 2) * besselI(ak, 2 * Math.sqrt(lam * mu));
 }
 
 /** 1X2 iz Skellam rasporeda (bez Dixon-Coles korelacije — nezavisna provjera). */
 export function skellam1x2(lam: number, mu: number): { p1: number; pX: number; p2: number } {
-  let p1 = 0, pX = 0, p2 = 0;
+  let p1 = 0,
+    pX = 0,
+    p2 = 0;
   for (let k = -2 * MAX_GOL; k <= 2 * MAX_GOL; k++) {
     const p = skellamPmf(k, lam, mu);
     if (k > 0) p1 += p;
@@ -171,20 +185,42 @@ export function skellam1x2(lam: number, mu: number): { p1: number; pX: number; p
 /* ── DE-MARGINIRANJE KVOTA ────────────────────────────────────────── */
 
 /** Dvoglavi: prave vjerojatnosti iz para kvota (bez bookmaker marže). */
-export function deMargin2(o: number | undefined, u: number | undefined): { pA: number; pB: number } | null {
-  if (o == null || u == null || !(o >= 1.01) || !(u >= 1.01) ||
-      !Number.isFinite(o) || !Number.isFinite(u)) return null;
-  const a = 1 / o, b = 1 / u;
+export function deMargin2(
+  o: number | undefined,
+  u: number | undefined,
+): { pA: number; pB: number } | null {
+  if (
+    o == null ||
+    u == null ||
+    !(o >= 1.01) ||
+    !(u >= 1.01) ||
+    !Number.isFinite(o) ||
+    !Number.isFinite(u)
+  )
+    return null;
+  const a = 1 / o,
+    b = 1 / u;
   const s = a + b;
   return { pA: a / s, pB: b / s };
 }
 
 /** Troglavi: 1X2 bez marže. */
 export function deMargin3(k1: number | undefined, kX: number | undefined, k2: number | undefined) {
-  if (k1 == null || kX == null || k2 == null ||
-      !Number.isFinite(k1) || !Number.isFinite(kX) || !Number.isFinite(k2) ||
-      k1 < 1.01 || kX < 1.01 || k2 < 1.01) return null;
-  const a = 1 / k1, b = 1 / kX, c = 1 / k2;
+  if (
+    k1 == null ||
+    kX == null ||
+    k2 == null ||
+    !Number.isFinite(k1) ||
+    !Number.isFinite(kX) ||
+    !Number.isFinite(k2) ||
+    k1 < 1.01 ||
+    kX < 1.01 ||
+    k2 < 1.01
+  )
+    return null;
+  const a = 1 / k1,
+    b = 1 / kX,
+    c = 1 / k2;
   const s = a + b + c;
   return { p1: a / s, pX: b / s, p2: c / s };
 }
@@ -197,7 +233,8 @@ export function deMargin3(k1: number | undefined, kX: number | undefined, k2: nu
  * @param kvota decimalna kvota (> 1)
  */
 export function kellyUlogPct(p: number, kvota: number, maxPct = 3): number {
-  if (!(kvota > 1) || !(p > 0) || !(p < 1) || !Number.isFinite(p) || !Number.isFinite(kvota)) return 0;
+  if (!(kvota > 1) || !(p > 0) || !(p < 1) || !Number.isFinite(p) || !Number.isFinite(kvota))
+    return 0;
   const b = kvota - 1;
   const f = (b * p - (1 - p)) / b; // puni Kelly kao udio (0..1)
   if (f <= 0) return 0;
@@ -216,7 +253,8 @@ export function evPct(p: number, kvota: number): number {
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -225,8 +263,13 @@ export function mulberry32(seed: number): () => number {
 
 export type McIzlaz = {
   n: number;
-  p1: number; pX: number; p2: number;
-  btts: number; o15: number; o25: number; o35: number;
+  p1: number;
+  pX: number;
+  p2: number;
+  btts: number;
+  o15: number;
+  o25: number;
+  o35: number;
   topRezultati: { rezultat: string; p: number; broj: number }[];
 };
 
@@ -253,20 +296,39 @@ export function monteCarlo(g: number[][], n = 10_000, seed = 42): McIzlaz {
       jj.push(j);
     }
   }
-  if (!(z > 0)) { // prazna/pokvarena matrica → uniformna procjena, ne NaN
-    return { n, p1: 1 / 3, pX: 1 / 3, p2: 1 / 3, btts: 0.2, o15: 0.75, o25: 0.53, o35: 0.28, topRezultati: [] };
+  if (!(z > 0)) {
+    // prazna/pokvarena matrica → uniformna procjena, ne NaN
+    return {
+      n,
+      p1: 1 / 3,
+      pX: 1 / 3,
+      p2: 1 / 3,
+      btts: 0.2,
+      o15: 0.75,
+      o25: 0.53,
+      o35: 0.28,
+      topRezultati: [],
+    };
   }
-  let p1 = 0, pX = 0, p2 = 0, btts = 0, o15 = 0, o25 = 0, o35 = 0;
+  let p1 = 0,
+    pX = 0,
+    p2 = 0,
+    btts = 0,
+    o15 = 0,
+    o25 = 0,
+    o35 = 0;
   const brojaci = new Map<string, number>();
   for (let s = 0; s < n; s++) {
     const u = rng() * z;
-    let lo = 0, hi = kum.length - 1;
+    let lo = 0,
+      hi = kum.length - 1;
     while (lo < hi) {
       const mid = (lo + hi) >> 1;
       if (kum[mid]! < u) lo = mid + 1;
       else hi = mid;
     }
-    const i = ii[lo]!, j = jj[lo]!;
+    const i = ii[lo]!,
+      j = jj[lo]!;
     if (i > j) p1++;
     else if (i === j) pX++;
     else p2++;
@@ -283,8 +345,13 @@ export function monteCarlo(g: number[][], n = 10_000, seed = 42): McIzlaz {
     .slice(0, 6);
   return {
     n,
-    p1: p1 / n, pX: pX / n, p2: p2 / n,
-    btts: btts / n, o15: o15 / n, o25: o25 / n, o35: o35 / n,
+    p1: p1 / n,
+    pX: pX / n,
+    p2: p2 / n,
+    btts: btts / n,
+    o15: o15 / n,
+    o25: o25 / n,
+    o35: o35 / n,
     topRezultati: top,
   };
 }
@@ -305,7 +372,10 @@ export type FormaGolovi = {
 const LIGA_PO_TIMU = 1.35;
 
 /** Očekivani golovi timova iz forme (multiplikativni Dixon-Coles stil). */
-export function lambdaIzForme(dom: FormaGolovi | null, gost: FormaGolovi | null): { lam: number; mu: number } {
+export function lambdaIzForme(
+  dom: FormaGolovi | null,
+  gost: FormaGolovi | null,
+): { lam: number; mu: number } {
   // SAFE-MATH štit: NaN u formi (string golovi, prazna polja) pada na
   // ligaški prosjek (1.35 po timu) umjesto da zarazi cijelu procjenu.
   const stopa = (t: FormaGolovi | null, polje: "postignuti" | "primljeni"): number => {
@@ -437,11 +507,16 @@ export function sudacProfil(s?: SudacUlaz | null): SudacIzlaz {
   const k = kf != null && Number.isFinite(kf) && kf >= 0 ? kf : null;
   const p = pf != null && Number.isFinite(pf) && pf >= 0 ? pf : null;
   if (k == null && p == null)
-    return { primijenjeno: false, strog: false, rizikCrvena: 0.13, opis: "identitet (bez podataka o sucu)" };
+    return {
+      primijenjeno: false,
+      strog: false,
+      rizikCrvena: 0.13,
+      opis: "identitet (bez podataka o sucu)",
+    };
   const strog = (k != null && k > SUDAC_KARTONA_PRAG) || (p != null && p > SUDAC_PENALI_PRAG);
   let rizik = 0.13;
   if (k != null) rizik += Math.max(0, k - 4.5) * 0.03;
-  if (p != null) rizik += Math.max(0, p - 0.3) * 0.10;
+  if (p != null) rizik += Math.max(0, p - 0.3) * 0.1;
   if (strog) rizik = Math.max(RIZIK_CRVENA_MIN, rizik);
   rizik = clamp(rizik, strog ? RIZIK_CRVENA_MIN : 0.05, 0.35);
   return {

@@ -92,14 +92,17 @@ function PathPage() {
           What to study next, and why
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Lingua ranks your next actions from your own data: unfinished units first, then your weakest
-          skill, then a nudge to broaden or protect your streak. Nothing here is random.
+          Lingua ranks your next actions from your own data: unfinished units first, then your
+          weakest skill, then a nudge to broaden or protect your streak. Nothing here is random.
         </p>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-2xl border border-border/60 bg-card/50 p-5 lg:col-span-2">
-          <SectionTitle title="Your next steps" description="Work top to bottom — each step is one activity." />
+          <SectionTitle
+            title="Your next steps"
+            description="Work top to bottom — each step is one activity."
+          />
           {recommendations.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
               Enrol in a course to unlock your personalised path.
@@ -120,11 +123,12 @@ function PathPage() {
               <span className="text-sm font-semibold text-foreground">Weakest skill</span>
             </div>
             <div className="mt-3 text-2xl">
-              {KIND_ICONS[weakest]} <span className="text-lg font-semibold">{KIND_LABELS[weakest]}</span>
+              {KIND_ICONS[weakest]}{" "}
+              <span className="text-lg font-semibold">{KIND_LABELS[weakest]}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Averaging {mastery[weakest]}% in {LANGUAGES.find((l) => l.code === focusCourse)?.name}.{" "}
-              {KIND_DESCRIPTIONS[weakest]}
+              Averaging {mastery[weakest]}% in {LANGUAGES.find((l) => l.code === focusCourse)?.name}
+              . {KIND_DESCRIPTIONS[weakest]}
             </p>
           </div>
 
@@ -140,7 +144,9 @@ function PathPage() {
                     <span>
                       {KIND_ICONS[kind]} {KIND_LABELS[kind]}
                     </span>
-                    <span className={cn("font-semibold", mastery[kind] >= 85 && "text-emerald-300")}>
+                    <span
+                      className={cn("font-semibold", mastery[kind] >= 85 && "text-emerald-300")}
+                    >
                       {mastery[kind]}%
                     </span>
                   </div>
@@ -152,7 +158,9 @@ function PathPage() {
 
           {nextBadge && (
             <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Next badge</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Next badge
+              </div>
               <div className="mt-2 flex items-center gap-3">
                 <span className="text-2xl">{nextBadge.icon}</span>
                 <div>
@@ -182,9 +190,13 @@ function PathPage() {
                   <CalendarDays className="h-3 w-3" /> Day {i + 1}
                 </div>
                 <div className="mt-2 text-lg">{language?.flag}</div>
-                <div className="mt-1 line-clamp-2 text-sm font-medium text-foreground">{rec.title}</div>
+                <div className="mt-1 line-clamp-2 text-sm font-medium text-foreground">
+                  {rec.title}
+                </div>
                 {rec.lessonKind && (
-                  <div className="mt-1 text-xs text-muted-foreground">{KIND_LABELS[rec.lessonKind]}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {KIND_LABELS[rec.lessonKind]}
+                  </div>
                 )}
               </div>
             );
@@ -213,13 +225,16 @@ function PathPage() {
                     <div>
                       <div className="text-sm font-semibold text-foreground">{language?.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {cp.completedUnits}/{cp.totalUnits} units · {stats.lessonsCompleted} activities overall
+                        {cp.completedUnits}/{cp.totalUnits} units · {stats.lessonsCompleted}{" "}
+                        activities overall
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {course.levels.map((lvl) => {
-                      const done = lvl.units.filter((u) => isUnitComplete(progress.units[u.topicId])).length;
+                      const done = lvl.units.filter((u) =>
+                        isUnitComplete(progress.units[u.topicId]),
+                      ).length;
                       const complete = done === lvl.units.length;
                       return (
                         <span

@@ -12,8 +12,18 @@ describe("obrnute kvote", () => {
 
 describe("košarka obavezan zbroj", () => {
   it("always returns Više or Manje on the main line", () => {
-    const t = (pick: string, prob: number): Tip => ({ market: "Zbroj 220.5", pick, prob, fair: 1 / prob, odd: 1.9, ev: (prob * 1.9 - 1) * 100 });
-    const p = pickTotal([t("Više 220.5", 0.53), t("Manje 220.5", 0.47)], [{ line: 220.5, o: 1.9, u: 1.9 }]);
+    const t = (pick: string, prob: number): Tip => ({
+      market: "Zbroj 220.5",
+      pick,
+      prob,
+      fair: 1 / prob,
+      odd: 1.9,
+      ev: (prob * 1.9 - 1) * 100,
+    });
+    const p = pickTotal(
+      [t("Više 220.5", 0.53), t("Manje 220.5", 0.47)],
+      [{ line: 220.5, o: 1.9, u: 1.9 }],
+    );
     expect(p.pick).toBe("Više 220.5");
   });
 });

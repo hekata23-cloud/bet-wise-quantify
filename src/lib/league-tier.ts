@@ -54,19 +54,38 @@ const K_FAV = "pc.liga.favoriti.v1";
 const EVT = "pc:liga-filter";
 
 export function citajFilter(): LigaFilter {
-  try { const v = localStorage.getItem(K_FILTER); return v === "tier1" || v === "favoriti" ? v : "sve"; } catch { return "sve"; }
+  try {
+    const v = localStorage.getItem(K_FILTER);
+    return v === "tier1" || v === "favoriti" ? v : "sve";
+  } catch {
+    return "sve";
+  }
 }
 export function citajFavorite(): string[] {
-  try { const a = JSON.parse(localStorage.getItem(K_FAV) ?? "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+  try {
+    const a = JSON.parse(localStorage.getItem(K_FAV) ?? "[]");
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
 }
 export function postaviFilter(f: LigaFilter) {
-  try { localStorage.setItem(K_FILTER, f); } catch { /* */ }
+  try {
+    localStorage.setItem(K_FILTER, f);
+  } catch {
+    /* */
+  }
   window.dispatchEvent(new CustomEvent(EVT));
 }
 export function prebaciFavorit(liga: string) {
   const s = new Set(citajFavorite());
-  if (s.has(liga)) s.delete(liga); else s.add(liga);
-  try { localStorage.setItem(K_FAV, JSON.stringify([...s])); } catch { /* */ }
+  if (s.has(liga)) s.delete(liga);
+  else s.add(liga);
+  try {
+    localStorage.setItem(K_FAV, JSON.stringify([...s]));
+  } catch {
+    /* */
+  }
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
@@ -82,12 +101,17 @@ export function useLigaFilter() {
   const [f, setF] = useState<LigaFilter>("sve");
   const [fav, setFav] = useState<string[]>([]);
   useEffect(() => {
-    const sync = () => { setF(citajFilter()); setFav(citajFavorite()); };
+    const sync = () => {
+      setF(citajFilter());
+      setFav(citajFavorite());
+    };
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
-    return () => { window.removeEventListener(EVT, sync); window.removeEventListener("storage", sync); };
+    return () => {
+      window.removeEventListener(EVT, sync);
+      window.removeEventListener("storage", sync);
+    };
   }, []);
   return { filter: f, favoriti: fav, prolazi: (liga: string) => prolaziFilter(liga, f, fav) };
 }
-

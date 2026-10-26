@@ -348,7 +348,9 @@ export function updateProfile(patch: { name?: string; bio?: string; avatar?: str
   if (!userId) return;
   commit({
     ...state,
-    users: state.users.map((u) => (u.id === userId ? { ...u, ...patch, name: patch.name?.trim() || u.name } : u)),
+    users: state.users.map((u) =>
+      u.id === userId ? { ...u, ...patch, name: patch.name?.trim() || u.name } : u,
+    ),
   });
 }
 
@@ -414,7 +416,8 @@ export function createPost(input: PostInput): ActivityResult & ActionResult {
   const user = state.users.find((u) => u.id === userId);
   const body = input.body.trim();
   if (!user) return { ok: false, error: "Sign in to post.", xpGained: 0, unlocked: [] };
-  if (body.length < 3) return { ok: false, error: "Write a little more first.", xpGained: 0, unlocked: [] };
+  if (body.length < 3)
+    return { ok: false, error: "Write a little more first.", xpGained: 0, unlocked: [] };
 
   const post: CommunityPost = {
     id: newId("p"),
@@ -459,7 +462,8 @@ export function addReply(postId: string, body: string): ActivityResult & ActionR
   const user = state.users.find((u) => u.id === userId);
   const text = body.trim();
   if (!user) return { ok: false, error: "Sign in to reply.", xpGained: 0, unlocked: [] };
-  if (text.length < 2) return { ok: false, error: "Write a little more first.", xpGained: 0, unlocked: [] };
+  if (text.length < 2)
+    return { ok: false, error: "Write a little more first.", xpGained: 0, unlocked: [] };
 
   const withReply: StoreState = {
     ...state,
@@ -491,7 +495,10 @@ export function addReply(postId: string, body: string): ActivityResult & ActionR
 export function deletePost(postId: string): void {
   const userId = state.currentUserId;
   if (!userId) return;
-  commit({ ...state, posts: state.posts.filter((p) => !(p.id === postId && p.authorId === userId)) });
+  commit({
+    ...state,
+    posts: state.posts.filter((p) => !(p.id === postId && p.authorId === userId)),
+  });
 }
 
 export { findNewAchievements };

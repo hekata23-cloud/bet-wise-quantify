@@ -47,7 +47,7 @@ const NAV = [
   { to: "/obrnute-kvote", label: "Obrnute kvote", icon: Radar },
   { to: "/dnb-master", label: "DNB Master", icon: Target },
   { to: "/smart-money", label: "Pametni novac", icon: TrendingUp },
-    { to: "/ou-niski", label: "O/U 0.5 & 1.5", icon: Goal },
+  { to: "/ou-niski", label: "O/U 0.5 & 1.5", icon: Goal },
 
   { to: "/kalkulator", label: "Kalkulator", icon: Calculator },
   { to: "/radar", label: "Kvote Radar", icon: Radar },
@@ -104,9 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </svg>
             </div>
             <div className="leading-tight">
-              <div className="font-semibold tracking-tight text-sm sm:text-base">
-                Andromeda AI
-              </div>
+              <div className="font-semibold tracking-tight text-sm sm:text-base">Andromeda AI</div>
               <div className="text-[10px] text-muted-foreground hidden sm:block">
                 Kvantitativni analitički sustav
               </div>
@@ -132,8 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="bg-emerald-500/10 border-t border-b border-emerald-500/30 px-4 py-1 text-center text-xs text-emerald-300 flex items-center justify-center gap-2 font-medium">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>
-              Sharp Filter Aktivan:{" "}
-              <strong className="text-white">{activePreset.name}</strong> —
+              Sharp Filter Aktivan: <strong className="text-white">{activePreset.name}</strong> —
               Minimalna vjerojatnost {Math.round(settings.minProb * 100)}%, Min EV {settings.minEV}%
             </span>
           </div>
@@ -164,9 +161,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
-        {children}
-      </main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
 
       <footer className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground">
         Andromeda AI © 2026 · Kvantitativno modeliranje sportskih tržišta

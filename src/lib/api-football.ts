@@ -15,7 +15,10 @@ const LAST_CALL_KEY = "tm.aflast";
 const DAILY_LIMIT = 90; // sigurnosni prag ispod free plana (100/dan)
 const MIN_INTERVAL_MS = 2000;
 
-interface Counter { date: string; count: number }
+interface Counter {
+  date: string;
+  count: number;
+}
 
 function readCounter(): Counter {
   try {
@@ -94,9 +97,7 @@ export async function afGet<T = unknown>(
 ): Promise<T> {
   const key = getKey("apiFootball");
   if (!key) throw new ApiFootballError("Nedostaje API-Football ključ. Otvori Postavke.");
-  const qs = new URLSearchParams(
-    Object.entries(params).map(([k, v]) => [k, String(v)]),
-  ).toString();
+  const qs = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString();
   const cacheKey = `${endpoint}?${qs}`;
   const ttl = opts.ttlMs ?? 10 * 60 * 1000;
   if (!opts.force) {
@@ -123,7 +124,10 @@ export async function afGet<T = unknown>(
       const rem = Number(res.headers.get("x-ratelimit-requests-remaining") ?? -1);
       if (rem >= 0 && rem <= 5) {
         // stvarni preostali krediti s API-ja — zaključaj brojač da ne trošimo rezervu
-        localStorage.setItem(COUNTER_KEY, JSON.stringify({ date: isoDateZagreb(), count: DAILY_LIMIT }));
+        localStorage.setItem(
+          COUNTER_KEY,
+          JSON.stringify({ date: isoDateZagreb(), count: DAILY_LIMIT }),
+        );
       }
       if (res.status === 429 && attempt < 1) {
         attempt++;
@@ -139,7 +143,10 @@ export async function afGet<T = unknown>(
       if (hasErr) {
         const txt = JSON.stringify(errs);
         if (/suspend|for the day|daily/i.test(txt)) {
-          localStorage.setItem(COUNTER_KEY, JSON.stringify({ date: isoDateZagreb(), count: DAILY_LIMIT }));
+          localStorage.setItem(
+            COUNTER_KEY,
+            JSON.stringify({ date: isoDateZagreb(), count: DAILY_LIMIT }),
+          );
         }
         throw new ApiFootballError(`API-Football: ${txt}`);
       }
@@ -182,7 +189,11 @@ export interface Fixture {
 
 export function getFixturesByDate(date: string): Promise<Fixture[]> {
   // POPRAVAK: uskladi dan fixturesa s Europe/Zagreb umjesto zadane UTC zone API-ja.
-  return afGet<Fixture[]>("fixtures", { date, timezone: "Europe/Zagreb" }, { ttlMs: 5 * 60 * 1000 });
+  return afGet<Fixture[]>(
+    "fixtures",
+    { date, timezone: "Europe/Zagreb" },
+    { ttlMs: 5 * 60 * 1000 },
+  );
 }
 
 export function getLiveFixtures(): Promise<Fixture[]> {

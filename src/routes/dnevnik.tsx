@@ -8,13 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { BookOpen, CheckCircle2, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { SettingsModal } from "@/components/SettingsModal";
-import {
-  brisiDnevnik,
-  dnevnikUnosi,
-  pogodakLi,
-  statistika,
-  type DnevnikUnos,
-} from "@/lib/dnevnik";
+import { brisiDnevnik, dnevnikUnosi, pogodakLi, statistika, type DnevnikUnos } from "@/lib/dnevnik";
 import { getRezultat } from "@/lib/dnevnik.functions";
 import { saveJSON } from "@/lib/storage";
 import { getApiKey } from "@/lib/zlatni-guard";
@@ -28,10 +22,12 @@ export const Route = createFileRoute("/dnevnik")({
 
 const KEY = "pc.dnevnik.v1";
 
-function fmtPct(x: number) { return `${(x * 100).toFixed(1)}%`; }
+function fmtPct(x: number) {
+  return `${(x * 100).toFixed(1)}%`;
+}
 function brierOcjena(b: number) {
   if (b <= 0.15) return "odličan";
-  if (b <= 0.20) return "vrlo dobar";
+  if (b <= 0.2) return "vrlo dobar";
   if (b <= 0.25) return "uravnotežen s novčićem";
   return "pretjeruje — smanji povjerenje";
 }
@@ -43,11 +39,17 @@ function DnevnikPage() {
   const [settings, setSettings] = useState(false);
 
   const osvjezi = useCallback(() => setUnosi(dnevnikUnosi()), []);
-  useEffect(() => { osvjezi(); }, [osvjezi]);
+  useEffect(() => {
+    osvjezi();
+  }, [osvjezi]);
 
   const provjeri = useCallback(async () => {
     const apiKey = getApiKey();
-    if (!apiKey) { setStatus("Prvo unesi API-Sports ključ u Postavkama (⚙️)."); setSettings(true); return; }
+    if (!apiKey) {
+      setStatus("Prvo unesi API-Sports ključ u Postavkama (⚙️).");
+      setSettings(true);
+      return;
+    }
     // Ne troši API pozive: preskoči tipove provjerene u zadnjih 30 min i
     // tipove zapisane prije manje od 2 h (utakmica sigurno nije gotova).
     const sad = Date.now();
@@ -61,12 +63,18 @@ function DnevnikPage() {
     const ostalo = sviCekajuci.length - cekajuci.length;
     if (!cekajuci.length) {
       const ima = dnevnikUnosi().some((u) => u.status === "cekaj");
-      setStatus(ima ? "Tipovi koji čekaju još nisu spremni za provjeru (utakmice traju ili su nedavno provjerene)." : "Svi tipovi su već provjereni.");
+      setStatus(
+        ima
+          ? "Tipovi koji čekaju još nisu spremni za provjeru (utakmice traju ili su nedavno provjerene)."
+          : "Svi tipovi su već provjereni.",
+      );
       return;
     }
     setProvjeram(true);
     setStatus(`Provjeravam ${cekajuci.length} tipova kroz API red…`);
-    let pogodci = 0, promasaji = 0, josCekaju = 0;
+    let pogodci = 0,
+      promasaji = 0,
+      josCekaju = 0;
     let zaustavljeno: string | null = null;
     for (const u of cekajuci) {
       try {
@@ -75,35 +83,59 @@ function DnevnikPage() {
         {
           const svi0 = dnevnikUnosi();
           const i0 = svi0.findIndex((x) => x.id === u.id);
-          if (i0 >= 0) { svi0[i0].zadnjaProvjera = Date.now(); saveJSON(KEY, svi0); }
+          if (i0 >= 0) {
+            svi0[i0].zadnjaProvjera = Date.now();
+            saveJSON(KEY, svi0);
+          }
         }
         if (r.error && /DNEVNI_LIMIT|ACCOUNT|RATE_LIMIT/.test(r.error)) {
           // osigurač: odmah stani, ne troši dalje pozive
           zaustavljeno = r.error;
           break;
         }
-        if (r.error || !r.zavrsena) { josCekaju++; continue; }
+        if (r.error || !r.zavrsena) {
+          josCekaju++;
+          continue;
+        }
         // HT/FT tip bez poznatog poluvremena → još čeka (ne broji se kao promašaj)
-        if (u.provjera.vrsta === "htft" && (r.domHT == null || r.gostHT == null)) { josCekaju++; continue; }
-        if (r.dom == null || r.gost == null) { josCekaju++; continue; }
+        if (u.provjera.vrsta === "htft" && (r.domHT == null || r.gostHT == null)) {
+          josCekaju++;
+          continue;
+        }
+        if (r.dom == null || r.gost == null) {
+          josCekaju++;
+          continue;
+        }
         const svi = dnevnikUnosi();
         const idx = svi.findIndex((x) => x.id === u.id);
         if (idx < 0) continue;
         const hit = pogodakLi(u.provjera, r.dom, r.gost, r.domHT, r.gostHT, r.domReg, r.gostReg);
         svi[idx].status = hit ? "pogodak" : "promasaj";
-        svi[idx].rezultat = `${r.dom} — ${r.gost}${r.domHT != null ? ` (${r.domHT} — ${r.gostHT})` : ""}`;
-        if (hit) pogodci++; else promasaji++;
+        svi[idx].rezultat =
+          `${r.dom} — ${r.gost}${r.domHT != null ? ` (${r.domHT} — ${r.gostHT})` : ""}`;
+        if (hit) pogodci++;
+        else promasaji++;
         saveJSON(KEY, svi);
-      } catch { josCekaju++; }
+      } catch {
+        josCekaju++;
+      }
     }
     osvjezi();
-    if (zaustavljeno) setStatus(`Provjera zaustavljena radi zaštite API računa (${pogodci} pogođeno, ${promasaji} promašeno do tada): ${zaustavljeno}`);
-    else setStatus(`Gotovo: ${pogodci} pogođeno, ${promasaji} promašeno${josCekaju ? `, ${josCekaju} još čeka rezultat` : ""}${ostalo > 0 ? `. Još ${ostalo} tipova čeka sljedeću provjeru.` : ""}`);
+    if (zaustavljeno)
+      setStatus(
+        `Provjera zaustavljena radi zaštite API računa (${pogodci} pogođeno, ${promasaji} promašeno do tada): ${zaustavljeno}`,
+      );
+    else
+      setStatus(
+        `Gotovo: ${pogodci} pogođeno, ${promasaji} promašeno${josCekaju ? `, ${josCekaju} još čeka rezultat` : ""}${ostalo > 0 ? `. Još ${ostalo} tipova čeka sljedeću provjeru.` : ""}`,
+      );
     setProvjeram(false);
   }, [osvjezi]);
 
   // automatska provjera pri otvaranju (jednom)
-  useEffect(() => { provjeri(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    provjeri(); /* eslint-disable-next-line */
+  }, []);
 
   const stat = statistika();
   // v2 statistika nema promašaje i čekaju — računamo iz unosa
@@ -131,11 +163,19 @@ function DnevnikPage() {
             disabled={provjeram}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
-            {provjeram ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {provjeram ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
             Provjeri rezultate
           </button>
           <button
-            onClick={() => { brisiDnevnik(); osvjezi(); setStatus("Dnevnik izbrisan."); }}
+            onClick={() => {
+              brisiDnevnik();
+              osvjezi();
+              setStatus("Dnevnik izbrisan.");
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
           >
             <Trash2 className="h-4 w-4" /> Očisti
@@ -144,7 +184,9 @@ function DnevnikPage() {
       </div>
 
       {status && (
-        <div className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted-foreground">{status}</div>
+        <div className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted-foreground">
+          {status}
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
@@ -162,7 +204,9 @@ function DnevnikPage() {
         </div>
         <div className="rounded-xl border border-border bg-card p-3">
           <div className="text-[10px] uppercase text-muted-foreground">Hit rate</div>
-          <div className="text-2xl font-bold tabular-nums">{ukupnoP + ukupnoN > 0 ? fmtPct(ukupnoP / (ukupnoP + ukupnoN)) : "—"}</div>
+          <div className="text-2xl font-bold tabular-nums">
+            {ukupnoP + ukupnoN > 0 ? fmtPct(ukupnoP / (ukupnoP + ukupnoN)) : "—"}
+          </div>
         </div>
       </div>
 
@@ -185,14 +229,20 @@ function DnevnikPage() {
                   <tr key={s.kartica} className="border-t border-border">
                     <td className="px-3 py-2 font-medium">{s.kartica}</td>
                     <td className="px-3 py-2 text-right font-mono">{s.igrano}</td>
-                    <td className="px-3 py-2 text-right font-mono font-bold">{prom + s.pogodeno > 0 ? fmtPct(s.hitRate) : "—"}</td>
+                    <td className="px-3 py-2 text-right font-mono font-bold">
+                      {prom + s.pogodeno > 0 ? fmtPct(s.hitRate) : "—"}
+                    </td>
                     <td className="px-3 py-2 text-right font-mono">
                       {prom + s.pogodeno > 0 ? s.brier.toFixed(3) : "—"}
                       {prom + s.pogodeno > 0 && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">({brierOcjena(s.brier)})</span>
+                        <span className="ml-1 text-[10px] text-muted-foreground">
+                          ({brierOcjena(s.brier)})
+                        </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-muted-foreground">{cekajuPo.get(s.kartica) ?? 0}</td>
+                    <td className="px-3 py-2 text-right font-mono text-muted-foreground">
+                      {cekajuPo.get(s.kartica) ?? 0}
+                    </td>
                   </tr>
                 );
               })}
@@ -204,24 +254,34 @@ function DnevnikPage() {
       <div className="space-y-1.5">
         {unosi.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Dnevnik je prazan. Analiziraj utakmicu na bilo kojoj kartici — izdani tip automatski se zapiše ovdje.
+            Dnevnik je prazan. Analiziraj utakmicu na bilo kojoj kartici — izdani tip automatski se
+            zapiše ovdje.
           </div>
         ) : (
           unosi.map((u) => (
-            <div key={u.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2">
+            <div
+              key={u.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2"
+            >
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold">{u.utakmica}</div>
                 <div className="text-[10px] text-muted-foreground">
-                  {u.kartica}{u.liga ? ` · ${u.liga}` : ""} · {new Date(u.datum).toLocaleDateString("hr-HR")}
+                  {u.kartica}
+                  {u.liga ? ` · ${u.liga}` : ""} · {new Date(u.datum).toLocaleDateString("hr-HR")}
                   {u.rezultat ? ` · rezultat ${u.rezultat}` : ""}
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <div className="text-xs font-bold">{u.tip}</div>
-                  <div className="text-[10px] text-muted-foreground">model {fmtPct(u.p)}{u.kvota != null ? ` @ ${u.kvota.toFixed(2)}` : ""}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    model {fmtPct(u.p)}
+                    {u.kvota != null ? ` @ ${u.kvota.toFixed(2)}` : ""}
+                  </div>
                 </div>
-                {u.status === "pogodak" && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />}
+                {u.status === "pogodak" && (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                )}
                 {u.status === "promasaj" && <XCircle className="h-4 w-4 shrink-0 text-red-400" />}
                 {u.status === "cekaj" && <RefreshCw className="h-4 w-4 shrink-0 text-slate-500" />}
               </div>

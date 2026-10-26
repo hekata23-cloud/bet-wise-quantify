@@ -26,7 +26,7 @@ export function scanAllMarketValues(
   kGg: number,
   kNg: number,
   modelProbOver25: number, // 0.0 do 1.0
-  modelProbGg: number      // 0.0 do 1.0
+  modelProbGg: number, // 0.0 do 1.0
 ): ValueScanResult {
   const pOver = Math.max(0.05, Math.min(0.95, modelProbOver25));
   const pUnder = 1 - pOver;
@@ -48,36 +48,36 @@ export function scanAllMarketValues(
   const allMarkets: MarketValue[] = marketsData
     .filter((item) => Number.isFinite(item.bookieOdd) && item.bookieOdd > 1)
     .map((item) => {
-    const bookieImplied = 1 / item.bookieOdd;
-    const evRaw = item.prob * item.bookieOdd - 1;
-    const ev = Number((evRaw * 100).toFixed(1));
-    const edge = Number(((item.prob - bookieImplied) * 100).toFixed(1));
-    const fairOdd = Number((1 / item.prob).toFixed(2));
+      const bookieImplied = 1 / item.bookieOdd;
+      const evRaw = item.prob * item.bookieOdd - 1;
+      const ev = Number((evRaw * 100).toFixed(1));
+      const edge = Number(((item.prob - bookieImplied) * 100).toFixed(1));
+      const fairOdd = Number((1 / item.prob).toFixed(2));
 
-    let status: MarketValue["status"] = "FER KVOTA";
-    let isRecommended = false;
+      let status: MarketValue["status"] = "FER KVOTA";
+      let isRecommended = false;
 
-    if (ev >= 7.0) {
-      status = "ODLIČAN VALUE";
-      isRecommended = true;
-    } else if (ev >= 2.5) {
-      status = "DOBAR VALUE";
-      isRecommended = true;
-    } else if (ev <= -5.0) {
-      status = "ZAMKA (NEGATIVAN VALUE)";
-    }
+      if (ev >= 7.0) {
+        status = "ODLIČAN VALUE";
+        isRecommended = true;
+      } else if (ev >= 2.5) {
+        status = "DOBAR VALUE";
+        isRecommended = true;
+      } else if (ev <= -5.0) {
+        status = "ZAMKA (NEGATIVAN VALUE)";
+      }
 
-    return {
-      market: item.market,
-      bookieOdd: Number(item.bookieOdd.toFixed(2)),
-      fairOdd,
-      modelProb: Number((item.prob * 100).toFixed(1)),
-      ev,
-      edge,
-      isRecommended,
-      status,
-    };
-  });
+      return {
+        market: item.market,
+        bookieOdd: Number(item.bookieOdd.toFixed(2)),
+        fairOdd,
+        modelProb: Number((item.prob * 100).toFixed(1)),
+        ev,
+        edge,
+        isRecommended,
+        status,
+      };
+    });
 
   // Sortiraj po najvećem EV
   const sorted = [...allMarkets].sort((a, b) => b.ev - a.ev);
@@ -90,7 +90,8 @@ export function scanAllMarketValues(
   if (best) {
     summary = `Pronađena je matematička prednost na tržištu ${best.market}. Kladionica nudi kvotu ${best.bookieOdd.toFixed(2)}, dok model smatra da bi fer kvota trebala biti ${best.fairOdd.toFixed(2)}. Očekivani plus je +${best.ev}%.`;
   } else {
-    summary = "Kladionica je kvote postavila vrlo precizno. Niti jedno tržište ne nudi dovoljnu matematičku prednost za dugoročni profit.";
+    summary =
+      "Kladionica je kvote postavila vrlo precizno. Niti jedno tržište ne nudi dovoljnu matematičku prednost za dugoročni profit.";
   }
 
   return {
@@ -100,4 +101,3 @@ export function scanAllMarketValues(
     summary,
   };
 }
-

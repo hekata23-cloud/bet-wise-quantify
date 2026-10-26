@@ -23,9 +23,10 @@ async function call(path: string, clientKey?: string | null) {
   }
   // api-guard: red čekanja + keš + retry + stale rezerva — nikad više 5 poziva odjednom.
   const r = await guardGet(path, { apiKey: key });
-  const error = r.error === "RATE_LIMIT"
-    ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
-    : r.error;
+  const error =
+    r.error === "RATE_LIMIT"
+      ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
+      : r.error;
   return { error, data: r.data, remaining: r.remainingDay };
 }
 
@@ -73,7 +74,7 @@ export const getFixtures = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const r = await call(
       `/fixtures?date=${data.date}&timezone=${encodeURIComponent(TZ)}`,
-      data.apiKey
+      data.apiKey,
     );
 
     const list = ((r.data as any[]) ?? []).map((f) => ({
@@ -96,8 +97,14 @@ async function dohvatiKvote(id: number, apiKey?: string) {
   const bookmakers: any[] = [];
   let error: string | null = null;
   for (let page = 1; page <= 3; page++) {
-    const r = await call(`/odds?fixture=${id}&page=${page}&timezone=${encodeURIComponent(TZ)}`, apiKey);
-    if (r.error) { error = r.error; break; }
+    const r = await call(
+      `/odds?fixture=${id}&page=${page}&timezone=${encodeURIComponent(TZ)}`,
+      apiKey,
+    );
+    if (r.error) {
+      error = r.error;
+      break;
+    }
     const resp = (r.data as any[]) ?? [];
     for (const item of resp) bookmakers.push(...(item?.bookmakers ?? []));
     if (resp.length === 0 || page >= 3) break;
@@ -111,7 +118,9 @@ async function dohvatiFormu(teamId: number, apiKey?: string) {
   const r = await call(`/fixtures?team=${teamId}&last=5`, apiKey);
   if (r.error) return { error: r.error, stats: null };
   const stats = izracunajFormu((r.data as any[]) ?? []);
-  return stats ? { error: null, stats } : { error: "Nema završenih utakmica za ovaj tim.", stats: null };
+  return stats
+    ? { error: null, stats }
+    : { error: "Nema završenih utakmica za ovaj tim.", stats: null };
 }
 
 export const getFixtureOdds = createServerFn({ method: "GET" })
@@ -120,35 +129,47 @@ export const getFixtureOdds = createServerFn({ method: "GET" })
 
 // 4. Forma zadnjih 5 utakmica
 export const getTeamFormStats = createServerFn({ method: "GET" })
-  .inputValidator((d) => z.object({ teamId: z.number().int().positive(), apiKey: z.string().optional() }).parse(d))
+  .inputValidator((d) =>
+    z.object({ teamId: z.number().int().positive(), apiKey: z.string().optional() }).parse(d),
+  )
   .handler(async ({ data }) => dohvatiFormu(data.teamId, data.apiKey));
 
 // 5. Servis: sve kvote + forma obaju timova u jednom pozivu
 export const getMatchBundle = createServerFn({ method: "POST" })
   .inputValidator((d) =>
-    z.object({
-      id: z.number().int().positive(),
-      homeId: z.number().int().positive().optional(),
-      awayId: z.number().int().positive().optional(),
-      apiKey: z.string().optional(),
-    }).parse(d),
+    z
+      .object({
+        id: z.number().int().positive(),
+        homeId: z.number().int().positive().optional(),
+        awayId: z.number().int().positive().optional(),
+        apiKey: z.string().optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const [kv, dom, gos] = await Promise.all([
       dohvatiKvote(data.id, data.apiKey),
-      data.homeId ? dohvatiFormu(data.homeId, data.apiKey) : Promise.resolve({ error: "Nema ID domaćina", stats: null }),
-      data.awayId ? dohvatiFormu(data.awayId, data.apiKey) : Promise.resolve({ error: "Nema ID gosta", stats: null }),
+      data.homeId
+        ? dohvatiFormu(data.homeId, data.apiKey)
+        : Promise.resolve({ error: "Nema ID domaćina", stats: null }),
+      data.awayId
+        ? dohvatiFormu(data.awayId, data.apiKey)
+        : Promise.resolve({ error: "Nema ID gosta", stats: null }),
     ]);
     const odds = { ...kv.odds };
     const upozorenja = [...kv.upozorenja];
     const upisi = (s: FormaStat | null, suf: "a" | "b", ime: string) => {
-      if (!s) { upozorenja.push(`Forma (${ime}) nije dostupna.`); return; }
+      if (!s) {
+        upozorenja.push(`Forma (${ime}) nije dostupna.`);
+        return;
+      }
       odds[`f1${suf}`] = String(s.btts);
       odds[`f2${suf}`] = String(s.over15);
       odds[`f3${suf}`] = String(s.over25);
       odds[`f5${suf}`] = String(s.under35);
       odds[`f7${suf}`] = String(s.penali); // Automatski upis za Kazneni udarac — NE (Kartica 7)
-      if (s.odigrano < 5) upozorenja.push(`Forma (${ime}) temelji se na samo ${s.odigrano} utakmica.`);
+      if (s.odigrano < 5)
+        upozorenja.push(`Forma (${ime}) temelji se na samo ${s.odigrano} utakmica.`);
     };
     upisi(dom.stats, "a", "domaćin");
     upisi(gos.stats, "b", "gost");

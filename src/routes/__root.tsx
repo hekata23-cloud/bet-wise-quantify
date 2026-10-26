@@ -51,7 +51,8 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
           Stranica se nije učitala
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Nešto je pošlo po krivu s naše strane. Možete pokušati osvježiti stranicu ili se vratiti na početnu.
+          Nešto je pošlo po krivu s naše strane. Možete pokušati osvježiti stranicu ili se vratiti
+          na početnu.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -95,14 +96,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Andromeda AI — Početna" },
       {
         property: "og:description",
-        content: "Tri dashboarda: kalkulator predikcija, AI chat mozak i live nogomet. Sve na hrvatskom.",
+        content:
+          "Tri dashboarda: kalkulator predikcija, AI chat mozak i live nogomet. Sve na hrvatskom.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Andromeda AI — Početna" },
-      { name: "twitter:description", content: "Tri dashboarda: kalkulator predikcija, AI chat mozak i live nogomet. Sve na hrvatskom." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f9745016-7e41-4413-9c7f-e804e785e729/id-preview-fe5efe10--d7233d3f-ccad-4312-b7a9-a6ec7e371946.lovable.app-1784751962614.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f9745016-7e41-4413-9c7f-e804e785e729/id-preview-fe5efe10--d7233d3f-ccad-4312-b7a9-a6ec7e371946.lovable.app-1784751962614.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Tri dashboarda: kalkulator predikcija, AI chat mozak i live nogomet. Sve na hrvatskom.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f9745016-7e41-4413-9c7f-e804e785e729/id-preview-fe5efe10--d7233d3f-ccad-4312-b7a9-a6ec7e371946.lovable.app-1784751962614.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f9745016-7e41-4413-9c7f-e804e785e729/id-preview-fe5efe10--d7233d3f-ccad-4312-b7a9-a6ec7e371946.lovable.app-1784751962614.png",
+      },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -113,7 +127,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap",
+      },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "512x512" },
     ],

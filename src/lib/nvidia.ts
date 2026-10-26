@@ -5,7 +5,7 @@ const URL = "/api/public/nvidia";
 
 export const NIM_MODELS = [
   { id: "meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B" },
-  { id: "meta/llama-3.3-70b-instruct", label: "Llama 3.3 70B" }
+  { id: "meta/llama-3.3-70b-instruct", label: "Llama 3.3 70B" },
 ];
 
 export const NIM_GOAL_MODELS = ["meta/llama-3.1-8b-instruct"];
@@ -30,7 +30,12 @@ type NimResponse = {
   detail?: string;
 };
 
-async function callOnce(key: string, model: string, messages: NimMessage[] | any[], opts: NimCallOptions): Promise<string> {
+async function callOnce(
+  key: string,
+  model: string,
+  messages: NimMessage[] | any[],
+  opts: NimCallOptions,
+): Promise<string> {
   let res: Response;
   try {
     res = await fetch(URL, {
@@ -48,7 +53,10 @@ async function callOnce(key: string, model: string, messages: NimMessage[] | any
   }
   const data = (await res.json().catch(() => null)) as NimResponse | null;
   if (!res.ok) {
-    const m = typeof data?.error === "string" ? data.error : data?.error?.message || data?.detail || "greška";
+    const m =
+      typeof data?.error === "string"
+        ? data.error
+        : data?.error?.message || data?.detail || "greška";
     throw new Error(`NVIDIA ${model} (${res.status}): ${String(m).slice(0, 200)}`);
   }
   const msg = data?.choices?.[0]?.message;
@@ -67,7 +75,9 @@ export async function nvidiaChat(
   const key = getKey("nvidia");
   if (!key) throw new Error("Ključ nedostaje");
   const seen = new Set<string>();
-  const chain = [model, ...(opts.extraFallbacks ?? []), ...NIM_FALLBACKS].filter((m) => m && !seen.has(m) && seen.add(m));
+  const chain = [model, ...(opts.extraFallbacks ?? []), ...NIM_FALLBACKS].filter(
+    (m) => m && !seen.has(m) && seen.add(m),
+  );
   let last = "";
   for (const m of chain) {
     try {
@@ -83,7 +93,9 @@ export async function nvidiaChat(
 
 export async function testNvidia() {
   try {
-    await nvidiaChat("meta/llama-3.1-8b-instruct", [{role:"user", content:"Hi"}]);
+    await nvidiaChat("meta/llama-3.1-8b-instruct", [{ role: "user", content: "Hi" }]);
     return { ok: true, msg: "Radi!" };
-  } catch (e: any) { return { ok: false, msg: e.message }; }
+  } catch (e: any) {
+    return { ok: false, msg: e.message };
+  }
 }

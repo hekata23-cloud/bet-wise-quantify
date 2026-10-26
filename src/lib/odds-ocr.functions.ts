@@ -22,7 +22,8 @@ function num(v: unknown) {
 export const readOddsFromImage = createServerFn({ method: "POST" })
   .inputValidator((data: { image: string }) => {
     const image = String(data?.image ?? "");
-    if (!/^data:image\/(png|jpe?g|webp|gif);base64,/.test(image)) throw new Error("Neispravna slika.");
+    if (!/^data:image\/(png|jpe?g|webp|gif);base64,/.test(image))
+      throw new Error("Neispravna slika.");
     if (image.length > 7_000_000) throw new Error("Slika je prevelika (max ~5 MB).");
     return { image };
   })
@@ -54,7 +55,8 @@ export const readOddsFromImage = createServerFn({ method: "POST" })
         }),
       });
       if (res.status === 429) return { ok: false, message: "Previše zahtjeva. Pokušaj za minutu." };
-      if (res.status === 402) return { ok: false, message: "Ponestalo je AI kredita u radnom prostoru." };
+      if (res.status === 402)
+        return { ok: false, message: "Ponestalo je AI kredita u radnom prostoru." };
       if (!res.ok || !res.body) {
         console.error("OCR gateway", res.status, await res.text().catch(() => ""));
         return { ok: false, message: `Čitanje slike nije uspjelo (${res.status}).` };
@@ -85,7 +87,8 @@ export const readOddsFromImage = createServerFn({ method: "POST" })
       if (!match) return { ok: false, message: "Na slici nisam pronašao kvote." };
       const parsed = JSON.parse(match[0]) as Record<string, unknown>;
       const out = { k22: num(parsed["k22"]), over: num(parsed["over"]), gg: num(parsed["gg"]) };
-      if (!out.k22 && !out.over && !out.gg) return { ok: false, message: "Na slici nisam pronašao tražene kvote." };
+      if (!out.k22 && !out.over && !out.gg)
+        return { ok: false, message: "Na slici nisam pronašao tražene kvote." };
       return { ok: true, ...out };
     } catch (e) {
       console.error("OCR error", e);

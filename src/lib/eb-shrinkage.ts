@@ -52,7 +52,7 @@ export const LIGE_GOLI: Record<string, number> = {
   ligue2: 2.35,
   "serie b": 2.45,
   ecb: 2.5,
-  "ekstraklasa": 2.6,
+  ekstraklasa: 2.6,
   "fortuna liga": 2.6,
   "super sport hnl": 2.7,
   "first league": 2.55,
@@ -74,7 +74,12 @@ export function priorZaLigu(liga?: string | null): LigaPrior {
       if (t.includes(k)) return { naziv: k, ukupno: v, poTimu: v / 2, tocna: true };
     }
   }
-  return { naziv: "opći prosjek", ukupno: LIGE_GOLI.default!, poTimu: LIGE_GOLI.default! / 2, tocna: false };
+  return {
+    naziv: "opći prosjek",
+    ukupno: LIGE_GOLI.default!,
+    poTimu: LIGE_GOLI.default! / 2,
+    tocna: false,
+  };
 }
 
 /** Empirical Bayes shrinkage jedne stope (golovi/bodovi po meču) prema prioru. */
@@ -93,4 +98,3 @@ export function jeMaliUzorak(n: number): boolean {
 export function stropPovjerenja(povjerenje: number, mali: boolean): number {
   return mali ? Math.min(Math.round(povjerenje), MAX_POVJERENJE_MALI) : Math.round(povjerenje);
 }
-

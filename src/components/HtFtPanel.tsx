@@ -12,7 +12,11 @@ const REDOVI: Stanje[] = ["1", "X", "2"];
 const STUPCI: Stanje[] = ["1", "X", "2"];
 const KRATICE = ["1/1", "X/1", "1/X", "X/X", "2/2", "X/2"];
 
-const RED_STANJE: Record<Stanje, string> = { "1": "Domaćin vodi", X: "Izjednačeno", "2": "Gost vodi" };
+const RED_STANJE: Record<Stanje, string> = {
+  "1": "Domaćin vodi",
+  X: "Izjednačeno",
+  "2": "Gost vodi",
+};
 
 function toplaBoja(p: number): string {
   if (p >= 0.15) return "bg-emerald-500/25 border-emerald-500/50 text-emerald-200";
@@ -125,7 +129,9 @@ export function HtFtPanel({
                   title={c ? `${c.label} · fer kvota ${c.ferOdd.toFixed(2)} · ${c.ocjena}` : ""}
                 >
                   <div className="font-bold">{c ? c.kod : `${h}/${f}`}</div>
-                  <div className="font-mono opacity-80">{c ? (c.p * 100).toFixed(1) + "%" : "—"}</div>
+                  <div className="font-mono opacity-80">
+                    {c ? (c.p * 100).toFixed(1) + "%" : "—"}
+                  </div>
                 </button>
               );
             })}
@@ -142,7 +148,9 @@ export function HtFtPanel({
             className="flex w-full items-center gap-2 rounded-lg border border-border/40 bg-background/40 px-3 py-1.5 text-[11px] hover:border-emerald-500/40"
           >
             <span className="w-12 font-bold">{c.kod}</span>
-            <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">{c.label}</span>
+            <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+              {c.label}
+            </span>
             <span className="font-mono">{(c.p * 100).toFixed(1)}%</span>
             <span className="font-mono text-muted-foreground">@{c.ferOdd.toFixed(2)}</span>
             <span className="rounded bg-primary/15 px-1 font-bold text-primary">{c.ocjena}</span>
@@ -151,10 +159,9 @@ export function HtFtPanel({
         ))}
       </div>
       <p className="mt-2 text-[10px] text-muted-foreground">
-        Redovi = stanje na poluvremenu ({REDOVI.map((s) => RED_STANJE[s]).join(" · ")}), stupci = konačan ishod.
-        Klik na bilo koju kombinaciju dodaje je u Korpu s fer kvotom.
+        Redovi = stanje na poluvremenu ({REDOVI.map((s) => RED_STANJE[s]).join(" · ")}), stupci =
+        konačan ishod. Klik na bilo koju kombinaciju dodaje je u Korpu s fer kvotom.
       </p>
     </div>
   );
 }
-

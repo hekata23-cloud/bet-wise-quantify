@@ -62,7 +62,6 @@ export async function groqChat(messages: GroqMessage[]): Promise<string> {
   throw new Error(lastErr || "Groq je vratio prazan odgovor");
 }
 
-
 export async function testGroq(): Promise<{ ok: boolean; msg: string }> {
   try {
     const t = await groqChat([
