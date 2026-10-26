@@ -15,6 +15,7 @@ import { loadSuper, superPromptDirectives } from "./superaccuracy";
 import { loadAntiError as loadAnti, antiErrorActive, antiErrorDirectives } from "./antierror";
 import { loadPrecision, precisionDirectives } from "./precision";
 import { loadTitan, titanDirectives } from "./titan";
+import { uputaFaktoraSreceZaBotove } from "./faktor-srece";
 import { loadMastermind as loadMaster, mastermindActive, mastermindDirectives } from "./mastermind";
 import { getFixturesByDate, getLiveFixtures, ApiFootballError } from "./api-football";
 import type { ChatAttachment } from "./attachments";
@@ -322,7 +323,7 @@ Razumiješ i odgovaraš isključivo na izvornom hrvatskom jeziku (hrvatski stand
   const titan = titanDirectives(loadTitan(), market);
   // Mastermind v11 — glavni um; ide zadnji jer koordinira sve ostalo.
   const mastermind = mastermindDirectives(master, market);
-  const tail = `${precision}${titan}${antiUniversal}${mastermind}`;
+  const tail = `${precision}${titan}${antiUniversal}${uputaFaktoraSreceZaBotove()}${mastermind}`;
   const quant = runQuantAnalytics(userText);
   let quantDirective = "";
   if (quant.isMatchQuery) {
