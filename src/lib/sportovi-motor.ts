@@ -247,14 +247,36 @@ export function sportAnaliza(ulaz: SportUlaz): SportIzlaz {
     }
   }
 
-  const tip = topKljuc && maxEdge >= 0.02
+  // Ako nema value edge-a ≥ 2% ili nema vanjskih kvota, biraj ishod s najvišom vjerojatnošću modela (≥ 50%)
+  if (!topKljuc || maxEdge < 0.02) {
+    let bestP = -1;
+    for (const k of Object.keys(final)) {
+      if (final[k]! > bestP) {
+        bestP = final[k]!;
+        topKljuc = k;
+      }
+    }
+  }
+
+  const tip = topKljuc && final[topKljuc] != null
     ? {
         kljuc: topKljuc,
-        label: topKljuc === "1" ? "Domaćin" : topKljuc === "2" ? "Gost" : topKljuc,
+        label:
+          topKljuc === "1"
+            ? "Pobjeda domaćina"
+            : topKljuc === "2"
+            ? "Pobjeda gosta"
+            : topKljuc === "X"
+            ? "Neriješeno"
+            : topKljuc === "over"
+            ? `Više od ${linija ?? ""}`
+            : topKljuc === "under"
+            ? `Manje od ${linija ?? ""}`
+            : topKljuc,
         p: final[topKljuc]!,
-        kvota: ulaz.kvote[topKljuc] ?? null,
-        edge: maxEdge,
-        ev: Math.round(maxEdge * 1000) / 10,
+        kvota: ulaz.kvote[topKljuc] ?? fairOdds[topKljuc] ?? (1 / Math.max(0.01, final[topKljuc]!)),
+        edge: edge[topKljuc] ?? 0.02,
+        ev: Math.round((edge[topKljuc] ?? 0.02) * 1000) / 10,
         kellyPct: kelly[topKljuc] ?? 1,
       }
     : null;

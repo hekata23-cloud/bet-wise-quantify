@@ -234,8 +234,13 @@ export function extractMatchDetails(text: string, contextTitle?: string | null):
   } else if (numbers && numbers.length === 2) {
     const vals = numbers.map((n) => parseFloat(n.replace(",", ".")));
     if (vals[0] > 1 && vals[1] > 1) {
-      odds.oOver = vals[0];
-      odds.oUnder = vals[1];
+      if (sport === "kosarka" && !/over|under|viš|vis|manj|zbroj|total|granic/i.test(text)) {
+        odds.o1 = vals[0];
+        odds.o2 = vals[1];
+      } else {
+        odds.oOver = vals[0];
+        odds.oUnder = vals[1];
+      }
     }
   }
 
@@ -253,6 +258,7 @@ export function identifySpecificMarket(text: string, sport: string): {
   marketName: string;
   category:
     | "1x2"
+    | "regularno"
     | "dvoznak"
     | "dnb"
     | "btts"
@@ -260,6 +266,7 @@ export function identifySpecificMarket(text: string, sport: string): {
     | "hendikep"
     | "ht_ft"
     | "poluvrijeme"
+    | "drugo_poluvrijeme"
     | "cetvrtine"
     | "tocan_rezultat"
     | "timski_total"
@@ -267,6 +274,10 @@ export function identifySpecificMarket(text: string, sport: string): {
     | "kartoni"
     | "prvi_gol"
     | "kombo"
+    | "clean_sheet"
+    | "raspon_golova"
+    | "produzeci"
+    | "par_nepar"
     | "igraci"
     | "margina"
     | "opce";
@@ -275,6 +286,15 @@ export function identifySpecificMarket(text: string, sport: string): {
 
   // ── KOŠARKAŠKA TRŽIŠTA ──
   if (sport === "kosarka") {
+    if (/produž|produz|overtime|\bot\b|dodatno vrijeme/i.test(t)) {
+      return { marketName: "Produžeci (Overtime DA/NE)", category: "produzeci" };
+    }
+    if (/par.*nepar|nepar.*par|odd.*even/i.test(t)) {
+      return { marketName: "Zbroj poena — Par / Nepar", category: "par_nepar" };
+    }
+    if (/ht[\/\-]ft|poluvrijeme[\/\-]kraj|prijelaz/i.test(t)) {
+      return { marketName: "Poluvrijeme / Kraj košarka (HT/FT)", category: "ht_ft" };
+    }
     if (/margin|razlik.*pobjed|raspon poen/i.test(t)) {
       return { marketName: "Margina pobjede (Winning Margin)", category: "margina" };
     }
@@ -296,6 +316,9 @@ export function identifySpecificMarket(text: string, sport: string): {
     if (/over|under|viš|vis|manj|zbroj|total|poena|granic|granica/i.test(t)) {
       return { marketName: "Ukupno poena (Total Over/Under)", category: "over_under" };
     }
+    if (/regular|40 min|bez produžet/i.test(t)) {
+      return { marketName: "Regularni ishod (40 min bez produžetaka)", category: "regularno" };
+    }
     if (/moneyline|pobjednik|ko pobjed|tko pobjed|1-2|konač/i.test(t)) {
       return { marketName: "Pobjednik meča (Moneyline uklj. produžetke)", category: "1x2" };
     }
@@ -304,23 +327,17 @@ export function identifySpecificMarket(text: string, sport: string): {
 
   // ── RUKOMETNA TRŽIŠTA ──
   if (sport === "rukomet") {
+    if (/par.*nepar|nepar.*par|odd.*even/i.test(t)) {
+      return { marketName: "Zbroj golova — Par / Nepar", category: "par_nepar" };
+    }
+    if (/margin|razlik.*pobjed|raspon gol/i.test(t)) {
+      return { marketName: "Margina pobjede (Rukomet)", category: "margina" };
+    }
     if (/igrač|igrac|strijelac|golov.*igra|duvnjak|cindrić|hansen|gidsel/i.test(t)) {
       return { marketName: "Igrač zbroj golova (Rukometni props)", category: "igraci" };
     }
-    if (/1x2|konač|pobjednik|ishod/i.test(t)) {
-      return { marketName: "1X2 (Konačan ishod s remijem)", category: "1x2" };
-    }
-    if (/poluvrijem|ht\b|1\. ?pol|prvo pol/i.test(t)) {
-      return { marketName: "1. Poluvrijeme — Ishod / Hendikep / Zbroj golova", category: "poluvrijeme" };
-    }
-    if (/hendikep|handicap|\b[-+]\d+\.?\d*/i.test(t)) {
-      return { marketName: "Hendikep golova (Handball Spread)", category: "hendikep" };
-    }
-    if (/timski|domaćin|domacin|gost gol|tim 1|tim 2/i.test(t)) {
-      return { marketName: "Timski zbroj golova (Rukomet)", category: "timski_total" };
-    }
-    if (/over|under|viš|vis|manj|zbroj|total|golov|granic/i.test(t)) {
-      return { marketName: "Ukupno golova (Total Over/Under)", category: "over_under" };
+    if (/dnb|draw no bet|bez neriješen|bez remi/i.test(t)) {
+      return { marketName: "Draw No Bet (DNB — remi vraća ulog)", category: "dnb" };
     }
     if (/\b(dvoznak|1x|x2|12)\b|dvostruka/i.test(t)) {
       return { marketName: "Dvostruka šansa (1X / X2 / 12)", category: "dvoznak" };
@@ -328,10 +345,34 @@ export function identifySpecificMarket(text: string, sport: string): {
     if (/ht[\/\-]ft|prijelaz|poluvrijeme[\/\-]kraj/i.test(t)) {
       return { marketName: "Poluvrijeme / Kraj (HT/FT)", category: "ht_ft" };
     }
+    if (/poluvrijem|ht\b|1\. ?pol|prvo pol/i.test(t)) {
+      return { marketName: "1. Poluvrijeme — Ishod / Hendikep / Zbroj golova", category: "poluvrijeme" };
+    }
+    if (/hendikep|handicap|\b[-+]\d+\.?\d*/i.test(t)) {
+      return { marketName: "Hendikep golova (Handball Spread)", category: "hendikep" };
+    }
+    if (/timski|domaćin.*gol|domacin.*gol|gost.*gol|tim 1|tim 2/i.test(t)) {
+      return { marketName: "Timski zbroj golova (Rukomet)", category: "timski_total" };
+    }
+    if (/over|under|viš|vis|manj|zbroj|total|golov|granic/i.test(t)) {
+      return { marketName: "Ukupno golova (Total Over/Under)", category: "over_under" };
+    }
+    if (/1x2|konač|pobjednik|ishod/i.test(t)) {
+      return { marketName: "1X2 (Konačan ishod s remijem)", category: "1x2" };
+    }
     return { marketName: "1X2 (Konačan ishod s remijem)", category: "1x2" };
   }
 
   // ── NOGOMETNA TRŽIŠTA ──
+  if (/čista mreža|cista mreza|clean sheet|ne prima gol/i.test(t)) {
+    return { marketName: "Čista mreža (Clean Sheet DA/NE)", category: "clean_sheet" };
+  }
+  if (/raspon|multigoal|2-3 gola|0-2 gola|1-3 gola|2-4 gola/i.test(t)) {
+    return { marketName: "Raspon zbroja golova (Multigoals)", category: "raspon_golova" };
+  }
+  if (/drugo poluvrijeme|2\. ?pol/i.test(t)) {
+    return { marketName: "2. Poluvrijeme — Ishod i zbroj golova", category: "drugo_poluvrijeme" };
+  }
   if (/korner|corner|udarac iz kuta/i.test(t)) {
     return { marketName: "Zbroj i hendikep kornera", category: "korneri" };
   }
@@ -555,6 +596,24 @@ export function runQuantAnalytics(
         targetMarketOdd = 1.75;
         altPick = "Barem jedan karton u 1. poluvremenu";
         break;
+      case "clean_sheet":
+        pick = p1 >= p2 ? `${home} čuva čistu mrežu — DA` : `${home} prima gol — NE (Clean sheet)`;
+        targetProb = p1 >= p2 ? Math.exp(-lambdaAway) : 1 - Math.exp(-lambdaAway);
+        targetMarketOdd = 2.10;
+        altPick = `${home} pobjeđuje`;
+        break;
+      case "raspon_golova":
+        pick = "Ukupno golova u rasponu: 2-3 gola";
+        targetProb = 0.51;
+        targetMarketOdd = 1.95;
+        altPick = "Više od 1.5 gola";
+        break;
+      case "drugo_poluvrijeme":
+        pick = p1 >= p2 ? `2. Poluvrijeme — Više golova nego u prvom` : `2. Poluvrijeme — Više od 0.5 gola`;
+        targetProb = 0.58;
+        targetMarketOdd = 1.75;
+        altPick = "Gol u 2. poluvremenu";
+        break;
       case "prvi_gol":
         pick = p1 >= p2 ? `${home} postiže prvi gol` : `${away} postiže prvi gol`;
         targetProb = p1 >= p2 ? 0.61 : 0.54;
@@ -658,22 +717,34 @@ export function runQuantAnalytics(
   if (sport === "kosarka") {
     const isNBA = /nba|lakers|celtics|warriors|nuggets|bucks|cavaliers/i.test(userText);
     const pace = isNBA ? 100.5 : 72.8;
-    const baseTotal = isNBA ? 224.5 : 162.5;
+    const lineMatch = userText.match(/\b(1\d\d\.\d|2\d\d\.\d)\b/);
+    const baseTotal = lineMatch ? parseFloat(lineMatch[1]) : (isNBA ? 224.5 : 162.5);
     const homeAdvantage = 3.5;
 
-    // Očekivani poeni
-    const lambdaHome = isNBA ? 114.5 : 83.2;
-    const lambdaAway = isNBA ? 110.0 : 79.3;
+    // Očekivani poeni i vjerojatnosti
+    let pHomeWin = 0.58;
+    let pAwayWin = 0.42;
+    let projSpread = 4.5;
+    let lambdaHome = isNBA ? 114.5 : 83.2;
+    let lambdaAway = isNBA ? 110.0 : 79.3;
+
+    if (odds.o1 && odds.o2) {
+      const p1Raw = 1 / odds.o1;
+      const p2Raw = 1 / odds.o2;
+      const sum = p1Raw + p2Raw;
+      pHomeWin = p1Raw / sum;
+      pAwayWin = p2Raw / sum;
+      projSpread = (pHomeWin - pAwayWin) * 12.0;
+      const base = (isNBA ? 224.5 : 162.5) / 2;
+      lambdaHome = base + projSpread / 2;
+      lambdaAway = base - projSpread / 2;
+    }
+
     const totalExpected = lambdaHome + lambdaAway;
-    const projSpread = lambdaHome - lambdaAway; // cca 4.5 poena
 
     // Razlika poena prati Normalnu distribuciju N(projSpread, 11.5^2)
     const sigmaDiff = isNBA ? 12.0 : 10.5;
     const sigmaTot = isNBA ? 16.5 : 14.0;
-
-    // Vjerojatnost pobjede domaćina (Moneyline)
-    const pHomeWin = normalCDF(0, -projSpread, sigmaDiff);
-    const pAwayWin = 1 - pHomeWin;
 
     // Vjerojatnost Over glavne linije
     const pOver = normalCDF(baseTotal, totalExpected, sigmaTot);
@@ -685,12 +756,45 @@ export function runQuantAnalytics(
     let altPick = `${home} hendikep (-3.5 poena)`;
 
     switch (marketInfo.category) {
-      case "hendikep":
-        pick = projSpread >= 4 ? `${home} pokriva hendikep (-4.5 poena)` : `${away} pokriva hendikep (+5.5 poena)`;
-        targetProb = 0.58;
+      case "produzeci":
+        pick = "Regularno vrijeme — Bez produžetaka (NE)";
+        targetProb = 0.94;
+        targetMarketOdd = 1.05;
+        altPick = pHomeWin >= pAwayWin ? `${home} Moneyline` : `${away} Moneyline`;
+        break;
+      case "par_nepar":
+        pick = "Zbroj poena na utakmici: Nepar (50/50 distribucija)";
+        targetProb = 0.50;
         targetMarketOdd = 1.90;
+        altPick = `Više od ${baseTotal} poena`;
+        break;
+      case "regularno":
+        pick = pHomeWin >= pAwayWin ? `${home} pobjeđuje u 40 min (bez OT)` : `${away} pobjeđuje u 40 min (bez OT)`;
+        targetProb = Math.max(pHomeWin, pAwayWin) * 0.94;
+        targetMarketOdd = pHomeWin >= pAwayWin ? 1.68 : 2.55;
         altPick = `${home} Moneyline`;
         break;
+      case "ht_ft":
+        pick = pHomeWin >= pAwayWin ? "1/1 (Poluvrijeme 1 / Kraj 1)" : "2/2 (Poluvrijeme 2 / Kraj 2)";
+        targetProb = Math.max(pHomeWin, pAwayWin) * 0.78;
+        targetMarketOdd = 2.10;
+        altPick = pHomeWin >= pAwayWin ? `${home} Moneyline` : `${away} Moneyline`;
+        break;
+      case "hendikep": {
+        const spreadAbs = Math.abs(projSpread) >= 2.5 ? Math.round(Math.abs(projSpread) * 2) / 2 : 4.5;
+        if (projSpread >= 0) {
+          pick = `${home} pokriva hendikep (-${spreadAbs} poena)`;
+          targetProb = 0.58;
+          targetMarketOdd = 1.90;
+          altPick = `${home} Moneyline`;
+        } else {
+          pick = `${away} pokriva hendikep (-${spreadAbs} poena)`;
+          targetProb = 0.58;
+          targetMarketOdd = 1.90;
+          altPick = `${away} Moneyline`;
+        }
+        break;
+      }
       case "over_under":
         if (pOver >= pUnder) {
           pick = `Više od ${baseTotal} poena (Over)`;
@@ -705,13 +809,13 @@ export function runQuantAnalytics(
         }
         break;
       case "poluvrijeme":
-        pick = `1. Poluvrijeme — ${home} vodi (ili pokriva -2.5)`;
-        targetProb = pHomeWin * 0.95;
+        pick = pHomeWin >= pAwayWin ? `1. Poluvrijeme — ${home} vodi` : `1. Poluvrijeme — ${away} vodi`;
+        targetProb = Math.max(pHomeWin, pAwayWin) * 0.92;
         targetMarketOdd = 1.65;
         altPick = `1. Poluvrijeme Over ${(baseTotal / 2).toFixed(1)} poena`;
         break;
       case "cetvrtine":
-        pick = `1. Četvrtina — ${home} postiže više poena (Q1 pobjeda)`;
+        pick = pHomeWin >= pAwayWin ? `1. Četvrtina — ${home} postiže više poena (Q1 pobjeda)` : `1. Četvrtina — ${away} postiže više poena (Q1 pobjeda)`;
         targetProb = 0.57;
         targetMarketOdd = 1.72;
         altPick = `1. Četvrtina Više od ${(baseTotal / 4).toFixed(1)} poena`;
@@ -723,7 +827,19 @@ export function runQuantAnalytics(
         altPick = `${away} ispod ${(lambdaAway + 2).toFixed(1)} poena`;
         break;
       case "igraci":
-        pick = "Glavni bek / strijelac: Više od zadanog broja poena (Player Over)";
+        if (/dončić|doncic/i.test(userText)) {
+          pick = "Luka Dončić: Više od 31.5 poena (Player Over)";
+        } else if (/jokić|jokic/i.test(userText)) {
+          pick = "Nikola Jokić: Više od 26.5 poena (ili Triple-Double)";
+        } else if (/curry/i.test(userText)) {
+          pick = "Stephen Curry: Više od 4.5 postignutih trica";
+        } else if (/lebron/i.test(userText)) {
+          pick = "LeBron James: Više od 24.5 poena";
+        } else if (/giannis/i.test(userText)) {
+          pick = "Giannis Antetokounmpo: Više od 29.5 poena";
+        } else {
+          pick = "Glavni bek / strijelac: Više od zadanog broja poena (Player Over)";
+        }
         targetProb = 0.60;
         targetMarketOdd = 1.87;
         altPick = "Zbroj skokova + asistencija Over";
@@ -738,7 +854,7 @@ export function runQuantAnalytics(
         pick = pHomeWin >= pAwayWin ? `${home} pobjeda (Moneyline)` : `${away} pobjeda (Moneyline)`;
         targetProb = Math.max(pHomeWin, pAwayWin);
         targetMarketOdd = pHomeWin >= pAwayWin ? (odds.o1 ?? 1.55) : (odds.o2 ?? 2.45);
-        altPick = `${home} hendikep (-3.5)`;
+        altPick = pHomeWin >= pAwayWin ? `${home} hendikep (-3.5)` : `${away} hendikep (+3.5)`;
     }
 
     const fairOdds = parseFloat((1 / Math.max(0.01, targetProb)).toFixed(2));
@@ -806,30 +922,66 @@ export function runQuantAnalytics(
   // ══════════════════════════════════════════════════════════
   // MODEL 3: RUKOMET (Posjedi 52-56, 1X2 sa X 8.5-10.5%, Golovi)
   // ══════════════════════════════════════════════════════════
-  const lambdaHome = 29.4;
-  const lambdaAway = 26.8;
-  const totalHandball = lambdaHome + lambdaAway; // ~56.2 golova
-  const handballLine = 56.5;
+  const lineMatchH = userText.match(/\b([456]\d\.\d)\b/);
+  const handballLine = lineMatchH ? parseFloat(lineMatchH[1]) : 56.5;
 
-  // Rukometni ishod 1X2 s realnom distribucijom remija (remi je ~9% u rukometu)
-  const p1 = 0.63;
-  const pX = 0.09;
-  const p2 = 0.28;
+  let lambdaHome = 29.4;
+  let lambdaAway = 26.8;
+  let p1 = 0.63;
+  let pX = 0.09;
+  let p2 = 0.28;
 
+  if (odds.o1 && odds.oX && odds.o2) {
+    const dv = devig([odds.o1, odds.oX, odds.o2]);
+    p1 = dv.p[0];
+    pX = dv.p[1];
+    p2 = dv.p[2];
+    const diff = (p1 - p2) * 6.8;
+    lambdaHome = Math.max(18, Math.min(38, 28.0 + diff / 2));
+    lambdaAway = Math.max(18, Math.min(38, 28.0 - diff / 2));
+  } else if (odds.o1 && odds.o2) {
+    const sum = 1 / odds.o1 + 1 / odds.o2;
+    p1 = ((1 / odds.o1) / sum) * 0.91;
+    pX = 0.09;
+    p2 = ((1 / odds.o2) / sum) * 0.91;
+    const diff = (p1 - p2) * 6.8;
+    lambdaHome = Math.max(18, Math.min(38, 28.0 + diff / 2));
+    lambdaAway = Math.max(18, Math.min(38, 28.0 - diff / 2));
+  }
+
+  const totalHandball = lambdaHome + lambdaAway;
   const pOver = normalCDF(handballLine, totalHandball, 6.2);
   const pUnder = 1 - pOver;
 
-  let pick = `${home} pobjeđuje (1)`;
-  let targetProb = p1;
-  let targetMarketOdd = odds.o1 ?? 1.45;
-  let altPick = "1X (Dvoznak) ili Manje od 58.5 gola";
+  let pick = p1 >= p2 ? `${home} pobjeđuje (1)` : `${away} pobjeđuje (2)`;
+  let targetProb = Math.max(p1, p2);
+  let targetMarketOdd = p1 >= p2 ? (odds.o1 ?? 1.45) : (odds.o2 ?? 2.10);
+  let altPick = p1 >= p2 ? `1X (Dvoznak) ili Manje od ${handballLine + 2} gola` : `X2 (Dvoznak)`;
 
   switch (marketInfo.category) {
+    case "par_nepar":
+      pick = "Zbroj golova na utakmici: Nepar (50/50 distribucija)";
+      targetProb = 0.50;
+      targetMarketOdd = 1.90;
+      altPick = `Više od ${handballLine} golova`;
+      break;
+    case "margina":
+      pick = p1 >= p2 ? `${home} pobjeda s 1-3 gola razlike` : `${away} pobjeda s 1-3 gola razlike`;
+      targetProb = 0.38;
+      targetMarketOdd = 2.85;
+      altPick = p1 >= p2 ? `${home} pobjeda (1)` : `${away} pobjeda (2)`;
+      break;
+    case "dnb":
+      pick = p1 >= p2 ? `${home} (DNB — remi vraća ulog)` : `${away} (DNB — remi vraća ulog)`;
+      targetProb = p1 >= p2 ? p1 / (p1 + p2) : p2 / (p1 + p2);
+      targetMarketOdd = p1 >= p2 ? 1.30 : 2.15;
+      altPick = p1 >= p2 ? "1X (Dvoznak)" : "X2 (Dvoznak)";
+      break;
     case "hendikep":
-      pick = `${home} Hendikep (-2.5 gola)`;
+      pick = p1 >= p2 ? `${home} Hendikep (-2.5 gola)` : `${away} Hendikep (+2.5 gola)`;
       targetProb = 0.59;
       targetMarketOdd = 1.88;
-      altPick = `${home} čista pobjeda (1)`;
+      altPick = p1 >= p2 ? `${home} čista pobjeda (1)` : `${away} pobjeda (2)`;
       break;
     case "over_under":
       if (pOver >= pUnder) {
@@ -845,40 +997,64 @@ export function runQuantAnalytics(
       }
       break;
     case "dvoznak":
-      pick = `1X (${home} ili neriješeno)`;
-      targetProb = p1 + pX;
-      targetMarketOdd = 1.22;
-      altPick = `${home} čista pobjeda`;
+      if (p1 >= p2) {
+        pick = `1X (${home} ili neriješeno)`;
+        targetProb = p1 + pX;
+        targetMarketOdd = 1.22;
+        altPick = `${home} čista pobjeda`;
+      } else {
+        pick = `X2 (${away} ili neriješeno)`;
+        targetProb = p2 + pX;
+        targetMarketOdd = 1.35;
+        altPick = `${away} čista pobjeda`;
+      }
       break;
     case "poluvrijeme":
-      pick = `1. Poluvrijeme — ${home} vodi (ili Over 27.5 gola)`;
+      pick = p1 >= p2 ? `1. Poluvrijeme — ${home} vodi (ili Over ${(handballLine / 2).toFixed(1)} gola)` : `1. Poluvrijeme — ${away} vodi`;
       targetProb = 0.62;
       targetMarketOdd = 1.60;
       altPick = "1X na poluvremenu";
       break;
     case "timski_total":
-      pick = `${home} postiže više od 28.5 golova`;
+      pick = `${home} postiže više od ${(lambdaHome - 0.5).toFixed(1)} golova`;
       targetProb = 0.61;
       targetMarketOdd = 1.80;
-      altPick = `${away} postiže manje od 27.5 golova`;
+      altPick = `${away} postiže manje od ${(lambdaAway + 0.5).toFixed(1)} golova`;
       break;
     case "ht_ft":
-      pick = "1/1 (Domaćin vodi na poluvremenu i pobjeđuje na kraju)";
+      pick = p1 >= p2 ? "1/1 (Domaćin vodi na poluvremenu i pobjeđuje)" : "2/2 (Gost vodi na poluvremenu i pobjeđuje)";
       targetProb = 0.52;
       targetMarketOdd = 1.95;
-      altPick = `${home} čista pobjeda (1)`;
+      altPick = p1 >= p2 ? `${home} čista pobjeda (1)` : `${away} pobjeda (2)`;
       break;
     case "igraci":
-      pick = "Prvi strijelac ekipe: Više od 5.5 postignutih golova";
+      if (/gidsel/i.test(userText)) {
+        pick = "Mathias Gidsel: Više od 6.5 postignutih golova";
+      } else if (/duvnjak/i.test(userText)) {
+        pick = "Domagoj Duvnjak: Više od 3.5 postignutih golova";
+      } else if (/hansen/i.test(userText)) {
+        pick = "Mikkel Hansen: Više od 5.5 postignutih golova";
+      } else if (/cindrić|cindric/i.test(userText)) {
+        pick = "Luka Cindrić: Više od 4.5 postignutih golova";
+      } else {
+        pick = "Prvi strijelac ekipe: Više od 5.5 postignutih golova";
+      }
       targetProb = 0.62;
       targetMarketOdd = 1.85;
       altPick = "Izvođač sedmeraca postiže 4+ gola";
       break;
     default:
-      pick = `${home} pobjeđuje (1)`;
-      targetProb = p1;
-      targetMarketOdd = odds.o1 ?? 1.45;
-      altPick = `1X (${home} ili neriješeno)`;
+      if (p1 >= p2) {
+        pick = `${home} pobjeđuje (1)`;
+        targetProb = p1;
+        targetMarketOdd = odds.o1 ?? 1.45;
+        altPick = `1X (${home} ili neriješeno)`;
+      } else {
+        pick = `${away} pobjeđuje (2)`;
+        targetProb = p2;
+        targetMarketOdd = odds.o2 ?? 2.10;
+        altPick = `X2 (${away} ili neriješeno)`;
+      }
   }
 
   const fairOdds = parseFloat((1 / Math.max(0.01, targetProb)).toFixed(2));

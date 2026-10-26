@@ -432,7 +432,7 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
         candidate = await runHF(sys, history, userText, attachments, prefs);
       }
       const s = (candidate ?? "").trim();
-      if (s && !/^prazan odgovor$/i.test(s)) {
+      if (s && !/^prazan odgovor$/i.test(s) && s.length >= 15) {
         return s;
       }
     } catch (e) {
@@ -444,9 +444,11 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
 
   // Autonomni analitički odgovor (nikada ne vraća prazan odgovor niti mock podatke)
   if (opts.agent === "orion") {
-    return formatOrionResponse(quant);
+    const res = formatOrionResponse(quant);
+    return res && res.trim() ? res : formatOrionResponse(quant);
   }
-  return formatLunaResponse(quant);
+  const res = formatLunaResponse(quant);
+  return res && res.trim() ? res : formatLunaResponse(quant);
 }
 
 async function runOpenRouter(
