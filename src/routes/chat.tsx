@@ -172,7 +172,7 @@ function ChatPage() {
           .filter((s) => s)
           .join("\n\n");
       let reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
-      if (!reply || !reply.trim() || reply.trim().length < 15 || /^prazan odgovor$/i.test(reply.trim())) {
+      if (!reply || !reply.trim() || /^prazan odgovor$/i.test(reply.trim())) {
         reply = formatLunaResponse(runQuantAnalytics(text));
       }
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);

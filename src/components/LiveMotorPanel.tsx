@@ -36,15 +36,7 @@ function Bar({ label, p, jak }: { label: string; p: number; jak?: boolean }) {
   );
 }
 
-export function LiveMotorPanel({
-  fixtureId = 0,
-  dom = "Domaćin",
-  gost = "Gost",
-  lambdaDom = 1.3,
-  lambdaGost = 1.1,
-}: Partial<LiveMotorPanelProps>) {
-  const safeDom = dom || "Domaćin";
-  const safeGost = gost || "Gost";
+export function LiveMotorPanel({ fixtureId, dom, gost, lambdaDom, lambdaGost }: LiveMotorPanelProps) {
   const [minuta, setMinuta] = useState(0);
   const [goloviDom, setGoloviDom] = useState(0);
   const [goloviGost, setGoloviGost] = useState(0);
@@ -55,22 +47,14 @@ export function LiveMotorPanel({
   const [dohvacam, setDohvacam] = useState(false);
   const [dohvatPoruka, setDohvatPoruka] = useState("");
 
-  const safeLd = typeof lambdaDom === "number" && !Number.isNaN(lambdaDom) ? lambdaDom : 1.3;
-  const safeLg = typeof lambdaGost === "number" && !Number.isNaN(lambdaGost) ? lambdaGost : 1.1;
-  const lambdaOk = safeLd > 0.05 && safeLg > 0.05;
+  const lambdaOk = lambdaDom > 0.05 && lambdaGost > 0.05;
 
   const live = useMemo(
     () =>
       liveAnaliza({
-        lambdaDom: safeLd,
-        lambdaGost: safeLg,
-        minuta,
-        goloviDom,
-        goloviGost,
-        crveniDom,
-        crveniGost,
+        lambdaDom, lambdaGost, minuta, goloviDom, goloviGost, crveniDom, crveniGost,
       }),
-    [safeLd, safeLg, minuta, goloviDom, goloviGost, crveniDom, crveniGost],
+    [lambdaDom, lambdaGost, minuta, goloviDom, goloviGost, crveniDom, crveniGost],
   );
 
   const edgeO25 = liveEdge(live.o25, Number(kvotaO25.replace(",", ".")));
@@ -130,10 +114,10 @@ export function LiveMotorPanel({
         <label className="flex items-center gap-1">Minuta
           <input type="number" min={0} max={120} value={minuta} onChange={(e) => setMinuta(Number(e.target.value) || 0)} className={brojInput} />
         </label>
-        <label className="flex items-center gap-1">{safeDom.slice(0, 12)}
+        <label className="flex items-center gap-1">{dom.slice(0, 12)}
           <input type="number" min={0} max={15} value={goloviDom} onChange={(e) => setGoloviDom(Number(e.target.value) || 0)} className={brojInput} />
         </label>
-        <label className="flex items-center gap-1">{safeGost.slice(0, 12)}
+        <label className="flex items-center gap-1">{gost.slice(0, 12)}
           <input type="number" min={0} max={15} value={goloviGost} onChange={(e) => setGoloviGost(Number(e.target.value) || 0)} className={brojInput} />
         </label>
         <label className="flex items-center gap-1">Crvenih dom

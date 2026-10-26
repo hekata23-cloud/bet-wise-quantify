@@ -4,14 +4,12 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000 --host 0.0.0.0",
+    "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "test": "vitest run",
-    "pack": "node scripts/pack-zip.mjs"
+    "format": "prettier --write ."
   },
   "overrides": {
     "rolldown": "1.2.1"

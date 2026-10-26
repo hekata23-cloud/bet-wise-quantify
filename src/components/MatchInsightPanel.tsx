@@ -19,7 +19,7 @@
    odds-tracker historiju i Monte Carlo.
    ═══════════════════════════════════════════════════════════════════ */
 
-import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity, AlertTriangle, BookOpen, BrainCircuit, ChevronDown,
   Dices, Info, LineChart, ShieldCheck, Target, TrendingDown, TrendingUp,
@@ -71,55 +71,7 @@ function ocjenaKlasa(o: string) {
   return "bg-slate-500/20 text-slate-300 border-slate-500/40";
 }
 
-class MatchInsightErrorBoundary extends Component<
-  { children: ReactNode; utakmicaNaslov?: string },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: ReactNode; utakmicaNaslov?: string }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("MatchInsightPanel error:", error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="rounded-xl border border-border bg-card/60 p-4 text-xs text-muted-foreground">
-          <div className="font-semibold text-foreground">
-            SARP analitički panel ({this.props.utakmicaNaslov ?? "utakmica"})
-          </div>
-          <p className="mt-1">
-            Glavni model je uspješno izračunao vjerojatnosti i tipove. Detaljne live metrike se osvježavaju...
-          </p>
-          <button
-            onClick={() => this.setState({ hasError: false, error: null })}
-            className="mt-2 rounded bg-primary/20 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/30"
-          >
-            Pokušaj ponovno učitati panel
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export function MatchInsightPanel(props: MatchInsightProps) {
-  return (
-    <MatchInsightErrorBoundary utakmicaNaslov={`${props.utakmica?.home ?? ""} — ${props.utakmica?.away ?? ""}`}>
-      <MatchInsightPanelInner {...props} />
-    </MatchInsightErrorBoundary>
-  );
-}
-
-function MatchInsightPanelInner(props: MatchInsightProps) {
   const { utakmica, kvote, goals } = props;
 
   /* ── OKOLIS I SUDAC (v6) — opcionalni manualni unos. Prazno =
@@ -311,7 +263,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
           <div className="flex-1">
             <b>ZLATNA PRILIKA (EDGE ≥ 5%)</b>
             <div className="text-xs text-emerald-200/80">
-              Model i tržište se slažu, a prednost nad kladionicom je visoka ({sarp.coreTip.edge != null ? fmtPct(sarp.coreTip.edge) : "≥ 5%"}).
+              Model i tržište se slažu, a prednost nad kladionicom je visoka ({fmtPct(sarp.coreTip.edge)}).
             </div>
           </div>
         </div>
@@ -334,13 +286,12 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
         </div>
 
         {/* Tržišne kvote */}
-        {Array.isArray(sarp.matchInfo.kvote) && sarp.matchInfo.kvote.length > 0 && (
+        {Object.keys(sarp.matchInfo.kvote).length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="text-muted-foreground self-center">Kvote:</span>
-            {sarp.matchInfo.kvote.map((item) => (
-              <span key={item.kljuc} className="rounded bg-muted px-2 py-0.5 font-mono">
-                <span className="text-muted-foreground">{LABELI[item.kljuc] ?? item.label ?? item.kljuc}:</span>{" "}
-                <b>{item.kvota != null ? item.kvota.toFixed(2) : "—"}</b>
+            {Object.entries(sarp.matchInfo.kvote).map(([k, v]) => (
+              <span key={k} className="rounded bg-muted px-2 py-0.5 font-mono">
+                <span className="text-muted-foreground">{LABELI[k] ?? k}:</span> <b>{v.toFixed(2)}</b>
               </span>
             ))}
           </div>
@@ -349,10 +300,10 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
 
       {/* 1b · LINEUP RADAR (v3) */}
       <LineupRadar
-        fixtureId={utakmica.id}
-        dom={utakmica.home}
+        domacin={utakmica.home}
         gost={utakmica.away}
-        onImpact={setLineupInfo}
+        liga={utakmica.league}
+        onLineupPromjena={setLineupInfo}
       />
 
       {/* 2 · PREDIKCIJA (CORE + EV + ¼ KELLY) */}
@@ -377,10 +328,8 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
             </div>
           </div>
           <div className="text-right">
-            <div className={`text-lg font-bold ${sarp.coreTip.edge != null && sarp.coreTip.edge >= 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
-              {sarp.coreTip.edge != null
-                ? (sarp.coreTip.edge >= 0 ? `+${fmtPct(sarp.coreTip.edge)}` : fmtPct(sarp.coreTip.edge))
-                : "—"} EV
+            <div className={`text-lg font-bold ${sarp.coreTip.edge >= 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
+              {sarp.coreTip.edge >= 0 ? `+${fmtPct(sarp.coreTip.edge)}` : fmtPct(sarp.coreTip.edge)} EV
             </div>
             <div className="text-xs text-muted-foreground">
               ¼ Kelly ulog: <b className="text-foreground">{sarp.coreTip.kellyPct}%</b> banke
@@ -397,7 +346,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
             <HelpCircle className="h-3.5 w-3.5" /> Zašto baš ovaj tip? (SARP sažetak)
           </button>
           <span className="text-[11px] text-muted-foreground">
-            {sarp.coreTip.edge != null && sarp.coreTip.edge >= 0.05 ? "Preporučeno: visok edge" : "Umjerena prednost"}
+            {sarp.coreTip.edge >= 0.05 ? "Preporučeno: visok edge" : "Umjerena prednost"}
           </span>
         </div>
 
@@ -428,19 +377,19 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
 
       {/* SGP BUILDER (v3) */}
       <SgpBuilder
-        naslov={`${utakmica.home} — ${utakmica.away}`}
-        liga={utakmica.league}
-        kvote={kvote}
+        utakmicaId={utakmica.id}
+        lambdaDom={sarp.lambdaDom}
+        lambdaGost={sarp.lambdaGost}
         konsenzus={sarp.konsenzus}
+        kvoteTrzista={kvote}
       />
 
       {/* LIVE ENGINE (v3) */}
       <LiveMotorPanel
-        fixtureId={utakmica.id}
-        dom={utakmica.home}
+        domacin={utakmica.home}
         gost={utakmica.away}
-        lambdaDom={sarp.lambdaDom}
-        lambdaGost={sarp.lambdaGost}
+        lambdaDomPocetni={sarp.lambdaDom}
+        lambdaGostPocetni={sarp.lambdaGost}
       />
 
       {/* 5 · RIZICI I UPOZORENJA */}
@@ -507,15 +456,11 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
 
         {otvoreneFaze && (
           <div className="mt-3 space-y-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
-            {sarp.faze.map((f, idx) => (
-              <div key={f.broj ?? idx} className="rounded-lg bg-muted/30 p-2.5">
-                <div className="font-semibold text-foreground">Faza {f.broj ?? idx + 1}: {f.naziv}</div>
+            {sarp.faze.map((f) => (
+              <div key={f.faza} className="rounded-lg bg-muted/30 p-2.5">
+                <div className="font-semibold text-foreground">Faza {f.faza}: {f.naziv}</div>
                 <div>{f.sazetak}</div>
-                {Array.isArray(f.podaci) && f.podaci.length > 0 && (
-                  <div className="mt-1 text-[11px] opacity-75 space-y-0.5">
-                    {f.podaci.map((p, pIdx) => <div key={pIdx}>• {p}</div>)}
-                  </div>
-                )}
+                {f.detalji && <div className="text-[11px] opacity-75">{f.detalji}</div>}
               </div>
             ))}
           </div>
@@ -524,7 +469,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
 
       {/* 7 · LIVE KVOTE TRACKER */}
       <section className="space-y-3">
-        <OddsRadar fixtureId={utakmica.id} kljuc={sarp.coreTip.kljuc} />
+        <OddsRadar kretanje={kretanje} />
 
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="mb-2 flex items-center justify-between">

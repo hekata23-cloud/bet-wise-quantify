@@ -158,7 +158,7 @@ function BttsUltraPage() {
         const stranaD: "da" | "ne" =
           (a.final["bttsDa"] ?? 0) >= (a.final["bttsNe"] ?? 0) ? "da" : "ne";
         const pTipD = stranaD === "da" ? a.final["bttsDa"] : a.final["bttsNe"];
-        const kvTipD = b.kvote?.[stranaD === "da" ? "bttsDa" : "bttsNe"];
+        const kvTipD = b.kvote[stranaD === "da" ? "bttsDa" : "bttsNe"];
         if (pTipD != null) {
           zapisiTip({
             kartica: "BTTS Ultra",
@@ -190,8 +190,8 @@ function BttsUltraPage() {
 
   const pDa = analiza?.final["bttsDa"] ?? null;
   const pNe = analiza?.final["bttsNe"] ?? null;
-  const kvotaDa = bundle?.kvote?.["bttsDa"];
-  const kvotaNe = bundle?.kvote?.["bttsNe"];
+  const kvotaDa = bundle?.kvote["bttsDa"];
+  const kvotaNe = bundle?.kvote["bttsNe"];
   const preporukaDa = pDa != null && kvotaDa != null && (pDa * kvotaDa - 1) >= 0.02;
   const preporukaNe = pNe != null && kvotaNe != null && (pNe * kvotaNe - 1) >= 0.02;
 
@@ -211,8 +211,8 @@ function BttsUltraPage() {
     const poProb = strane.filter((s) => s.p != null).sort((a, b) => b.p! - a.p!);
     const c = isplativi[0] ?? poProb[0]!;
     const sig = c.label === "DA"
-      ? { label: "Više od 1.5 golova", p: analiza.final["o15"] ?? null, kv: bundle?.kvote?.["o15"] ?? null }
-      : { label: "Manje od 2.5 golova", p: analiza.final["u25"] ?? null, kv: bundle?.kvote?.["u25"] ?? null };
+      ? { label: "Više od 1.5 golova", p: analiza.final["o15"] ?? null, kv: bundle?.kvote["o15"] ?? null }
+      : { label: "Manje od 2.5 golova", p: analiza.final["u25"] ?? null, kv: bundle?.kvote["u25"] ?? null };
     tip = {
       label: c.label,
       p: c.p!,
@@ -477,7 +477,7 @@ function BttsUltraPage() {
                 </div>
               )}
 
-              {bundle && bundle.kvote?.["bttsDa"] == null && (
+              {bundle && bundle.kvote["bttsDa"] == null && (
                 <div className="flex items-center gap-2 rounded-xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
                   <XCircle className="h-4 w-4 text-red-400" />
                   Knjige ne nude BTTS tržište za ovu utakmicu — procjena je čisto modelna (fer kvote gore).

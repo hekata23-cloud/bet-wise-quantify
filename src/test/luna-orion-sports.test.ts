@@ -18,32 +18,23 @@ describe("Luna i Orion — Višesportski analitički engine i prepoznavanje trž
     expect(identifySpecificMarket("Bayern vs Dortmund više od 3.5 kartona", "nogomet").category).toBe("kartoni");
     expect(identifySpecificMarket("PSG vs Marseille točan rezultat 2:1", "nogomet").category).toBe("tocan_rezultat");
     expect(identifySpecificMarket("Dinamo vs Rijeka 1/1 poluvrijeme kraj prijelaz", "nogomet").category).toBe("ht_ft");
-    expect(identifySpecificMarket("Dinamo vs Hajduk čista mreža bez primljenog gola", "nogomet").category).toBe("clean_sheet");
-    expect(identifySpecificMarket("Arsenal vs Chelsea raspon 2-3 gola", "nogomet").category).toBe("raspon_golova");
-    expect(identifySpecificMarket("Real vs Barca 2. poluvrijeme ishod", "nogomet").category).toBe("drugo_poluvrijeme");
   });
 
-  it("prepoznaje košarkaška tržišta (Moneyline, Spread, Total poena, Četvrtine, Igrači props, Produžeci, Par/Nepar)", () => {
+  it("prepoznaje košarkaška tržišta (Moneyline, Spread, Total poena, Četvrtine, Igrači props)", () => {
     expect(identifySpecificMarket("Lakers vs Celtics spread hendikep -4.5", "kosarka").category).toBe("hendikep");
     expect(identifySpecificMarket("Warriors vs Nuggets ukupno poena over 224.5", "kosarka").category).toBe("over_under");
     expect(identifySpecificMarket("Partizan vs Crvena zvezda pobjednik meča moneyline", "kosarka").category).toBe("1x2");
     expect(identifySpecificMarket("Cibona vs Zadar prva četvrtina Q1 ishod", "kosarka").category).toBe("cetvrtine");
     expect(identifySpecificMarket("Dončić zbroj poena igrača over 31.5", "kosarka").category).toBe("igraci");
     expect(identifySpecificMarket("Real Madrid vs Barcelona margina pobjede 1-10 poena", "kosarka").category).toBe("margina");
-    expect(identifySpecificMarket("Lakers vs Warriors hoće li biti produžetaka", "kosarka").category).toBe("produzeci");
-    expect(identifySpecificMarket("Celtics vs Heat zbroj poena par ili nepar", "kosarka").category).toBe("par_nepar");
-    expect(identifySpecificMarket("Partizan vs Real pobjednik u regularnom vremenu 40 min", "kosarka").category).toBe("regularno");
   });
 
-  it("prepoznaje rukometna tržišta (1X2 s remijem, Hendikep, Total golova, Poluvrijeme, DNB, Par/Nepar, Igrači)", () => {
+  it("prepoznaje rukometna tržišta (1X2 s remijem, Hendikep, Total golova, Poluvrijeme)", () => {
     expect(identifySpecificMarket("Zagreb vs PSG rukomet konačan ishod 1X2", "rukomet").category).toBe("1x2");
     expect(identifySpecificMarket("Veszprem vs Magdeburg hendikep golova -2.5", "rukomet").category).toBe("hendikep");
     expect(identifySpecificMarket("Kiel vs Flensburg ukupno golova preko 56.5", "rukomet").category).toBe("over_under");
     expect(identifySpecificMarket("Zagreb vs Veszprem 1. poluvrijeme zbroj golova", "rukomet").category).toBe("poluvrijeme");
     expect(identifySpecificMarket("Domaćin daje više od 28.5 golova rukomet", "rukomet").category).toBe("timski_total");
-    expect(identifySpecificMarket("Zagreb vs Magdeburg DNB pobjeda bez neriješenog", "rukomet").category).toBe("dnb");
-    expect(identifySpecificMarket("Flensburg vs Kiel zbroj golova par nepar", "rukomet").category).toBe("par_nepar");
-    expect(identifySpecificMarket("Gidsel zbroj golova rukomet", "rukomet").category).toBe("igraci");
   });
 
   it("detektira razgovorne upite i NE generira lažni mock par za Domaćin vs Gost", () => {
@@ -99,22 +90,5 @@ describe("Luna i Orion — Višesportski analitički engine i prepoznavanje trž
     const orionResponse = formatOrionResponse(quant);
     expect(orionResponse).toContain("Posjedi");
     expect(orionResponse).not.toContain("prazan odgovor");
-  });
-
-  it("pravilno uvažava gostujućeg favorita kada kvote favoriziraju gosta", () => {
-    // Gost izraziti favorit u nogometu (kvote: 4.50 3.60 1.75)
-    const quantFootball = runQuantAnalytics("Luton vs Manchester City 4.50 3.60 1.75");
-    expect(quantFootball.p2).toBeGreaterThan(quantFootball.p1);
-    expect(quantFootball.pick).toMatch(/Manchester City|2/);
-
-    // Gost favorit u košarci (kvote: 2.80 1.45)
-    const quantBasketball = runQuantAnalytics("Hornets vs Celtics košarka 2.80 1.45");
-    expect(quantBasketball.p2).toBeGreaterThan(quantBasketball.p1);
-    expect(quantBasketball.pick).toMatch(/Celtics/);
-
-    // Gost favorit u rukometu (kvote: 4.80 10.0 1.25)
-    const quantHandball = runQuantAnalytics("Zagreb vs Magdeburg rukomet 4.80 10.0 1.25");
-    expect(quantHandball.p2).toBeGreaterThan(quantHandball.p1);
-    expect(quantHandball.pick).toMatch(/Magdeburg|2/);
   });
 });

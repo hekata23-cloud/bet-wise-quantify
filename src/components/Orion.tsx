@@ -91,7 +91,7 @@ export function Orion() {
         [],
         { agent: "orion" },
       )).trim();
-      if (!odgovor || !odgovor.trim() || odgovor.trim().length < 15 || /^prazan odgovor$/i.test(odgovor.trim())) {
+      if (!odgovor || /^prazan odgovor$/i.test(odgovor)) {
         odgovor = formatOrionResponse(runQuantAnalytics(poruka));
       }
       setMessages((m) => [...m, { role: "assistant", content: odgovor, ts: Date.now() }]);
