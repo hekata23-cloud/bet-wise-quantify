@@ -4,8 +4,14 @@ const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // gemini-3.8-flash RAZMIŠLJA prije odgovora — misli troše output budžet,
 // pa je budžet uvećan na 16384 i razmišljanje je na najnižem nivou.
-// Prazan odgovor je sada GREŠKA s točnim uzrokom (finishReason), ne tišina.
-const MODELS = ["gemini-3.8-flash", "gemini-3.6-flash"];
+const MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-3.6-flash",
+];
 
 export async function geminiChat(systemPrompt: string, history: any[]): Promise<string> {
   const key = getKey("gemini");
