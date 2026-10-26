@@ -73,7 +73,7 @@ import {
   izgradiGrid, skellam1x2, deMargin3, deMargin2, kellyUlogPct, evPct,
   monteCarlo, lambdaIzForme,
 } from "./math-engine";
-import { izracunajFormu } from "./kvote-servis.server";
+import { izracunajFormu } from "./kvote-servis";
 import { analyzeKos } from "./kosarka-engine";
 import { analyzeRukomet } from "./rukomet-engine";
 
