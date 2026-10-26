@@ -1,6 +1,6 @@
 {
-  "name": "Andromeda AI (Bet Wise Quantify)",
-  "description": "Kvantitativna sportska analitika, de-vig modeliranje i dual-AI asistenti Orion i Luna.",
+  "name": "",
+  "description": "",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

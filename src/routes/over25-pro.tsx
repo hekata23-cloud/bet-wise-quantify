@@ -149,7 +149,7 @@ function Over25ProPage() {
         const stranaO: "over" | "under" =
           (a.final["o25"] ?? 0) >= (a.final["u25"] ?? 0) ? "over" : "under";
         const pTipO = stranaO === "over" ? a.final["o25"] : a.final["u25"];
-        const kvTipO = b.kvote[stranaO === "over" ? "o25" : "u25"];
+        const kvTipO = b.kvote?.[stranaO === "over" ? "o25" : "u25"];
         if (pTipO != null) {
           zapisiTip({
             kartica: "2.5 Pro",
@@ -195,12 +195,12 @@ function Over25ProPage() {
   } = null;
   if (analiza) {
     const oP = analiza.final["o25"] ?? null, uP = analiza.final["u25"] ?? null;
-    const oK = bundle?.kvote["o25"] ?? null, uK = bundle?.kvote["u25"] ?? null;
+    const oK = bundle?.kvote?.["o25"] ?? null, uK = bundle?.kvote?.["u25"] ?? null;
     const kandidati = [
       { strana: "Više" as const, key: "o25", p: oP, kv: oK, edge: oP != null && oK != null ? oP * oK - 1 : null,
-        sigLabel: "Više od 1.5", sigP: analiza.final["o15"] ?? null, sigKv: bundle?.kvote["o15"] ?? null },
+        sigLabel: "Više od 1.5", sigP: analiza.final["o15"] ?? null, sigKv: bundle?.kvote?.["o15"] ?? null },
       { strana: "Manje" as const, key: "u25", p: uP, kv: uK, edge: uP != null && uK != null ? uP * uK - 1 : null,
-        sigLabel: "Manje od 3.5", sigP: analiza.final["u35"] ?? null, sigKv: bundle?.kvote["u35"] ?? null },
+        sigLabel: "Manje od 3.5", sigP: analiza.final["u35"] ?? null, sigKv: bundle?.kvote?.["u35"] ?? null },
     ];
     const isplativi = kandidati.filter((c) => c.edge != null && c.edge > 0).sort((a, b) => b.edge! - a.edge!);
     const poProb = kandidati.filter((c) => c.p != null).sort((a, b) => b.p! - a.p!);

@@ -61,4 +61,11 @@ const content = await zip.generateAsync({
 fs.writeFileSync(publicZipPath, content);
 const fixedZipPath = path.join(rootDir, "public", "bet-wise-quantify-fixed.zip");
 fs.writeFileSync(fixedZipPath, content);
+
+const artifactDir = "/.aistudio/artifacts/brain/4fb08352-46ad-4c94-b788-cf6d06a17af5";
+if (fs.existsSync(artifactDir)) {
+  fs.writeFileSync(path.join(artifactDir, "bet-wise-quantify-fixed.zip"), content);
+  console.log(`Kopirano i u artefakte: ${path.join(artifactDir, "bet-wise-quantify-fixed.zip")}`);
+}
+
 console.log(`Uspješno stvoren ${publicZipPath} i ${fixedZipPath} (${(content.length / 1024 / 1024).toFixed(2)} MB)`);
