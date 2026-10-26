@@ -447,13 +447,8 @@ export function sarpRukomet(args: {
   push("O/U", "Under", `Manje od ${linijaTotala}`, 1 - pOverKal, underTip?.odd ?? null);
 
   const valueList = kand.filter((k) => k.isplativo && k.p >= 0.45).sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
-  const core = valueList[0]
-    ?? kand.filter((k) => k.kvota && k.p >= 0.5).sort((a, b) => b.p - a.p)[0]
-    ?? kand.slice().sort((a, b) => b.p - a.p)[0]
-    ?? null;
-  const alt = kand.filter((k) => k !== core && k.kvota).sort((a, b) => b.p - a.p)[0]
-    ?? kand.filter((k) => k !== core).sort((a, b) => b.p - a.p)[0]
-    ?? null;
+  const core = valueList[0] ?? kand.filter((k) => k.kvota && k.p >= 0.5).sort((a, b) => b.p - a.p)[0] ?? null;
+  const alt = kand.filter((k) => k !== core && k.kvota).sort((a, b) => b.p - a.p)[0] ?? null;
   if (!valueList.length && core) upozorenja.push("Edge Guard: nema tipa s EV ≥ 4.5% — prikazan najsigurniji, ne isplativi tip.");
   if (pDrawKal > 0.10) upozorenja.push(`Rizik remija: ${(pDrawKal * 100).toFixed(1)}% — kod azijskog hendikepa razmisli o zaštiti (X).`);
 

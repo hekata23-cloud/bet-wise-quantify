@@ -57,10 +57,6 @@ export function LineupRadar({ fixtureId, dom, gost, onImpact }: LineupRadarProps
   }, [fixtureId]);
 
   async function dohvati(force: boolean) {
-    if (!fixtureId) {
-      setStatus("nepotvrdjene");
-      return;
-    }
     setStatus("ucitavam");
     setPoruka(force ? "Osvježavam postave (1 API poziv)…" : "");
     try {
