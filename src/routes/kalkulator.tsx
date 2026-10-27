@@ -16,7 +16,7 @@ import { Calculator as CalcIcon, Flame, TrendingUp, Flag, Square } from "lucide-
 export const Route = createFileRoute("/kalkulator")({
   head: () => ({
     meta: [
-      { title: "Kalkulator predikcija · Andromeda AI" },
+      { title: "Kalkulator predikcija · Andromeda AI Beta" },
       {
         name: "description",
         content:

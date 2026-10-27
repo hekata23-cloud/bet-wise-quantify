@@ -7,7 +7,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-/** Instalacija Andromeda AI na PC ili mobitel (Chrome/Edge/Brave PWA). */
+/** Instalacija Andromeda AI Beta na PC ili mobitel (Chrome/Edge/Brave PWA). */
 export function InstallApp() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -20,7 +20,7 @@ export function InstallApp() {
     const onInstalled = () => {
       setInstalled(true);
       setDeferred(null);
-      toast.success("Andromeda AI je uspješno instalirana.");
+      toast.success("Andromeda AI Beta je uspješno instalirana.");
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
@@ -40,7 +40,7 @@ export function InstallApp() {
     const res = await deferred.userChoice;
     if (res.outcome === "accepted") {
       setInstalled(true);
-      toast.success("Hvala što ste instalirali Andromeda AI!");
+      toast.success("Hvala što ste instalirali Andromeda AI Beta!");
     }
     setDeferred(null);
   }
@@ -48,10 +48,10 @@ export function InstallApp() {
   return (
     <section className="rounded-2xl border border-primary/40 bg-primary/5 p-5">
       <h2 className="flex items-center gap-2 text-lg font-semibold">
-        <Smartphone className="h-5 w-5 text-primary" /> Instaliraj Andromeda AI (PWA)
+        <Smartphone className="h-5 w-5 text-primary" /> Instaliraj Andromeda AI Beta (PWA)
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Instalirajte aplikaciju na svoj PC ili mobitel. Andromeda AI radi u vlastitom prozoru, bez adresne trake i brže se pokreće.
+        Instalirajte aplikaciju na svoj PC ili mobitel. Andromeda AI Beta radi u vlastitom prozoru, bez adresne trake i brže se pokreće.
       </p>
       <button
         onClick={() => void install()}
@@ -65,7 +65,7 @@ export function InstallApp() {
       <div className="mt-4 space-y-2">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Upute za instalaciju:</h3>
         <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
-          <li><strong>Chrome / Edge (PC):</strong> Kliknite na ikonu instalacije u adresnoj traci ili ⋮ {"→"} „Instaliraj Andromeda AI“.</li>
+          <li><strong>Chrome / Edge (PC):</strong> Kliknite na ikonu instalacije u adresnoj traci ili ⋮ {"→"} „Instaliraj Andromeda AI Beta“.</li>
           <li><strong>Android:</strong> Izbornik ⋮ {"→"} „Instaliraj aplikaciju“ ili „Dodaj na početni zaslon“.</li>
           <li><strong>iPhone (Safari):</strong> Kliknite „Podijeli“ (Share) {"→"} „Dodaj na početni zaslon“.</li>
           <li>Instalacija je dostupna samo na objavljenoj HTTPS verziji stranice.</li>

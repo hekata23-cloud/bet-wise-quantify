@@ -14,9 +14,9 @@ import type { KosMarkets } from "@/lib/kosarka.functions";
 export const Route = createFileRoute("/kosarka")({
   head: () => ({
     meta: [
-      { title: "Košarka Sharp · 1X2, dupla šansa, zbroj poena · Andromeda AI" },
+      { title: "Košarka Sharp · 1X2, dupla šansa, zbroj poena · Andromeda AI Beta" },
       { name: "description", content: "Profesionalna analiza košarkaških utakmica: 1X2, dupla šansa i zbroj poena uključujući produžetke, po zagrebačkom vremenu." },
-      { property: "og:title", content: "Košarka Sharp · Andromeda AI" },
+      { property: "og:title", content: "Košarka Sharp · Andromeda AI Beta" },
       { property: "og:description", content: "Fer kvote bez marže i EV za 1X2, duplu šansu i više/manje poena." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

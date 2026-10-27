@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ANDROMEDA AI — PROŠIRENI MATEMATIČKI PAKET v8
+// ANDROMEDA AI BETA — PROŠIRENI MATEMATIČKI PAKET v8
 // Dvije nove napredne funkcije za razmišljanje bota:
 //   1) BTTS KOPULA MOTOR — korelirani golovi (Frank kopula + bivariate Poisson)
 //   2) OVER/UNDER 2.5 GAME-STATE HAZARD — golovi po minutama, stanje utakmice
@@ -42,12 +42,21 @@ export interface BttsCopulaResult {
  * P(0:0) = C(u, v), P(GG) = 1 − u − v + C(u,v).
  */
 export function bttsCopula(lh: number, la: number, rho: number): BttsCopulaResult {
-  const u = Math.exp(-Math.max(0.05, lh));
-  const v = Math.exp(-Math.max(0.05, la));
-  const theta = -8 * Math.max(-0.35, Math.min(0.35, rho)); // rho→theta mapiranje
-  const p00 = Math.min(0.6, Math.max(u * v * 0.35, frankCopula(u, v, theta)));
-  const gg = clamp01(1 - u - v + p00);
-  const ggIndependent = clamp01(1 - u - v + u * v);
+  // POPRAVAK: λ=0 mora značiti da momčad sigurno ne zabije; ne namećite umjetni minimum.
+  const u = Math.exp(-Math.max(0, Number.isFinite(lh) ? lh : 0));
+  const v = Math.exp(-Math.max(0, Number.isFinite(la) ? la : 0));
+  // POPRAVAK: pozitivni rho za otvorenu utakmicu mora podići zajedničko zabijanje.
+  const safeRho = Number.isFinite(rho) ? Math.max(-0.35, Math.min(0.35, rho)) : 0;
+  // POPRAVAK: neispravan ρ ne smije učiniti kopulu i BTTS vjerojatnosti NaN.
+  const theta = 8 * safeRho; // rho→theta mapiranje
+  // POPRAVAK: zajednička vjerojatnost mora poštovati Fréchetove granice kopule.
+  const p00 = Math.min(
+    Math.min(u, v),
+    Math.max(Math.max(0, u + v - 1), frankCopula(u, v, theta)),
+  );
+  // POPRAVAK: BTTS i neovisna BTTS moraju zadržati točne rubne vrijednosti 0 i 1.
+  const gg = Math.min(1, Math.max(0, 1 - u - v + p00));
+  const ggIndependent = Math.min(1, Math.max(0, 1 - u - v + u * v));
   return {
     gg,
     ng: 1 - gg,
@@ -88,12 +97,14 @@ export function ouGameStateHazard(
   beta: number,
   lateSkew = 0.18,
 ): OuHazardResult {
-  const base = lh + la;
+  // POPRAVAK: valjani nenegativni λ i ograničen nagib čuvaju zbroj vjerojatnosti.
+  const base = Math.max(0, Number.isFinite(lh) ? lh : 0) + Math.max(0, Number.isFinite(la) ? la : 0);
+  const safeLateSkew = Number.isFinite(lateSkew) ? Math.max(-0.49, Math.min(0.49, lateSkew)) : 0.18;
   // Vremenski profil: udjeli po trećinama uz nagib prema kraju.
   const w: [number, number, number] = [
-    (1 - lateSkew) / 3,
+    (1 - safeLateSkew) / 3,
     1 / 3,
-    (1 + 2 * lateSkew) / 3,
+    (1 + 2 * safeLateSkew) / 3,
   ];
   const wSum = w[0] + w[1] + w[2];
   const thirds: [number, number, number] = [
@@ -102,25 +113,27 @@ export function ouGameStateHazard(
     (base * w[2]) / wSum,
   ];
   // Game-state multiplikator djeluje najjače u zadnjoj trećini.
-  const b = Math.max(-0.5, Math.min(0.5, beta));
+  const b = Number.isFinite(beta) ? Math.max(-0.5, Math.min(0.5, beta)) : 0;
   thirds[1] *= 1 + b * 0.35;
   thirds[2] *= 1 + b;
-  const lambdaEff = Math.max(0.2, thirds[0] + thirds[1] + thirds[2]);
+  // POPRAVAK: ne namećite najmanje 0.2 gola kad je očekivani intenzitet nula.
+  const lambdaEff = Math.max(0, thirds[0] + thirds[1] + thirds[2]);
 
   const cdf = (l: number, n: number) => {
     let s = 0;
     for (let k = 0; k <= n; k++) s += pois(l, k);
     return s;
   };
-  const over25 = clamp01(1 - cdf(lambdaEff, 2));
+  // POPRAVAK: tržišne vjerojatnosti ostaju u [0,1] bez umjetnog minimuma koji remeti komplement.
+  const over25 = Math.min(1, Math.max(0, 1 - cdf(lambdaEff, 2)));
   return {
     over25,
     under25: 1 - over25,
-    over15: clamp01(1 - cdf(lambdaEff, 1)),
-    over35: clamp01(1 - cdf(lambdaEff, 3)),
+    over15: Math.min(1, Math.max(0, 1 - cdf(lambdaEff, 1))),
+    over35: Math.min(1, Math.max(0, 1 - cdf(lambdaEff, 3))),
     lambdaEff,
-    over25Base: clamp01(1 - cdf(base, 2)),
-    shiftPb: (over25 - clamp01(1 - cdf(base, 2))) * 100,
+    over25Base: Math.min(1, Math.max(0, 1 - cdf(base, 2))),
+    shiftPb: (over25 - Math.min(1, Math.max(0, 1 - cdf(base, 2)))) * 100,
     thirds,
   };
 }
@@ -129,9 +142,13 @@ export function ouGameStateHazard(
 
 /** Skellam: P(razlika golova = d) — za hendikepe i DNB. */
 export function skellam(lh: number, la: number, d: number): number {
-  // Suma po zajedničkom broju golova (numerički stabilno za male λ).
+  // POPRAVAK: odbacite nevaljane ulaze i uključite Poissonov rep za veće λ.
+  if (!Number.isFinite(lh) || !Number.isFinite(la) || lh < 0 || la < 0 || !Number.isInteger(d)) return 0;
+  const maxLambda = Math.max(lh, la);
+  // POPRAVAK: pomak razlike d utječe na središte zbroja, ne samo na donju granicu.
+  const maxK = Math.ceil(Math.max(la, lh - d, 0) + 10 * Math.sqrt(maxLambda + 1) + 10);
   let s = 0;
-  for (let k = 0; k <= 12; k++) {
+  for (let k = 0; k <= maxK; k++) {
     const a = d + k;
     if (a < 0) continue;
     s += pois(lh, a) * pois(la, k);
@@ -141,11 +158,15 @@ export function skellam(lh: number, la: number, d: number): number {
 
 /** Bivariate Poisson P(x,y) s kovarijancom λ3. */
 export function bivariatePoisson(lh: number, la: number, l3: number, x: number, y: number): number {
-  const l1 = Math.max(0.01, lh - l3);
-  const l2 = Math.max(0.01, la - l3);
+  // POPRAVAK: nevažeće ulazne vrijednosti ne smiju dati NaN ili neispravnu masu.
+  if (![lh, la, l3, x, y].every(Number.isFinite) || lh < 0 || la < 0 || l3 < 0 || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0) return 0;
+  // POPRAVAK: zajednička komponenta ne smije nadmašiti margine ni dodavati lažnu lambdu 0.01.
+  const common = Math.max(0, Math.min(l3, lh, la));
+  const l1 = Math.max(0, lh - common);
+  const l2 = Math.max(0, la - common);
   let s = 0;
   const kMax = Math.min(x, y);
-  for (let k = 0; k <= kMax; k++) s += pois(l1, x - k) * pois(l2, y - k) * pois(l3, k);
+  for (let k = 0; k <= kMax; k++) s += pois(l1, x - k) * pois(l2, y - k) * pois(common, k);
   return s;
 }
 
@@ -160,8 +181,10 @@ export function devigMultiplicative(odds: number[]): number[] {
 export function devigPower(odds: number[]): number[] {
   const raw = odds.map((o) => 1 / Math.max(1.01, o));
   // Σ r_i^k = 1, k ≥ 1 (veći k → manja suma). Bisekcija po k.
-  let lo = 0.5;
+  // POPRAVAK: širi interval (0..∞) da bisekcija pokrije i vrlo visoke marže i arbitražu (Σ1/o < 1).
+  let lo = 0;
   let hi = 5;
+  while (raw.reduce((acc, r) => acc + Math.pow(r, hi), 0) > 1 && hi < 256) hi *= 2;
   for (let i = 0; i < 80; i++) {
     const k = (lo + hi) / 2;
     const s = raw.reduce((acc, r) => acc + Math.pow(r, k), 0);
@@ -193,8 +216,11 @@ export function devigShin(odds: number[]): number[] {
 
 /** Kelly udio banke (frakcijski). */
 export function kelly(p: number, odds: number, fraction = 0.25): number {
+  // POPRAVAK: kvota ≤ 1 ili neispravni ulazi ne daju Kellyjev ulog.
+  if (!Number.isFinite(p) || !Number.isFinite(odds) || !Number.isFinite(fraction) || odds <= 1) return 0;
+  const probability = Math.min(1, Math.max(0, p));
   const b = odds - 1;
-  const f = (p * b - (1 - p)) / Math.max(0.01, b);
+  const f = (probability * b - (1 - probability)) / b;
   return Math.max(0, Math.min(0.05, f * fraction));
 }
 
@@ -203,7 +229,9 @@ export function entropy(probs: number[]): number {
   const base = Math.max(2, probs.length);
   let h = 0;
   for (const p of probs) {
-    const q = clamp01(p);
+    // POPRAVAK: nulta vjerojatnost doprinosi točno nula Shannonovoj entropiji.
+    if (!Number.isFinite(p) || p <= 0) continue;
+    const q = Math.min(1, p);
     h -= q * (Math.log(q) / Math.log(base));
   }
   return h;
@@ -275,7 +303,9 @@ export function mathPackBriefing(inp: MathPackBriefingInput): string {
   const h1 = skellam(inp.lh, inp.la, 1);
   const h0 = skellam(inp.lh, inp.la, 0);
   let pDraw = 0, pHome = 0;
-  for (let d = -12; d <= 12; d++) {
+  // POPRAVAK: uključite repove razlike golova umjesto da velike pobjede domaćina pripišete gostu.
+  const maxDifference = Math.ceil(Math.max(inp.lh, inp.la) + 10 * Math.sqrt(Math.max(inp.lh, inp.la) + 1) + 10);
+  for (let d = -maxDifference; d <= maxDifference; d++) {
     const v = skellam(inp.lh, inp.la, d);
     if (d === 0) pDraw += v; else if (d > 0) pHome += v;
   }

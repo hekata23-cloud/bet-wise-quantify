@@ -4,14 +4,15 @@ import { getZtFixtures, getZtMatch, type ZtFixture, type Bet365Markets } from "@
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
 import { getApiKey, guarded, pruneCache, resetGuard, zagrebDay } from "@/lib/zlatni-guard";
 import { getAiPrognoza, type AiPrognoza } from "@/lib/ai-prognoza.functions";
+import { runAiPrognozaFallback } from "@/lib/ai-prognoza-fallback";
 import { Brain, RefreshCw, Sparkles, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/ai-prognoza")({
   head: () => ({
     meta: [
-      { title: "AI Prognoza · Andromeda AI" },
+      { title: "AI Prognoza · Andromeda AI Beta" },
       { name: "description", content: "Unesi utakmicu, vrstu oklade i kvote — model i AI daju usklađenu prognozu s vjerojatnošću." },
-      { property: "og:title", content: "AI Prognoza · Andromeda AI" },
+      { property: "og:title", content: "AI Prognoza · Andromeda AI Beta" },
       { property: "og:description", content: "Usklađena prognoza: de-vig, Dixon-Coles model i AI analitičar." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -22,6 +23,12 @@ export const Route = createFileRoute("/ai-prognoza")({
 
 const VRSTE = ["Najbolji tip (bilo koji)", "Konačan ishod 1X2", "Dvostruka šansa", "Ukupno golova", "Oba tima zabijaju (GG)", "Poluvrijeme / kraj", "Točan rezultat", "Golovi tima"];
 const num = (s: string) => { const v = parseFloat(s.replace(",", ".")); return Number.isFinite(v) && v > 1 ? v : undefined; };
+
+// Lovable AI krediti se pamte kao potrošeni do kraja posjete (refresh) — kartica
+// tada ODMAH ide na besplatni rezervni mozak umjesto da čeka ponovnu grešku.
+const LOVABLE_402 = "ai.lovable.402";
+const lovablePotrosen = () => { try { return sessionStorage.getItem(LOVABLE_402) === "1"; } catch { return false; } };
+const zapamtiLovable402 = () => { try { sessionStorage.setItem(LOVABLE_402, "1"); } catch { /* ignore */ } };
 
 function buildContext(a: Analysis, bookmaker: string | null) {
   const rows = a.markets.slice(0, 40).map((m) =>
@@ -95,10 +102,35 @@ function AiPrognozaPage() {
     const a = mode === "rucno" ? manualAnalyze() : an;
     if (!a) { if (mode === "auto") setMsg("Najprije odaberi utakmicu."); return; }
     setBusy(true); setMsg("AI analitičar radi…");
+    const ctx = buildContext(a, book);
+    const inp = { utakmica: match, vrstaOklade: vrsta, kontekst: ctx };
+
+    const rezervni = async (glavnaGreska: string) => {
+      setMsg("Lovable AI nedostupan — besplatni mozgovi rade paralelno…");
+      const fb = await runAiPrognozaFallback(inp, (m) => setMsg(m));
+      if (fb.ok) {
+        setAi(fb.p);
+        setMsg("✅ Prognoza s besplatnog rezervnog mozga (OpenRouter :free) — Lovable krediti nisu potrošeni.");
+      } else setMsg(`${glavnaGreska} — ${fb.error}`);
+    };
+
     try {
-      const r = await getAiPrognoza({ data: { utakmica: match, vrstaOklade: vrsta, kontekst: buildContext(a, book) } });
-      if (r.ok) { setAi(r.p); setMsg(""); } else setMsg(r.error);
-    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+      // Ako smo već znali da su mjesečni krediti potrošeni, ne čekamo Lovable AI:
+      // odmah paralelni besplatni mozgovi.
+      if (lovablePotrosen()) {
+        await rezervni("Mjesečni besplatni AI krediti su potrošeni (pamti se do refresha stranice).");
+        return;
+      }
+      const r = await getAiPrognoza({ data: inp });
+      if (r.ok) { setAi(r.p); setMsg(""); return; }
+      const err = r.error || "";
+      if (/potrošen|potrošeni|kredit/i.test(err)) zapamtiLovable402();
+      await rezervni(err);
+    } catch (e: any) {
+      zapamtiLovable402();
+      try { await rezervni(e.message); }
+      catch (e2: any) { setMsg(`${e.message} — ${e2.message}`); }
+    } finally { setBusy(false); }
   };
 
   const shown = fixtures.filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase())).slice(0, 80);

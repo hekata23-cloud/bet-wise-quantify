@@ -1,5 +1,5 @@
 // ============================================================
-// KORPA.TS — Bet Slip / Tiket motor (Andromeda AI) — v3
+// KORPA.TS — Bet Slip / Tiket motor (Andromeda AI Beta) — v3
 // Kombinirana kvota, EV, varijanca/rizik, frakcijski Kelly.
 // NOVO v3: TICKET VARIANCE SCORE — kombinirana Shannon entropija
 //          svih noga (Low / Balanced / High Variance) + upozorenje

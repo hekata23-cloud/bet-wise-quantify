@@ -13,13 +13,13 @@ import { SarpSportPanel } from "@/components/SarpSportPanel";
 export const Route = createFileRoute("/rukomet")({
   head: () => ({
     meta: [
-      { title: "Rukomet Sharp · Bet365 Kvote & Točni Tipovi · Andromeda AI" },
+      { title: "Rukomet Sharp · Bet365 Kvote & Točni Tipovi · Andromeda AI Beta" },
       {
         name: "description",
         content:
           "Profesionalna analiza rukometnih utakmica: Bet365 kvote, 1 2 pobjednik, ukupni zbroj golova i timske margine po zagrebačkom vremenu.",
       },
-      { property: "og:title", content: "Rukomet Sharp · Andromeda AI" },
+      { property: "og:title", content: "Rukomet Sharp · Andromeda AI Beta" },
       {
         property: "og:description",
         content: "Kvantitativni rukometni model s Bet365 kvotama: fer kvote, EV, točni tipovi i zbrojevi golova.",

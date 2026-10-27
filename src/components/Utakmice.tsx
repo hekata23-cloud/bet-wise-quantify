@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getFixtures, getMatchBundle } from "@/lib/football.functions";
 import { SettingsModal } from "./SettingsModal";
+import { getApiKey } from "@/lib/zlatni-guard";
 
 type Fixture = {
   id: number;
@@ -33,7 +34,7 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
   const [hasKey, setHasKey] = useState(false);
 
   const checkKey = () => {
-    const k = localStorage.getItem("kr-football-api-key");
+    const k = getApiKey() || localStorage.getItem("kr-football-api-key");
     setHasKey(Boolean(k));
   };
 
@@ -48,7 +49,7 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
     }
   }, []);
 
-  const getKey = () => localStorage.getItem("kr-football-api-key") || undefined;
+  const getKey = () => getApiKey() || localStorage.getItem("kr-football-api-key") || undefined;
 
   const ucitaj = async (force = false) => {
     const key = `kr-fix-v3-${dan()}`;
@@ -78,33 +79,80 @@ export function Utakmice({ onLoad }: { onLoad: (d: Loaded, naziv: string) => voi
     setMsg(`Učitano ${r.fixtures.length} utakmica. Preostalo API poziva danas: ${r.remaining}`);
   };
 
+  const BUNDLE_TTL = 10 * 60 * 1000;      // svjež bundel — otvori bez API poziva
+  const STALE_TTL = 3 * 60 * 60 * 1000;   // do 3 h stari — samo kao zadnja šansa
+  const bundleKey = (id: number) => `kr-bundle-v2-${id}`;
+
   const otvori = async (f: Fixture) => {
     const naziv = `${f.home} — ${f.away}`;
-    // Uvijek svježe kvote i forma (stari cache s pogrešnim kvotama se ne koristi).
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith("kr-odds-") || k.startsWith("kr-form-"))
-      .forEach((k) => localStorage.removeItem(k));
+    const key = bundleKey(f.id);
+    const cachedRaw = localStorage.getItem(key);
+
+    // 1) Svjež bundel iz memorije → otvori odmah (0 novih API poziva).
+    if (cachedRaw) {
+      try {
+        const p = JSON.parse(cachedRaw) as { t: number; r: any };
+        const svjez = Date.now() - p.t < BUNDLE_TTL;
+        const imaKvota = Object.keys(p.r?.odds ?? {}).some((k: string) => !k.startsWith("f"));
+        if (svjez && imaKvota) {
+          setMsg("");
+          onLoad(
+            { odds: p.r.odds, corners: p.r.corners, izvori: p.r.izvori, upozorenja: p.r.upozorenja, bookmaker: p.r.bookmaker },
+            naziv,
+          );
+          return;
+        }
+      } catch { /* oštećen keš — idemo na API */ }
+    }
 
     setBusy(true);
-    setMsg(`Učitavam kvote i formu za ${naziv}...`);
-    try {
-      const r = await getMatchBundle({
-        data: { id: f.id, homeId: f.homeId, awayId: f.awayId, apiKey: getKey() },
-      });
-      if (r.error && !Object.keys(r.odds).length) return setMsg(r.error);
-      if (!Object.keys(r.odds).some((k) => !k.startsWith("f"))) {
-        return setMsg("⚠️ Za ovu utakmicu API još nema dovoljno kvalitetnih kvota.");
+    let lastMsg = "";
+    let loaded = false;
+
+    // 2) Do 3 pokušaja unutar JEDNOG klika — API free plan ima minutni limit,
+    //    pa se prvi pokušaj zna zaletjeti u 429. Stari kod je tražio da korisnik
+    //    ručno klikne tri puta; sad app sama ponavlja.
+    for (let pok = 1; pok <= 3 && !loaded; pok++) {
+      setMsg(`Učitavam kvote i formu za ${naziv}... (pokušaj ${pok}/3)`);
+      try {
+        const r = await getMatchBundle({
+          data: { id: f.id, homeId: f.homeId, awayId: f.awayId, apiKey: getKey() },
+        });
+        const imaKvota = Object.keys(r.odds ?? {}).some((k: string) => !k.startsWith("f"));
+        if (imaKvota) {
+          localStorage.setItem(key, JSON.stringify({ t: Date.now(), r }));
+          setMsg("");
+          onLoad(
+            { odds: r.odds, corners: r.corners, izvori: r.izvori, upozorenja: r.upozorenja, bookmaker: r.bookmaker },
+            naziv,
+          );
+          loaded = true;
+          break;
+        }
+        lastMsg = r.error || "⚠️ Za ovu utakmicu API još nema dovoljno kvalitetnih kvota.";
+      } catch (err: any) {
+        lastMsg = `Greška: ${err?.message || "Neuspjelo učitavanje"}`;
       }
-      setMsg("");
-      onLoad(
-        { odds: r.odds, corners: r.corners, izvori: r.izvori, upozorenja: r.upozorenja, bookmaker: r.bookmaker },
-        naziv,
-      );
-    } catch (err: any) {
-      setMsg(`Greška: ${err?.message || "Neuspjelo učitavanje"}`);
-    } finally {
-      setBusy(false);
+      if (pok < 3) await new Promise((res) => setTimeout(res, 6000));
     }
+
+    // 3) Zadnja šansa: nedavni bundel iz memorije (do 3 h star) — bolje nego blokada.
+    if (!loaded && cachedRaw) {
+      try {
+        const p = JSON.parse(cachedRaw) as { t: number; r: any };
+        if (Date.now() - p.t < STALE_TTL) {
+          setMsg(`⚠️ API trenutno ne daje nove podatke — otvaram memorirane kvote. (${lastMsg})`);
+          onLoad(
+            { odds: p.r.odds, corners: p.r.corners, izvori: p.r.izvori, upozorenja: p.r.upozorenja, bookmaker: p.r.bookmaker },
+            naziv,
+          );
+          loaded = true;
+        }
+      } catch { /* ignoriraj */ }
+    }
+
+    if (!loaded) setMsg(lastMsg);
+    setBusy(false);
   };
 
   const vidljive = list.filter((f) =>

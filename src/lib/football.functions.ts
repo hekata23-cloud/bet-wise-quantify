@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { sastaviKvote, izracunajFormu, type FormaStat } from "./kvote-servis.server";
+import { guardGet } from "./api-guard.server";
 
 const BASE = "https://v3.football.api-sports.io";
 const TZ = "Europe/Zagreb";
@@ -20,41 +21,12 @@ async function call(path: string, clientKey?: string | null) {
       remaining: -1,
     };
   }
-
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      headers: {
-        "x-apisports-key": key,
-      },
-    });
-
-    const remaining = Number(res.headers.get("x-ratelimit-requests-remaining") ?? "-1");
-
-    if (res.status === 429) {
-      return { error: "Dnevni limit API-ja dosegnut (429) — pokušaj sutra.", data: null, remaining };
-    }
-    if (!res.ok) {
-      return { error: `API greška ${res.status}`, data: null, remaining };
-    }
-
-    const json = (await res.json()) as { errors?: unknown; response?: unknown };
-    const errs =
-      json.errors && Object.keys(json.errors as object).length
-        ? JSON.stringify(json.errors)
-        : null;
-
-    if (errs) {
-      return { error: errs, data: null, remaining };
-    }
-
-    return { error: null, data: json.response, remaining };
-  } catch (err: any) {
-    return {
-      error: `Mrežna greška: ${err?.message || "Neuspjelo povezivanje"}`,
-      data: null,
-      remaining: -1,
-    };
-  }
+  // api-guard: red čekanja + keš + retry + stale rezerva — nikad više 5 poziva odjednom.
+  const r = await guardGet(path, { apiKey: key });
+  const error = r.error === "RATE_LIMIT"
+    ? "Privremeni limit API-ja (10 poziva/min) — pričekaj minutu pa probaj opet."
+    : r.error;
+  return { error, data: r.data, remaining: r.remainingDay };
 }
 
 // 1. Testiranje API ključa

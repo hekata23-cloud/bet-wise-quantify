@@ -136,7 +136,7 @@ export function Korpa() {
       (t, i) => `${i + 1}. [${t.sport}] ${t.utakmica} — ${t.trziste}: ${t.tip} @ ${t.kvota.toFixed(2)} (model ${pct(t.vjerojatnost)})`,
     );
     const tekst = [
-      "ANDROMEDA AI — Tiket",
+      "ANDROMEDA AI BETA — Tiket",
       ...linije,
       `──────────────`,
       `Ukupna kvota: ${r.kvota.toFixed(2)}`,

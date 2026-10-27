@@ -10,9 +10,9 @@ import { SettingsModal } from "@/components/SettingsModal";
 export const Route = createFileRoute("/obrnute-kvote")({
   head: () => ({
     meta: [
-      { title: "Detektor obrnutih kvota · Andromeda AI" },
+      { title: "Detektor obrnutih kvota · Andromeda AI Beta" },
       { name: "description", content: "Otkrij kad je jeftina kvota zamka: provjera 2.5 golova i BTTS prema 1X2 slici utakmice." },
-      { property: "og:title", content: "Detektor obrnutih kvota · Andromeda AI" },
+      { property: "og:title", content: "Detektor obrnutih kvota · Andromeda AI Beta" },
       { property: "og:description", content: "Kad Manje 2.5 @1.65 izgleda sigurno, a stvarno prolazi Više — ovdje to vidiš unaprijed." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -158,6 +158,11 @@ export async function guarded<T extends { error: string | null; rate: any }>(
   try { return await job; } finally { inflight.delete(ck); }
 }
 
+/** Obriši jedan dnevni cache zapis (npr. utakmica još nema kvote — pokušaj kasnije ponovno). */
+export function zaboraviCache(cacheId: string) {
+  try { localStorage.removeItem(CACHE + zagrebDay() + "." + cacheId); } catch { /* */ }
+}
+
 export function resetGuard() {
   const s = readState();
   s.blockedDay = null;
@@ -209,12 +214,4 @@ export function getApiKey(): string | undefined {
   if (a && a.trim()) return a.trim().replace(/^["']|["']$/g, "");
 
   return undefined;
-}
-/** Zaboravi spremljeni odgovor za dani cache ključ — sljedeći dohvat ide ponovno na API. */
-export function zaboraviCache(cacheId: string) {
-  const suffix = "." + cacheId;
-  for (let i = localStorage.length - 1; i >= 0; i--) {
-    const k = localStorage.key(i);
-    if (k?.startsWith(CACHE) && k.endsWith(suffix)) localStorage.removeItem(k);
-  }
 }

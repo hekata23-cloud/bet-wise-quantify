@@ -50,7 +50,7 @@ export function nacrtajTiket(tipovi: KorpaTip[], bankroll: number, kellyFrac: nu
   // header
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 30px system-ui, sans-serif";
-  ctx.fillText("ANDROMEDA AI — Tiket", pad, 64);
+  ctx.fillText("ANDROMEDA AI BETA — Tiket", pad, 64);
   ctx.font = "16px system-ui, sans-serif";
   ctx.fillStyle = "#9ca3af";
   ctx.fillText(
@@ -157,7 +157,7 @@ export async function podijeliTiket(tipovi: KorpaTip[], bankroll: number, kellyF
   const f = await canvasUFile(c);
   const nav = navigator as Navigator & { canShare?: (d: { files?: File[] }) => boolean };
   if (nav.share && nav.canShare?.({ files: [f] })) {
-    await nav.share({ files: [f], title: "Andromeda AI — Tiket" });
+    await nav.share({ files: [f], title: "Andromeda AI Beta — Tiket" });
     return "podijeljeno";
   }
   const url = URL.createObjectURL(f);

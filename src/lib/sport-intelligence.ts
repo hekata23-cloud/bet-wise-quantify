@@ -1,5 +1,5 @@
 // src/lib/sport-intelligence.ts
-// ══ ANDROMEDA AI — Multi-Sport Analitički Mozak (Nogomet, Košarka, Rukomet) ══
+// ══ ANDROMEDA AI BETA — Multi-Sport Analitički Mozak (Nogomet, Košarka, Rukomet) ══
 // Razumije sve tipove i sva tržišta koja nude domaće i svjetske kladionice:
 // SuperSport, PSK, Favbet, Germaniasport, bet365, Pinnacle.
 // Jamči da nikad nema praznog odgovora u chatu.

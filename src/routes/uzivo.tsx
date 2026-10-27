@@ -16,7 +16,7 @@ import { Link } from "@tanstack/react-router";
 export const Route = createFileRoute("/uzivo")({
   head: () => ({
     meta: [
-      { title: "Uživo utakmice · Andromeda AI" },
+      { title: "Uživo utakmice · Andromeda AI Beta" },
       {
         name: "description",
         content:

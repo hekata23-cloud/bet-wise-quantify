@@ -80,7 +80,7 @@ interface BrainPrefs {
 export const Route = createFileRoute("/postavke")({
   head: () => ({
     meta: [
-      { title: "Postavke · Andromeda AI" },
+      { title: "Postavke · Andromeda AI Beta" },
       {
         name: "description",
         content: "Zalijepi Gemini, Groq i API-Football ključeve i preuzmi projekt kao ZIP.",
@@ -600,7 +600,7 @@ function BrainRouter() {
         <h2 className="text-lg font-semibold">Router mozgova</h2>
       </div>
       <p className="text-sm text-muted-foreground">
-        Odaberi primarni mozak i model. Ako primarni padne, Andromeda AI automatski prelazi na sljedeći dostupan.
+        Odaberi primarni mozak i model. Ako primarni padne, Andromeda AI Beta automatski prelazi na sljedeći dostupan.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs">

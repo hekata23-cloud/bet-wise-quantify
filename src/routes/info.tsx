@@ -100,7 +100,7 @@ function InfoPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Info & Arhitektura</h1>
             <p className="text-sm text-muted-foreground">
-              Kako Andromeda AI razmišlja — modeli, zaštite i transparentnost. Bez skrivanja: svaki tip je zapisan u Dnevniku i provjeriv.
+              Kako Andromeda AI Beta razmišlja — modeli, zaštite i transparentnost. Bez skrivanja: svaki tip je zapisan u Dnevniku i provjeriv.
             </p>
             <ModelCalibrationBadge />
           </div>
@@ -244,7 +244,7 @@ function InfoPage() {
       </section>
 
       <p className="text-center text-xs text-muted-foreground">
-        Precision Check · Andromeda AI — kvantitativni analitički sustav. Sve metrike se računaju lokalno u tvom pregledniku.
+        Precision Check · Andromeda AI Beta — kvantitativni analitički sustav. Sve metrike se računaju lokalno u tvom pregledniku.
       </p>
     </div>
   );

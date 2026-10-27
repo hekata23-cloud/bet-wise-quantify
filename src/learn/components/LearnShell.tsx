@@ -118,7 +118,7 @@ export function LearnShell({ children }: { children: ReactNode }) {
                       onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                     >
-                      <ArrowLeft className="h-3.5 w-3.5" /> Back to Andromeda AI
+                      <ArrowLeft className="h-3.5 w-3.5" /> Back to Andromeda AI Beta
                     </Link>
                     <button
                       type="button"

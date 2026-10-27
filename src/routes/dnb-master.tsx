@@ -12,9 +12,9 @@ import type { ZtFixture } from "@/lib/zlatni-tip.functions";
 export const Route = createFileRoute("/dnb-master")({
   head: () => ({
     meta: [
-      { title: "DNB & Asian Handicap Master · Andromeda AI" },
+      { title: "DNB & Asian Handicap Master · Andromeda AI Beta" },
       { name: "description", content: "Sigurnice s ≥78% prave vjerojatnosti: DNB i azijski hendikep (±0.25, ±0.5) po Skellamovoj razdiobi." },
-      { property: "og:title", content: "DNB & Asian Handicap Master · Andromeda AI" },
+      { property: "og:title", content: "DNB & Asian Handicap Master · Andromeda AI Beta" },
       { property: "og:description", content: "Niska varijanca, sidra za velike listiće — DNB i AH linije izračunate iz Poisson/Skellam modela." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

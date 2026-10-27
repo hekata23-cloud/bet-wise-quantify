@@ -11,6 +11,8 @@ import {
   type EdgeBet,
   type TicketRecommendation,
 } from "@/lib/tiket-arhitekt";
+import { evaluatePredictionIntegrity } from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 import {
   Check,
   Copy,
@@ -26,12 +28,12 @@ import {
 export const Route = createFileRoute("/tiket-arhitekt")({
   head: () => ({
     meta: [
-      { title: "Tiket Arhitekt · Monte Carlo Value Finder · Andromeda AI" },
+      { title: "Tiket Arhitekt · Monte Carlo Value Finder · Andromeda AI Beta" },
       {
         name: "description",
         content: "Automatski kvantitativni skener za sastavljanje dobitnih tiketa s matematičkom prednošću (EV > 0%) i eliminacijom rizika korelacije.",
       },
-      { property: "og:title", content: "Tiket Arhitekt · Andromeda AI" },
+      { property: "og:title", content: "Tiket Arhitekt · Andromeda AI Beta" },
       { property: "og:description", content: "Kvantitativni skener i automatski sastavljač tiketa dana." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -277,7 +279,19 @@ export function TiketArhitektPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {selectedMatch.analysis.golden && (
               <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 space-y-1">
-                <div className="text-[11px] font-semibold text-primary uppercase">🎯 Glavni tip utakmice</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold text-primary uppercase">🎯 Glavni tip utakmice</div>
+                  <IntegrityPanel
+                    compact
+                    result={evaluatePredictionIntegrity({
+                      probability: selectedMatch.analysis.golden.outcome.p,
+                      odds: selectedMatch.analysis.golden.outcome.odd,
+                      dataQuality: 0.9,
+                      fallbackModel: !selectedMatch.analysis.golden.outcome.odd,
+                      market: selectedMatch.analysis.golden.market,
+                    })}
+                  />
+                </div>
                 <div className="font-bold text-sm">{selectedMatch.analysis.golden.outcome.label}</div>
                 <div className="text-xs text-muted-foreground">
                   Kvota: @{selectedMatch.analysis.golden.outcome.odd?.toFixed(2)} · Šansa: {(selectedMatch.analysis.golden.outcome.p * 100).toFixed(0)}%
@@ -287,7 +301,19 @@ export function TiketArhitektPage() {
 
             {selectedMatch.analysis.safe && (
               <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 space-y-1">
-                <div className="text-[11px] font-semibold text-emerald-400 uppercase">🛡️ Najsigurnija linija</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold text-emerald-400 uppercase">🛡️ Najsigurnija linija</div>
+                  <IntegrityPanel
+                    compact
+                    result={evaluatePredictionIntegrity({
+                      probability: selectedMatch.analysis.safe.outcome.p,
+                      odds: selectedMatch.analysis.safe.outcome.odd,
+                      dataQuality: 0.9,
+                      fallbackModel: !selectedMatch.analysis.safe.outcome.odd,
+                      market: selectedMatch.analysis.safe.market,
+                    })}
+                  />
+                </div>
                 <div className="font-bold text-sm">{selectedMatch.analysis.safe.outcome.label}</div>
                 <div className="text-xs text-muted-foreground">
                   Kvota: @{selectedMatch.analysis.safe.outcome.odd?.toFixed(2)} · Šansa: {(selectedMatch.analysis.safe.outcome.p * 100).toFixed(0)}%
@@ -372,23 +398,46 @@ export function TiketArhitektPage() {
 
                   <p className="text-xs text-muted-foreground">{t.description}</p>
 
-                  <div className="space-y-2 pt-2 border-t border-border/40">
-                    {t.bets.map((b, bi) => (
-                      <div key={bi} className="rounded-lg bg-muted/40 p-2.5 text-xs space-y-1">
-                        <div className="font-semibold text-foreground truncate">{b.match}</div>
-                        <div className="flex items-center justify-between text-muted-foreground">
-                          <span className="text-primary font-medium">{b.market}: {b.selection}</span>
-                          <span className="font-mono text-foreground font-semibold">@{b.bookmakerOdd.toFixed(2)}</span>
+                  {(() => {
+                    const legIntegrity = t.bets.map((b) =>
+                      evaluatePredictionIntegrity({
+                        probability: b.probability,
+                        odds: b.bookmakerOdd,
+                        dataQuality: 0.9,
+                        market: b.market,
+                      })
+                    );
+                    const hasSkip = legIntegrity.some((ig) => ig.status === "PRESKOČI");
+                    return (
+                      <>
+                        {hasSkip && (
+                          <p className="rounded-lg bg-destructive/10 border border-destructive/30 p-2 text-[11px] font-semibold text-destructive">
+                            ⚠️ Barem jedna nožica ovog listića ne prolazi Integrity Gate (PRESKOČI) — razmotri uklanjanje te nožice.
+                          </p>
+                        )}
+                        <div className="space-y-2 pt-2 border-t border-border/40">
+                          {t.bets.map((b, bi) => (
+                            <div key={bi} className="rounded-lg bg-muted/40 p-2.5 text-xs space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="font-semibold text-foreground truncate">{b.match}</div>
+                                <IntegrityPanel result={legIntegrity[bi]} compact />
+                              </div>
+                              <div className="flex items-center justify-between text-muted-foreground">
+                                <span className="text-primary font-medium">{b.market}: {b.selection}</span>
+                                <span className="font-mono text-foreground font-semibold">@{b.bookmakerOdd.toFixed(2)}</span>
+                              </div>
+                              <div className="text-[11px] text-muted-foreground flex justify-between">
+                                <span>Šansa: {(b.probability * 100).toFixed(0)}%</span>
+                                <span className={b.evPercent > 0 ? "text-emerald-400 font-medium" : "text-muted-foreground"}>
+                                  Edge: {b.evPercent > 0 ? "+" : ""}{b.evPercent}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-[11px] text-muted-foreground flex justify-between">
-                          <span>Šansa: {(b.probability * 100).toFixed(0)}%</span>
-                          <span className={b.evPercent > 0 ? "text-emerald-400 font-medium" : "text-muted-foreground"}>
-                            Edge: {b.evPercent > 0 ? "+" : ""}{b.evPercent}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="pt-4 mt-4 border-t border-border/50 space-y-3">

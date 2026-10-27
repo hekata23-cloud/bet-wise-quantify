@@ -49,7 +49,7 @@ export const Route = createFileRoute("/ht-ft-predikcija")({
       },
       {
         property: "og:title",
-        content: "HT/FT Kvantni Prediktor · Andromeda AI",
+        content: "HT/FT Kvantni Prediktor · Andromeda AI Beta",
       },
       {
         property: "og:description",

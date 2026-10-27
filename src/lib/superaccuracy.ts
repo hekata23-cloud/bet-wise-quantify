@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ANDROMEDA AI — MOTOR SUPER TOČNOSTI v7.0
+// ANDROMEDA AI BETA — MOTOR SUPER TOČNOSTI v7.0
 // Dodatne "verzije super točnosti" koje se mogu pojedinačno aktivirati i koje
 // STVARNO mijenjaju matematiku predikcije (nisu ukras):
 //   · Hijerarhijski Bayes (empirical Bayes shrinkage po timu)
@@ -262,6 +262,8 @@ export function decayWeight(days: number, halfLife: number): number {
 
 /** Težinski medijan/srednjak procjena članova ansambla po pouzdanosti. */
 export function confWeightedMean(values: number[], confs: number[], gamma: number): number {
+  // POPRAVAK: Prazan ansambl nema ponderirani prosjek; vraćamo nulu umjesto NaN.
+  if (values.length === 0) return 0;
   let num = 0;
   let den = 0;
   for (let i = 0; i < values.length; i++) {
@@ -318,6 +320,9 @@ export function zeroInflateMatrix(sm: ScoreMatrix, pi: number): ScoreMatrix {
  * Rezultat je negativna binomna distribucija s istom sredinom, većom varijancom.
  */
 export function negBinomPmf(lambda: number, k: number, x: number): number {
+  // POPRAVAK: U nultom intenzitetu masa je 1 samo za nula golova; sprječava 0 × log(0) = NaN.
+  if (!Number.isInteger(x) || x < 0 || lambda < 0 || !Number.isFinite(lambda)) return 0;
+  if (lambda === 0) return x === 0 ? 1 : 0;
   const r = Math.max(1, k);
   const pSucc = r / (r + lambda);
   // log-gama za stabilnost
@@ -352,7 +357,9 @@ export function overdispersedMatrix(lh: number, la: number, k: number, n = 10): 
       sum += v;
     }
   }
-  for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) m[i][j] /= sum;
+  // POPRAVAK: Prazna/degenerirana matrica ne smije se dijeliti s nulom.
+  const denominator = Number.isFinite(sum) && sum > 0 ? sum : 1;
+  for (let i = 0; i <= n; i++) for (let j = 0; j <= n; j++) m[i][j] /= denominator;
   return { m, lh, la };
 }
 

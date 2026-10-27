@@ -12,9 +12,9 @@ import { SettingsModal } from "@/components/SettingsModal";
 export const Route = createFileRoute("/smart-money")({
   head: () => ({
     meta: [
-      { title: "Radar pametnog novca · Dropping Odds · Andromeda AI" },
+      { title: "Radar pametnog novca · Dropping Odds · Andromeda AI Beta" },
       { name: "description", content: "Kvote koje padnu ≥8% unutar 12 sati — STEAM signal, provjeren SARP modelom." },
-      { property: "og:title", content: "Radar pametnog novca · Andromeda AI" },
+      { property: "og:title", content: "Radar pametnog novca · Andromeda AI Beta" },
       { property: "og:description", content: "Gdje profesionalci ulažu: nagli padovi kvota i SHARP CONSENSUS provjera." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
