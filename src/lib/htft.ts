@@ -115,9 +115,7 @@ export interface HtFtResult {
 }
 
 function pois(l: number, k: number): number {
-  // POPRAVAK: nevažeći λ i k ne smiju proizvesti NaN ili masu izvan potpore.
-  if (!Number.isFinite(l) || l < 0 || !Number.isInteger(k) || k < 0) return 0;
-  if (l === 0) return k === 0 ? 1 : 0;
+  if (l <= 0) return k === 0 ? 1 : 0;
   let f = 1;
   for (let i = 2; i <= k; i++) f *= i;
   return (Math.exp(-l) * Math.pow(l, k)) / f;
@@ -144,9 +142,8 @@ export function computeHtFt(p: HtFtPrefs): HtFtResult {
   const lh2 = lh * (1 - share);
   const la2 = la * (1 - share);
 
-  // POPRAVAK: zbroj FT-a mora obuhvatiti golove iz oba poluvremena.
-  const MAX_HT = 10;
-  const MAX_FT = 20;
+  const MAX_HT = 4;
+  const MAX_FT = 6;
   const comboP: Record<string, number> = {};
   const scoreP: Record<string, number> = {};
   const htP: Record<string, number> = { "1": 0, X: 0, "2": 0 };
@@ -157,7 +154,7 @@ export function computeHtFt(p: HtFtPrefs): HtFtResult {
   for (let h1 = 0; h1 <= MAX_HT; h1++) {
     for (let a1 = 0; a1 <= MAX_HT; a1++) {
       const p1h = pois(lh1, h1) * pois(la1, a1) * dc(h1, a1, lh1, la1, p.rho);
-      // POPRAVAK: zadržite male, ali valjane vjerojatnosti prije normalizacije.
+      if (p1h < 1e-8) continue;
       
       const s1 = sign(h1, a1);
       htP[s1] += p1h;

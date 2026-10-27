@@ -7,8 +7,6 @@ import {
 import { getZtFixtures, getZtMatch, getPaExtra, type ZtFixture, type PaExtra, type Bet365Markets } from "@/lib/zlatni-tip.functions";
 import { analyze, type Analysis } from "@/lib/zlatni-engine";
 import { getApiKey, guarded, resetGuard, zagrebDay } from "@/lib/zlatni-guard";
-import { evaluatePredictionIntegrity } from "@/lib/prediction-integrity";
-import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 type Ctx = { f: ZtFixture; a: Analysis; markets: Bet365Markets; bookmaker: string | null; extra: PaExtra | null } | null;
 
@@ -72,17 +70,6 @@ function AH({ ctx }: { ctx: Ctx }) {
   const [lh, setLh] = useState(ctx?.a.lh.toFixed(2) ?? "1.6"), [la, setLa] = useState(ctx?.a.la.toFixed(2) ?? "1.1"), [book, setBook] = useState("");
   const L = [-1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1];
   const G = [1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5];
-  let bestValue: { label: string; win: number } | null = null;
-  for (const l of L) { const r = asianHandicap(n(lh), n(la), l); if (n(book) > r.fairOdds * 1.02) bestValue = { label: `AH ${l > 0 ? "+" : ""}${l}`, win: r.win }; }
-  for (const g of G) { const r = goalLineOver(n(lh), n(la), g); if (n(book) > r.fairOdds * 1.02) bestValue = { label: `Over ${g}`, win: r.win }; }
-  const valueIntegrity = bestValue
-    ? evaluatePredictionIntegrity({
-        probability: bestValue.win,
-        odds: n(book),
-        dataQuality: ctx ? 0.6 : 0.45,
-        fallbackModel: !ctx,
-      })
-    : null;
   return (
     <Card title="Asian Handicap & linije golova">
       <div className="grid grid-cols-3 gap-3"><F label="λ domaćin" v={lh} set={setLh} /><F label="λ gost" v={la} set={setLa} /><F label="Kvota kladionice (opcija)" v={book} set={setBook} /></div>
@@ -96,7 +83,6 @@ function AH({ ctx }: { ctx: Ctx }) {
       </div>
       {ctx && <BookMarkets m={ctx.markets} names={["Asian Handicap", "Goals Over/Under"]} />}
       <p className="text-xs text-muted-foreground">Označeno = kvota kladionice je 2%+ iznad fer kvote (value).</p>
-      {valueIntegrity && <IntegrityPanel result={valueIntegrity} title={`Integritet value nalaza: ${bestValue!.label}`} />}
     </Card>
   );
 }
@@ -108,29 +94,19 @@ function Stats({ ctx }: { ctx: Ctx }) {
   const c = countOver(lc, n(v.line));
   const lk = ((n(v.cH) + n(v.cA)) + n(v.ref)) / 2;
   const k = countOver(lk, n(v.cl));
-  const cornerIntegrity = evaluatePredictionIntegrity({
-    probability: c.over,
-    dataQuality: ctx ? 0.6 : 0.45,
-    fallbackModel: true,
-  });
-  const cardIntegrity = evaluatePredictionIntegrity({
-    probability: k.over,
-    dataQuality: ctx ? 0.6 : 0.45,
-    fallbackModel: true,
-  });
   return (
     <Card title="Korneri i kartoni">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <F label="Domaćin korneri za" v={v.hF} set={s("hF")} /><F label="Domaćin korneri protiv" v={v.hA} set={s("hA")} />
         <F label="Gost korneri za" v={v.aF} set={s("aF")} /><F label="Gost korneri protiv" v={v.aA} set={s("aA")} /><F label="Linija kornera" v={v.line} set={s("line")} />
       </div>
-      <div className="flex items-center gap-2"><Row k={`Očekivano kornera ${lc.toFixed(2)} · Over ${v.line}`} v={`${pct(c.over)} · fer ${fo(1 / c.over)}`} hi /><IntegrityPanel result={cornerIntegrity} compact /></div>
+      <Row k={`Očekivano kornera ${lc.toFixed(2)} · Over ${v.line}`} v={`${pct(c.over)} · fer ${fo(1 / c.over)}`} hi />
       <Row k={`Under ${v.line}`} v={`${pct(c.under)} · fer ${fo(1 / c.under)}`} />
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <F label="Domaćin kartoni/utakmica" v={v.cH} set={s("cH")} /><F label="Gost kartoni/utakmica" v={v.cA} set={s("cA")} />
         <F label="Sudac prosjek kartona" v={v.ref} set={s("ref")} /><F label="Linija kartona" v={v.cl} set={s("cl")} />
       </div>
-      <div className="flex items-center gap-2"><Row k={`Očekivano kartona ${lk.toFixed(2)} · Over ${v.cl}`} v={`${pct(k.over)} · fer ${fo(1 / k.over)}`} hi /><IntegrityPanel result={cardIntegrity} compact /></div>
+      <Row k={`Očekivano kartona ${lk.toFixed(2)} · Over ${v.cl}`} v={`${pct(k.over)} · fer ${fo(1 / k.over)}`} hi />
       <Row k={`Under ${v.cl}`} v={`${pct(k.under)} · fer ${fo(1 / k.under)}`} />
       {ctx?.extra && ctx.extra.minute > 0 && <Row k="Uživo: korneri / žuti kartoni" v={`${ctx.extra.cornersH}:${ctx.extra.cornersA} · ${ctx.extra.yellowH}:${ctx.extra.yellowA}`} />}
       {ctx && <BookMarkets m={ctx.markets} names={["Corners Over Under", "Corners Over/Under", "Total Corners", "Cards Over/Under", "Cards Over Under", "Total Cards"]} />}
@@ -156,15 +132,7 @@ function Bankroll() {
         <F label="Kvota" v={f.odds} set={(x) => setF({ ...f, odds: x })} /><F label="Tvoja vjerojatnost %" v={f.prob} set={(x) => setF({ ...f, prob: x })} />
         <F label="Ulog" v={f.stake} set={(x) => setF({ ...f, stake: x })} />
       </div>
-      {n(f.prob) > 0 && n(f.odds) > 1 && (
-        <div className="flex items-center gap-2">
-          <Row k="Preporučeni ulog (¼ Kelly)" v={`${(k * n(bank)).toFixed(2)} (${pct(k)})`} hi={k > 0} />
-          <IntegrityPanel
-            result={evaluatePredictionIntegrity({ probability: n(f.prob) / 100, odds: n(f.odds), dataQuality: 0.45, fallbackModel: true })}
-            compact
-          />
-        </div>
-      )}
+      {n(f.prob) > 0 && n(f.odds) > 1 && <Row k="Preporučeni ulog (¼ Kelly)" v={`${(k * n(bank)).toFixed(2)} (${pct(k)})`} hi={k > 0} />}
       <button className={btn} onClick={() => { if (n(f.odds) > 1 && n(f.stake) > 0) { setBets([{ id: uid(), label: f.label || "Tip", stake: n(f.stake), odds: n(f.odds), closing: null, result: null, ts: Date.now() }, ...bets]); setF({ label: "", stake: "", odds: "", prob: "" }); } }}>Dodaj okladu</button>
       <div className="space-y-2">
         {bets.map((b) => (
@@ -222,18 +190,6 @@ function Combo() {
       <Row k="Stvarna vjerojatnost listića" v={pct(r.prob)} /><Row k="Ukupna kvota / fer kvota" v={`${fo(r.odds)} / ${fo(r.fairOdds)}`} />
       <Row k="Očekivana vrijednost (EV)" v={pct(r.ev)} hi={r.ev > 0} />
       {r.correlated.length > 0 && <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">Upozorenje: više tipova s iste utakmice ({r.correlated.join(", ")}). Povezani su, pa stvarna vjerojatnost nije umnožak — kladionice to često ne dopuštaju.</p>}
-      {legs.some((l) => l.odds > 1 && l.prob > 0) && (
-        <IntegrityPanel
-          title="Integritet kombinacije"
-          result={evaluatePredictionIntegrity({
-            probability: r.prob,
-            odds: r.odds,
-            dataQuality: 0.45,
-            fallbackModel: true,
-            contradictory: r.correlated.length > 0,
-          })}
-        />
-      )}
     </Card>
   );
 }

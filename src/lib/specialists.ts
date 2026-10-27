@@ -576,32 +576,6 @@ export const AUTO_SPECIALISTS: Specialist[] = [
 SPECIALISTS.push(...HTFT_SPECIALISTS, ...EXTRA_FREE_SPECIALISTS);
 SPECIALISTS.push(...AUTO_SPECIALISTS);
 
-// Listopad 2026: stari OpenRouter :free slugovi (deepseek-r1, llama, qwen3…) su
-// ugašeni — poziv na njih je vraćao 404 pa Luna/Orion nisu odgovarali na pitanje.
-// Svaki specijalist zadržava ulogu, ali se usmjerava na ŽIVI besplatni model.
-const LIVE_OR_FREE = [
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
-  "poolside/laguna-s-2.1:free",
-  "nvidia/nemotron-3.5-lightning:free",
-  "google/gemma-4-26b-a4b-it:free",
-  "xingchen-agi/xing4.0-29b-a4b:free",
-  "recursive/flint-v1.0:free",
-  "dots-studio/dots-3-note-preview:free",
-];
-const LIVE_SET = new Set(LIVE_OR_FREE);
-const remapCache = new Map<string, string>();
-export function liveSpecialistId(id: string): string {
-  if (LIVE_SET.has(id)) return id;
-  let m = remapCache.get(id);
-  if (!m) {
-    m = LIVE_OR_FREE[remapCache.size % LIVE_OR_FREE.length];
-    remapCache.set(id, m);
-  }
-  return m;
-}
-for (const s of [...SPECIALISTS, ...AUTO_SPECIALISTS]) s.id = liveSpecialistId(s.id);
-
 
 const STORE = "tm.specialists.active";
 

@@ -4,14 +4,11 @@ import { getKey } from "./storage";
 const URL = "https://api.groq.com/openai/v1/chat/completions";
 
 /** Redoslijed modela: ako Groq ugasi ili preoptereti jedan, ide sljedeći. */
-// Listopad 2026: Llama modeli na Groqu su prebačeni na Enterprise plan,
-// pa besplatni ključ prvo koristi GPT-OSS (Production modeli).
 export const GROQ_MODELS = [
-  "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
-  "meta-llama/llama-4-scout-17b-16e-instruct",
   "llama-3.3-70b-versatile",
   "llama-3.1-8b-instant",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
 ];
 
 export interface GroqMessage {
@@ -53,7 +50,7 @@ export async function groqChat(messages: GroqMessage[]): Promise<string> {
     });
     if (!res.ok) {
       const err = humanizeGroqError(res.status, await res.text());
-      if (res.status === 401) throw new Error(err);
+      if (res.status === 401 || res.status === 403) throw new Error(err);
       lastErr = err;
       continue;
     }

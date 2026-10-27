@@ -42,10 +42,8 @@ export function devig(odds: number[]) {
 
   if (odds.length === 0) return { p: [] as unknown as [number, number, number], margin: 0 };
 
-  // POPRAVAK: Power de-vig eksponent mora obuhvatiti i visoke kvote i kvote blizu 1.
-  let low = 0, high = 1, k = 1;
-  while (odds.reduce((acc, o) => acc + Math.pow(1 / o, high), 0) > 1 && high < 128) high *= 2;
-  for (let iter = 0; iter < 48; iter++) {
+  let low = 0.7, high = 1.6, k = 1.0;
+  for (let iter = 0; iter < 16; iter++) {
     k = (low + high) / 2;
     const testSum = odds.reduce((acc, o) => acc + Math.pow(1 / o, k), 0);
     if (testSum > 1.0) low = k;
@@ -90,8 +88,7 @@ export type Result = {
 
 const MAXG = 10;
 const FACT = (() => { const f = [1]; for (let k = 1; k <= 25; k++) f[k] = f[k - 1]! * k; return f; })();
-// POPRAVAK: Nevažeći λ ili broj golova ne smije proslijediti NaN u matricu rezultata.
-const poisson = (k: number, l: number) => !Number.isInteger(k) || k < 0 || !Number.isFinite(l) || l < 0 ? 0 : Math.exp(-l) * l ** k / FACT[k]!;
+const poisson = (k: number, l: number) => Math.exp(-l) * l ** k / FACT[k]!;
 
 function dcTau(h: number, a: number, lH: number, lA: number, rho: number): number {
   if (h === 0 && a === 0) return 1 - lH * lA * rho;
@@ -114,8 +111,7 @@ export function scoreMatrix(lH: number, lA: number, rho = -0.06, dc = true): num
     }
     g.push(row);
   }
-  // POPRAVAK: Degenerirana matrica ne smije se dijeliti s nulom i širiti NaN.
-  for (const r of g) for (let a = 0; a <= MAXG; a++) r[a]! /= s || 1;
+  for (const r of g) for (let a = 0; a <= MAXG; a++) r[a]! /= s;
   return g;
 }
 
@@ -251,18 +247,17 @@ const ftSign = (h: number, a: number) => (h > a ? "1" : h === a ? "X" : "2");
 /** Vjerojatnosti svih 9 HT/FT ishoda iz konvolucije 1. i 2. poluvremena. */
 export function htftProbs(m: Model): Record<Outcome, number> {
   const out = Object.fromEntries(OUTCOMES.map((o) => [o, 0])) as Record<Outcome, number>;
-  // POPRAVAK: Uzimamo sve redove matrica poluvremena umjesto rezanja golova nakon 7.
-  for (let a = 0; a < m.H1.length; a++) for (let b = 0; b < m.H1[a]!.length; b++) {
+  const G = 7;
+  for (let a = 0; a <= G; a++) for (let b = 0; b <= G; b++) {
     const p1 = m.H1[a]![b]!;
     if (p1 < 1e-9) continue;
-    for (let c = 0; c < m.H2.length; c++) for (let d = 0; d < m.H2[c]!.length; d++) {
+    for (let c = 0; c <= G; c++) for (let d = 0; d <= G; d++) {
       const k = `${ftSign(a, b)}/${ftSign(a + c, b + d)}` as Outcome;
       out[k] += p1 * m.H2[c]![d]!;
     }
   }
   const s = OUTCOMES.reduce((x, o) => x + out[o], 0);
-  // POPRAVAK: Za praznu/degeneriranu matricu izbjegavamo dijeljenje s nulom.
-  for (const o of OUTCOMES) out[o] /= s || 1;
+  for (const o of OUTCOMES) out[o] /= s;
   return out;
 }
 
@@ -567,10 +562,6 @@ export function calculateOu15(i: Inputs, sharps = false): Ou15Result | { error: 
 
 // 8. Dutching kalkulator
 export function dutch(stake: number, oddsA: number, oddsB: number) {
-  // POPRAVAK: Nulti/nevaljani ulog ili kvote ne smiju proizvesti NaN/Infinity u isplati.
-  if (!Number.isFinite(stake) || stake <= 0 || !Number.isFinite(oddsA) || oddsA <= 1 || !Number.isFinite(oddsB) || oddsB <= 1) {
-    return { sA: 0, sB: 0, profit: 0, roi: 0 };
-  }
   const inv = 1 / oddsA + 1 / oddsB;
   const sA = (stake / oddsA) / inv, sB = (stake / oddsB) / inv;
   const ret = stake / inv;

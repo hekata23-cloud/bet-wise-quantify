@@ -1,66 +1,74 @@
 import { getKey } from "./storage";
 
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-
-// gemini-3.8-flash RAZMIŠLJA prije odgovora — misli troše output budžet,
-// pa je budžet uvećan na 16384 i razmišljanje je na najnižem nivou.
-// Listopad 2026: 3.8 Flash je aktualni besplatni Flash (3.7 → 3.8, 3.5 → 3.6);
-// stari 1.5/2.0 modeli su ugašeni pa su uklonjeni iz lanca.
-const MODELS = [
-  "gemini-3.8-flash",
-  "gemini-3.6-flash",
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
+const WORKING_MODELS = [
+  "gemini-flash-lite-latest",
+  "gemini-3.5-flash-lite",
+  "gemini-flash-latest",
+  "gemini-2.5-flash-lite"
 ];
 
 export async function geminiChat(systemPrompt: string, history: any[]): Promise<string> {
   const key = getKey("gemini");
-  if (!key) throw new Error("Nedostaje Google API ključ");
 
-  let lastErr = "Gemini: prazan odgovor";
-  for (const MODEL of MODELS) {
-    for (const sRazmisljanjem of [true, false]) {
-      const gen: any = { temperature: 0.6, maxOutputTokens: 16384 };
-      if (sRazmisljanjem) gen.thinkingConfig = { thinkingLevel: "low" };
-      const response = await fetch(
-        `${BASE_URL}/${MODEL}:generateContent?key=${encodeURIComponent(key)}`,
-        {
+  // 1) Ako korisnik ima uneseni ključ u pregledniku, pokušaj direktan poziv s aktivnim modelima
+  if (key) {
+    for (const model of WORKING_MODELS) {
+      try {
+        const url = `${BASE_URL}/${model}:generateContent?key=${key}`;
+        const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: history,
             system_instruction: { parts: [{ text: systemPrompt }] },
-            generationConfig: gen,
-          }),
-        },
-      );
-      const data = await response.json().catch(() => null as any);
-      if (!response.ok) {
-        const m = data?.error?.message || "Gemini Error";
-        lastErr = `(${response.status}) ${m}`;
-        // Ako model ne prihvaća thinkingLevel, pokušaj bez razmišljanja.
-        if (response.status === 400 && sRazmisljanjem && /thinking/i.test(String(m))) continue;
-        break; // idući model
+            generationConfig: { temperature: 0.6, maxOutputTokens: 2500 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return text;
+        }
+      } catch (e) {
+        console.warn(`Gemini direct model ${model} failed, trying next/proxy...`, e);
       }
-      const cand = data?.candidates?.[0];
-      const parts = cand?.content?.parts ?? [];
-      // Čitaju se SVI dijelovi odgovora, ne samo prvi.
-      const text = parts
-        .map((p: any) => (typeof p?.text === "string" ? p.text : ""))
-        .join("")
-        .trim();
-      if (text) return text;
-      const fr = cand?.finishReason || data?.promptFeedback?.blockReason;
-      lastErr = fr ? `Gemini: prazan odgovor (finishReason=${fr})` : "Gemini: prazan odgovor";
-      break;
     }
   }
-  throw new Error(lastErr);
+
+  // 2) Pokušaj kroz poslužiteljski proxy (radi i sa serverskim GEMINI_API_KEY i kao CORS zaobilaznica)
+  try {
+    const proxyRes = await fetch("/api/public/gemini", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(key ? { "X-Gemini-Key": key } : {}),
+      },
+      body: JSON.stringify({
+        contents: history,
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.6, maxOutputTokens: 2500 }
+      })
+    });
+
+    if (proxyRes.ok) {
+      const pData = await proxyRes.json();
+      if (pData.text?.trim()) return pData.text.trim();
+    }
+  } catch (err) {
+    console.warn("Gemini proxy call error:", err);
+  }
+
+  throw new Error("Google Gemini nije dostupan (provjeri ključ u Postavkama).");
 }
 
 export async function testGemini() {
   try {
-    await geminiChat("Say OK", [{ role: "user", parts: [{ text: "Test" }] }]);
-    return { ok: true, msg: "Google Gemini 3.8 Flash radi!" };
-  } catch (e: any) { return { ok: false, msg: e.message }; }
+    const res = await geminiChat("Odgovori točno riječju 'OK'.", [{ role: "user", parts: [{ text: "Test" }] }]);
+    return { ok: true, msg: `Google Gemini je spreman (${res.slice(0, 30)})!` };
+  } catch (e: any) {
+    return { ok: false, msg: e.message || String(e) };
+  }
 }
+

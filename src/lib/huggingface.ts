@@ -12,26 +12,26 @@ export interface HFModel {
 }
 
 // Najnoviji modeli koje HF Router trenutno servira preko besplatnog tiera.
-// Listopad 2026 — provjereno živim upitom na router.huggingface.co/v1/models.
 export const HF_MODELS: HFModel[] = [
-  { id: "deepseek-ai/DeepSeek-V4.1-Flash", label: "DeepSeek V4.1 Flash — matematika/predikcije" },
-  { id: "zai-org/GLM-5.3-Flash", label: "GLM 5.3 Flash — brzi analitičar" },
-  { id: "Qwen/Qwen3.8-Flash-Next-FP8", label: "Qwen 3.8 Flash Next — Poisson/EV" },
-  { id: "MiniMaxAI/MiniMax-M3.1-Flash", label: "MiniMax M3.1 Flash" },
-  { id: "XiaomiMiMo/MiMo-V2.6-Flash-RL", label: "MiMo V2.6 Flash — reasoning" },
-  { id: "deepseek-ai/DeepSeek-V3.1", label: "DeepSeek V3.1" },
-  { id: "Qwen/Qwen3-235B-A22B-Instruct-2507", label: "Qwen3 235B A22B" },
-  { id: "moonshotai/Kimi-K2-Instruct", label: "Kimi K2 Instruct" },
+  { id: "meta-llama/Llama-3.3-70B-Instruct", label: "Llama 3.3 70B Instruct — analitičar" },
+  { id: "deepseek-ai/DeepSeek-V3.1", label: "DeepSeek V3.1 — matematika/predikcije" },
+  { id: "deepseek-ai/DeepSeek-R1", label: "DeepSeek R1 — chain of thought" },
+  { id: "Qwen/Qwen3-235B-A22B-Instruct-2507", label: "Qwen3 235B A22B — Poisson/EV" },
+  { id: "Qwen/Qwen3-32B", label: "Qwen3 32B — brzi reasoning" },
   { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B" },
-  { id: "meta-llama/Llama-3.3-70B-Instruct", label: "Llama 3.3 70B Instruct" },
+  { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B — brzi" },
+  { id: "moonshotai/Kimi-K2-Instruct", label: "Kimi K2 Instruct" },
+  { id: "zai-org/GLM-4.5-Air", label: "GLM 4.5 Air — kalkulator" },
+  { id: "mistralai/Mistral-Small-3.2-24B-Instruct-2506", label: "Mistral Small 3.2 24B" },
   { id: "meta-llama/Llama-3.1-8B-Instruct", label: "Llama 3.1 8B Instruct — najbrži" },
+  { id: "google/gemma-2-9b-it", label: "Gemma 2 9B" },
 ];
 
 const FALLBACK_CHAIN = [
-  "deepseek-ai/DeepSeek-V4.1-Flash",
-  "zai-org/GLM-5.3-Flash",
-  "openai/gpt-oss-120b",
   "meta-llama/Llama-3.3-70B-Instruct",
+  "Qwen/Qwen3-32B",
+  "openai/gpt-oss-20b",
+  "meta-llama/Llama-3.1-8B-Instruct",
 ];
 
 export interface HFMessage {

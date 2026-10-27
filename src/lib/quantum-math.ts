@@ -3,9 +3,6 @@
 
 /** Poissonova distribucija za vjerojatnost točnog broja golova */
 function poisson(lambda: number, k: number): number {
-  // POPRAVAK: nevažeći λ i broj golova izvan potpore ne smiju proizvesti NaN.
-  if (!Number.isFinite(lambda) || lambda < 0 || !Number.isInteger(k) || k < 0) return 0;
-  if (lambda === 0) return k === 0 ? 1 : 0;
   return (Math.exp(-lambda) * Math.pow(lambda, k)) / factorial(k);
 }
 
@@ -22,9 +19,9 @@ export function simulateMatch(lh: number, la: number) {
   let maxP = 0;
   let bestScore = "1:1";
 
-  // POPRAVAK: proširi raspon da rep distribucije ne iskrivljuje 1X2 pri većim λ.
-  for (let h = 0; h <= 10; h++) {
-    for (let a = 0; a <= 10; a++) {
+  // Matrica 0-6 golova (pokriva 99% svih rezultata)
+  for (let h = 0; h <= 6; h++) {
+    for (let a = 0; a <= 6; a++) {
       const prob = poisson(lh, h) * poisson(la, a);
       
       if (h > a) p1 += prob;
@@ -43,9 +40,8 @@ export function simulateMatch(lh: number, la: number) {
   const htLa = la * 0.44;
   let ht1 = 0, htX = 0, ht2 = 0;
 
-  // POPRAVAK: širi HT raspon da ne odbaci značajnu masu pri većim λ.
-  for (let h = 0; h <= 10; h++) {
-    for (let a = 0; a <= 10; a++) {
+  for (let h = 0; h <= 3; h++) {
+    for (let a = 0; a <= 3; a++) {
       const prob = poisson(htLh, h) * poisson(htLa, a);
       if (h > a) ht1 += prob;
       else if (h === a) htX += prob;
@@ -53,7 +49,7 @@ export function simulateMatch(lh: number, la: number) {
     }
   }
 
-  // Normalizacija na stvarnu masu matrice (raspon rezultata je ograničen).
+  // Normalizacija na stvarnu masu matrice (0-6 x 0-6 ne pokriva točno 100%)
   const ftTotal = p1 + pX + p2;
   if (ftTotal > 0) { p1 /= ftTotal; pX /= ftTotal; p2 /= ftTotal; }
   const htTotal = ht1 + htX + ht2;

@@ -16,11 +16,6 @@ import {
   type ZtFixture,
 } from "@/lib/zlatni-tip.functions";
 import { computeHtFtAnalysis, type HtFtAnalysis } from "@/lib/ht-ft";
-import {
-  evaluatePredictionIntegrity,
-  footballContradiction,
-} from "@/lib/prediction-integrity";
-import { IntegrityPanel } from "@/components/IntegrityPanel";
 import { analyze } from "@/lib/zlatni-engine";
 import {
   getApiKey,
@@ -252,83 +247,6 @@ export function HtFtPage() {
     }
   };
 
-  // Prediction Integrity Gate — vjerojatnosti punog vremena izvedene iz HT/FT matrice
-  const ftProbs = useMemo(() => {
-    if (!analysisResult) return null;
-    const sum = (codes: string[]) =>
-      codes.reduce(
-        (total, code) =>
-          total + (analysisResult.outcomes.find((o) => o.code === code)?.prob ?? 0),
-        0,
-      );
-    return {
-      home: sum(["1/1", "X/1", "2/1"]),
-      draw: sum(["1/X", "X/X", "2/X"]),
-      away: sum(["1/2", "X/2", "2/2"]),
-    };
-  }, [analysisResult]);
-
-  const ftSelected = (code: string): "HOME" | "DRAW" | "AWAY" => {
-    const final = code.split("/")[1];
-    return final === "1" ? "HOME" : final === "X" ? "DRAW" : "AWAY";
-  };
-
-  const mainTipIntegrity = useMemo(() => {
-    if (!analysisResult || !ftProbs) return null;
-    const mt = analysisResult.mainTip;
-    return evaluatePredictionIntegrity({
-      probability: mt.prob,
-      odds: mt.bookieOdd,
-      dataQuality: mt.bookieOdd ? 0.75 : 0.45,
-      fallbackModel: !mt.bookieOdd,
-      contradictory: footballContradiction({ selected: ftSelected(mt.pick), ...ftProbs }),
-      market: `HT/FT ${mt.pick}`,
-    });
-  }, [analysisResult, ftProbs]);
-
-  const sharpValueIntegrity = useMemo(() => {
-    if (!analysisResult || !ftProbs || !analysisResult.sharpValueTip) return null;
-    const sv = analysisResult.sharpValueTip;
-    return evaluatePredictionIntegrity({
-      probability: sv.prob,
-      odds: sv.bookieOdd,
-      dataQuality: sv.bookieOdd ? 0.75 : 0.45,
-      fallbackModel: !sv.bookieOdd,
-      contradictory: footballContradiction({ selected: ftSelected(sv.pick), ...ftProbs }),
-      market: `HT/FT ${sv.pick}`,
-    });
-  }, [analysisResult, ftProbs]);
-
-  const reversalIntegrity = useMemo(() => {
-    if (!analysisResult || !ftProbs || !analysisResult.reversalRadar.hasReversalSignal) return null;
-    const rr = analysisResult.reversalRadar;
-    return evaluatePredictionIntegrity({
-      probability: rr.prob,
-      odds: rr.bookieOdd,
-      dataQuality: rr.bookieOdd ? 0.7 : 0.45,
-      fallbackModel: !rr.bookieOdd,
-      contradictory: footballContradiction({
-        selected: ftSelected(rr.pick === "Nema signala" ? "2/1" : rr.pick),
-        ...ftProbs,
-      }),
-      market: `HT/FT ${rr.pick}`,
-    });
-  }, [analysisResult, ftProbs]);
-
-  const outcomeIntegrities = useMemo(() => {
-    if (!analysisResult || !ftProbs) return [];
-    return analysisResult.outcomes.map((o) =>
-      evaluatePredictionIntegrity({
-        probability: o.prob,
-        odds: o.bookieOdd,
-        dataQuality: o.bookieOdd ? 0.7 : 0.45,
-        fallbackModel: !o.bookieOdd,
-        contradictory: footballContradiction({ selected: ftSelected(o.code), ...ftProbs }),
-        market: `HT/FT ${o.code}`,
-      })
-    );
-  }, [analysisResult, ftProbs]);
-
   const filteredFixtures = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase();
 
@@ -546,7 +464,6 @@ export function HtFtPage() {
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 {analysisResult.mainTip.reasoning}
               </p>
-              <IntegrityPanel result={mainTipIntegrity} title="Integritet: glavni HT/FT tip" />
               <div className="mt-4 flex justify-between border-t border-primary/20 pt-3 text-xs">
                 <span>
                   Šansa:{" "}
@@ -575,7 +492,6 @@ export function HtFtPage() {
                 {analysisResult.sharpValueTip?.reasoning ??
                   "Nema dostupne kvote za usporedbu."}
               </p>
-              {analysisResult.sharpValueTip && <IntegrityPanel result={sharpValueIntegrity} compact={false} title="Integritet: sharp value" />}
               <div className="mt-4 flex justify-between border-t border-emerald-500/20 pt-3 text-xs">
                 <span>
                   Šansa:{" "}
@@ -646,7 +562,6 @@ export function HtFtPage() {
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 {analysisResult.reversalRadar.note}
               </p>
-              {analysisResult.reversalRadar.hasReversalSignal && <IntegrityPanel result={reversalIntegrity} compact={false} title="Integritet: radar preokreta" />}
               <div className="mt-4 flex justify-between border-t border-border/40 pt-3 text-xs">
                 <span>
                   Šansa:{" "}
@@ -670,7 +585,7 @@ export function HtFtPage() {
             </h3>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {analysisResult.outcomes.map((outcome, outcomeIdx) => {
+              {analysisResult.outcomes.map((outcome) => {
                 const isMain = outcome.code === analysisResult.mainTip.pick;
 
                 return (
@@ -692,15 +607,12 @@ export function HtFtPage() {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <IntegrityPanel result={outcomeIntegrities[outcomeIdx]} compact />
-                        {outcome.isTrap && (
-                          <span className="inline-flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-[9px] font-bold text-destructive">
-                            <AlertTriangle className="h-3 w-3" />
-                            ZAMKA
-                          </span>
-                        )}
-                      </div>
+                      {outcome.isTrap && (
+                        <span className="inline-flex items-center gap-1 rounded bg-destructive/15 px-1.5 py-0.5 text-[9px] font-bold text-destructive">
+                          <AlertTriangle className="h-3 w-3" />
+                          ZAMKA
+                        </span>
+                      )}
                     </div>
 
                     <div className="mt-3">

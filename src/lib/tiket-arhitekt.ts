@@ -32,8 +32,7 @@ export function calculateEV(probability: number, odd: number): number {
 
 /** Frakcijski 1/4 Kelly kriterij (max limit 4% bankrolla radi očuvanja kapitala) */
 export function calculateFractionalKelly(probability: number, odd: number): number {
-  // POPRAVAK: odbaci nevaljane ulaze prije Kelly formule da rezultat ne postane NaN ili neograničen.
-  if (!Number.isFinite(odd) || odd <= 1 || !Number.isFinite(probability) || probability <= 0 || probability > 1) return 0;
+  if (odd <= 1 || probability <= 0) return 0;
   const b = odd - 1;
   const q = 1 - probability;
   const fullKelly = (b * probability - q) / b;
@@ -83,37 +82,43 @@ export function extractEdgesFromAnalysis(
   if (edges.length === 0) {
     if (analysis.golden?.outcome.odd) {
       const o = analysis.golden.outcome;
-      const ev = calculateEV(o.p, o.odd ?? 0);
-      edges.push({
-        fixtureId,
-        match,
-        league,
-        time,
-        market: analysis.golden.market,
-        selection: o.label,
-        probability: o.p,
-        fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
-        bookmakerOdd: o.odd ?? 0,
-        evPercent: Math.round(ev * 10) / 10,
-        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd ?? 0),
-      });
+      const odd = o.odd;
+      if (odd !== undefined) {
+        const ev = calculateEV(o.p, odd);
+        edges.push({
+          fixtureId,
+          match,
+          league,
+          time,
+          market: analysis.golden.market,
+          selection: o.label,
+          probability: o.p,
+          fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
+          bookmakerOdd: odd,
+          evPercent: Math.round(ev * 10) / 10,
+          recommendedKellyPercent: calculateFractionalKelly(o.p, odd),
+        });
+      }
     }
     if (analysis.safe?.outcome.odd && analysis.safe.outcome.label !== analysis.golden?.outcome.label) {
       const o = analysis.safe.outcome;
-      const ev = calculateEV(o.p, o.odd ?? 0);
-      edges.push({
-        fixtureId,
-        match,
-        league,
-        time,
-        market: analysis.safe.market,
-        selection: o.label,
-        probability: o.p,
-        fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
-        bookmakerOdd: o.odd ?? 0,
-        evPercent: Math.round(ev * 10) / 10,
-        recommendedKellyPercent: calculateFractionalKelly(o.p, o.odd ?? 0),
-      });
+      const odd = o.odd;
+      if (odd !== undefined) {
+        const ev = calculateEV(o.p, odd);
+        edges.push({
+          fixtureId,
+          match,
+          league,
+          time,
+          market: analysis.safe.market,
+          selection: o.label,
+          probability: o.p,
+          fairOdd: o.p > 0 ? Number((1 / o.p).toFixed(2)) : 0,
+          bookmakerOdd: odd,
+          evPercent: Math.round(ev * 10) / 10,
+          recommendedKellyPercent: calculateFractionalKelly(o.p, odd),
+        });
+      }
     }
   }
 
@@ -141,8 +146,7 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
       combinedOdd: bestSingle.bookmakerOdd,
       combinedProb: bestSingle.probability,
       expectedValuePercent: bestSingle.evPercent,
-      // POPRAVAK: ne preporučuj minimalni ulog iznad Kellyja, osobito kad je Kelly nula.
-      recommendedStakePercent: bestSingle.recommendedKellyPercent,
+      recommendedStakePercent: Math.max(bestSingle.recommendedKellyPercent, 1.5),
     });
   }
 
@@ -168,11 +172,9 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
 
   const safeDoubleBets = getIndependentBets(safeCandidates.length >= 2 ? safeCandidates : allEdges, 2);
   if (safeDoubleBets.length === 2) {
-    const rawCombOdd = safeDoubleBets[0].bookmakerOdd * safeDoubleBets[1].bookmakerOdd;
-    const combOdd = Number(rawCombOdd.toFixed(2));
+    const combOdd = Number((safeDoubleBets[0].bookmakerOdd * safeDoubleBets[1].bookmakerOdd).toFixed(2));
     const combProb = safeDoubleBets[0].probability * safeDoubleBets[1].probability;
-    // POPRAVAK: EV koristi puni umnožak kvota, a ne zaokruženu prikaznu kvotu.
-    const combEV = calculateEV(combProb, rawCombOdd);
+    const combEV = calculateEV(combProb, combOdd);
 
     tickets.push({
       type: "double",
@@ -193,11 +195,11 @@ export function buildOptimalTickets(allEdges: EdgeBet[]): TicketRecommendation[]
 
   const tripletBets = getIndependentBets(tripletCandidates.length >= 3 ? tripletCandidates : allEdges, 3);
   if (tripletBets.length === 3) {
-    const rawCombOdd = tripletBets[0].bookmakerOdd * tripletBets[1].bookmakerOdd * tripletBets[2].bookmakerOdd;
-    const combOdd = Number(rawCombOdd.toFixed(2));
+    const combOdd = Number(
+      (tripletBets[0].bookmakerOdd * tripletBets[1].bookmakerOdd * tripletBets[2].bookmakerOdd).toFixed(2)
+    );
     const combProb = tripletBets[0].probability * tripletBets[1].probability * tripletBets[2].probability;
-    // POPRAVAK: EV koristi puni umnožak kvota, a ne zaokruženu prikaznu kvotu.
-    const combEV = calculateEV(combProb, rawCombOdd);
+    const combEV = calculateEV(combProb, combOdd);
 
     tickets.push({
       type: "triplet",
