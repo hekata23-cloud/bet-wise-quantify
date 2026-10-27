@@ -210,3 +210,11 @@ export function getApiKey(): string | undefined {
 
   return undefined;
 }
+/** Zaboravi spremljeni odgovor za dani cache ključ — sljedeći dohvat ide ponovno na API. */
+export function zaboraviCache(cacheId: string) {
+  const suffix = "." + cacheId;
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(CACHE) && k.endsWith(suffix)) localStorage.removeItem(k);
+  }
+}
