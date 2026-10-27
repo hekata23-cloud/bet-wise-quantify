@@ -4,7 +4,10 @@
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",
-    "types": ["vite/client"],
+    "types": [
+      "vite/client",
+      "vitest/globals"
+    ],
     "lib": [
       "ES2022",
       "DOM",
@@ -22,7 +25,10 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "strictNullChecks": true
   },
-  "exclude": ["dist"]
+  "exclude": [
+    "dist"
+  ]
 }

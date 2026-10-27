@@ -83,3 +83,23 @@ export async function testOpenRouter() {
     return { ok: true, msg: `OpenRouter je spreman (${res.slice(0, 30)})!` };
   } catch (e: any) { return { ok: false, msg: e.message }; }
 }
+
+// Dnevni brojač besplatnih OpenRouter poziva (lokalno u pregledniku).
+export const FREE_DAILY_LIMIT = 50;
+
+function usageKey(): string {
+  return `or-usage-${new Date().toISOString().slice(0, 10)}`;
+}
+
+export function orUsageToday(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    return Number(window.localStorage.getItem(usageKey()) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function jeRateGreska(msg: string): boolean {
+  return /429|rate.?limit|too many requests|quota/i.test(msg ?? "");
+}
