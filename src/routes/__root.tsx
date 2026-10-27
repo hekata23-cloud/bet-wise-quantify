@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "sonner";
 import { AppShell } from "../components/AppShell";
+import { TrapGuard } from "../components/TrapGuard";
 
 function NotFoundComponent() {
   return (
@@ -104,6 +105,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f9745016-7e41-4413-9c7f-e804e785e729/id-preview-fe5efe10--d7233d3f-ccad-4312-b7a9-a6ec7e371946.lovable.app-1784751962614.png" },
     ],
     links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
         href: appCss,
@@ -123,11 +126,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="hr" className="dark">
+    <html lang="hr" className="dark" style={{ backgroundColor: "#0e1017", colorScheme: "dark" }}>
       <head>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              html, body {
+                background-color: #0e1017 !important;
+                color: #f8f9fa !important;
+                margin: 0;
+                padding: 0;
+                color-scheme: dark;
+              }
+            `,
+          }}
+        />
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body
+        className="min-h-screen bg-background text-foreground antialiased"
+        style={{ backgroundColor: "#0e1017", color: "#f8f9fa" }}
+      >
         {children}
         <Scripts />
       </body>
@@ -143,6 +162,7 @@ function RootComponent() {
       <AppShell>
         <Outlet />
       </AppShell>
+      <TrapGuard />
       <Toaster theme="dark" position="top-right" richColors />
     </QueryClientProvider>
   );

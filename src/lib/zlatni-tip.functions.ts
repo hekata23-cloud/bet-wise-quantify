@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { guardGet } from "./api-guard.server";
 
 /**
  * Zlatni tip — API-Football (api-sports.io) pristup.
@@ -23,26 +24,19 @@ async function call(path: string, apiKey?: string): Promise<CallResult> {
   const rate: RateInfo = { dayRemaining: -1, dayLimit: -1, minuteRemaining: -1, status: 0 };
   const key = cleanKey(apiKey);
   if (!key) return { error: "Nedostaje API-Football ključ (⚙️ Postavke).", data: null, rate };
-  try {
-    const res = await fetch(`${BASE}${path}`, { headers: { "x-apisports-key": key } });
-    rate.status = res.status;
-    rate.dayRemaining = Number(res.headers.get("x-ratelimit-requests-remaining") ?? -1);
-    rate.dayLimit = Number(res.headers.get("x-ratelimit-requests-limit") ?? -1);
-    rate.minuteRemaining = Number(res.headers.get("x-ratelimit-remaining") ?? -1);
-    if (res.status === 429) return { error: "RATE_LIMIT", data: null, rate };
-    if (!res.ok) return { error: `API greška ${res.status}`, data: null, rate };
-    const json = (await res.json()) as { errors?: any; response?: any };
-    const errs = json.errors && (Array.isArray(json.errors) ? json.errors.length : Object.keys(json.errors).length);
-    if (errs) {
-      const txt = JSON.stringify(json.errors);
-      if (/rate ?limit|too many|requests/i.test(txt)) return { error: "RATE_LIMIT", data: null, rate };
-      if (/suspend|token|key/i.test(txt)) return { error: `ACCOUNT: ${txt}`, data: null, rate };
-      return { error: txt, data: null, rate };
-    }
-    return { error: null, data: json.response, rate };
-  } catch (e: any) {
-    return { error: `Mrežna greška: ${e?.message ?? "nepoznato"}`, data: null, rate };
-  }
+  // api-guard: red čekanja + keš + retry + stale rezerva. Poruke RATE_LIMIT i
+  // "ACCOUNT: ..." ostaju identične — klijentska logika na njih pazi.
+  const r = await guardGet(path, { apiKey: key });
+  return {
+    error: r.error,
+    data: r.data,
+    rate: {
+      dayRemaining: r.remainingDay,
+      dayLimit: r.dayLimit,
+      minuteRemaining: r.remainingMinute,
+      status: r.status,
+    },
+  };
 }
 
 export type ZtFixture = {

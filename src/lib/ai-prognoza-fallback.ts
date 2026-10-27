@@ -25,9 +25,7 @@ const OPENROUTER_MODELS = [
 const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash"];
 
 const GROQ_MODELS = [
-  "openai/gpt-oss-120b",      // besplatni Production model (Llama je sada Enterprise)
-  "openai/gpt-oss-20b",
-  "llama-3.3-70b-versatile",
+  "llama-3.3-70b-versatile",  // 1 000 zahtjeva/dan — najpametniji
   "llama-3.1-8b-instant",     // 14 400 zahtjeva/dan — najizdašniji limit
   "openai/gpt-oss-20b",
   "openai/gpt-oss-120b",

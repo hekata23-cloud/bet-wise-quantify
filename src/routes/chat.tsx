@@ -21,6 +21,8 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { askAi, type ChatTurn } from "@/lib/ai-chat";
+import { formatLunaResponse, runQuantAnalytics } from "@/lib/botovi";
+import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
 import { loadMastermind } from "@/lib/mastermind";
@@ -61,8 +63,7 @@ export const Route = createFileRoute("/chat")({
 const KEY = "tm.chat.history";
 
 function ChatPage() {
-  const [persona, setPersona] = useState<"luna" | "orion">("luna");
-  const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [messages, setMessages] = useState<ChatTurn[]>(() => loadJSON<ChatTurn[]>(KEY, []));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -74,11 +75,30 @@ function ChatPage() {
   const [antiOn, setAntiOn] = useState(false);
   const [titanCount, setTitanCount] = useState(0);
   const [mmOn, setMmOn] = useState(false);
+  const [mecNaziv, setMecNaziv] = useState<string | null>(null);
+  useEffect(() => {
+    const osvjezi = () => setMecNaziv(ucitajKontekstMeca()?.naslov ?? null);
+    osvjezi();
+    window.addEventListener("andromeda:mec-kontekst", osvjezi);
+    return () => window.removeEventListener("andromeda:mec-kontekst", osvjezi);
+  }, []);
   useEffect(() => {
     setSniperCount(sniperActiveCount(loadSniper()));
     setAntiOn(loadAntiError().enabled);
     setTitanCount(titanActiveCount(loadTitan()));
     setMmOn(loadMastermind().enabled);
+  }, []);
+
+  // PITAJ LUNU (v7): pitanje iz Korpe ("Pitaj Lunu za mišljenje o listiću")
+  // šalje se automatski jednom pri otvaranju chata — kontekst tiketa je već spremljen.
+  useEffect(() => {
+    try {
+      const q = localStorage.getItem("pc.luna.pitanje");
+      if (!q) return;
+      localStorage.removeItem("pc.luna.pitanje");
+      setTimeout(() => void send(q), 400);
+    } catch { /* ignoriraj */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const endRef = useRef<HTMLDivElement>(null);
@@ -88,7 +108,6 @@ function ChatPage() {
   const recRef = useRef<{ start: () => void; stop: () => void } | null>(null);
 
   useEffect(() => {
-    setMessages(loadJSON<ChatTurn[]>(KEY, []));
     inputRef.current?.focus();
     warmUpVoices();
     if (loadVoicePrefs().autoSpeak) setVoiceMode(true);
@@ -121,7 +140,15 @@ function ChatPage() {
   async function send(override?: string) {
     const text = (override ?? input).trim();
     if ((!text && attachments.length === 0) || loading) return;
-
+    const hasAnyKey =
+      hasKey("gemini") ||
+      hasKey("groq") ||
+      hasKey("openrouter") ||
+      hasKey("nvidia") ||
+      hasKey("huggingface");
+    if (!hasAnyKey && messages.length === 0) {
+      toast.info("Luna: SARP kognitivni model i kvantitativni engine aktivni.");
+    }
     const attSnapshot = attachments;
     const userTurn: ChatTurn = {
       role: "user",
@@ -129,19 +156,37 @@ function ChatPage() {
       ts: Date.now(),
       attachments: attSnapshot.map((a) => ({ name: a.name, kind: a.kind, path: a.path })),
     };
-    setMessages((m) => [...m, userTurn]);
+    const nextMessages = [...messages, userTurn];
+    saveJSON(KEY, nextMessages); // Persist before network work so a tab switch cannot lose the turn.
+    setMessages(nextMessages);
     setInput("");
     setAttachments([]);
     setLoading(true);
     try {
-      const reply = await askAi(text, messages, attSnapshot, { voice: voiceMode, persona });
+      // Match Engine kontekst (SARP analiza zadnje otvorene utakmice) ide
+      // automatski u prompt — pohranjena poruka ostaje čista.
+      const kontekst = ucitajKontekstMeca();
+      const tiket = ucitajKontekstTiketa();
+      const tekstZaAI =
+        [text, kontekst ? izgradiKontekstTekst(kontekst) : "", tiket ? izgradiTiketTekst(tiket) : ""]
+          .filter((s) => s)
+          .join("\n\n");
+      let reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
+      if (!reply || !reply.trim() || reply.trim().length < 15 || /^prazan odgovor$/i.test(reply.trim())) {
+        reply = formatLunaResponse(runQuantAnalytics(text));
+      }
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
         setSpeaking(true);
         speak(reply, () => setSpeaking(false));
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Greška");
+    } catch {
+      const fallback = formatLunaResponse(runQuantAnalytics(text));
+      setMessages((m) => [...m, { role: "assistant", content: fallback, ts: Date.now() }]);
+      if (voiceMode) {
+        setSpeaking(true);
+        speak(fallback, () => setSpeaking(false));
+      }
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -198,12 +243,12 @@ function ChatPage() {
   }
 
   const suggestions = [
-    "⚽ Real vs Barca — što je bolji tip, BTTS ili Over 2.5?",
-    "🏀 Partizan vs Crvena Zvezda — hendikep i zbroj koševa?",
-    "🤾 Zagreb vs PSG rukomet — hendikep i zbroj golova?",
-    "🏀 NBA Lakers vs Celtics — pobjednik i granica poena",
-    "💡 Daj mi 3 najsigurnija tipa danas za nogomet, košarku i rukomet",
+    "Daj mi tip za utakmice danas.",
     "Objasni mi Kelly kriterij za kvotu 2.1 i vjerojatnost 55%.",
+    "Real vs Barca — što je pametniji tip, BTTS ili Over 2.5?",
+    "Koje utakmice su uživo?",
+    "Analiziraj ovaj kod (uploadaj ZIP ili mapu).",
+    "Prepoznaj kvote na ovoj slici i daj mi tip.",
   ];
 
   const iconFor = (k: ChatAttachment["kind"]) =>
@@ -220,52 +265,27 @@ function ChatPage() {
         if (e.dataTransfer.files.length) void handleFiles(e.dataTransfer.files);
       }}
     >
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <header className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-xl"
-            style={{ background: persona === "orion" ? "linear-gradient(135deg, #f59e0b, #d97706)" : "var(--gradient-accent)" }}
+            style={{ background: "var(--gradient-accent)" }}
           >
             <MessageCircle className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">
-                {persona === "luna" ? "Luna — AI chat mozak" : "Orion — Kvantni Sharp mozak"}
-              </h1>
-              <div className="inline-flex rounded-lg border border-border bg-secondary/50 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setPersona("luna")}
-                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                    persona === "luna"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  🌙 Luna
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPersona("orion")}
-                  className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                    persona === "orion"
-                      ? "bg-amber-500 text-black font-bold"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  ⚡ Orion
-                </button>
-              </div>
-            </div>
+            <h1 className="text-2xl font-bold">Luna — AI chat mozak</h1>
             <p className="text-sm text-muted-foreground">
-              {persona === "luna"
-                ? "Hrvatska AI analitičarka za nogomet, košarku i rukomet · glas, upload slika/koda i sva tržišta"
-                : "Sharp kvantni modeler · fer kvote, EV edge & hendikep za nogomet, košarku i rukomet"}
+              Zovi je Luna (ili Callisto) · ženski hrvatski glas · OpenRouter/Gemini/Groq/HF · upload slika, koda, ZIP-a i mapa
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {mecNaziv && (
+            <span className="hidden rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-[11px] font-semibold text-cyan-300 sm:inline">
+              MEC: {mecNaziv.length > 22 ? mecNaziv.slice(0, 22) + "…" : mecNaziv}
+            </span>
+          )}
           {mmOn && (
             <span className="rounded-lg border border-primary bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">
               MASTERMIND v11

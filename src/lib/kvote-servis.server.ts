@@ -197,6 +197,34 @@ export type FormaStat = {
   penali: number;
 };
 
+/* ═══════════════ SAFE-MATH PARSING GOLOVA (v7) ═══════════════
+   API-Football šalje golove u više oblika: { goals: { home, away } },
+   { homeGoals, awayGoals }, { score: { fulltime: { home, away } } },
+   pa i kao stringovi ("2"). Ova funkcija u svakom obliku nađe čisti
+   broj; neispravan/pokvaren podatak postaje 0 — NIKAD NaN. */
+function cistiGol(v: unknown): number {
+  let n: number | null = null;
+  if (typeof v === "number") n = Number.isFinite(v) ? v : null;
+  else if (typeof v === "string") {
+    const s = v.trim().replace(",", ".");
+    if (/^-?\d+(\.\d+)?$/.test(s)) n = parseFloat(s);
+  } else if (typeof v === "object" && v != null) {
+    const o = v as Record<string, unknown>;
+    if (typeof o.home === "number" && Number.isFinite(o.home)) n = o.home;
+    else if (typeof o.away === "number" && Number.isFinite(o.away)) n = o.away;
+  }
+  if (n == null || n < 0 || n > 30) return 0;
+  return Math.round(n);
+}
+
+function goloviUtakmice(u: any): { dom: number; gost: number } {
+  const gh = cistiGol(u?.goals?.home) || cistiGol(u?.homeGoals) ||
+    cistiGol(u?.score?.fulltime?.home) || cistiGol(u?.score?.current?.home) || 0;
+  const ga = cistiGol(u?.goals?.away) || cistiGol(u?.awayGoals) ||
+    cistiGol(u?.score?.fulltime?.away) || cistiGol(u?.score?.current?.away) || 0;
+  return { dom: gh, gost: ga };
+}
+
 export function izracunajFormu(utakmice: any[]): FormaStat | null {
   const zavrsene = (utakmice || []).filter((u) => {
     const st = u?.fixture?.status?.short;
@@ -208,8 +236,8 @@ export function izracunajFormu(utakmice: any[]): FormaStat | null {
   let btts = 0, over15 = 0, over25 = 0, under35 = 0, penali = 0;
 
   for (const u of zavrsene) {
-    const gh = Number(u?.goals?.home ?? 0);
-    const ga = Number(u?.goals?.away ?? 0);
+    // SAFE-MATH štit: string golovi ("2"), null i NaN postaju 0.
+    const { dom: gh, gost: ga } = goloviUtakmice(u);
     const total = gh + ga;
 
     postignuti += gh;
@@ -240,4 +268,3 @@ export function izracunajFormu(utakmice: any[]): FormaStat | null {
     penali,
   };
 }
-

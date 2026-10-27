@@ -5,6 +5,7 @@ import { z } from "zod";
  * AI prognoza preko Lovable AI Gateway (Responses API, streaming).
  * Model dobiva već izračunate (de-vig + Dixon-Coles) vjerojatnosti i mora ih poštovati,
  * pa je prognoza usklađena s matematikom i ne proturječi sama sebi.
+ * v2: 45 s ukupni timeout — ako AI visi, odmah puštamo besplatni rezervni mozak.
  */
 const schema = {
   type: "object",
@@ -53,52 +54,67 @@ PRAVILA:
 - Ako je vjerojatnost < 60%, sigurnosnaLinija je sigurnija varijanta (dvostruka šansa, niža linija golova); inače "Nije potrebna".
 - ulogPostotak: 1/4 Kelly u % banke, 0 ako nije isplativo, maksimalno 3.
 - obrazlozenje: 2-4 rečenice konkretno. rizici: 1-3 kratke stavke.`;
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
-      body: JSON.stringify({
-        model: "openai/gpt-6-astra",
-        stream: true,
-        store: false,
-        reasoning: { effort: "low" },
-        instructions,
-        input: [{ role: "user", content: `Utakmica: ${data.utakmica}\nTražena vrsta oklade: ${data.vrstaOklade || "bilo koja (najbolji tip)"}\n\nPodaci modela:\n${data.kontekst}` }],
-        text: { format: { type: "json_schema", name: "prognoza", strict: true, schema } },
-      }),
-    });
-    if (!res.ok || !res.body) {
-      const t = await res.text().catch(() => "");
-      if (res.status === 429) return { ok: false, error: "AI je trenutno zauzet — pokušaj za minutu." };
-      if (res.status === 402) return { ok: false, error: "Mjesečni besplatni AI krediti su potrošeni. Obnavljaju se početkom idućeg mjeseca." };
-      if (res.status === 403) return { ok: false, error: "AI pristup je odbijen za ovaj radni prostor." };
-      return { ok: false, error: `AI greška ${res.status}: ${t.slice(0, 200)}` };
-    }
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "", out = "", failed: string | null = null;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i: number;
-      while ((i = buf.indexOf("\n")) >= 0) {
-        const line = buf.slice(0, i).trim();
-        buf = buf.slice(i + 1);
-        if (!line.startsWith("data:")) continue;
-        const payload = line.slice(5).trim();
-        if (!payload || payload === "[DONE]") continue;
-        try {
-          const ev = JSON.parse(payload);
-          if (ev.type === "response.output_text.delta") out += ev.delta ?? "";
-          else if (ev.type === "response.refusal.delta") failed = "AI je odbio odgovoriti.";
-          else if (ev.type === "response.failed" || ev.type === "error") failed = ev.response?.error?.message ?? ev.message ?? "AI greška.";
-        } catch { /* nepotpun okvir */ }
-      }
-    }
-    if (failed) return { ok: false, error: failed };
+
+    // Ukupni timeout za CIJELI poziv (konekcija + stream) — 45 s.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 45_000);
     try {
-      return { ok: true, p: JSON.parse(out) as AiPrognoza };
-    } catch {
-      return { ok: false, error: "AI nije vratio ispravan odgovor." };
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "Lovable-API-Key": key, "X-Lovable-AIG-SDK": "fetch" },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          model: "openai/gpt-6-astra",
+          stream: true,
+          store: false,
+          reasoning: { effort: "low" },
+          instructions,
+          input: [{ role: "user", content: `Utakmica: ${data.utakmica}\nTražena vrsta oklade: ${data.vrstaOklade || "bilo koja (najbolji tip)"}\n\nPodaci modela:\n${data.kontekst}` }],
+          text: { format: { type: "json_schema", name: "prognoza", strict: true, schema } },
+        }),
+      });
+      if (!res.ok || !res.body) {
+        const t = await res.text().catch(() => "");
+        if (res.status === 429) return { ok: false, error: "AI je trenutno zauzet — pokušaj za minutu." };
+        if (res.status === 402) return { ok: false, error: "Mjesečni besplatni AI krediti su potrošeni. Obnavljaju se početkom idućeg mjeseca." };
+        if (res.status === 403) return { ok: false, error: "AI pristup je odbijen za ovaj radni prostor." };
+        return { ok: false, error: `AI greška ${res.status}: ${t.slice(0, 200)}` };
+      }
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "", out = "", failed: string | null = null;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i: number;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i).trim();
+          buf = buf.slice(i + 1);
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          try {
+            const ev = JSON.parse(payload);
+            if (ev.type === "response.output_text.delta") out += ev.delta ?? "";
+            else if (ev.type === "response.refusal.delta") failed = "AI je odbio odgovoriti.";
+            else if (ev.type === "response.failed" || ev.type === "error") failed = ev.response?.error?.message ?? ev.message ?? "AI greška.";
+          } catch { /* nepotpun okvir */ }
+        }
+      }
+      if (failed) return { ok: false, error: failed };
+      try {
+        return { ok: true, p: JSON.parse(out) as AiPrognoza };
+      } catch {
+        return { ok: false, error: "AI nije vratio ispravan odgovor." };
+      }
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "AbortError")
+        return { ok: false, error: "AI nije odgovorio u 45 s — prekidač je otkazao poziv." };
+      const msg = e instanceof Error ? e.message : String(e);
+      return { ok: false, error: `AI mrežna greška: ${msg}` };
+    } finally {
+      clearTimeout(timer);
     }
   });
+

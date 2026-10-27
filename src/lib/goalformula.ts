@@ -68,6 +68,9 @@ export interface GoalFormulaResult {
 }
 
 function pois(l: number, k: number): number {
+  // POPRAVAK: izvan Poissonove potpore vratite nulu; za λ=0 vrijedi P(0)=1.
+  if (!Number.isFinite(l) || l < 0 || !Number.isInteger(k) || k < 0) return 0;
+  if (l === 0) return k === 0 ? 1 : 0;
   let f = 1;
   for (let i = 2; i <= k; i++) f *= i;
   return (Math.exp(-l) * Math.pow(l, k)) / f;
@@ -92,7 +95,8 @@ export function computeGoalFormula(p: GoalFormulaPrefs): GoalFormulaResult {
   const lh = Math.max(0.15, attH * defA * base * p.homeAdvantage);
   const la = Math.max(0.15, attA * defH * base);
 
-  const MAX = 8;
+  // POPRAVAK: proširi matricu da zanemarena masa repa bude manja.
+  const MAX = 10;
   let pBtts = 0;
   let pUnder = 0;
   let pClean = 0;
@@ -110,8 +114,9 @@ export function computeGoalFormula(p: GoalFormulaPrefs): GoalFormulaResult {
   pBtts = pTotal > 0 ? pBtts / pTotal : pBtts;
   pUnder = pTotal > 0 ? pUnder / pTotal : pUnder;
   pClean = pTotal > 0 ? pClean / pTotal : pClean;
-  const pOver = Math.min(0.999, Math.max(0.001, 1 - pUnder));
-  pBtts = Math.min(0.999, Math.max(0.001, pBtts));
+  // POPRAVAK: vjerojatnosti ostaju u [0,1] bez umjetnog donjeg i gornjeg praga.
+  const pOver = Math.min(1, Math.max(0, 1 - pUnder));
+  pBtts = Math.min(1, Math.max(0, pBtts));
 
   const cands = [
     { label: "BTTS DA", pr: pBtts },

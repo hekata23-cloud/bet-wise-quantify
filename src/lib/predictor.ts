@@ -10,12 +10,15 @@ function factorial(n: number): number {
 }
 
 export function poisson(lambda: number, k: number): number {
-  if (lambda <= 0) return k === 0 ? 1 : 0;
+  // POPRAVAK: Nevažeći λ ili broj golova ne smije proslijediti NaN u izračune.
+  if (!Number.isInteger(k) || k < 0 || !Number.isFinite(lambda) || lambda < 0) return 0;
+  if (lambda === 0) return k === 0 ? 1 : 0;
   return (Math.pow(lambda, k) * Math.exp(-lambda)) / factorial(k);
 }
 
 export function impliedProbability(odd: number): number {
-  if (!odd || odd <= 1) return 0;
+  // POPRAVAK: Decimalna kvota 1.00 znači impliciranu vjerojatnost 100%, ne 0%.
+  if (!Number.isFinite(odd) || odd < 1) return 0;
   return 1 / odd;
 }
 
@@ -57,12 +60,13 @@ export interface ScoreMatrix {
 }
 
 export function scoreMatrix(homeXG: number, awayXG: number, max = 6): ScoreMatrix {
-  let pHome = 0, pDraw = 0, pAway = 0, pBTTS = 0;
+  let pHome = 0, pDraw = 0, pAway = 0, pBTTS = 0, totalProbability = 0;
   let pOver05 = 0, pOver15 = 0, pOver25 = 0, pOver35 = 0;
   const scores: Array<{ score: string; p: number }> = [];
   for (let h = 0; h <= max; h++) {
     for (let a = 0; a <= max; a++) {
       const p = poisson(homeXG, h) * poisson(awayXG, a);
+      totalProbability += p;
       scores.push({ score: `${h}:${a}`, p });
       if (h > a) pHome += p;
       else if (h === a) pDraw += p;
@@ -75,6 +79,17 @@ export function scoreMatrix(homeXG: number, awayXG: number, max = 6): ScoreMatri
       if (t > 3) pOver35 += p;
     }
   }
+  // POPRAVAK: Normalizacija uklanja preostalu Poissonovu masu izvan ograničene matrice.
+  const denominator = totalProbability || 1;
+  pHome /= denominator;
+  pDraw /= denominator;
+  pAway /= denominator;
+  pBTTS /= denominator;
+  pOver05 /= denominator;
+  pOver15 /= denominator;
+  pOver25 /= denominator;
+  pOver35 /= denominator;
+  for (const score of scores) score.p /= denominator;
   scores.sort((a, b) => b.p - a.p);
   return {
     homeXG,
@@ -203,16 +218,21 @@ export function analyzeOU(input: {
   underOdd?: number;
 }): OUAnalysis {
   const sm = scoreMatrix(input.homeXG, input.awayXG);
-  let poissonProbOver = 0;
-  const max = 8;
-  for (let h = 0; h <= max; h++)
-    for (let a = 0; a <= max; a++)
-      if (h + a > input.line) poissonProbOver += poisson(input.homeXG, h) * poisson(input.awayXG, a);
-  const historicalAvg = input.homeGoalsAvg + input.awayGoalsAvg;
-  const historicalProbOver = historicalAvg > input.line ? 0.5 + Math.min(0.4, (historicalAvg - input.line) * 0.15) : 0.5 - Math.min(0.4, (input.line - historicalAvg) * 0.15);
-  const probOver = 0.7 * poissonProbOver + 0.3 * historicalProbOver;
+  // POPRAVAK: Zbroj golova ima Poissonovu stopu homeXG + awayXG; komplement izbjegava odsijecanje repa na 8.
+  let poissonProbOver = 1;
+  for (let goals = 0; goals <= input.line; goals++)
+    poissonProbOver -= poisson(input.homeXG + input.awayXG, goals);
+  const rawHist = (input.homeGoalsAvg ?? 0) + (input.awayGoalsAvg ?? 0);
+  const hasHistory = Number.isFinite(rawHist) && rawHist > 0.5;
+  const historicalAvg = hasHistory ? rawHist : (sm.expectedGoals > 0 ? sm.expectedGoals : 2.68);
+  const historicalProbOver = historicalAvg > input.line
+    ? 0.5 + Math.min(0.4, (historicalAvg - input.line) * 0.15)
+    : 0.5 - Math.min(0.4, (input.line - historicalAvg) * 0.15);
+  const probOver = hasHistory
+    ? 0.7 * poissonProbOver + 0.3 * historicalProbOver
+    : poissonProbOver;
   const probUnder = 1 - probOver;
-  const tip = probOver >= 0.55 ? `Over ${input.line}` : probUnder >= 0.55 ? `Under ${input.line}` : probOver >= 0.5 ? `Over ${input.line}` : `Under ${input.line}`;
+  const tip = probOver >= 0.5 ? `Over ${input.line}` : `Under ${input.line}`;
   const confidence = Math.round(Math.max(probOver, probUnder) * 100);
   const reasons: string[] = [];
   reasons.push(
@@ -404,8 +424,9 @@ export function analyzeCorners(input: {
   const lamH = (input.homeAvg + input.awayConcededAvg) / 2;
   const lamA = (input.awayAvg + input.homeConcededAvg) / 2;
   const total = lamH + lamA;
-  let pOver = 0;
-  for (let k = Math.ceil(input.line); k <= 25; k++) pOver += poisson(total, k);
+  // POPRAVAK: Izračun repa preko komplementa uključuje i golove iznad proizvoljne granice 25.
+  let pOver = 1;
+  for (let k = 0; k <= input.line; k++) pOver -= poisson(total, k);
   const pUnder = 1 - pOver;
   const tip = pOver >= 0.5 ? `Over ${input.line}` : `Under ${input.line}`;
   const reasons = [
@@ -427,8 +448,9 @@ export function analyzeCards(input: {
 }): CornersAnalysis {
   const base = (input.homeAvg + input.awayAvg) / 2 + (input.refereeAvg ?? 0) * 0.3;
   const total = Math.max(0.5, base);
-  let pOver = 0;
-  for (let k = Math.ceil(input.line); k <= 15; k++) pOver += poisson(total, k);
+  // POPRAVAK: Izračun repa preko komplementa uključuje i kartone iznad granice 15.
+  let pOver = 1;
+  for (let k = 0; k <= input.line; k++) pOver -= poisson(total, k);
   const pUnder = 1 - pOver;
   const tip = pOver >= 0.5 ? `Over ${input.line} kartona` : `Under ${input.line} kartona`;
   const reasons = [
@@ -461,6 +483,8 @@ function samplePoisson(lambda: number): number {
 }
 
 export function monteCarlo(homeXG: number, awayXG: number, n = 10000): { pHome: number; pDraw: number; pAway: number; pBTTS: number; pOver25: number } {
+  // POPRAVAK: Bez simulacijskih iteracija nema procjene; vrati nule umjesto dijeljenja s nulom.
+  if (!Number.isFinite(n) || n <= 0) return { pHome: 0, pDraw: 0, pAway: 0, pBTTS: 0, pOver25: 0 };
   let h = 0, d = 0, a = 0, btts = 0, ov = 0;
   for (let i = 0; i < n; i++) {
     const gh = samplePoisson(homeXG);

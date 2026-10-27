@@ -120,6 +120,11 @@ export async function afGet<T = unknown>(
         headers: { "x-apisports-key": key },
       });
       bumpCounter();
+      const rem = Number(res.headers.get("x-ratelimit-requests-remaining") ?? -1);
+      if (rem >= 0 && rem <= 5) {
+        // stvarni preostali krediti s API-ja — zaključaj brojač da ne trošimo rezervu
+        localStorage.setItem(COUNTER_KEY, JSON.stringify({ date: isoDateZagreb(), count: DAILY_LIMIT }));
+      }
       if (res.status === 429 && attempt < 1) {
         attempt++;
         await new Promise((r) => setTimeout(r, 3000));
@@ -131,7 +136,13 @@ export async function afGet<T = unknown>(
       const json = (await res.json()) as { errors?: unknown; response?: T };
       const errs = (json.errors ?? {}) as Record<string, string> | unknown[];
       const hasErr = Array.isArray(errs) ? errs.length > 0 : Object.keys(errs).length > 0;
-      if (hasErr) throw new ApiFootballError(`API-Football: ${JSON.stringify(errs)}`);
+      if (hasErr) {
+        const txt = JSON.stringify(errs);
+        if (/suspend|for the day|daily/i.test(txt)) {
+          localStorage.setItem(COUNTER_KEY, JSON.stringify({ date: isoDateZagreb(), count: DAILY_LIMIT }));
+        }
+        throw new ApiFootballError(`API-Football: ${txt}`);
+      }
       const data = (json.response ?? (json as unknown as T)) as T;
       cacheSet(cacheKey, data);
       return data;
@@ -170,7 +181,8 @@ export interface Fixture {
 }
 
 export function getFixturesByDate(date: string): Promise<Fixture[]> {
-  return afGet<Fixture[]>("fixtures", { date }, { ttlMs: 5 * 60 * 1000 });
+  // POPRAVAK: uskladi dan fixturesa s Europe/Zagreb umjesto zadane UTC zone API-ja.
+  return afGet<Fixture[]>("fixtures", { date, timezone: "Europe/Zagreb" }, { ttlMs: 5 * 60 * 1000 });
 }
 
 export function getLiveFixtures(): Promise<Fixture[]> {

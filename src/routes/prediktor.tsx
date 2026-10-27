@@ -33,6 +33,14 @@ import {
   type Keys,
 } from "@/lib/predictor-api";
 import { saveLastPredictorInputs, loadLastPredictorInputs } from "@/lib/predictor-bridge";
+import {
+  evaluatePredictionIntegrity,
+  footballContradiction,
+  noVigProbability,
+  twoWayMarginPercent,
+  type IntegrityResult,
+} from "@/lib/prediction-integrity";
+import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/prediktor")({
   head: () => ({
@@ -278,7 +286,44 @@ function PrediktorPage() {
       setLoading(false);
     }
   };
+  // Tiha revalidacija samo odabrane nadolazeće utakmice.
+  useEffect(() => {
+    const fixture = fixtures.find((item) => item.id === selected);
+    if (!fixture || !keys.football?.trim() || fixture.status !== "NS") return;
 
+    const kickoff = Date.parse(fixture.time);
+    if (!Number.isFinite(kickoff) || kickoff <= Date.now()) return;
+
+    const timer = window.setInterval(async () => {
+      if (document.visibilityState !== "visible" || Date.now() >= kickoff) return;
+
+      try {
+        const latest = await fetchMatchOdds(keys, fixture, true);
+        const hasMarketData = Object.values(latest.inputs).some(
+          (value) => typeof value === "string" && value.trim() !== "",
+        );
+
+        if (!hasMarketData) {
+          const safeEmpty = emptyInputs();
+          setInp(safeEmpty);
+          runAll(safeEmpty);
+          setNotice("Kvote nisu osvježene. Zastarjele cijene i Value Edge privremeno su isključeni.");
+          return;
+        }
+
+        setInp(latest.inputs);
+        runAll(latest.inputs);
+        // Uspješno SWR osvježavanje ostaje tiho.
+      } catch {
+        const safeEmpty = emptyInputs();
+        setInp(safeEmpty);
+        runAll(safeEmpty);
+        setNotice("Kvote su zastarjele. Value Edge isključen dok se ne dohvate svježe cijene.");
+      }
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, [selected, fixtures, keys]);
   const shown = fixtures
     .filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase()))
     .slice(0, 200);
@@ -399,6 +444,120 @@ function PrediktorPage() {
   }
 
   const maxMatrixProb = csRes ? Math.max(...csRes.allScores.map((s) => s.prob)) : 0.15;
+
+  const csIntegrity: IntegrityResult | null = csRes
+    ? evaluatePredictionIntegrity({
+        probability: csRes.bestScore.prob,
+        odds: csRes.bestScore.market,
+        dataQuality: csRes.bestScore.market ? 0.75 : 0.45,
+        fallbackModel: !csRes.bestScore.market,
+        market: "Točan rezultat",
+      })
+    : null;
+
+  const ou35Integrity: IntegrityResult | null = ou35Res
+    ? (() => {
+        const over = ou35Res.concretePick.pick.includes("VIŠE");
+        const odds = over ? ou35Res.marketOver : ou35Res.marketUnder;
+        const oppOdds = over ? ou35Res.marketUnder : ou35Res.marketOver;
+        const bothOdds = odds && oppOdds;
+        return evaluatePredictionIntegrity({
+          probability: over ? ou35Res.probOver : ou35Res.probUnder,
+          odds,
+          marketProbability: bothOdds ? noVigProbability(odds!, oppOdds!) : null,
+          marginPercent: bothOdds ? twoWayMarginPercent(odds!, oppOdds!) : null,
+          dataQuality: bothOdds ? 0.9 : odds ? 0.6 : 0.45,
+          fallbackModel: !odds,
+          market: "Zbroj golova (3.5)",
+        });
+      })()
+    : null;
+
+  const htDrawIntegrity: IntegrityResult | null = htDrawRes
+    ? (() => {
+        const draw = htDrawRes.concretePick.pick.startsWith("DA");
+        const odds = draw ? htDrawRes.marketDraw : htDrawRes.marketNotDraw;
+        const oppOdds = draw ? htDrawRes.marketNotDraw : htDrawRes.marketDraw;
+        const bothOdds = odds && oppOdds;
+        return evaluatePredictionIntegrity({
+          probability: draw ? htDrawRes.probDraw : htDrawRes.probNotDraw,
+          odds,
+          marketProbability: bothOdds ? noVigProbability(odds!, oppOdds!) : null,
+          marginPercent: bothOdds ? twoWayMarginPercent(odds!, oppOdds!) : null,
+          dataQuality: bothOdds ? 0.9 : odds ? 0.6 : 0.45,
+          fallbackModel: !odds,
+          market: "X na poluvremenu",
+        });
+      })()
+    : null;
+
+  const bttsIntegrity: IntegrityResult | null = bttsRes
+    ? (() => {
+        const yes = bttsRes.concretePick.pick.startsWith("DA");
+        const odds = yes ? bttsRes.marketYes : bttsRes.marketNo;
+        const oppOdds = yes ? bttsRes.marketNo : bttsRes.marketYes;
+        const bothOdds = odds && oppOdds;
+        const contradictory = footballContradiction({
+          selected: yes ? "BTTS_YES" : "BTTS_NO",
+          bttsYes: bttsRes.probYes,
+          over25: ouRes?.probOver,
+        });
+        return evaluatePredictionIntegrity({
+          probability: yes ? bttsRes.probYes : bttsRes.probNo,
+          odds,
+          marketProbability: bothOdds ? noVigProbability(odds!, oppOdds!) : null,
+          marginPercent: bothOdds ? twoWayMarginPercent(odds!, oppOdds!) : null,
+          dataQuality: bothOdds ? 0.9 : odds ? 0.6 : 0.45,
+          fallbackModel: !odds,
+          contradictory,
+          market: "Oba daju gol (BTTS)",
+        });
+      })()
+    : null;
+
+  const ouIntegrity: IntegrityResult | null = ouRes
+    ? (() => {
+        const over = ouRes.concretePick.pick.includes("VIŠE");
+        const odds = over ? ouRes.marketOver : ouRes.marketUnder;
+        const oppOdds = over ? ouRes.marketUnder : ouRes.marketOver;
+        const bothOdds = odds && oppOdds;
+        const contradictory = footballContradiction({
+          selected: over ? "OVER_25" : "UNDER_25",
+          over25: ouRes.probOver,
+          bttsYes: bttsRes?.probYes,
+        });
+        return evaluatePredictionIntegrity({
+          probability: over ? ouRes.probOver : ouRes.probUnder,
+          odds,
+          marketProbability: bothOdds ? noVigProbability(odds!, oppOdds!) : null,
+          marginPercent: bothOdds ? twoWayMarginPercent(odds!, oppOdds!) : null,
+          dataQuality: bothOdds ? 0.9 : odds ? 0.6 : 0.45,
+          fallbackModel: !odds,
+          contradictory,
+          market: "Zbroj golova (2.5)",
+        });
+      })()
+    : null;
+
+  const resIntegrity: IntegrityResult | null = res
+    ? (() => {
+        const ftChar = res.concretePick.pick.split("/")[1];
+        const home = res.rows.filter((r) => r.outcome.endsWith("/1")).reduce((s, r) => s + r.prob, 0);
+        const draw = res.rows.filter((r) => r.outcome.endsWith("/X")).reduce((s, r) => s + r.prob, 0);
+        const away = res.rows.filter((r) => r.outcome.endsWith("/2")).reduce((s, r) => s + r.prob, 0);
+        const selected = ftChar === "1" ? "HOME" : ftChar === "X" ? "DRAW" : ftChar === "2" ? "AWAY" : null;
+        const contradictory = selected ? footballContradiction({ selected, home, draw, away }) : false;
+        const prob = res.rows.find((r) => r.outcome === res.concretePick.pick)?.prob ?? res.concretePick.confidenceScore / 100;
+        return evaluatePredictionIntegrity({
+          probability: prob,
+          odds: res.concretePick.marketOdds,
+          dataQuality: res.concretePick.marketOdds ? 0.6 : 0.45,
+          fallbackModel: !res.concretePick.marketOdds,
+          contradictory,
+          market: "Poluvrijeme / Kraj",
+        });
+      })()
+    : null;
 
   return (
     <div className={`transition-all duration-700 ${sharps ? "sharps-aura rounded-2xl" : ""}`}>
@@ -649,6 +808,7 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-emerald-500/20 py-0.5 text-[10px] font-bold text-emerald-400">
                   STRIKTNO REALNO
                 </div>
+                {csIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={csIntegrity} compact /></div>}
                 {sharps && <SharpBadge />}
               </div>
             )}
@@ -672,6 +832,7 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {ou35Res.concretePick.confidenceLevel}
                 </div>
+                {ou35Integrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={ou35Integrity} compact /></div>}
                 {sharps && <SharpBadge />}
               </div>
             )}
@@ -695,6 +856,7 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {htDrawRes.concretePick.confidenceLevel}
                 </div>
+                {htDrawIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={htDrawIntegrity} compact /></div>}
                 {sharps && <SharpBadge />}
               </div>
             )}
@@ -718,6 +880,7 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {bttsRes.concretePick.confidenceLevel}
                 </div>
+                {bttsIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={bttsIntegrity} compact /></div>}
                 {sharps && <SharpBadge />}
               </div>
             )}
@@ -741,6 +904,7 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {ouRes.concretePick.confidenceLevel}
                 </div>
+                {ouIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={ouIntegrity} compact /></div>}
                 {sharps && <SharpBadge />}
               </div>
             )}
@@ -758,9 +922,19 @@ function PrediktorPage() {
                 <div className="mt-2 rounded bg-muted py-0.5 text-[10px] font-bold text-muted-foreground">
                   {res.concretePick.confidenceLevel}
                 </div>
+                {resIntegrity && <div className="mt-2 flex justify-center"><IntegrityPanel result={resIntegrity} compact /></div>}
                 {sharps && <SharpBadge />}
               </div>
             )}
+          </div>
+
+          <div className="mt-5 grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-3">
+            {csIntegrity && <IntegrityPanel result={csIntegrity} title="Integritet: Točan rezultat" />}
+            {ou35Integrity && <IntegrityPanel result={ou35Integrity} title="Integritet: Golovi (3.5)" />}
+            {htDrawIntegrity && <IntegrityPanel result={htDrawIntegrity} title="Integritet: X na HT" />}
+            {bttsIntegrity && <IntegrityPanel result={bttsIntegrity} title="Integritet: BTTS" />}
+            {ouIntegrity && <IntegrityPanel result={ouIntegrity} title="Integritet: Golovi (2.5)" />}
+            {resIntegrity && <IntegrityPanel result={resIntegrity} title="Integritet: HT/FT" />}
           </div>
         </section>
       )}

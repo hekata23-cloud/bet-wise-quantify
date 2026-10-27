@@ -5,10 +5,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, ScanEye, X, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { offlineAnswer, askAi, type ChatTurn } from "@/lib/ai-chat";
+import { askAi, type ChatTurn } from "@/lib/ai-chat";
 import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadJSON, saveJSON, hasKey } from "@/lib/storage";
-import { ORION_BRZI_UPITI, SPORT_PREDLOŠCI, runQuantAnalytics } from "@/lib/botovi";
+import { ORION_BRZI_UPITI, SPORT_PREDLOŠCI, formatOrionResponse, runQuantAnalytics } from "@/lib/botovi";
 
 const KEY = "andromeda.orion.history";
 
@@ -92,11 +92,11 @@ export function Orion() {
         { agent: "orion" },
       )).trim();
       if (!odgovor || !odgovor.trim() || odgovor.trim().length < 15 || /^prazan odgovor$/i.test(odgovor.trim())) {
-        odgovor = offlineAnswer("orion", poruka, runQuantAnalytics(poruka), ["veza prekinuta ili neočekivana greška"]);
+        odgovor = formatOrionResponse(runQuantAnalytics(poruka));
       }
       setMessages((m) => [...m, { role: "assistant", content: odgovor, ts: Date.now() }]);
     } catch {
-      const fallback = offlineAnswer("orion", poruka, runQuantAnalytics(poruka), ["veza prekinuta ili neočekivana greška"]);
+      const fallback = formatOrionResponse(runQuantAnalytics(poruka));
       setMessages((m) => [...m, { role: "assistant", content: fallback, ts: Date.now() }]);
     } finally {
       sendingRef.current = false;

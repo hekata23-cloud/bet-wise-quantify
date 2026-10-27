@@ -1,6 +1,7 @@
 import { emptyInputs, TOP_SCORES, type Inputs, type Outcome } from "./predictor-engine";
 
 const TTL = 24 * 60 * 60 * 1000;
+const ODDS_TTL = 10 * 60 * 1000;
 
 export class LimitError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -25,8 +26,8 @@ export function getZagrebDate(): string {
 export function formatZagrebTime(isoDate: string): string {
   try {
     const d = new Date(isoDate);
+    if (!Number.isFinite(d.getTime())) return "--:--";
     return new Intl.DateTimeFormat("hr-HR", {
-      timeZone: "Europe/Zagreb",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -36,15 +37,24 @@ export function formatZagrebTime(isoDate: string): string {
   }
 }
 
-function cacheGet<T>(key: string): T | null {
+function cacheGet<T>(key: string, maxAge = TTL): T | null {
   try {
     const raw = localStorage.getItem("cache:" + key);
     if (!raw) return null;
     const { t, d } = JSON.parse(raw);
-    if (Date.now() - t > TTL) return null;
+    if (typeof t !== "number" || !Number.isFinite(t) || Date.now() - t > maxAge) return null;
     return d as T;
   } catch {
     return null;
+  }
+}
+
+function cacheTimestamp(key: string): number {
+  try {
+    const entry = JSON.parse(localStorage.getItem("cache:" + key) || "null");
+    return typeof entry?.t === "number" && Number.isFinite(entry.t) ? entry.t : Date.now();
+  } catch {
+    return Date.now();
   }
 }
 
@@ -80,6 +90,13 @@ export type Fixture = {
   status: string;
 };
 
+/** Normalize provider UTC timestamps to ISO Z; reject ambiguous local-time strings. */
+export function normalizeUtcIso(value: unknown): string {
+  if (typeof value !== "string" || !/(Z|[+\-]\d{2}:?\d{2})$/i.test(value)) return "";
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : "";
+}
+
 function getFootballApiConfig(key: string): { baseUrl: string; headers: Record<string, string> } {
   const cleanKey = key.trim();
   const isRapid = cleanKey.length > 40;
@@ -102,10 +119,12 @@ function getFootballApiConfig(key: string): { baseUrl: string; headers: Record<s
   };
 }
 
-async function getJson(url: string, headers: Record<string, string>, key: string, force = false) {
+async function getJson(url: string, headers: Record<string, string>, key: string, force = false, maxAge = TTL) {
   if (!force) {
-    const cached = cacheGet<any>(key);
-    if (cached) return { data: cached, cached: true };
+    const cached = cacheGet<any>(key, maxAge);
+    if (cached) {
+      return { data: cached, cached: true, updatedAt: cacheTimestamp(key) };
+    }
   }
 
   const res = await fetch(url, { headers });
@@ -129,7 +148,7 @@ async function getJson(url: string, headers: Record<string, string>, key: string
   }
 
   cacheSet(key, data);
-  return { data, cached: false };
+  return { data, cached: false, updatedAt: Date.now() };
 }
 
 export async function fetchFixtures(keys: Keys, force = false) {
@@ -152,7 +171,7 @@ export async function fetchFixtures(keys: Keys, force = false) {
     home: f.teams.home.name,
     away: f.teams.away.name,
     league: `${f.league.country ? f.league.country + " · " : ""}${f.league.name}`,
-    time: f.fixture.date,
+    time: normalizeUtcIso(f.fixture.date),
     status: f.fixture.status.short || "NS",
   }));
 
@@ -177,6 +196,7 @@ const fmt = (x: any) => (x && !isNaN(Number(x)) ? String(Number(x).toFixed(2)) :
 export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
   const inp: Inputs = emptyInputs();
   let cached = true;
+  let oddsUpdatedAt = 0;
 
   if (keys.football?.trim()) {
     try {
@@ -185,8 +205,10 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
         `${config.baseUrl}/odds?fixture=${fx.id}&timezone=Europe/Zagreb`,
         config.headers,
         `afodds:${fx.id}`,
-        force
+        force,
+        ODDS_TTL
       );
+      oddsUpdatedAt = Math.max(oddsUpdatedAt, af.updatedAt);
       cached &&= af.cached;
 
       const allBms = af.data.response?.[0]?.bookmakers ?? [];
@@ -258,8 +280,10 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
         `https://api.the-odds-api.com/v4/sports/${keys.sport}/odds?apiKey=${keys.odds.trim()}&regions=eu&markets=h2h,totals&oddsFormat=decimal`,
         {},
         `oddsapi:${keys.sport}`,
-        force
+        force,
+        ODDS_TTL
       );
+      oddsUpdatedAt = Math.max(oddsUpdatedAt, od.updatedAt);
       cached &&= od.cached;
 
       const ev = (od.data as any[]).find((e) => {
@@ -311,7 +335,6 @@ export async function fetchMatchOdds(keys: Keys, fx: Fixture, force = false) {
     }
   }
 
-  return { inputs: inp, cached };
+  return { inputs: inp, cached, oddsUpdatedAt };
 }
-
 

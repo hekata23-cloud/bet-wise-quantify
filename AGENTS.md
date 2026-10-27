@@ -15,3 +15,7 @@
 - Zlatni tip is a prebuilt bundle served from public/zlatni-tip/ and shown in an iframe on /zlatni-tip — its global CSS would otherwise break the main app.
 
 - Zlatni tip is a native React page (src/routes/zlatni-tip.tsx + src/lib/zlatni-engine.ts); all API-Football calls go through src/lib/zlatni-guard.ts — why: the old prebuilt iframe could not be fixed and unguarded calls risk account suspension.
+- Basketball (/kosarka) uses API-Basketball via src/lib/kosarka.functions.ts and its own guard src/lib/kosarka-guard.ts — separate daily quota from API-Football.
+- Prediction Integrity Gate lives in pure src/lib/prediction-integrity.ts and is shown via src/components/IntegrityPanel.tsx on every prediction card; it may only lower confidence or block a pick, never raise it — keeps engine math authoritative.
+
+- Sports Pro passes saved browser credentials through POST server functions to all guarded API calls; settings update the canonical key and caches are credential-scoped — prevents missing keys and cross-account cache reuse.

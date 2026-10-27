@@ -12,24 +12,49 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiPrognozaRouteImport } from './routes/ai-prognoza'
 import { Route as BttsOverRouteImport } from './routes/btts-over'
+import { Route as BttsUltraRouteImport } from './routes/btts-ultra'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as DnbMasterRouteImport } from './routes/dnb-master'
+import { Route as DnevnikRouteImport } from './routes/dnevnik'
 import { Route as GoloviRouteImport } from './routes/golovi'
 import { Route as HtFtRouteImport } from './routes/ht-ft'
+import { Route as HtFtBetaRouteImport } from './routes/ht-ft-beta'
+import { Route as HtFtPredikcijaRouteImport } from './routes/ht-ft-predikcija'
+import { Route as InfoRouteImport } from './routes/info'
 import { Route as KalkulatorRouteImport } from './routes/kalkulator'
+import { Route as KosarkaRouteImport } from './routes/kosarka'
+import { Route as KosarkaProRouteImport } from './routes/kosarka-pro'
+import { Route as LearnRouteImport } from './routes/learn'
+import { Route as ListiciRouteImport } from './routes/listici'
+import { Route as ObrnuteKvoteRouteImport } from './routes/obrnute-kvote'
+import { Route as OuNiskiRouteImport } from './routes/ou-niski'
 import { Route as OverUnderRouteImport } from './routes/over-under'
+import { Route as Over25ProRouteImport } from './routes/over25-pro'
 import { Route as PostavkeRouteImport } from './routes/postavke'
 import { Route as PrediktorRouteImport } from './routes/prediktor'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as ProAlatiRouteImport } from './routes/pro-alati'
 import { Route as RadarRouteImport } from './routes/radar'
+import { Route as RukometRouteImport } from './routes/rukomet'
+import { Route as RukometProRouteImport } from './routes/rukomet-pro'
+import { Route as SmartMoneyRouteImport } from './routes/smart-money'
 import { Route as TiketArhitektRouteImport } from './routes/tiket-arhitekt'
+import { Route as TrackRecordRouteImport } from './routes/track-record'
 import { Route as UzivoRouteImport } from './routes/uzivo'
+import { Route as VirtualnaRouteImport } from './routes/virtualna'
 import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
+import { Route as LearnIndexRouteImport } from './routes/learn.index'
+import { Route as LearnCommunityRouteImport } from './routes/learn.community'
+import { Route as LearnCoursesRouteImport } from './routes/learn.courses'
+import { Route as LearnLoginRouteImport } from './routes/learn.login'
+import { Route as LearnPathRouteImport } from './routes/learn.path'
+import { Route as LearnProgressRouteImport } from './routes/learn.progress'
 import { Route as OverUnderIndexRouteImport } from './routes/over-under.index'
 import { Route as OverUnderPostavkeRouteImport } from './routes/over-under.postavke'
 import { Route as ApiPublicFootballDataRouteImport } from './routes/api/public/football-data'
-import { Route as ApiPublicGeminiRouteImport } from './routes/api/public/gemini'
 import { Route as ApiPublicNvidiaRouteImport } from './routes/api/public/nvidia'
+import { Route as LearnCourseCourseIdRouteImport } from './routes/learn.course.$courseId'
+import { Route as LearnLessonTopicIdKindRouteImport } from './routes/learn.lesson.$topicId.$kind'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,9 +71,24 @@ const BttsOverRoute = BttsOverRouteImport.update({
   path: '/btts-over',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BttsUltraRoute = BttsUltraRouteImport.update({
+  id: '/btts-ultra',
+  path: '/btts-ultra',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DnbMasterRoute = DnbMasterRouteImport.update({
+  id: '/dnb-master',
+  path: '/dnb-master',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DnevnikRoute = DnevnikRouteImport.update({
+  id: '/dnevnik',
+  path: '/dnevnik',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoloviRoute = GoloviRouteImport.update({
@@ -61,14 +101,64 @@ const HtFtRoute = HtFtRouteImport.update({
   path: '/ht-ft',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HtFtBetaRoute = HtFtBetaRouteImport.update({
+  id: '/ht-ft-beta',
+  path: '/ht-ft-beta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HtFtPredikcijaRoute = HtFtPredikcijaRouteImport.update({
+  id: '/ht-ft-predikcija',
+  path: '/ht-ft-predikcija',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InfoRoute = InfoRouteImport.update({
+  id: '/info',
+  path: '/info',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KalkulatorRoute = KalkulatorRouteImport.update({
   id: '/kalkulator',
   path: '/kalkulator',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KosarkaRoute = KosarkaRouteImport.update({
+  id: '/kosarka',
+  path: '/kosarka',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KosarkaProRoute = KosarkaProRouteImport.update({
+  id: '/kosarka-pro',
+  path: '/kosarka-pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LearnRoute = LearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListiciRoute = ListiciRouteImport.update({
+  id: '/listici',
+  path: '/listici',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ObrnuteKvoteRoute = ObrnuteKvoteRouteImport.update({
+  id: '/obrnute-kvote',
+  path: '/obrnute-kvote',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OuNiskiRoute = OuNiskiRouteImport.update({
+  id: '/ou-niski',
+  path: '/ou-niski',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OverUnderRoute = OverUnderRouteImport.update({
   id: '/over-under',
   path: '/over-under',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Over25ProRoute = Over25ProRouteImport.update({
+  id: '/over25-pro',
+  path: '/over25-pro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostavkeRoute = PostavkeRouteImport.update({
@@ -96,9 +186,29 @@ const RadarRoute = RadarRouteImport.update({
   path: '/radar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RukometRoute = RukometRouteImport.update({
+  id: '/rukomet',
+  path: '/rukomet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RukometProRoute = RukometProRouteImport.update({
+  id: '/rukomet-pro',
+  path: '/rukomet-pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SmartMoneyRoute = SmartMoneyRouteImport.update({
+  id: '/smart-money',
+  path: '/smart-money',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TiketArhitektRoute = TiketArhitektRouteImport.update({
   id: '/tiket-arhitekt',
   path: '/tiket-arhitekt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrackRecordRoute = TrackRecordRouteImport.update({
+  id: '/track-record',
+  path: '/track-record',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UzivoRoute = UzivoRouteImport.update({
@@ -106,10 +216,45 @@ const UzivoRoute = UzivoRouteImport.update({
   path: '/uzivo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VirtualnaRoute = VirtualnaRouteImport.update({
+  id: '/virtualna',
+  path: '/virtualna',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ZlatniTipRoute = ZlatniTipRouteImport.update({
   id: '/zlatni-tip',
   path: '/zlatni-tip',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LearnIndexRoute = LearnIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnCommunityRoute = LearnCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnCoursesRoute = LearnCoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnLoginRoute = LearnLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnPathRoute = LearnPathRouteImport.update({
+  id: '/path',
+  path: '/path',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnProgressRoute = LearnProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => LearnRoute,
 } as any)
 const OverUnderIndexRoute = OverUnderIndexRouteImport.update({
   id: '/',
@@ -126,85 +271,164 @@ const ApiPublicFootballDataRoute = ApiPublicFootballDataRouteImport.update({
   path: '/api/public/football-data',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicGeminiRoute = ApiPublicGeminiRouteImport.update({
-  id: '/api/public/gemini',
-  path: '/api/public/gemini',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicNvidiaRoute = ApiPublicNvidiaRouteImport.update({
   id: '/api/public/nvidia',
   path: '/api/public/nvidia',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LearnCourseCourseIdRoute = LearnCourseCourseIdRouteImport.update({
+  id: '/course/$courseId',
+  path: '/course/$courseId',
+  getParentRoute: () => LearnRoute,
+} as any)
+const LearnLessonTopicIdKindRoute = LearnLessonTopicIdKindRouteImport.update({
+  id: '/lesson/$topicId/$kind',
+  path: '/lesson/$topicId/$kind',
+  getParentRoute: () => LearnRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
+  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
+  '/dnb-master': typeof DnbMasterRoute
+  '/dnevnik': typeof DnevnikRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
+  '/ht-ft-beta': typeof HtFtBetaRoute
+  '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
+  '/info': typeof InfoRoute
   '/kalkulator': typeof KalkulatorRoute
+  '/kosarka': typeof KosarkaRoute
+  '/kosarka-pro': typeof KosarkaProRoute
+  '/learn': typeof LearnRouteWithChildren
+  '/listici': typeof ListiciRoute
+  '/obrnute-kvote': typeof ObrnuteKvoteRoute
+  '/ou-niski': typeof OuNiskiRoute
   '/over-under': typeof OverUnderRouteWithChildren
+  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/rukomet': typeof RukometRoute
+  '/rukomet-pro': typeof RukometProRoute
+  '/smart-money': typeof SmartMoneyRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
+  '/track-record': typeof TrackRecordRoute
   '/uzivo': typeof UzivoRoute
+  '/virtualna': typeof VirtualnaRoute
   '/zlatni-tip': typeof ZlatniTipRoute
+  '/learn/community': typeof LearnCommunityRoute
+  '/learn/courses': typeof LearnCoursesRoute
+  '/learn/login': typeof LearnLoginRoute
+  '/learn/path': typeof LearnPathRoute
+  '/learn/progress': typeof LearnProgressRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/learn/': typeof LearnIndexRoute
   '/over-under/': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
-  '/api/public/gemini': typeof ApiPublicGeminiRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
+  '/learn/course/$courseId': typeof LearnCourseCourseIdRoute
+  '/learn/lesson/$topicId/$kind': typeof LearnLessonTopicIdKindRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
+  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
+  '/dnb-master': typeof DnbMasterRoute
+  '/dnevnik': typeof DnevnikRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
+  '/ht-ft-beta': typeof HtFtBetaRoute
+  '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
+  '/info': typeof InfoRoute
   '/kalkulator': typeof KalkulatorRoute
+  '/kosarka': typeof KosarkaRoute
+  '/kosarka-pro': typeof KosarkaProRoute
+  '/listici': typeof ListiciRoute
+  '/obrnute-kvote': typeof ObrnuteKvoteRoute
+  '/ou-niski': typeof OuNiskiRoute
+  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/rukomet': typeof RukometRoute
+  '/rukomet-pro': typeof RukometProRoute
+  '/smart-money': typeof SmartMoneyRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
+  '/track-record': typeof TrackRecordRoute
   '/uzivo': typeof UzivoRoute
+  '/virtualna': typeof VirtualnaRoute
   '/zlatni-tip': typeof ZlatniTipRoute
+  '/learn/community': typeof LearnCommunityRoute
+  '/learn/courses': typeof LearnCoursesRoute
+  '/learn/login': typeof LearnLoginRoute
+  '/learn/path': typeof LearnPathRoute
+  '/learn/progress': typeof LearnProgressRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/learn': typeof LearnIndexRoute
   '/over-under': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
-  '/api/public/gemini': typeof ApiPublicGeminiRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
+  '/learn/course/$courseId': typeof LearnCourseCourseIdRoute
+  '/learn/lesson/$topicId/$kind': typeof LearnLessonTopicIdKindRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ai-prognoza': typeof AiPrognozaRoute
   '/btts-over': typeof BttsOverRoute
+  '/btts-ultra': typeof BttsUltraRoute
   '/chat': typeof ChatRoute
+  '/dnb-master': typeof DnbMasterRoute
+  '/dnevnik': typeof DnevnikRoute
   '/golovi': typeof GoloviRoute
   '/ht-ft': typeof HtFtRoute
+  '/ht-ft-beta': typeof HtFtBetaRoute
+  '/ht-ft-predikcija': typeof HtFtPredikcijaRoute
+  '/info': typeof InfoRoute
   '/kalkulator': typeof KalkulatorRoute
+  '/kosarka': typeof KosarkaRoute
+  '/kosarka-pro': typeof KosarkaProRoute
+  '/learn': typeof LearnRouteWithChildren
+  '/listici': typeof ListiciRoute
+  '/obrnute-kvote': typeof ObrnuteKvoteRoute
+  '/ou-niski': typeof OuNiskiRoute
   '/over-under': typeof OverUnderRouteWithChildren
+  '/over25-pro': typeof Over25ProRoute
   '/postavke': typeof PostavkeRoute
   '/prediktor': typeof PrediktorRoute
   '/pro': typeof ProRoute
   '/pro-alati': typeof ProAlatiRoute
   '/radar': typeof RadarRoute
+  '/rukomet': typeof RukometRoute
+  '/rukomet-pro': typeof RukometProRoute
+  '/smart-money': typeof SmartMoneyRoute
   '/tiket-arhitekt': typeof TiketArhitektRoute
+  '/track-record': typeof TrackRecordRoute
   '/uzivo': typeof UzivoRoute
+  '/virtualna': typeof VirtualnaRoute
   '/zlatni-tip': typeof ZlatniTipRoute
+  '/learn/community': typeof LearnCommunityRoute
+  '/learn/courses': typeof LearnCoursesRoute
+  '/learn/login': typeof LearnLoginRoute
+  '/learn/path': typeof LearnPathRoute
+  '/learn/progress': typeof LearnProgressRoute
   '/over-under/postavke': typeof OverUnderPostavkeRoute
+  '/learn/': typeof LearnIndexRoute
   '/over-under/': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
-  '/api/public/gemini': typeof ApiPublicGeminiRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
+  '/learn/course/$courseId': typeof LearnCourseCourseIdRoute
+  '/learn/lesson/$topicId/$kind': typeof LearnLessonTopicIdKindRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -212,90 +436,181 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
+    | '/btts-ultra'
     | '/chat'
+    | '/dnb-master'
+    | '/dnevnik'
     | '/golovi'
     | '/ht-ft'
+    | '/ht-ft-beta'
+    | '/ht-ft-predikcija'
+    | '/info'
     | '/kalkulator'
+    | '/kosarka'
+    | '/kosarka-pro'
+    | '/learn'
+    | '/listici'
+    | '/obrnute-kvote'
+    | '/ou-niski'
     | '/over-under'
+    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/rukomet'
+    | '/rukomet-pro'
+    | '/smart-money'
     | '/tiket-arhitekt'
+    | '/track-record'
     | '/uzivo'
+    | '/virtualna'
     | '/zlatni-tip'
+    | '/learn/community'
+    | '/learn/courses'
+    | '/learn/login'
+    | '/learn/path'
+    | '/learn/progress'
     | '/over-under/postavke'
+    | '/learn/'
     | '/over-under/'
     | '/api/public/football-data'
-    | '/api/public/gemini'
     | '/api/public/nvidia'
+    | '/learn/course/$courseId'
+    | '/learn/lesson/$topicId/$kind'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
+    | '/btts-ultra'
     | '/chat'
+    | '/dnb-master'
+    | '/dnevnik'
     | '/golovi'
     | '/ht-ft'
+    | '/ht-ft-beta'
+    | '/ht-ft-predikcija'
+    | '/info'
     | '/kalkulator'
+    | '/kosarka'
+    | '/kosarka-pro'
+    | '/listici'
+    | '/obrnute-kvote'
+    | '/ou-niski'
+    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/rukomet'
+    | '/rukomet-pro'
+    | '/smart-money'
     | '/tiket-arhitekt'
+    | '/track-record'
     | '/uzivo'
+    | '/virtualna'
     | '/zlatni-tip'
+    | '/learn/community'
+    | '/learn/courses'
+    | '/learn/login'
+    | '/learn/path'
+    | '/learn/progress'
     | '/over-under/postavke'
+    | '/learn'
     | '/over-under'
     | '/api/public/football-data'
-    | '/api/public/gemini'
     | '/api/public/nvidia'
+    | '/learn/course/$courseId'
+    | '/learn/lesson/$topicId/$kind'
   id:
     | '__root__'
     | '/'
     | '/ai-prognoza'
     | '/btts-over'
+    | '/btts-ultra'
     | '/chat'
+    | '/dnb-master'
+    | '/dnevnik'
     | '/golovi'
     | '/ht-ft'
+    | '/ht-ft-beta'
+    | '/ht-ft-predikcija'
+    | '/info'
     | '/kalkulator'
+    | '/kosarka'
+    | '/kosarka-pro'
+    | '/learn'
+    | '/listici'
+    | '/obrnute-kvote'
+    | '/ou-niski'
     | '/over-under'
+    | '/over25-pro'
     | '/postavke'
     | '/prediktor'
     | '/pro'
     | '/pro-alati'
     | '/radar'
+    | '/rukomet'
+    | '/rukomet-pro'
+    | '/smart-money'
     | '/tiket-arhitekt'
+    | '/track-record'
     | '/uzivo'
+    | '/virtualna'
     | '/zlatni-tip'
+    | '/learn/community'
+    | '/learn/courses'
+    | '/learn/login'
+    | '/learn/path'
+    | '/learn/progress'
     | '/over-under/postavke'
+    | '/learn/'
     | '/over-under/'
     | '/api/public/football-data'
-    | '/api/public/gemini'
     | '/api/public/nvidia'
+    | '/learn/course/$courseId'
+    | '/learn/lesson/$topicId/$kind'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiPrognozaRoute: typeof AiPrognozaRoute
   BttsOverRoute: typeof BttsOverRoute
+  BttsUltraRoute: typeof BttsUltraRoute
   ChatRoute: typeof ChatRoute
+  DnbMasterRoute: typeof DnbMasterRoute
+  DnevnikRoute: typeof DnevnikRoute
   GoloviRoute: typeof GoloviRoute
   HtFtRoute: typeof HtFtRoute
+  HtFtBetaRoute: typeof HtFtBetaRoute
+  HtFtPredikcijaRoute: typeof HtFtPredikcijaRoute
+  InfoRoute: typeof InfoRoute
   KalkulatorRoute: typeof KalkulatorRoute
+  KosarkaRoute: typeof KosarkaRoute
+  KosarkaProRoute: typeof KosarkaProRoute
+  LearnRoute: typeof LearnRouteWithChildren
+  ListiciRoute: typeof ListiciRoute
+  ObrnuteKvoteRoute: typeof ObrnuteKvoteRoute
+  OuNiskiRoute: typeof OuNiskiRoute
   OverUnderRoute: typeof OverUnderRouteWithChildren
+  Over25ProRoute: typeof Over25ProRoute
   PostavkeRoute: typeof PostavkeRoute
   PrediktorRoute: typeof PrediktorRoute
   ProRoute: typeof ProRoute
   ProAlatiRoute: typeof ProAlatiRoute
   RadarRoute: typeof RadarRoute
+  RukometRoute: typeof RukometRoute
+  RukometProRoute: typeof RukometProRoute
+  SmartMoneyRoute: typeof SmartMoneyRoute
   TiketArhitektRoute: typeof TiketArhitektRoute
+  TrackRecordRoute: typeof TrackRecordRoute
   UzivoRoute: typeof UzivoRoute
+  VirtualnaRoute: typeof VirtualnaRoute
   ZlatniTipRoute: typeof ZlatniTipRoute
   ApiPublicFootballDataRoute: typeof ApiPublicFootballDataRoute
-  ApiPublicGeminiRoute: typeof ApiPublicGeminiRoute
   ApiPublicNvidiaRoute: typeof ApiPublicNvidiaRoute
 }
 
@@ -322,11 +637,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BttsOverRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/btts-ultra': {
+      id: '/btts-ultra'
+      path: '/btts-ultra'
+      fullPath: '/btts-ultra'
+      preLoaderRoute: typeof BttsUltraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dnb-master': {
+      id: '/dnb-master'
+      path: '/dnb-master'
+      fullPath: '/dnb-master'
+      preLoaderRoute: typeof DnbMasterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dnevnik': {
+      id: '/dnevnik'
+      path: '/dnevnik'
+      fullPath: '/dnevnik'
+      preLoaderRoute: typeof DnevnikRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/golovi': {
@@ -343,6 +679,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HtFtRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ht-ft-beta': {
+      id: '/ht-ft-beta'
+      path: '/ht-ft-beta'
+      fullPath: '/ht-ft-beta'
+      preLoaderRoute: typeof HtFtBetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ht-ft-predikcija': {
+      id: '/ht-ft-predikcija'
+      path: '/ht-ft-predikcija'
+      fullPath: '/ht-ft-predikcija'
+      preLoaderRoute: typeof HtFtPredikcijaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/info': {
+      id: '/info'
+      path: '/info'
+      fullPath: '/info'
+      preLoaderRoute: typeof InfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/kalkulator': {
       id: '/kalkulator'
       path: '/kalkulator'
@@ -350,11 +707,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KalkulatorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/kosarka': {
+      id: '/kosarka'
+      path: '/kosarka'
+      fullPath: '/kosarka'
+      preLoaderRoute: typeof KosarkaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kosarka-pro': {
+      id: '/kosarka-pro'
+      path: '/kosarka-pro'
+      fullPath: '/kosarka-pro'
+      preLoaderRoute: typeof KosarkaProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/learn': {
+      id: '/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listici': {
+      id: '/listici'
+      path: '/listici'
+      fullPath: '/listici'
+      preLoaderRoute: typeof ListiciRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/obrnute-kvote': {
+      id: '/obrnute-kvote'
+      path: '/obrnute-kvote'
+      fullPath: '/obrnute-kvote'
+      preLoaderRoute: typeof ObrnuteKvoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ou-niski': {
+      id: '/ou-niski'
+      path: '/ou-niski'
+      fullPath: '/ou-niski'
+      preLoaderRoute: typeof OuNiskiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/over-under': {
       id: '/over-under'
       path: '/over-under'
       fullPath: '/over-under'
       preLoaderRoute: typeof OverUnderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/over25-pro': {
+      id: '/over25-pro'
+      path: '/over25-pro'
+      fullPath: '/over25-pro'
+      preLoaderRoute: typeof Over25ProRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/postavke': {
@@ -392,11 +798,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RadarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rukomet': {
+      id: '/rukomet'
+      path: '/rukomet'
+      fullPath: '/rukomet'
+      preLoaderRoute: typeof RukometRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rukomet-pro': {
+      id: '/rukomet-pro'
+      path: '/rukomet-pro'
+      fullPath: '/rukomet-pro'
+      preLoaderRoute: typeof RukometProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/smart-money': {
+      id: '/smart-money'
+      path: '/smart-money'
+      fullPath: '/smart-money'
+      preLoaderRoute: typeof SmartMoneyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tiket-arhitekt': {
       id: '/tiket-arhitekt'
       path: '/tiket-arhitekt'
       fullPath: '/tiket-arhitekt'
       preLoaderRoute: typeof TiketArhitektRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/track-record': {
+      id: '/track-record'
+      path: '/track-record'
+      fullPath: '/track-record'
+      preLoaderRoute: typeof TrackRecordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/uzivo': {
@@ -406,12 +840,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UzivoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/virtualna': {
+      id: '/virtualna'
+      path: '/virtualna'
+      fullPath: '/virtualna'
+      preLoaderRoute: typeof VirtualnaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/zlatni-tip': {
       id: '/zlatni-tip'
       path: '/zlatni-tip'
       fullPath: '/zlatni-tip'
       preLoaderRoute: typeof ZlatniTipRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/learn/': {
+      id: '/learn/'
+      path: '/'
+      fullPath: '/learn/'
+      preLoaderRoute: typeof LearnIndexRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/community': {
+      id: '/learn/community'
+      path: '/community'
+      fullPath: '/learn/community'
+      preLoaderRoute: typeof LearnCommunityRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/courses': {
+      id: '/learn/courses'
+      path: '/courses'
+      fullPath: '/learn/courses'
+      preLoaderRoute: typeof LearnCoursesRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/login': {
+      id: '/learn/login'
+      path: '/login'
+      fullPath: '/learn/login'
+      preLoaderRoute: typeof LearnLoginRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/path': {
+      id: '/learn/path'
+      path: '/path'
+      fullPath: '/learn/path'
+      preLoaderRoute: typeof LearnPathRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/progress': {
+      id: '/learn/progress'
+      path: '/progress'
+      fullPath: '/learn/progress'
+      preLoaderRoute: typeof LearnProgressRouteImport
+      parentRoute: typeof LearnRoute
     }
     '/over-under/': {
       id: '/over-under/'
@@ -434,13 +917,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFootballDataRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/gemini': {
-      id: '/api/public/gemini'
-      path: '/api/public/gemini'
-      fullPath: '/api/public/gemini'
-      preLoaderRoute: typeof ApiPublicGeminiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/nvidia': {
       id: '/api/public/nvidia'
       path: '/api/public/nvidia'
@@ -448,8 +924,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicNvidiaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learn/course/$courseId': {
+      id: '/learn/course/$courseId'
+      path: '/course/$courseId'
+      fullPath: '/learn/course/$courseId'
+      preLoaderRoute: typeof LearnCourseCourseIdRouteImport
+      parentRoute: typeof LearnRoute
+    }
+    '/learn/lesson/$topicId/$kind': {
+      id: '/learn/lesson/$topicId/$kind'
+      path: '/lesson/$topicId/$kind'
+      fullPath: '/learn/lesson/$topicId/$kind'
+      preLoaderRoute: typeof LearnLessonTopicIdKindRouteImport
+      parentRoute: typeof LearnRoute
+    }
   }
 }
+
+interface LearnRouteChildren {
+  LearnCommunityRoute: typeof LearnCommunityRoute
+  LearnCoursesRoute: typeof LearnCoursesRoute
+  LearnLoginRoute: typeof LearnLoginRoute
+  LearnPathRoute: typeof LearnPathRoute
+  LearnProgressRoute: typeof LearnProgressRoute
+  LearnIndexRoute: typeof LearnIndexRoute
+  LearnCourseCourseIdRoute: typeof LearnCourseCourseIdRoute
+  LearnLessonTopicIdKindRoute: typeof LearnLessonTopicIdKindRoute
+}
+
+const LearnRouteChildren: LearnRouteChildren = {
+  LearnCommunityRoute: LearnCommunityRoute,
+  LearnCoursesRoute: LearnCoursesRoute,
+  LearnLoginRoute: LearnLoginRoute,
+  LearnPathRoute: LearnPathRoute,
+  LearnProgressRoute: LearnProgressRoute,
+  LearnIndexRoute: LearnIndexRoute,
+  LearnCourseCourseIdRoute: LearnCourseCourseIdRoute,
+  LearnLessonTopicIdKindRoute: LearnLessonTopicIdKindRoute,
+}
+
+const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
 
 interface OverUnderRouteChildren {
   OverUnderPostavkeRoute: typeof OverUnderPostavkeRoute
@@ -469,21 +983,38 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiPrognozaRoute: AiPrognozaRoute,
   BttsOverRoute: BttsOverRoute,
+  BttsUltraRoute: BttsUltraRoute,
   ChatRoute: ChatRoute,
+  DnbMasterRoute: DnbMasterRoute,
+  DnevnikRoute: DnevnikRoute,
   GoloviRoute: GoloviRoute,
   HtFtRoute: HtFtRoute,
+  HtFtBetaRoute: HtFtBetaRoute,
+  HtFtPredikcijaRoute: HtFtPredikcijaRoute,
+  InfoRoute: InfoRoute,
   KalkulatorRoute: KalkulatorRoute,
+  KosarkaRoute: KosarkaRoute,
+  KosarkaProRoute: KosarkaProRoute,
+  LearnRoute: LearnRouteWithChildren,
+  ListiciRoute: ListiciRoute,
+  ObrnuteKvoteRoute: ObrnuteKvoteRoute,
+  OuNiskiRoute: OuNiskiRoute,
   OverUnderRoute: OverUnderRouteWithChildren,
+  Over25ProRoute: Over25ProRoute,
   PostavkeRoute: PostavkeRoute,
   PrediktorRoute: PrediktorRoute,
   ProRoute: ProRoute,
   ProAlatiRoute: ProAlatiRoute,
   RadarRoute: RadarRoute,
+  RukometRoute: RukometRoute,
+  RukometProRoute: RukometProRoute,
+  SmartMoneyRoute: SmartMoneyRoute,
   TiketArhitektRoute: TiketArhitektRoute,
+  TrackRecordRoute: TrackRecordRoute,
   UzivoRoute: UzivoRoute,
+  VirtualnaRoute: VirtualnaRoute,
   ZlatniTipRoute: ZlatniTipRoute,
   ApiPublicFootballDataRoute: ApiPublicFootballDataRoute,
-  ApiPublicGeminiRoute: ApiPublicGeminiRoute,
   ApiPublicNvidiaRoute: ApiPublicNvidiaRoute,
 }
 export const routeTree = rootRouteImport
