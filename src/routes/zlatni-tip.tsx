@@ -1,17 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getZtFixtures, getZtMatch, type ZtFixture } from "@/lib/zlatni-tip.functions";
-import { analyze, type Analysis, type Outcome } from "@/lib/zlatni-engine";
+import { analyze, type Analysis } from "@/lib/zlatni-engine";
 import { getApiKey, guarded, pruneCache, readState, resetGuard, zagrebDay, RESERVE } from "@/lib/zlatni-guard";
 import { SettingsModal } from "@/components/SettingsModal";
-import { IntegrityPanel } from "@/components/IntegrityPanel";
-import {
-  evaluatePredictionIntegrity,
-  footballContradiction,
-  noVigProbability,
-  twoWayMarginPercent,
-  type IntegrityResult,
-} from "@/lib/prediction-integrity";
 
 export const Route = createFileRoute("/zlatni-tip")({
   head: () => ({
@@ -29,55 +21,6 @@ export const Route = createFileRoute("/zlatni-tip")({
 
 const pct = (p: number) => `${(p * 100).toFixed(1)}%`;
 const time = (t: string) => new Date(t).toLocaleTimeString("hr-HR", { timeZone: "Europe/Zagreb", hour: "2-digit", minute: "2-digit" });
-
-function findMarket(res: Analysis, name: string) {
-  return res.markets.find((m) => m.name === name);
-}
-
-function goalsContext(res: Analysis) {
-  const ou25 = findMarket(res, "Ukupno golova 2.5");
-  const btts = findMarket(res, "Oba tima zabijaju (GG)");
-  const wdl = findMarket(res, "Konačan ishod 1X2");
-  return {
-    over25: ou25?.outcomes.find((o) => o.label === "Više 2.5")?.p,
-    bttsYes: btts?.outcomes.find((o) => o.label === "DA")?.p,
-    home: wdl?.outcomes.find((o) => o.label === "1")?.p,
-    draw: wdl?.outcomes.find((o) => o.label === "X")?.p,
-    away: wdl?.outcomes.find((o) => o.label === "2")?.p,
-  };
-}
-
-function selectedTypeFor(market: string, label: string) {
-  if (market === "Ukupno golova 2.5") return label.startsWith("Više") ? ("OVER_25" as const) : ("UNDER_25" as const);
-  if (market === "Oba tima zabijaju (GG)") return label === "DA" ? ("BTTS_YES" as const) : ("BTTS_NO" as const);
-  if (market === "Konačan ishod 1X2") return label === "1" ? ("HOME" as const) : label === "X" ? ("DRAW" as const) : ("AWAY" as const);
-  return null;
-}
-
-function buildIntegrity(pick: { market: string; outcome: Outcome } | null, res: Analysis): IntegrityResult | null {
-  if (!pick) return null;
-  const { outcome, market } = pick;
-  const m = res.markets.find((mm) => mm.name === market);
-  const opposite = m && m.outcomes.length === 2 ? m.outcomes.find((o) => o !== outcome) : undefined;
-  const bothHaveOdds = !!(opposite?.odd && outcome.odd);
-  const marketProbability = bothHaveOdds ? noVigProbability(outcome.odd!, opposite!.odd!) : null;
-  const marginPercent = bothHaveOdds ? twoWayMarginPercent(outcome.odd!, opposite!.odd!) : null;
-  const selected = selectedTypeFor(market, outcome.label);
-  const ctx = goalsContext(res);
-  const contradictory = selected ? footballContradiction({ selected, ...ctx }) : false;
-  const hasOdds = !!outcome.odd;
-  const dataQuality = m?.source === "tržište" ? 0.9 : hasOdds ? 0.6 : 0.45;
-  return evaluatePredictionIntegrity({
-    probability: outcome.p,
-    odds: outcome.odd ?? null,
-    marketProbability,
-    marginPercent,
-    dataQuality,
-    contradictory,
-    fallbackModel: !hasOdds,
-    market,
-  });
-}
 
 function ZlatniTip() {
   const [list, setList] = useState<ZtFixture[]>([]);
@@ -145,10 +88,6 @@ function ZlatniTip() {
   const shown = list.filter((f) => `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase()));
   const groups = useMemo(() => ["Sve", ...new Set(res?.markets.map((m) => m.group) ?? [])], [res]);
 
-  const goldenIntegrity = res ? buildIntegrity(res.golden, res) : null;
-  const safeIntegrity = res?.safe ? buildIntegrity(res.safe, res) : null;
-  const valueIntegrity = res?.value ? buildIntegrity(res.value, res) : null;
-
   return (
     <div className="flex flex-col gap-4 p-2 md:p-4">
       <section className="rounded-2xl border border-border bg-card p-4">
@@ -202,22 +141,11 @@ function ZlatniTip() {
             ) : <p className="mt-1 text-sm text-muted-foreground">Nema dovoljno bet365 kvota za zlatni tip.</p>}
             <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
               <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">Očekivani golovi: <b>{res.lh.toFixed(2)} : {res.la.toFixed(2)}</b></div>
-              {res.safe && (
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">
-                  Najsigurnije: <b>{res.safe.market} — {res.safe.outcome.label}</b> ({pct(res.safe.outcome.p)}, {res.safe.outcome.odd?.toFixed(2)})
-                  {safeIntegrity && <span className="ml-2"><IntegrityPanel result={safeIntegrity} compact /></span>}
-                </div>
-              )}
-              {res.value && (
-                <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">
-                  Najveći value: <b>{res.value.market} — {res.value.outcome.label}</b> (EV {((res.value.outcome.ev ?? 0) * 100).toFixed(1)}%)
-                  {valueIntegrity && <span className="ml-2"><IntegrityPanel result={valueIntegrity} compact /></span>}
-                </div>
-              )}
+              {res.safe && <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">Najsigurnije: <b>{res.safe.market} — {res.safe.outcome.label}</b> ({pct(res.safe.outcome.p)}, {res.safe.outcome.odd?.toFixed(2)})</div>}
+              {res.value && <div className="rounded-lg bg-secondary p-2 text-secondary-foreground">Najveći value: <b>{res.value.market} — {res.value.outcome.label}</b> (EV {((res.value.outcome.ev ?? 0) * 100).toFixed(1)}%)</div>}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Najvjerojatniji rezultati: {res.topScores.map((s) => `${s.score} (${pct(s.p)})`).join(" · ")}</p>
             {warn.map((w) => <p key={w} className="text-[11px] text-muted-foreground">• {w}</p>)}
-            {goldenIntegrity && <IntegrityPanel result={goldenIntegrity} title="Provjera zlatnog tipa" />}
           </div>
 
           <div className="flex flex-wrap gap-1">

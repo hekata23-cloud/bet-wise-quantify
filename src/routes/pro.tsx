@@ -12,9 +12,8 @@ import { geminiChat } from "@/lib/gemini";
 import { openrouterChat } from "@/lib/openrouter";
 import { groqChat } from "@/lib/groq";
 import { hasKey } from "@/lib/storage";
+import { generateSportPrediction } from "@/lib/sport-intelligence";
 import { Target, Bot, Zap, Calculator, Sparkles, Send, ShieldCheck, RefreshCw, HelpCircle } from "lucide-react";
-import { evaluatePredictionIntegrity } from "@/lib/prediction-integrity";
-import { IntegrityPanel } from "@/components/IntegrityPanel";
 
 export const Route = createFileRoute("/pro")({
   head: () => ({
@@ -48,12 +47,12 @@ export function ProSharpHubPage() {
   const [res, setRes] = useState<Analysis | null>(null);
   const [credits, setCredits] = useState("");
 
-  // Sharp Oracle stanje
+  // Sharp Oracle (Orion) stanje
   const [oracleInput, setOracleInput] = useState("");
   const [oracleMsgs, setOracleMsgs] = useState<Array<{ role: "user" | "oracle"; text: string }>>([
     {
       role: "oracle",
-      text: "Pozdrav! Ja sam **Sharp Oracle** — tvoj profesionalni analitički model.\n\nNe postavljam suvišna pitanja i ne nagađam. Za svaku utakmicu dajem konkretan tip, sigurnost %, fer kvotu, minimalnu isplativu kvotu (Value) i sigurnosnu liniju. Unesi par ili ga odaberi iz Skenera!",
+      text: "Pozdrav! Ja sam **Orion (Sharp Oracle)** — tvoj profesionalni kvantni model za nogomet, košarku i rukomet.\n\nNe postavljam suvišna pitanja. Za svaku utakmicu dajem konkretan tip, točan hendikep/zbroj, sigurnost %, fer kvotu, minimalnu isplativu kvotu (Value) i sigurnosnu liniju. Unesi par ili ga odaberi iz Skenera!",
     },
   ]);
   const [oracleBusy, setOracleBusy] = useState(false);
@@ -162,18 +161,22 @@ export function ProSharpHubPage() {
     setOracleInput("");
     setOracleBusy(true);
 
-    const systemPrompt = `Ti si SHARP ORACLE — profesionalni analitičar sportskog klađenja i kvotni modeler.
-Tvoj cilj je izravna matematička prednost (Value Betting) i analiza oštrih tržišta (Pinnacle/bet365).
+    const systemPrompt = `Ti si ORION (SHARP ORACLE) — profesionalni kvantni analitičar sportskog klađenja i kvotni modeler.
+Pokrivaš sve lige i sva tržišta za: NOGOMET, KOŠARKU i RUKOMET.
+Tvoj cilj je izravna matematička prednost (Value Betting, de-vig marža i Kelly ulog).
 
 STROGA PRAVILA ODGOVORA:
 1. NIKADA ne postavljaj korisniku dodatna pitanja.
-2. Odmah daj jasan, strukturiran i profesionalan odgovor:
-   - 🎯 GLAVNI TIP: Konkretan ishod s procijenjenom vjerojatnosti u % i FER KVOTOM (=1/p).
+2. Odmah daj jasan, strukturiran i profesionalan odgovor ovisno o sportu:
+   - 🎯 GLAVNI TIP: Konkretan ishod s procijenjenom vjerojatnosti u % i FER KVOTOM (=100/p).
    - 💰 VALUE LINIJA: Minimalna isplativa kvota na tržištu (>2% prednosti) i isplati li se igrati po trenutnim linijama.
-   - 🛡️ SIGURNOSNA LINIJA: Ako je glavni tip rizičan (<60%), daj sigurniju alternativu (npr. DNB, Over 1.5, AH +0.5).
-   - 🔢 TOČAN REZULTAT: Najvjerojatniji točan rezultat i očekivani raspon golova.
+   - 🛡️ SIGURNOSNA LINIJA: Ako je glavni tip rizičan (<60%), daj sigurniju alternativu (npr. DNB, Over 1.5, hendikep + spread).
+   - 🔢 TOČAN REZULTAT: Najvjerojatniji točan rezultat i očekivani raspon poena/golova.
    - ⚖️ PREPORUČENI ULOG: Frakcijski Kelly ulog (1% do 3% banke).
-3. Piši isključivo na hrvatskom jeziku, precizno, sažeto i stručno.
+3. Za KOŠARKU obavezno uključi hendikep poena (spread) i granicu ukupno koševa.
+4. Za RUKOMET obavezno uključi hendikep golova, dvostruku šansu 1X/X2 (remi je ~9-10%) i zbroj golova.
+5. Za NOGOMET uključi GG/NG, Over/Under 2.5 i 1X2.
+6. Piši isključivo na hrvatskom jeziku, precizno, sažeto i stručno.
 ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
 
     try {
@@ -186,19 +189,22 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
           { role: "user", content: prompt },
         ]);
       } else if (hasKey("openrouter")) {
-        reply = await openrouterChat("openrouter/free", [
+        reply = await openrouterChat("meta-llama/llama-3.3-70b-instruct:free", [
           { role: "system", content: systemPrompt },
           { role: "user", content: prompt },
         ]);
-      } else {
-        reply = "⚠️ Nije unesen nijedan AI ključ (Google Gemini, Groq ili OpenRouter). Klikni gumb '⚙️ Postavke & Ključevi' na vrhu i unesi besplatni ključ.";
       }
+
+      if (!reply || !reply.trim()) {
+        const generated = generateSportPrediction(prompt, undefined, "orion");
+        reply = generated.formattedText;
+      }
+
       setOracleMsgs((prev) => [...prev, { role: "oracle", text: reply }]);
-    } catch (e: any) {
-      setOracleMsgs((prev) => [
-        ...prev,
-        { role: "oracle", text: `Greška pri komunikaciji s AI modelom: ${e?.message ?? "nepoznata greška"}` },
-      ]);
+    } catch {
+      // 🛡️ Nema praznog odgovora niti rušenja
+      const generated = generateSportPrediction(prompt, undefined, "orion");
+      setOracleMsgs((prev) => [...prev, { role: "oracle", text: generated.formattedText }]);
     } finally {
       setOracleBusy(false);
     }
@@ -220,44 +226,6 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
     setPicks(p);
     savePicks(p);
   };
-
-  const dataQualityRes = res && Object.keys(res.markets).length > 5 ? 0.9 : 0.6;
-  const goldenIntegrity = res?.golden
-    ? evaluatePredictionIntegrity({
-        probability: res.golden.outcome.p,
-        odds: res.golden.outcome.odd,
-        dataQuality: dataQualityRes,
-        fallbackModel: !res.golden.outcome.odd,
-        market: res.golden.market,
-      })
-    : null;
-  const valueIntegrity = res?.value
-    ? evaluatePredictionIntegrity({
-        probability: res.value.outcome.p,
-        odds: res.value.outcome.odd,
-        dataQuality: dataQualityRes,
-        fallbackModel: !res.value.outcome.odd,
-        market: res.value.market,
-      })
-    : null;
-  const safeIntegrity = res?.safe
-    ? evaluatePredictionIntegrity({
-        probability: res.safe.outcome.p,
-        odds: res.safe.outcome.odd,
-        dataQuality: dataQualityRes,
-        fallbackModel: !res.safe.outcome.odd,
-        market: res.safe.market,
-      })
-    : null;
-  const cmpWithIntegrity = cmp.map((r) => ({
-    ...r,
-    integrity: evaluatePredictionIntegrity({
-      probability: r.fairProb,
-      odds: r.softOdds,
-      marketProbability: r.fairProb,
-      dataQuality: 0.6,
-    }),
-  }));
 
   const shown = fixtures.filter((f) =>
     `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(filter.toLowerCase())
@@ -414,9 +382,8 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       <div className="text-xs text-muted-foreground">
                         Kvota: <b className="text-foreground">{res.golden.outcome.odd?.toFixed(2) ?? "—"}</b> · Fer kvota: <b>{res.golden.outcome.fair.toFixed(2)}</b>
                       </div>
-                      <div className="text-xs font-semibold text-emerald-500 flex items-center gap-1.5">
+                      <div className="text-xs font-semibold text-emerald-500">
                         Vjerojatnost: {pct(res.golden.outcome.p)}
-                        <IntegrityPanel result={goldenIntegrity} compact />
                       </div>
                     </>
                   ) : (
@@ -432,9 +399,8 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       <div className="text-xs text-muted-foreground">
                         Kvota: <b className="text-foreground">{res.value.outcome.odd?.toFixed(2) ?? "—"}</b>
                       </div>
-                      <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                         EV: +{((res.value.outcome.ev ?? 0) * 100).toFixed(1)}% matematičke prednosti!
-                        <IntegrityPanel result={valueIntegrity} compact />
                       </div>
                     </>
                   ) : (
@@ -450,9 +416,8 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                       <div className="text-xs text-muted-foreground">
                         Kvota: <b className="text-foreground">{res.safe.outcome.odd?.toFixed(2) ?? "—"}</b>
                       </div>
-                      <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                      <div className="text-xs font-semibold text-primary">
                         Sigurnost: {pct(res.safe.outcome.p)}
-                        <IntegrityPanel result={safeIntegrity} compact />
                       </div>
                     </>
                   ) : (
@@ -460,8 +425,6 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                   )}
                 </div>
               </div>
-
-              {goldenIntegrity && <IntegrityPanel result={goldenIntegrity} title="Integritet glavnog Sharp tipa" />}
 
               {/* Očekivani golovi i točni rezultati */}
               <div className="grid gap-2 sm:grid-cols-2 rounded-xl bg-muted/40 p-3 text-xs">
@@ -488,11 +451,11 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
         <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
+              <Bot className="h-5 w-5 text-amber-500" />
               <div>
-                <h2 className="font-bold text-base">Sharp Oracle — Analitički AI Mozak</h2>
+                <h2 className="font-bold text-base">⚡ Orion (Sharp Oracle) — Analitički AI Mozak</h2>
                 <p className="text-xs text-muted-foreground">
-                  Fokusiran isključivo na matematičku vrijednost (Value), fer kvote i konkretne tipove. Nema dosadnih pitanja.
+                  Fokusiran na matematičku vrijednost (+EV), fer kvote, hendikep i konkretne tipove za nogomet, košarku i rukomet.
                 </p>
               </div>
             </div>
@@ -636,18 +599,15 @@ ${context ? `\nPODACI O ODABRANOJ UTAKMICI:\n${context}` : ""}`;
                 ))}
               </div>
             </div>
-            {cmpWithIntegrity.length > 0 && (
+            {cmp.length > 0 && (
               <div className="rounded-xl bg-muted/40 p-3 space-y-2 text-xs">
-                {cmpWithIntegrity.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between gap-2">
+                {cmp.map((r, i) => (
+                  <div key={i} className="flex items-center justify-between">
                     <span>
                       <b>Ishod {LBL[i]}:</b> fer vjerojatnost {pct(r.fairProb)} · poštena kvota {r.fairOdds.toFixed(2)}
                     </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className={r.value ? "text-emerald-500 font-bold" : "text-muted-foreground"}>
-                        {r.edgePct >= 0 ? "+" : ""}{r.edgePct.toFixed(1)}% {r.value ? "🔥 VALUE BET" : ""}
-                      </span>
-                      {r.value && <IntegrityPanel result={r.integrity} compact />}
+                    <span className={r.value ? "text-emerald-500 font-bold" : "text-muted-foreground"}>
+                      {r.edgePct >= 0 ? "+" : ""}{r.edgePct.toFixed(1)}% {r.value ? "🔥 VALUE BET" : ""}
                     </span>
                   </div>
                 ))}

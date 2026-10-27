@@ -193,8 +193,7 @@ export function sniperFor(p: SniperPrefs, market: Market): SniperFilter[] {
 
 const RULE: Record<SniperId, (p: SniperPrefs) => string> = {
   threshold: (p) =>
-    // POPRAVAK: pretvori decimalni EV u postotke prije usporedbe s minEdge.
-    `SNAJPER PRAG: tip objavi samo ako je kalibrirana vjerojatnost ≥ ${(p.minProb * 100).toFixed(0)}% I edge ((p × kvota − 1) × 100) ≥ ${p.minEdge}%. Ako ijedan uvjet padne, napiši velikim slovima "PRESKAČEM" i objasni što točno nedostaje. Nikad ne forsiraj tip na 50/50 utakmici.`,
+    `SNAJPER PRAG: tip objavi samo ako je kalibrirana vjerojatnost ≥ ${(p.minProb * 100).toFixed(0)}% I edge (p × kvota − 1) ≥ ${p.minEdge}%. Ako ijedan uvjet padne, napiši velikim slovima "PRESKAČEM" i objasni što točno nedostaje. Nikad ne forsiraj tip na 50/50 utakmici.`,
   marketGuard: (p) =>
     `ČUVAR TRŽIŠTA: kvotu očisti od marže (Shin/power/proporcionalno), spoji model s tržištem u logit prostoru s težinom tržišta ${p.guardMarketWeight}. Ako model odstupa više od ${p.guardMaxDevPb} postotnih bodova od poštene kvote, podigni alarm i reži sigurnost.`,
   ladder: (p) =>

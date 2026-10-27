@@ -1,4 +1,3 @@
-import { ahSkellam, skellamUkupnoOver } from "./skellam";
 // Čisti matematički alati za karticu "Pro Alati" (bez API poziva).
 const fact = (k: number) => { let f = 1; for (let i = 2; i <= k; i++) f *= i; return f; };
 export const poisson = (l: number, k: number) => (Math.exp(-l) * Math.pow(l, k)) / fact(k);
@@ -22,19 +21,18 @@ const halves = (line: number) => (Math.abs((line * 4) % 2) === 1 ? [line - 0.25,
 export interface LineResult { win: number; push: number; loss: number; fairOdds: number }
 
 /** Fer kvota za koju je očekivana dobit 0: o = 1 + E[gubitak] / E[dobitak]. */
-export function asianHandicap(lh: number, la: number, homeLine: number): LineResult {
-  // Egzaktna Skellamova raspodjela gol-razlike (v5): win/push/loss za
-  // svaku liniju, push vidljiv na cjelobrojnim linijama. Rezanje
-  // matrice na 10 golova više nije granica točnosti.
-  const r = ahSkellam(lh, la, homeLine);
-  return { win: r.win, push: r.push, loss: r.loss, fairOdds: r.ferWin };
+function settle(m: number[][], val: (i: number, j: number) => number, line: number): LineResult {
+  const parts = halves(line); let fw = 0, fl = 0, win = 0, push = 0, loss = 0;
+  m.forEach((r, i) => r.forEach((p, j) => {
+    for (const l of parts) {
+      const x = val(i, j) + l, w = p / parts.length;
+      if (x > 1e-9) { fw += w; win += w; } else if (x < -1e-9) { fl += w; loss += w; } else push += w;
+    }
+  }));
+  return { win, push, loss, fairOdds: fw > 0 ? 1 + fl / fw : Infinity };
 }
-export function goalLineOver(lh: number, la: number, line: number): LineResult {
-  // Egzaktna Poissonova raspodjela ukupno preko skellam.ts (v5):
-  // over/push/under + fer kvota (1 − push)/over.
-  const r = skellamUkupnoOver(lh, la, line);
-  return { win: r.over, push: r.push, loss: r.under, fairOdds: r.ferOver };
-}
+export const asianHandicap = (lh: number, la: number, homeLine: number) => settle(matrix(lh, la), (i, j) => i - j, homeLine);
+export const goalLineOver = (lh: number, la: number, line: number) => settle(matrix(lh, la), (i, j) => i + j, -line);
 
 /** Over/Under za kornere/kartone: Poisson ukupnog broja. */
 export function countOver(lambda: number, line: number) {
@@ -59,23 +57,17 @@ export function combo(legs: Leg[]) {
   return { prob, odds, fairOdds: prob > 0 ? 1 / prob : Infinity, ev: prob * odds - 1, correlated };
 }
 
-// POPRAVAK: ne dijeli s nulom niti računa ulog za nevažeću decimalnu kvotu ≤ 1.
-export const kelly = (p: number, o: number, frac = 0.25) =>
-  o > 1 && Number.isFinite(o) && Number.isFinite(p) && Number.isFinite(frac)
-    ? Math.max(0, ((p * o - 1) / (o - 1)) * frac)
-    : 0;
+export const kelly = (p: number, o: number, frac = 0.25) => Math.max(0, ((p * o - 1) / (o - 1)) * frac);
 
 /** Live: preostali λ prema minuti i omjeru pritiska (udarci u okvir ×3 + opasni napadi). */
 export function liveMomentum(x: { minute: number; lh: number; la: number; sotH: number; sotA: number; daH: number; daA: number }) {
   const rem = Math.max(0, 90 - x.minute) / 90;
   const pH = x.sotH * 3 + x.daH, pA = x.sotA * 3 + x.daA, tot = pH + pA;
   const shareH = tot > 0 ? pH / tot : 0.5;
-  // POPRAVAK: zaštiti bazni udio i korektore od dijeljenja nulom kad je λ ukupni 0 ili jedne strane 0.
-  const baseTotal = x.lh + x.la;
-  const baseShare = baseTotal > 0 ? x.lh / baseTotal : 0.5;
+  const baseShare = x.lh / (x.lh + x.la);
   // umjerena korekcija (max ±40%) prema stvarnom pritisku
-  const fH = Math.min(1.4, Math.max(0.6, baseShare > 0 ? shareH / baseShare : 1));
-  const fA = Math.min(1.4, Math.max(0.6, baseShare < 1 ? (1 - shareH) / (1 - baseShare) : 1));
+  const fH = Math.min(1.4, Math.max(0.6, shareH / baseShare));
+  const fA = Math.min(1.4, Math.max(0.6, (1 - shareH) / (1 - baseShare)));
   const rh = x.lh * rem * fH, ra = x.la * rem * fA, r = rh + ra;
   const noGoal = Math.exp(-r);
   return { rh, ra, noGoal, nextHome: (1 - noGoal) * (rh / (r || 1)), nextAway: (1 - noGoal) * (ra / (r || 1)) };
