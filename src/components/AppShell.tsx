@@ -30,6 +30,7 @@ import { formatZagreb } from "@/lib/zagreb-time";
 import { SharpFilterToggle } from "@/components/SharpFilterToggle";
 import { useSharpFilter, SHARP_PRESETS } from "@/lib/sharp-filter";
 import { Korpa } from "@/components/Korpa";
+import { KorpaProvider } from "@/lib/korpa-store";
 import { Orion } from "@/components/Orion";
 
 const NAV = [
@@ -83,6 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const activePreset = SHARP_PRESETS[settings.preset];
 
   return (
+    <KorpaProvider>
     <div
       className="relative min-h-screen flex flex-col"
       style={{ backgroundImage: "var(--gradient-hero)" }}
@@ -176,5 +178,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Orion />
       <Korpa />
     </div>
+    </KorpaProvider>
   );
 }
