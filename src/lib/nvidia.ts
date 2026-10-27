@@ -3,15 +3,29 @@ import { getKey } from "./storage";
 // Koristimo proxy putanju koju tvoja aplikacija već ima ugrađenu
 const URL = "/api/public/nvidia";
 
+// Listopad 2026 — provjereno živim upitom na integrate.api.nvidia.com/v1/models.
+// meta/llama-3.x modeli su ugašeni (zato Orion/Luna preko NVIDIA-e nisu odgovarali).
 export const NIM_MODELS = [
-  { id: "meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B" },
-  { id: "meta/llama-3.3-70b-instruct", label: "Llama 3.3 70B" }
+  { id: "deepseek-ai/deepseek-v4.1-flash", label: "DeepSeek V4.1 Flash" },
+  { id: "moonshotai/kimi-k2.6", label: "Kimi K2.6" },
+  { id: "z-ai/glm-5.3-flash", label: "GLM 5.3 Flash" },
+  { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron 3 Super 120B" },
+  { id: "nvidia/nemotron-3.5-lightning-30b-a3b", label: "Nemotron 3.5 Lightning (brzi)" },
+  { id: "google/gemma-4-31b-it", label: "Gemma 4 31B" },
+  { id: "minimaxai/minimax-m3.1-flash", label: "MiniMax M3.1 Flash" },
+  { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B" },
 ];
 
-export const NIM_GOAL_MODELS = ["meta/llama-3.1-8b-instruct"];
+export const NIM_GOAL_MODELS = ["deepseek-ai/deepseek-v4.1-flash"];
+
+const LIVE_NIM = new Set(NIM_MODELS.map((m) => m.id));
+/** Stari spremljeni (ugašeni) model iz Postavki automatski se zamjenjuje živim. */
+export function liveNimModel(id?: string): string {
+  return id && LIVE_NIM.has(id) ? id : NIM_MODELS[0].id;
+}
 
 /** Rezervni modeli ako odabrani ne odgovori. */
-const NIM_FALLBACKS = ["meta/llama-3.3-70b-instruct", "meta/llama-3.1-8b-instruct"];
+const NIM_FALLBACKS = ["nvidia/nemotron-3.5-lightning-30b-a3b", "z-ai/glm-5.3-flash", "openai/gpt-oss-20b"];
 
 export interface NimMessage {
   role: "system" | "user" | "assistant";
@@ -67,7 +81,7 @@ export async function nvidiaChat(
   const key = getKey("nvidia");
   if (!key) throw new Error("Ključ nedostaje");
   const seen = new Set<string>();
-  const chain = [model, ...(opts.extraFallbacks ?? []), ...NIM_FALLBACKS].filter((m) => m && !seen.has(m) && seen.add(m));
+  const chain = [liveNimModel(model), ...(opts.extraFallbacks ?? []), ...NIM_FALLBACKS].filter((m) => m && !seen.has(m) && seen.add(m));
   let last = "";
   for (const m of chain) {
     try {
@@ -83,7 +97,7 @@ export async function nvidiaChat(
 
 export async function testNvidia() {
   try {
-    await nvidiaChat("meta/llama-3.1-8b-instruct", [{role:"user", content:"Hi"}]);
+    await nvidiaChat(NIM_MODELS[0].id, [{role:"user", content:"Hi"}]);
     return { ok: true, msg: "Radi!" };
   } catch (e: any) { return { ok: false, msg: e.message }; }
 }

@@ -217,7 +217,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
         kljuc: sarp.coreTip.kljuc,
         p: sarp.coreTip.p,
         kvota: sarp.coreTip.kvota ?? undefined,
-        edge: sarp.coreTip.edge,
+        edge: sarp.coreTip.edge ?? undefined,
         kellyPct: sarp.coreTip.kellyPct,
       },
       altTip: sarp.altTip
@@ -281,7 +281,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
   return (
     <div className="space-y-4">
       {/* 0 · ANTI-LOSS FILTER (ako je oklada rizična, stavi crvenu traku na sam vrh) */}
-      {antiLoss.akcija === "SKIP" && (
+      {antiLoss.status === "SKIP" && (
         <div className="flex items-center gap-2 rounded-xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">
           <Ban className="h-5 w-5 shrink-0 text-red-400" />
           <div className="flex-1">
@@ -293,7 +293,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
         </div>
       )}
 
-      {antiLoss.akcija === "HIGH_VOLATILITY" && (
+      {antiLoss.status === "STANDARD" && (antiLoss.entropija ?? 0) > 0.9 && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-300">
           <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" />
           <div className="flex-1">
@@ -305,7 +305,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
         </div>
       )}
 
-      {antiLoss.akcija === "GOLD" && (
+      {antiLoss.status === "GOLD" && (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-300">
           <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-400" />
           <div className="flex-1">
@@ -556,7 +556,7 @@ function MatchInsightPanelInner(props: MatchInsightProps) {
                   {kretanje.map((k) => (
                     <tr key={k.kljuc} className="border-b border-border/30">
                       <td className="py-1.5 font-bold">{LABELI[k.kljuc] ?? k.kljuc}</td>
-                      <td className="py-1.5 text-right font-mono">{k.otvaranje?.toFixed(2) ?? "—"}</td>
+                      <td className="py-1.5 text-right font-mono">{k.prva?.toFixed(2) ?? "—"}</td>
                       <td className="py-1.5 text-right font-mono font-bold text-foreground">{k.zadnja?.toFixed(2) ?? "—"}</td>
                       <td className={`py-1.5 text-right font-mono font-bold ${
                         k.deltaPct == null ? "text-muted-foreground" : k.deltaPct > 0 ? "text-emerald-400" : k.deltaPct < 0 ? "text-red-400" : "text-muted-foreground"

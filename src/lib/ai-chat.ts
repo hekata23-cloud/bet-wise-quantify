@@ -5,7 +5,7 @@ import { geminiChat } from "./gemini";
 import { groqChat, type GroqMessage } from "./groq";
 import { openrouterChat, orUsageToday, FREE_DAILY_LIMIT, type ORMessage, specialistDefault } from "./openrouter";
 import { huggingfaceChat, HF_MODELS, type HFMessage } from "./huggingface";
-import { nvidiaChat, type NimMessage } from "./nvidia";
+import { nvidiaChat, liveNimModel, type NimMessage } from "./nvidia";
 import { loadOmni, runOmni, omniBriefing } from "./omni";
 import { hasKey, loadJSON } from "./storage";
 import { detectMarket, marketModule, specialistsForMarket, MARKET_LABEL } from "./specialists";
@@ -396,7 +396,7 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
     !hasImages
   ) {
     try {
-      const council = await withTimeout(runCouncil(sys, history, userText), 120_000, "Vijeće AI-ja");
+      const council = await withTimeout(runCouncil(sys, history.slice(-10), userText), 120_000, "Vijeće AI-ja");
       if (council && council.trim() && !/^prazan odgovor$/i.test(council.trim())) return council;
     } catch (e) {
       console.warn("Vijeće AI-ja nije uspjelo, ide normalan mozak:", e);
@@ -416,39 +416,86 @@ NEMOJ izmišljati nepostojeću utakmicu niti nametati lažni mock par za Domaći
   push("openrouter"); // samo rezerva — ne troši 50/dan kvotu prije vremena
   push("huggingface");
 
+  // Povijest razgovora: samo zadnjih 10 poruka i skraćeni dugi odgovori —
+  // prevelik zahtjev (413 / context length / TPM) bio je glavni razlog zašto
+  // Luna i Orion nisu odgovarali na ono što ih se pita.
+  const shortHistory: ChatTurn[] = history
+    .filter((t) => t.content && t.content.trim())
+    .slice(-10)
+    .map((t) => ({ ...t, content: t.content.length > 2500 ? t.content.slice(0, 2500) + " …" : t.content }));
+
+  // Pitanje se ponavlja na kraju sustavnih uputa da ga model NE MOŽE zaobići.
+  const focus = `\n\n═══ ODGOVORI TOČNO NA OVO PITANJE (NAJVIŠI PRIORITET) ═══\nKorisnik pita: "${userText.slice(0, 600)}"\nOdgovori izravno na to pitanje, prvom rečenicom. Ne predstavljaj se, ne nabrajaj što sve znaš i ne mijenjaj temu.`;
+  const sysFull = sys + focus;
+  // Kompaktna verzija za drugi krug (besplatni limiti tokena na Groqu/HF/NVIDIA).
+  const sysCompact =
+    agentSystemPrompt.slice(0, 6000) +
+    quantDirective +
+    "\n\nKONTEKST:\n" +
+    now +
+    (ctx ? "\n\n" + ctx.slice(0, 2000) : "") +
+    (attCtx ? "\n\n" + attCtx.slice(0, 2000) : "") +
+    focus;
+
   const errors: string[] = [];
-  for (const b of brains) {
-    try {
-      let candidate = "";
-      if (b === "openrouter" && hasKey("openrouter")) {
-        candidate = await runOpenRouter(sys, history, userText, attachments, prefs, market);
-      } else if (b === "nvidia" && hasKey("nvidia")) {
-        candidate = await runNim(sys, history, userText, prefs);
-      } else if (b === "gemini" && hasKey("gemini")) {
-        candidate = await runGemini(sys, history, userText, attachments);
-      } else if (b === "groq" && hasKey("groq")) {
-        candidate = await runGroq(sys, history, userText, attachments);
-      } else if (b === "huggingface" && hasKey("huggingface")) {
-        candidate = await runHF(sys, history, userText, attachments, prefs);
+  for (const [round, sysNow, hist] of [
+    [1, sysFull, shortHistory],
+    [2, sysCompact, shortHistory.slice(-4)],
+  ] as const) {
+    for (const b of brains) {
+      try {
+        let candidate = "";
+        if (b === "openrouter" && hasKey("openrouter")) {
+          candidate = await runOpenRouter(sysNow, [...hist], userText, attachments, prefs, market);
+        } else if (b === "nvidia" && hasKey("nvidia")) {
+          candidate = await runNim(sysNow, [...hist], userText, prefs);
+        } else if (b === "gemini" && hasKey("gemini")) {
+          candidate = await runGemini(sysNow, [...hist], userText, attachments);
+        } else if (b === "groq" && hasKey("groq")) {
+          candidate = await runGroq(sysNow, [...hist], userText, attachments);
+        } else if (b === "huggingface" && hasKey("huggingface")) {
+          candidate = await runHF(sysNow, [...hist], userText, attachments, prefs);
+        }
+        const s = (candidate ?? "").trim();
+        if (s && !/^prazan odgovor$/i.test(s) && s.length >= 15) {
+          return s;
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        errors.push(`${b}${round === 2 ? " (kratki upit)" : ""}: ${msg}`);
+        console.warn(`${b} pao, automatski prebacujem na sljedeći:`, msg);
       }
-      const s = (candidate ?? "").trim();
-      if (s && !/^prazan odgovor$/i.test(s) && s.length >= 15) {
-        return s;
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`${b}: ${msg}`);
-      console.warn(`${b} pao, automatski prebacujem na sljedeći:`, msg);
     }
   }
 
-  // Autonomni analitički odgovor (nikada ne vraća prazan odgovor niti mock podatke)
-  if (opts.agent === "orion") {
-    const res = formatOrionResponse(quant);
-    return res && res.trim() ? res : formatOrionResponse(quant);
+  return offlineAnswer(opts.agent === "orion" ? "orion" : "luna", userText, quant, errors);
+}
+
+/** Odgovor kad nijedan AI mozak nije odgovorio: za utakmicu vraća lokalnu
+ *  matematiku, a za sva ostala pitanja iskreno kaže ZAŠTO nema odgovora
+ *  (umjesto istog generičkog predstavljanja koje ignorira pitanje). */
+export function offlineAnswer(
+  agent: "luna" | "orion",
+  userText: string,
+  quant: ReturnType<typeof runQuantAnalytics>,
+  errors: string[],
+): string {
+  if (quant.isMatchQuery) {
+    return agent === "orion" ? formatOrionResponse(quant) : formatLunaResponse(quant);
   }
-  const res = formatLunaResponse(quant);
-  return res && res.trim() ? res : formatLunaResponse(quant);
+  const ime = agent === "orion" ? "Orion" : "Luna";
+  const anyKey = ["gemini", "groq", "openrouter", "nvidia", "huggingface"].some((k) => hasKey(k as never));
+  const pitanje = userText.split("\n")[0].slice(0, 200);
+  const razlog = !anyKey
+    ? "Nijedan AI ključ nije spremljen, pa ne mogu razgovarati o općim pitanjima."
+    : "Nijedan AI mozak trenutno nije odgovorio:\n" + errors.slice(0, 6).map((e) => `- ${e.slice(0, 220)}`).join("\n");
+  return `**${ime}:** Na pitanje „${pitanje}” trenutno ne mogu dati pravi odgovor.
+
+${razlog}
+
+Što napraviti: otvori **Postavke** i provjeri ključeve (gumb „Testiraj” uz svaki). Besplatni i najpouzdaniji su **Google Gemini** (aistudio.google.com) i **Groq** (console.groq.com). Ako piše „limit”, pričekaj minutu pa pitaj ponovno.
+
+Za konkretnu utakmicu (npr. „Dinamo vs Hajduk”) mogu odmah izračunati tip i bez AI ključa.`;
 }
 
 async function runOpenRouter(
@@ -536,7 +583,7 @@ async function runNim(
 ): Promise<string> {
   // Brzi model je default za chat; reasoning modeli (deepseek-r1) trajali su predugo
   // pa je chat izgledao kao da ne odgovara.
-  const model = prefs.nimModel || "meta/llama-3.3-70b-instruct";
+  const model = liveNimModel(prefs.nimModel);
   const msgs: NimMessage[] = [{ role: "system", content: sys }];
   for (const t of history) msgs.push({ role: t.role, content: t.content });
   msgs.push({ role: "user", content: userText });

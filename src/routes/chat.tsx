@@ -20,8 +20,8 @@ import {
   FileArchive,
   File as FileIcon,
 } from "lucide-react";
-import { askAi, type ChatTurn } from "@/lib/ai-chat";
-import { formatLunaResponse, runQuantAnalytics } from "@/lib/botovi";
+import { offlineAnswer, askAi, type ChatTurn } from "@/lib/ai-chat";
+import { runQuantAnalytics } from "@/lib/botovi";
 import { ucitajKontekstMeca, izgradiKontekstTekst, ucitajKontekstTiketa, izgradiTiketTekst } from "@/lib/ai-context";
 import { loadSniper, sniperActiveCount } from "@/lib/sniper";
 import { loadTitan, titanActiveCount } from "@/lib/titan";
@@ -173,7 +173,7 @@ function ChatPage() {
           .join("\n\n");
       let reply = await askAi(tekstZaAI, messages, attSnapshot, { voice: voiceMode });
       if (!reply || !reply.trim() || reply.trim().length < 15 || /^prazan odgovor$/i.test(reply.trim())) {
-        reply = formatLunaResponse(runQuantAnalytics(text));
+        reply = offlineAnswer("luna", text, runQuantAnalytics(text), ["veza prekinuta ili neočekivana greška"]);
       }
       setMessages((m) => [...m, { role: "assistant", content: reply, ts: Date.now() }]);
       if (voiceMode) {
@@ -181,7 +181,7 @@ function ChatPage() {
         speak(reply, () => setSpeaking(false));
       }
     } catch {
-      const fallback = formatLunaResponse(runQuantAnalytics(text));
+      const fallback = offlineAnswer("luna", text, runQuantAnalytics(text), ["veza prekinuta ili neočekivana greška"]);
       setMessages((m) => [...m, { role: "assistant", content: fallback, ts: Date.now() }]);
       if (voiceMode) {
         setSpeaking(true);

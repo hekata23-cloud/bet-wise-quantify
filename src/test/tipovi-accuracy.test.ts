@@ -24,7 +24,7 @@ describe("Preciznost tipova i matematička konzistentnost", () => {
 
   it("btts-over bira ishod s višom vjerojatnošću i ne izvrće 51% u suprotan tip", () => {
     // Kad je pOver25 > pUnder25, odabir mora biti Više 2.5
-    const dummyAnalysis = analyze({}, { gfHome: 2.1, gaHome: 1.0, playedHome: 10 }, { gfAway: 1.8, gaAway: 1.2, playedAway: 10 });
+    const dummyAnalysis = analyze({}, ({ gfHome: 2.1, gaHome: 1.0, playedHome: 10 } as any), ({ gfAway: 1.8, gaAway: 1.2, playedAway: 10 } as any));
     const bttsOver = computeBttsOverAnalysis(dummyAnalysis, "Dinamo — Hajduk", "HNL", "18:00");
 
     if (bttsOver.over25Prob >= bttsOver.under25Prob) {
@@ -45,7 +45,7 @@ describe("Preciznost tipova i matematička konzistentnost", () => {
   });
 
   it("zlatni-engine generira golden i safe tip i kada nema vanjskih kvota", () => {
-    const analysis = analyze({}, { gfHome: 1.8, gaHome: 0.9, playedHome: 12 }, { gfAway: 0.9, gaAway: 1.9, playedAway: 12 });
+    const analysis = analyze({}, ({ gfHome: 1.8, gaHome: 0.9, playedHome: 12 } as any), ({ gfAway: 0.9, gaAway: 1.9, playedAway: 12 } as any));
     expect(analysis.safe).not.toBeNull();
     expect(analysis.golden).not.toBeNull();
     expect(analysis.golden?.outcome.p).toBeGreaterThanOrEqual(0.55);
@@ -53,7 +53,7 @@ describe("Preciznost tipova i matematička konzistentnost", () => {
 
   it("ht-ft odabire gostujućeg favorita (2/2) kad je dominantniji od domaćina", () => {
     // Gost izraziti favorit (npr. Man City u gostima: lh = 0.5, la = 2.4)
-    const dummyAnalysis = analyze({}, { gfHome: 0.5, gaHome: 2.2, playedHome: 10 }, { gfAway: 2.6, gaAway: 0.6, playedAway: 10 });
+    const dummyAnalysis = analyze({}, ({ gfHome: 0.5, gaHome: 2.2, playedHome: 10 } as any), ({ gfAway: 2.6, gaAway: 0.6, playedAway: 10 } as any));
     const htft = computeHtFtAnalysis(dummyAnalysis, "Luton — Man City", "Premier League", "21:00");
     expect(htft.mainTip.pick).toBe("2/2");
   });

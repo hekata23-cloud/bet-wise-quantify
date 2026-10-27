@@ -4,13 +4,13 @@ const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 // gemini-3.8-flash RAZMIŠLJA prije odgovora — misli troše output budžet,
 // pa je budžet uvećan na 16384 i razmišljanje je na najnižem nivou.
+// Listopad 2026: 3.8 Flash je aktualni besplatni Flash (3.7 → 3.8, 3.5 → 3.6);
+// stari 1.5/2.0 modeli su ugašeni pa su uklonjeni iz lanca.
 const MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-2.0-flash-lite",
   "gemini-3.8-flash",
   "gemini-3.6-flash",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
 ];
 
 export async function geminiChat(systemPrompt: string, history: any[]): Promise<string> {
