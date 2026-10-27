@@ -28,6 +28,7 @@ import { Route as ZlatniTipRouteImport } from './routes/zlatni-tip'
 import { Route as OverUnderIndexRouteImport } from './routes/over-under.index'
 import { Route as OverUnderPostavkeRouteImport } from './routes/over-under.postavke'
 import { Route as ApiPublicFootballDataRouteImport } from './routes/api/public/football-data'
+import { Route as ApiPublicGeminiRouteImport } from './routes/api/public/gemini'
 import { Route as ApiPublicNvidiaRouteImport } from './routes/api/public/nvidia'
 
 const IndexRoute = IndexRouteImport.update({
@@ -125,6 +126,11 @@ const ApiPublicFootballDataRoute = ApiPublicFootballDataRouteImport.update({
   path: '/api/public/football-data',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicGeminiRoute = ApiPublicGeminiRouteImport.update({
+  id: '/api/public/gemini',
+  path: '/api/public/gemini',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicNvidiaRoute = ApiPublicNvidiaRouteImport.update({
   id: '/api/public/nvidia',
   path: '/api/public/nvidia',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/over-under/postavke': typeof OverUnderPostavkeRoute
   '/over-under/': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
+  '/api/public/gemini': typeof ApiPublicGeminiRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
 export interface FileRoutesByTo {
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/over-under/postavke': typeof OverUnderPostavkeRoute
   '/over-under': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
+  '/api/public/gemini': typeof ApiPublicGeminiRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
 export interface FileRoutesById {
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/over-under/postavke': typeof OverUnderPostavkeRoute
   '/over-under/': typeof OverUnderIndexRoute
   '/api/public/football-data': typeof ApiPublicFootballDataRoute
+  '/api/public/gemini': typeof ApiPublicGeminiRoute
   '/api/public/nvidia': typeof ApiPublicNvidiaRoute
 }
 export interface FileRouteTypes {
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/over-under/postavke'
     | '/over-under/'
     | '/api/public/football-data'
+    | '/api/public/gemini'
     | '/api/public/nvidia'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/over-under/postavke'
     | '/over-under'
     | '/api/public/football-data'
+    | '/api/public/gemini'
     | '/api/public/nvidia'
   id:
     | '__root__'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/over-under/postavke'
     | '/over-under/'
     | '/api/public/football-data'
+    | '/api/public/gemini'
     | '/api/public/nvidia'
   fileRoutesById: FileRoutesById
 }
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   UzivoRoute: typeof UzivoRoute
   ZlatniTipRoute: typeof ZlatniTipRoute
   ApiPublicFootballDataRoute: typeof ApiPublicFootballDataRoute
+  ApiPublicGeminiRoute: typeof ApiPublicGeminiRoute
   ApiPublicNvidiaRoute: typeof ApiPublicNvidiaRoute
 }
 
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFootballDataRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/gemini': {
+      id: '/api/public/gemini'
+      path: '/api/public/gemini'
+      fullPath: '/api/public/gemini'
+      preLoaderRoute: typeof ApiPublicGeminiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/nvidia': {
       id: '/api/public/nvidia'
       path: '/api/public/nvidia'
@@ -463,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   UzivoRoute: UzivoRoute,
   ZlatniTipRoute: ZlatniTipRoute,
   ApiPublicFootballDataRoute: ApiPublicFootballDataRoute,
+  ApiPublicGeminiRoute: ApiPublicGeminiRoute,
   ApiPublicNvidiaRoute: ApiPublicNvidiaRoute,
 }
 export const routeTree = rootRouteImport
